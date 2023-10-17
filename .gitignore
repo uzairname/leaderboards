@@ -3,12 +3,12 @@
 
 .wrangler
 temp.*
-test.*
 devscripts.txt
 .vscode/
 .fauna-shell
 migrate-dev.bat
 deploy-dev.bat
+test.bat
 deploydev.bat
 commit.txt
 host.json
