@@ -1,0 +1,65 @@
+import { APIChannel, APIRole, ChannelType } from 'discord-api-types/v10'
+
+import { Guild } from '../../database/models'
+
+import { App } from '../app'
+import { Colors } from '../helpers/messages/message_pieces'
+
+export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> {
+  let app_guild = await app.db.guilds.get(guild_id)
+  if (!app_guild) {
+    let discord_guild = await app.bot.getGuild(guild_id)
+    app_guild = await app.db.guilds.create({
+      id: discord_guild.id,
+      name: discord_guild.name,
+    })
+  }
+  return app_guild
+}
+
+export async function syncRankedCategory(
+  app: App,
+  guild: Guild,
+): Promise<{
+  channel: APIChannel
+  is_new_channel: boolean
+}> {
+  let category_id = guild.data.category_id
+
+  let result = await app.bot.utils.haveGuildChannel({
+    possible_channel_id: category_id,
+    new_channel_data: async () => {
+      return {
+        guild_id: guild.data.id,
+        body: { name: 'LEADERBOARDS', type: ChannelType.GuildCategory },
+      }
+    },
+  })
+
+  if (result.is_new_channel) {
+    await guild.update({ category_id: result.channel.id })
+  }
+
+  return result
+}
+
+export async function syncGuildAdminRole(
+  app: App,
+  guild: Guild,
+): Promise<{
+  role: APIRole
+  is_new_role: boolean
+}> {
+  let result = await app.bot.utils.haveRole({
+    guild_id: guild.data.id,
+    possible_role_id: guild.data.admin_role_id,
+    new_role_data: async () => {
+      return { name: 'Leaderboards Admin', color: Colors.Primary, permissions: '0' }
+    },
+  })
+
+  if (result.is_new_role) {
+    await guild.update({ admin_role_id: result.role.id })
+  }
+  return result
+}
