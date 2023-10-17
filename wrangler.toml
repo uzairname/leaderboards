@@ -1,21 +1,12 @@
 name = "leaderboards-dev"
 main = "src/index.ts"
 compatibility_date = "2023-04-16"
-vars = { 
-  ENVIRONMENT = "development" 
-  BASE_URL = "https://leaderboards-dev.5r.workers.dev"
-}
+vars = { ENVIRONMENT = "development", BASE_URL = "https://leaderboards-dev.5r.workers.dev" }
 
 [env.staging]
 name = "leaderboards-staging"
-vars = {
-  ENVIRONMENT = "staging"
-  BASE_URL = "https://leaderboards-staging.5r.workers.dev"
-}
+vars = { ENVIRONMENT = "staging", BASE_URL = "https://leaderboards-staging.5r.workers.dev"}
 
 [env.production]
 name = "leaderboards"
-vars = {
-  ENVIRONMENT = "production"
-  BASE_URL = "https://leaderboards.5r.workers.dev"
-}
+vars = { ENVIRONMENT = "production", BASE_URL = "https://leaderboards.5r.workers.dev" }
