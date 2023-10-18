@@ -19,7 +19,7 @@ Set the following as environment variables in the worker and in `wrangler.toml`
 
 ### Discord Application
 
-For each environment, create a Discord app.
+For each environment, create a Discord app. In the dev portal, set the "interactions endpoint url", "linked roles verification url", and an oauth redirect to something like "https://\<subdomain>.workers.dev/discord/<endpoint>"
 
 ### Neon Database
 

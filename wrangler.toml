@@ -3,6 +3,7 @@ compatibility_date = "2023-04-16"
 
 name = "firstplace-dev"
 vars = { ENVIRONMENT = "development", BASE_URL = "https://firstplace-dev.5r.workers.dev" }
+minify = true
 
 [env.staging]
 name = "firstplace-staging"

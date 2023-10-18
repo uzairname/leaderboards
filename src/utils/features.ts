@@ -3,9 +3,7 @@ export const features = (environment: string) => {
 
   return {
     ROLE_CONNECTIONS_METADATA: dev,
-
     QUEUE_MESSAGE: dev,
-
     DETAILED_ERROR_MESSAGES: dev,
     EXPERIMENTAL_COMMANDS: dev,
     ALL_COMMANDS_GUILD: dev,

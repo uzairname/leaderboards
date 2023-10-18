@@ -19,7 +19,7 @@ const help_command = new CommandView({
 
   command: {
     name: 'help',
-    description: 'All about Firstplace',
+    description: 'All about this bot',
   },
   state_schema: {},
 })
@@ -30,7 +30,7 @@ export default (app: App) =>
     let last_deployed_timestamp = last_deployed ? dateTimestamp(last_deployed) : 'unknown'
 
     const embed: APIEmbed = {
-      title: 'EZQueue Help',
+      title: 'Firstplace',
       description: Messages.concise_description,
       fields: [
         {
