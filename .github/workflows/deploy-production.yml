@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MIGRATIONS_SCRIPT_PATH: 'migrations/migrate.ts'
-      INIT_APP_ENDPOINT: https://leaderboards.5r.workers.dev/init
+      INIT_APP_ENDPOINT: https://firstplace.5r.workers.dev/init
     steps:
       - uses: actions/checkout@v2
 

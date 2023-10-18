@@ -22,7 +22,6 @@ export async function runTests(): Promise<void> {
 }
 
 async function testDatabase(postgres_url: string) {
-
   sentry.debug('testing database')
   let client = new DbClient(sentry, postgres_url)
   await client.db.delete(Settings)
@@ -87,16 +86,12 @@ async function testDatabase(postgres_url: string) {
   // let selected_team = await client.queue_teams.getByUserAndDivision(user1.data.id, division.data.id);
 }
 
-
 runTests().then((res) => {
   process.exit(0)
 })
-
-
 
 function assert(condition: boolean, msg?: string): asserts condition {
   if (!condition) {
     throw new Error(msg ?? 'Assertion failed')
   }
 }
-

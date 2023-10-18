@@ -7,7 +7,7 @@ on:
 
 env:
   MIGRATIONS_SCRIPT_PATH: 'migrations/migrate.ts'
-  INIT_APP_ENDPOINT: 'https://leaderboards-staging.5r.workers.dev'
+  INIT_APP_ENDPOINT: 'https://firstplace-staging.5r.workers.dev'
 
 jobs:
   deploy:
