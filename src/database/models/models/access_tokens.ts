@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
-import { DbObject } from '../../objectmanager'
-import { DbObjectManager } from '../../objectmanager'
+import { DbObject } from '../../object_manager'
+import { DbObjectManager } from '../../object_manager'
 import { AccessTokenSelect, AccessTokenUpdate } from '../types'
 import { User } from '..'
 import { AccessTokens } from '../../schema'

@@ -11,14 +11,14 @@ import {
 import { assertNonNullable } from '../../../utils/utils'
 
 import { checkGuildInteraction } from '../../helpers/checks'
-import { checkBotAdmin } from '../../helpers/checks'
+import { checkMemberBotAdmin } from '../../helpers/checks'
 import { getOrAddGuild } from '../../modules/guilds'
 import {
   getLeaderboardById,
   getLeaderboardCurrentDivision,
   syncLbDisplayMessage,
 } from '../../modules/leaderboards'
-import { CommandView } from '../../../discord/views/views'
+import { CommandView } from '../../../discord/interactions/views/views'
 import { AppError } from '../../errors'
 import { getRegisterPlayer } from '../../modules/players'
 import { App } from '../../app'
@@ -88,7 +88,7 @@ export default (app: App) =>
       // Check if the user has bot admin perms in the guild.
       const interaction = checkGuildInteraction(ctx.interaction)
       const guild = await getOrAddGuild(app, interaction.guild_id)
-      checkBotAdmin(interaction.member, guild)
+      checkMemberBotAdmin(interaction.member, guild)
 
       // get the points to add
       const options: {

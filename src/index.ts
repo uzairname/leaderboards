@@ -1,4 +1,4 @@
-import { Env } from './utils/env'
+import { Env } from './config/env'
 import { config, initConfig, initSentry, sentry } from './utils/globals'
 import { router } from './core/router'
 

@@ -1,6 +1,6 @@
 import { Toucan } from 'toucan-js'
 import { cache } from './cache'
-import { Config } from './config'
+import { Config } from '../config/config'
 
 export class Sentry extends Toucan {
   request_name: string

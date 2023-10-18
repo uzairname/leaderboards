@@ -5,12 +5,16 @@ import {
   MessageFlags,
 } from 'discord-api-types/v10'
 
-import { ChoiceField, StringField } from '../../../discord/views/string_data'
+import { ChoiceField, StringField } from '../../../discord/interactions/views/string_data'
 import { assertNonNullable } from '../../../utils/utils'
 
-import { Message } from '../../../discord/rest/message'
-import { ComponentContext, MessageCreateContext, MessageView } from '../../../discord/views/views'
-import { ChatInteractionResponse } from '../../../discord/views/types'
+import { MessageData } from '../../../discord'
+import {
+  ComponentContext,
+  MessageCreateContext,
+  MessageView,
+} from '../../../discord/interactions/views/views'
+import { ChatInteractionResponse } from '../../../discord/interactions/views/types'
 
 import { App } from '../../app'
 import { Errors } from '../../errors'
@@ -82,7 +86,7 @@ async function handleQueueInteraction(
 }
 
 export function queueMessage(ctx: MessageCreateContext<typeof queue_message_def>) {
-  return new Message({
+  return new MessageData({
     content: 'Queue for leaderboard',
     components: [
       {

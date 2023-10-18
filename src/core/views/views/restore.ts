@@ -4,14 +4,14 @@ import {
   MessageFlags,
 } from 'discord-api-types/v10'
 
-import { CommandView } from '../../../discord/views/views'
+import { CommandView } from '../../../discord/interactions/views/views'
 
 import { App } from '../../app'
 
 import { syncLeaderboardChannelsMessages } from '../../modules/leaderboards'
 import { getOrAddGuild } from '../../modules/guilds'
 
-import { checkBotAdmin } from '../../helpers/checks'
+import { checkMemberBotAdmin } from '../../helpers/checks'
 import { checkGuildInteraction } from '../../helpers/checks'
 
 export default (app: App) =>
@@ -28,7 +28,7 @@ export default (app: App) =>
       const interaction = checkGuildInteraction(ctx.interaction)
       const guild = await getOrAddGuild(app, interaction.guild_id)
 
-      await checkBotAdmin(interaction.member, guild)
+      await checkMemberBotAdmin(interaction.member, guild)
 
       for (const result of await guild.guildLeaderboards()) {
         await syncLeaderboardChannelsMessages(app, result.guild_leaderboard)

@@ -19,13 +19,13 @@ import {
 } from 'discord-api-types/v10'
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
 
-import { clone_object } from '../../utils/utils'
+import { clone_object } from '../../../utils/utils'
 import { StringData, StringDataSchema } from './string_data'
 
-import { sentry } from '../../utils/globals'
+import { sentry } from '../../../utils/globals'
 
-import { Message } from '../rest/message'
-import { DiscordRESTClient } from '../rest/client'
+import { MessageData } from '../../rest/objects'
+import { DiscordRESTClient } from '../../rest/client'
 
 import {
   ChatInputCommandView,
@@ -51,11 +51,12 @@ type DecodedCustomId = {
 
 class OriginalCustomId extends String {}
 
-export async function respondToViewInteraction(
+export async function respondToUserInteraction(
   interaction: APIInteraction,
   bot: DiscordRESTClient,
   find_view_callback: FindViewCallback,
   onError: onInteractionErrorCallback,
+  direct_response: boolean = true,
 ): Promise<APIInteractionResponse | undefined> {
   /*
   Handle any non-ping interaction. Might return a Response
@@ -72,14 +73,14 @@ export async function respondToViewInteraction(
         // view must be a command view if it's an application command interaction
 
         sentry.request_name = `${interaction.data.name} Command`
-        response = await respondToCommandInteraction(view, interaction, bot, onError)
+        response = await respondToViewCommandInteraction(view, interaction, bot, onError)
       } else if (
         interaction.type === InteractionType.ApplicationCommandAutocomplete &&
         isChatInputCommandView(view)
       ) {
         // view must be a chat input command view if it's an autocomplete interaction
         sentry.request_name = `${interaction.data.name} Autocomplete`
-        response = await respondToAutocompleteInteraction(view, interaction)
+        response = await respondToViewAutocompleteInteraction(view, interaction)
       }
     } else if (
       interaction.type === InteractionType.MessageComponent ||
@@ -91,7 +92,7 @@ export async function respondToViewInteraction(
       sentry.request_name = `${
         isCommandView(view) ? view.options.command.name : view.options.custom_id_prefix
       } Component`
-      response = await respondToComponentInteraction(
+      response = await respondToViewComponentInteraction(
         view,
         interaction,
         parsed_custom_id.content,
@@ -99,7 +100,7 @@ export async function respondToViewInteraction(
         onError,
       )
     } else {
-      throw new ViewErrors.UnknownType()
+      throw new Error(`Unknown interaction type ${interaction.type}`)
     }
 
     sentry.addBreadcrumb({
@@ -111,9 +112,13 @@ export async function respondToViewInteraction(
       },
     })
 
-    return response
+    if (direct_response) {
+      return response
+    } else if (response) {
+      await bot.createInteractionResponse(interaction.id, interaction.token, response)
+    }
   } catch (e) {
-    return onError(e)
+    await bot.createInteractionResponse(interaction.id, interaction.token, onError(e))
   }
 }
 
@@ -138,7 +143,7 @@ async function findView(
   return view
 }
 
-export async function respondToAutocompleteInteraction(
+export async function respondToViewAutocompleteInteraction(
   view: ChatInputCommandView,
   interaction: APIApplicationCommandAutocompleteInteraction,
 ): Promise<APIApplicationCommandAutocompleteResponse> {
@@ -147,7 +152,7 @@ export async function respondToAutocompleteInteraction(
   return result
 }
 
-export async function respondToCommandInteraction(
+export async function respondToViewCommandInteraction(
   view: AnyCommandView,
   interaction: APIApplicationCommandInteraction,
   bot: DiscordRESTClient,
@@ -176,7 +181,7 @@ export async function respondToCommandInteraction(
   return result
 }
 
-export async function respondToComponentInteraction(
+export async function respondToViewComponentInteraction(
   view: AnyView,
   interaction: ComponentInteraction,
   custom_id_state: OriginalCustomId,
@@ -252,7 +257,7 @@ async function executeViewOffloadCallback(args: {
 export async function sendMessageView<Param>(
   view: AnyMessageView,
   params: Param,
-): Promise<Message> {
+): Promise<MessageData> {
   let message = await view._sendCallback(
     {
       state: decodeViewCustomIdState(view),
@@ -262,7 +267,7 @@ export async function sendMessageView<Param>(
 
   let message_json = message.patchdata
   replaceMessageComponentsCustomIds(message_json.components, encodeCustomId(view))
-  return new Message(message_json)
+  return new MessageData(message_json)
 }
 
 function decodeViewCustomIdState<Schema extends StringDataSchema>(

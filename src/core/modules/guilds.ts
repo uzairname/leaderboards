@@ -4,6 +4,7 @@ import { Guild } from '../../database/models'
 
 import { App } from '../app'
 import { Colors } from '../helpers/messages/message_pieces'
+import { GuildChannelData, RoleData } from '../../discord/rest/objects'
 
 export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> {
   let app_guild = await app.db.guilds.get(guild_id)
@@ -26,12 +27,15 @@ export async function syncRankedCategory(
 }> {
   let category_id = guild.data.category_id
 
-  let result = await app.bot.utils.haveGuildChannel({
-    possible_channel_id: category_id,
-    new_channel_data: async () => {
+  let result = await app.bot.utils.syncGuildChannel({
+    target_channel_id: category_id,
+    channelData: async () => {
       return {
         guild_id: guild.data.id,
-        body: { name: 'LEADERBOARDS', type: ChannelType.GuildCategory },
+        data: new GuildChannelData({
+          name: 'LEADERBOARDS',
+          type: ChannelType.GuildCategory,
+        }),
       }
     },
   })
@@ -50,11 +54,11 @@ export async function syncGuildAdminRole(
   role: APIRole
   is_new_role: boolean
 }> {
-  let result = await app.bot.utils.haveRole({
+  let result = await app.bot.utils.syncRole({
     guild_id: guild.data.id,
-    possible_role_id: guild.data.admin_role_id,
-    new_role_data: async () => {
-      return { name: 'Leaderboards Admin', color: Colors.Primary, permissions: '0' }
+    target_role_id: guild.data.admin_role_id,
+    roleData: async () => {
+      return new RoleData({ name: 'Leaderboards Admin', color: Colors.Primary, permissions: '0' })
     },
   })
 

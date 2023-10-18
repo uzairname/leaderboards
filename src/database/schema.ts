@@ -1,4 +1,4 @@
-import {pgTable,serial,json,text,integer,timestamp,boolean,real,primaryKey,index,jsonb,} from 'drizzle-orm/pg-core'
+import { pgTable, serial, json, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, } from 'drizzle-orm/pg-core'
 
 export const Settings = pgTable('Settings', {
   id: integer('id').primaryKey().default(0),

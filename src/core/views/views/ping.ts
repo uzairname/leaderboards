@@ -1,5 +1,5 @@
 import { ApplicationCommandType, InteractionResponseType } from 'discord-api-types/v10'
-import { CommandView } from '../../../discord/views/views'
+import { CommandView } from '../../../discord/interactions/views/views'
 import { App } from '../../app'
 
 export default (app: App) =>

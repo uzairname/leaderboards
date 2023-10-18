@@ -3,8 +3,8 @@ import { Match } from './matches'
 import { Player } from './players'
 import { LeaderboardDivisionSelect } from '../types'
 import { Players, Matches, LeaderboardDivisions } from '../../schema'
-import { DbObject } from '../../objectmanager'
-import { DbObjectManager } from '../../objectmanager'
+import { DbObject } from '../../object_manager'
+import { DbObjectManager } from '../../object_manager'
 import { DatabaseErrors } from '../../errors'
 
 export class LeaderboardDivision extends DbObject<LeaderboardDivisionSelect> {

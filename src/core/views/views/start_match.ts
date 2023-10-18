@@ -9,8 +9,12 @@ import {
 } from 'discord-api-types/v10'
 
 import { assertNonNullable } from '../../../utils/utils'
-import { ChoiceField, NumberField, ListField } from '../../../discord/views/string_data'
-import { CommandView } from '../../../discord/views/views'
+import {
+  ChoiceField,
+  NumberField,
+  ListField,
+} from '../../../discord/interactions/views/string_data'
+import { CommandView } from '../../../discord/interactions/views/views'
 
 import { App } from '../../app'
 import { Errors } from '../../errors'

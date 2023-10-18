@@ -4,9 +4,9 @@ import { sentry } from '../../utils/globals'
 
 import { DiscordRESTClient } from '../rest/client'
 
-import { respondToViewInteraction } from '../views/view_helpers'
-import { onInteractionErrorCallback } from '../views/types'
-import { FindViewCallback } from '../views/types'
+import { respondToUserInteraction } from './views/view_helpers'
+import { onInteractionErrorCallback } from './views/types'
+import { FindViewCallback } from './views/types'
 import { verify } from './verify'
 import { json } from 'itty-router'
 
@@ -15,6 +15,7 @@ export async function respondToDiscordInteraction(
   request: Request,
   getView: FindViewCallback,
   onError: onInteractionErrorCallback,
+  direct_response: boolean = true,
 ): Promise<Response> {
   if (await verify(request, bot.public_key)) {
     var interaction = (await request.json()) as APIInteraction
@@ -26,7 +27,13 @@ export async function respondToDiscordInteraction(
   if (interaction.type === InteractionType.Ping) {
     return json({ type: InteractionResponseType.Pong })
   } else {
-    const response = await respondToViewInteraction(interaction, bot, getView, onError)
+    const response = await respondToUserInteraction(
+      interaction,
+      bot,
+      getView,
+      onError,
+      direct_response,
+    )
     return json(response) || new Response(null, { status: 204 })
   }
 }

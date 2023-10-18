@@ -6,11 +6,11 @@ import {
   MessageFlags,
 } from 'discord-api-types/v10'
 
-import { CommandView } from '../../../discord/views/views'
-import { ChoiceField } from '../../../discord/views/string_data'
+import { CommandView } from '../../../discord/interactions/views/views'
+import { ChoiceField } from '../../../discord/interactions/views/string_data'
 
 import { checkGuildInteraction } from '../../helpers/checks'
-import { checkBotAdmin } from '../../helpers/checks'
+import { checkMemberBotAdmin } from '../../helpers/checks'
 import { getOrAddGuild, syncGuildAdminRole } from '../../modules/guilds'
 import { Errors } from '../../errors'
 import { App } from '../../app'
@@ -62,7 +62,7 @@ export default (app: App) =>
       let guild = await getOrAddGuild(app, interaction.guild_id)
 
       if (ctx.state.is.page('admin role')) {
-        checkBotAdmin(interaction.member, guild)
+        checkMemberBotAdmin(interaction.member, guild)
 
         const role_result = await syncGuildAdminRole(app, guild)
         await app.bot.addRoleToMember(

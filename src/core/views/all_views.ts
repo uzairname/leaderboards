@@ -1,8 +1,8 @@
 import { config } from '../../utils/globals'
 
-import { AnyView, isCommandView } from '../../discord/views/types'
+import { AnyView, isCommandView } from '../../discord/interactions/views/types'
 import { respondToDiscordInteraction } from '../../discord/interactions/respond'
-import { FindViewCallback } from '../../discord/views/types'
+import { FindViewCallback } from '../../discord/interactions/views/types'
 
 import { App } from '../app'
 import { onInteractionError } from './on_interaction_error'
@@ -82,5 +82,11 @@ export function getAllViews(app: App): AnyView[] {
 }
 
 export async function handleInteraction(app: App, request: Request): Promise<Response> {
-  return await respondToDiscordInteraction(app.bot, request, findView(app), onInteractionError(app))
+  return await respondToDiscordInteraction(
+    app.bot,
+    request,
+    findView(app),
+    onInteractionError(app),
+    false,
+  )
 }

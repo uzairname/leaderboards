@@ -44,4 +44,4 @@ jobs:
         with:
           url: 
           method: POST
-          customHeaders: '{"Authorization":"${{ env.APP_KEY }}"}'
+          customHeaders: '{"Authorization":"${{ secrets.APP_KEY }}"}'

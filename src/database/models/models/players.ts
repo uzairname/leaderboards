@@ -1,8 +1,8 @@
 import { and, eq } from 'drizzle-orm'
 import { Players } from '../../schema'
 import { PlayerSelect, PlayerUpdate, PlayerInsert } from '../types'
-import { DbObject } from '../../objectmanager'
-import { DbObjectManager } from '../../objectmanager'
+import { DbObject } from '../../object_manager'
+import { DbObjectManager } from '../../object_manager'
 import { LeaderboardDivision } from './leaderboard_divisions'
 import { User } from './users'
 

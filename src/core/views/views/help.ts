@@ -12,7 +12,7 @@ import { App } from '../../app'
 
 import { Messages } from '../../helpers/messages/messages'
 import { Colors, dateTimestamp, inviteUrl } from '../../helpers/messages/message_pieces'
-import { CommandView } from '../../../discord/views/views'
+import { CommandView } from '../../../discord/interactions/views/views'
 
 const help_command = new CommandView({
   type: ApplicationCommandType.ChatInput,

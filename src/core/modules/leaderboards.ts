@@ -1,16 +1,18 @@
 import {
+  APIChannelPatchOverwrite,
   APIEmbed,
   APIGuildCreateOverwrite,
+  APIOverwrite,
   ChannelType,
   GuildFeature,
   PermissionFlagsBits,
+  RESTPatchAPIChannelJSONBody,
   RESTPostAPIGuildChannelJSONBody,
 } from 'discord-api-types/v10'
 import { eq, and } from 'drizzle-orm'
 
 import { config } from '../../utils/globals'
 import { DiscordRESTClient } from '../../discord'
-import { Message } from '../../discord/rest/message'
 
 import { DbClient } from '../../database/client'
 import { GuildLeaderboards, Leaderboards } from '../../database/schema'
@@ -22,7 +24,16 @@ import { messageLink, Colors } from '../helpers/messages/message_pieces'
 import { AppError, Errors } from '../errors'
 
 import { syncRankedCategory } from './guilds'
+import { LeaderboardUpdate } from '../../database/models/types'
+import { MessageData, GuildChannelData } from '../../discord/rest/objects'
 
+/**
+ *
+ * @param app
+ * @param guild
+ * @param lb_options
+ * @returns
+ */
 export async function createNewLeaderboardInGuild(
   app: App,
   guild: Guild,
@@ -78,14 +89,76 @@ export async function createNewLeaderboardInGuild(
   }
 }
 
+export async function updateLeaderboard(
+  app: App,
+  leaderboard: Leaderboard | number,
+  options: LeaderboardUpdate,
+) {
+  if (typeof leaderboard === 'number') {
+    leaderboard = await getLeaderboardById(app.db, leaderboard)
+  }
+  await leaderboard.update(options)
+
+  const guild_leaderboards = await leaderboard.guildLeaderboards()
+
+  await Promise.all(
+    guild_leaderboards.map(async (guild_leaderboard) => {
+      await syncLeaderboardChannelsMessages(app, guild_leaderboard)
+    }),
+  )
+}
+
 export async function syncLeaderboardChannelsMessages(
   app: App,
   guild_leaderboard: GuildLeaderboard,
 ): Promise<void> {
+  await syncLbDisplayChannel(app, guild_leaderboard)
   await syncLbDisplayMessage(app, guild_leaderboard)
 
   if (config.features.QUEUE_MESSAGE) {
     await haveLeaderboardQueueMessage(app, guild_leaderboard)
+  }
+}
+
+async function getLbChanneldata(
+  app: App,
+  guild: Guild,
+  leaderboard: Leaderboard,
+): Promise<{
+  guild_id: string
+  data: GuildChannelData
+}> {
+  let category = (await syncRankedCategory(app, guild)).channel
+  return {
+    guild_id: guild.data.id,
+    data: new GuildChannelData({
+      type: ChannelType.GuildText,
+      parent_id: category.id,
+      name: `${leaderboard.data.name} Leaderboard`,
+      topic: 'This leaderboard is displayed and updated live here',
+      permission_overwrites: leaderboardChannelPermissionOverwrites(
+        guild.data.id,
+        app.bot.application_id,
+      ),
+    }),
+  }
+}
+
+async function syncLbDisplayChannel(app: App, guild_leaderboard: GuildLeaderboard): Promise<void> {
+  const guild = await guild_leaderboard.guild()
+  const leaderboard = await guild_leaderboard.leaderboard()
+
+  const result = await app.bot.utils.syncGuildChannel({
+    target_channel_id: guild_leaderboard.data.display_channel_id,
+    channelData: async () => {
+      return await getLbChanneldata(app, guild, leaderboard)
+    },
+  })
+
+  if (result.is_new_channel) {
+    await guild_leaderboard.update({
+      display_channel_id: result.channel.id,
+    })
   }
 }
 
@@ -109,36 +182,18 @@ export async function syncLbDisplayMessage(
   })
 
   // a channel for the leaderboard and queue
-  const update_display_message_result = await app.bot.utils.haveChannelMessage({
-    possible_channel_id: guild_leaderboard.data.display_channel_id,
-    possible_message_id: guild_leaderboard.data.display_message_id,
+  const update_display_message_result = await app.bot.utils.syncChannelMessage({
+    target_channel_id: guild_leaderboard.data.display_channel_id,
+    target_message_id: guild_leaderboard.data.display_message_id,
     message: async () => {
       return generateLeaderboardMessage({
         ordered_top_players: displayed_players,
         lb_name: leaderboard.data.name,
       })
     },
-
-    new_channel: async () => {
-      let category = (await syncRankedCategory(app, guild)).channel
-
-      const body: RESTPostAPIGuildChannelJSONBody = {
-        type: ChannelType.GuildText,
-        parent_id: category.id,
-        name: `${leaderboard.data.name} Leaderboard`,
-        topic: 'This leaderboard is displayed and updated live here',
-        permission_overwrites: leaderboardChannelPermissionOverwrites(
-          guild.data.id,
-          app.bot.application_id,
-        ),
-      }
-
-      return {
-        guild_id: guild.data.id,
-        body,
-      }
+    channelData: async () => {
+      return await getLbChanneldata(app, guild, leaderboard)
     },
-    edit_message_if_exists: true,
   })
 
   if (update_display_message_result.new_channel) {
@@ -156,7 +211,7 @@ export async function syncLbDisplayMessage(
 function generateLeaderboardMessage(data: {
   ordered_top_players: Map<string, number>
   lb_name: string
-}): Message {
+}): MessageData {
   let place = 0
   const players_text = [...data.ordered_top_players.entries()]
     .map(([player_id, points]) => {
@@ -170,7 +225,7 @@ function generateLeaderboardMessage(data: {
     color: Colors.Primary,
   }
 
-  return new Message({
+  return new MessageData({
     content: `# ${data.lb_name}`,
     embeds: [embed],
     components: [],
@@ -184,16 +239,16 @@ export async function haveLeaderboardQueueMessage(
   app: App,
   guild_leaderboard: GuildLeaderboard,
 ): Promise<void> {
-  const result = await app.bot.utils.haveChannelMessage({
-    possible_channel_id: guild_leaderboard.data.display_channel_id,
-    possible_message_id: guild_leaderboard.data.queue_message_id,
+  const result = await app.bot.utils.syncChannelMessage({
+    target_channel_id: guild_leaderboard.data.display_channel_id,
+    target_message_id: guild_leaderboard.data.queue_message_id,
     message: async () => {
       let division_id = (
         await getLeaderboardCurrentDivision(app.db, await guild_leaderboard.leaderboard())
       ).data.id
       return await queue(app).send({ division_id })
     },
-    new_channel: async () => {
+    channelData: async () => {
       throw new Error('No channel to post queue message in. Need to make leaderboard message first')
     },
   })
@@ -208,7 +263,7 @@ export async function haveLeaderboardQueueMessage(
 function leaderboardChannelPermissionOverwrites(
   guild_id: string,
   application_id: string,
-): APIGuildCreateOverwrite[] {
+): APIChannelPatchOverwrite[] {
   return [
     {
       // @everyone can't send messages or make threads
@@ -253,8 +308,8 @@ async function deleteLeaderboardFromDiscord(
   bot: DiscordRESTClient,
   guild_leaderboard: GuildLeaderboard,
 ): Promise<void> {
-  await bot.utils.dontHaveChannel({
-    possible_channel_id: guild_leaderboard.data.display_channel_id,
+  await bot.utils.deleteChannelIfExists({
+    target_channel_id: guild_leaderboard.data.display_channel_id,
   })
 }
 

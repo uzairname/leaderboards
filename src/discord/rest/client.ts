@@ -6,7 +6,7 @@ import { sentry } from '../../utils/globals'
 
 import { DiscordErrors } from './errors'
 
-import { RESTPostAPIGuildForumThreadsResult } from './message'
+import { RESTPostAPIGuildForumThreadsResult } from './types'
 import { DiscordRESTUtils } from './utils'
 
 export class DiscordRESTClient extends REST {
@@ -83,7 +83,7 @@ export class DiscordRESTClient extends REST {
   }
 
   @requiresBotPermissions(D.PermissionFlagsBits.ManageChannels)
-  async editGuildChannel(channel_id: string, body: D.RESTPatchAPIChannelJSONBody) {
+  async editChannel(channel_id: string, body: D.RESTPatchAPIChannelJSONBody) {
     return (await this.fetch(RequestMethod.Patch, D.Routes.channel(channel_id), {
       body,
     })) as D.RESTPatchAPIChannelResult

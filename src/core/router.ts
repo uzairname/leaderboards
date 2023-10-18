@@ -21,6 +21,10 @@ export const router = () =>
       return new Response(`👀`)
     })
 
+    .post('/interactions', (request) => {
+      return handleInteraction(new App(), request)
+    })
+
     .get(config.routes.OAUTH_LINKED_ROLES, () => {
       return oauthRedirect(new App().bot, [
         OAuth2Scopes.Identify,
@@ -30,10 +34,6 @@ export const router = () =>
 
     .get(config.routes.OAUTH_CALLBACK, (request) => {
       return oauthCallback(new App(), request)
-    })
-
-    .post('/interactions', (request) => {
-      return handleInteraction(new App(), request)
     })
 
     .post('/init', authorize, async () => {

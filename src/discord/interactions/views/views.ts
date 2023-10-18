@@ -2,14 +2,13 @@ import * as D from 'discord-api-types/v10'
 
 import { StringData, StringDataSchema } from './string_data'
 
-import { Message } from '../rest/message'
+import { MessageData } from '../../rest/objects'
 
 import {
   ChatInteraction,
   CommandInteractionResponse,
   ComponentInteraction,
   ChatInteractionResponse,
-  AnyView,
   AnyCommandView,
 } from './types'
 import { sendMessageView } from './view_helpers'
@@ -24,6 +23,8 @@ declare type CommandInteraction<CommandType> =
     : never
 
 // CALLBACK CONTEXTS
+
+export type Context<View extends AnyCommandView> = CommandContext<View> | ComponentContext<View>
 
 // Autocomplete
 export interface AutocompleteContext {
@@ -89,7 +90,7 @@ export type ViewOffloadCallback<View extends BaseView<any>> = (
 export type ViewCreateMessageCallback<View extends MessageView<any, any>, Params> = (
   ctx: MessageCreateContext<View>,
   params: Params,
-) => Promise<Message>
+) => Promise<MessageData>
 
 type ApplicationCommandDefinitionArg<Type extends D.ApplicationCommandType> = Omit<
   Type extends D.ApplicationCommandType.ChatInput
@@ -175,7 +176,7 @@ export class MessageView<Schema extends StringDataSchema, Param> extends BaseVie
     super(options)
   }
 
-  public async send(params: Param): Promise<Message> {
+  public async send(params: Param): Promise<MessageData> {
     return await sendMessageView(this, params)
   }
 

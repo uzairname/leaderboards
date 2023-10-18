@@ -16,8 +16,8 @@ import {
   LeaderboardDivisions,
   GuildLeaderboards,
 } from '../../schema'
-import { DbObject } from '../../objectmanager'
-import { DbObjectManager } from '../../objectmanager'
+import { DbObject } from '../../object_manager'
+import { DbObjectManager } from '../../object_manager'
 
 export class Leaderboard extends DbObject<LeaderboardSelect> {
   async update(data: LeaderboardUpdate) {

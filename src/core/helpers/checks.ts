@@ -8,7 +8,7 @@ import { AppErrors } from '../errors'
 import { isGuildInteraction } from 'discord-api-types/utils/v10'
 import { Guild } from '../../database/models'
 
-export async function checkBotAdmin(
+export async function checkMemberBotAdmin(
   member: APIInteractionGuildMember,
   guild: Guild,
 ): Promise<void> {

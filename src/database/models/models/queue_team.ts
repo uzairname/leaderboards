@@ -1,7 +1,7 @@
 import { eq, sql } from 'drizzle-orm'
 import { QueueTeams } from '../../schema'
-import { DbObject } from '../../objectmanager'
-import { DbObjectManager } from '../../objectmanager'
+import { DbObject } from '../../object_manager'
+import { DbObjectManager } from '../../object_manager'
 import { QueueTeamInsert, QueueTeamSelect, QueueTeamUpdate } from '../types'
 
 export class QueueTeam extends DbObject<QueueTeamSelect> {

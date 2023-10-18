@@ -16,8 +16,12 @@ import {
   NumberField,
   StringData,
   StringField,
-} from '../../../discord/views/string_data'
-import { CommandContext, CommandView, ComponentContext } from '../../../discord/views/views'
+} from '../../../discord/interactions/views/string_data'
+import {
+  CommandContext,
+  CommandView,
+  ComponentContext,
+} from '../../../discord/interactions/views/views'
 import { App } from '../../app'
 import { AppErrors, Errors } from '../../errors'
 import { isContextMenuApplicationCommandInteraction } from 'discord-api-types/utils/v10'
