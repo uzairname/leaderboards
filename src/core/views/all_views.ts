@@ -45,12 +45,12 @@ export function getAllViews(app: App): AnyView[] {
     leaderboards_command(app),
     points(app),
     settings(app),
+    restore(app),
   ]
 
   const experimental_views: AnyView[] = [
     ping(app),
     queue(app),
-    restore(app),
     start_match(app),
     test(app),
   ]

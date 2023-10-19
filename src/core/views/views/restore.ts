@@ -14,16 +14,18 @@ import { getOrAddGuild } from '../../modules/guilds'
 import { checkMemberBotAdmin } from '../../helpers/checks'
 import { checkGuildInteraction } from '../../helpers/checks'
 
+export const restore_cmd_def = new CommandView({
+  type: ApplicationCommandType.ChatInput,
+  state_schema: {},
+  command: {
+    name: 'restore',
+    description: 'Restores all channels and messages managed by this bot',
+  },
+  custom_id_prefix: 'r',
+})
+
 export default (app: App) =>
-  new CommandView({
-    type: ApplicationCommandType.ChatInput,
-    state_schema: {},
-    command: {
-      name: 'restore',
-      description: 'Restores all channels and messages managed by this bot',
-    },
-    custom_id_prefix: 'r',
-  }).onCommand(async (ctx) => {
+  restore_cmd_def.onCommand(async (ctx) => {
     ctx.offload(async (ctx) => {
       const interaction = checkGuildInteraction(ctx.interaction)
       const guild = await getOrAddGuild(app, interaction.guild_id)

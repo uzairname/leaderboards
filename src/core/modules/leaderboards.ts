@@ -11,7 +11,7 @@ import {
 } from 'discord-api-types/v10'
 import { eq, and } from 'drizzle-orm'
 
-import { config } from '../../utils/globals'
+import { config, sentry } from '../../utils/globals'
 import { DiscordRESTClient } from '../../discord'
 
 import { DbClient } from '../../database/client'
@@ -41,8 +41,8 @@ export async function createNewLeaderboardInGuild(
     name: string
   },
 ): Promise<{
-  display_message_link: string
-  matches_channel_link: string
+  new_guild_leaderboard: GuildLeaderboard
+  new_leaderboard: Leaderboard
 }> {
   // make sure a leaderboard from this guild with the same name doesn't already exist
   let same_name_leaderboard = (
@@ -75,28 +75,17 @@ export async function createNewLeaderboardInGuild(
 
   await syncLeaderboardChannelsMessages(app, new_guild_leaderboard)
 
-  let display_message_link = messageLink(
-    guild.data.id,
-    new_guild_leaderboard.data.display_channel_id || '0',
-    new_guild_leaderboard.data.display_message_id || '0',
-  )
-
-  let matches_channel_link = ''
-
   return {
-    display_message_link,
-    matches_channel_link,
+    new_guild_leaderboard,
+    new_leaderboard
   }
 }
 
 export async function updateLeaderboard(
   app: App,
-  leaderboard: Leaderboard | number,
+  leaderboard: Leaderboard,
   options: LeaderboardUpdate,
 ) {
-  if (typeof leaderboard === 'number') {
-    leaderboard = await getLeaderboardById(app.db, leaderboard)
-  }
   await leaderboard.update(options)
 
   const guild_leaderboards = await leaderboard.guildLeaderboards()
@@ -293,24 +282,27 @@ export async function deleteLeaderboard(
   bot: DiscordRESTClient,
   leaderboard: Leaderboard,
 ): Promise<void> {
-  const guild_leaderboards = await leaderboard.guildLeaderboards()
-
-  await Promise.all(
-    guild_leaderboards.map(async (guild_leaderboard) => {
-      await deleteLeaderboardFromDiscord(bot, guild_leaderboard)
-    }),
-  )
-
+  sentry.debug(`a`)
+  await removeLeaderboardChannelsMessages(bot, leaderboard)
   await leaderboard.delete()
 }
 
-async function deleteLeaderboardFromDiscord(
+async function removeLeaderboardChannelsMessages(
   bot: DiscordRESTClient,
-  guild_leaderboard: GuildLeaderboard,
+  leaderboard: Leaderboard,
 ): Promise<void> {
-  await bot.utils.deleteChannelIfExists({
-    target_channel_id: guild_leaderboard.data.display_channel_id,
-  })
+  sentry.debug(`b`)
+  const guild_leaderboards = await leaderboard.guildLeaderboards()
+  sentry.debug(`c`)
+  await Promise.all(
+    guild_leaderboards.map(async (guild_leaderboard) => {
+      sentry.debug(`d`)
+      await bot.utils.deleteChannelIfExists({
+        target_channel_id: guild_leaderboard.data.display_channel_id,
+      })
+    }),
+  )
+  sentry.debug(`e`)
 }
 
 export async function getLeaderboardCurrentDivision(

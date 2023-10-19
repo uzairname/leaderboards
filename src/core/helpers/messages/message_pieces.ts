@@ -1,6 +1,6 @@
 import { APIApplicationCommand, ApplicationCommandType } from 'discord-api-types/v10'
 
-import { DiscordRESTClient } from '../../../discord'
+import { AnyCommandView, DiscordRESTClient } from '../../../discord'
 import { config } from '../../../utils/globals'
 
 import { App } from '../../app'
@@ -28,6 +28,18 @@ export function channelMention(channel_id?: string): string {
 }
 
 export async function commandMention(
+  app: App,
+  command: AnyCommandView
+) {
+  return await _commandMention(
+    app,
+    command.options.command.name,
+    command.options.type,
+    command.options.guild_id,
+  )
+}
+
+export async function _commandMention(
   app: App,
   name: string,
   type: ApplicationCommandType = ApplicationCommandType.ChatInput,

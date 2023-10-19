@@ -15,6 +15,10 @@ import {
   APIApplicationCommandAutocompleteResponse,
   APIApplicationCommandOptionChoice,
   ApplicationCommandOptionType,
+  APIInteractionResponseUpdateMessage,
+  APIInteractionResponseChannelMessageWithSource,
+  APIInteractionResponseCallbackData,
+  APIEmbed,
 } from 'discord-api-types/v10'
 
 import {
@@ -40,7 +44,7 @@ import { config, sentry } from '../../../utils/globals'
 import { App } from '../../app'
 import { AppErrors, Errors } from '../../errors'
 
-import { channelMention, commandMention } from '../../helpers/messages/message_pieces'
+import { Colors, channelMention, commandMention, messageLink } from '../../helpers/messages/message_pieces'
 import { checkGuildInteraction, checkMemberBotAdmin } from '../../helpers/checks'
 
 import { getOrAddGuild } from '../../modules/guilds'
@@ -50,9 +54,11 @@ import {
   createNewLeaderboardInGuild,
   updateLeaderboard,
 } from '../../modules/leaderboards'
-import { Guilds } from '../../../database/schema'
 
-const leaderboards_cmd = new CommandView({
+import restore, { restore_cmd_def } from './restore'
+import { GuildLeaderboard, Leaderboard } from '../../../database/models'
+
+const leaderboards_cmd_def = new CommandView({
   type: ApplicationCommandType.ChatInput,
 
   custom_id_prefix: 'lbs',
@@ -74,30 +80,25 @@ const leaderboards_cmd = new CommandView({
     owner_id: new StringField(),
     page: new ChoiceField({
       main: null,
-      'lb settings': undefined,
-      'creating new': undefined,
+      'lb settings': null,
+      'creating new': null,
+      overview: null,
     }),
     component: new ChoiceField({
       'btn:rename': null,
       'btn:create': null,
       'modal:name': null,
-      'select:queue type': null,
       'btn:create confirm': null,
       'btn:delete': null,
       'modal:delete confirm': null,
     }),
     selected_leaderboard_id: new NumberField(),
-    selected_leaderboard_name: new StringField(),
     input_name: new StringField(),
-    selected_type: new ChoiceField({
-      simple: null,
-      '1v1': null,
-    }),
   },
 })
 
 export default (app: App) =>
-  leaderboards_cmd
+  leaderboards_cmd_def
     .onAutocomplete(async (ctx) => leaderboardsAutocomplete(ctx, app))
 
     .onCommand(async (ctx) => {
@@ -115,20 +116,19 @@ export default (app: App) =>
         return leaderboardNameModal(ctx)
       }
 
-      const selected_leaderboard_id = selected_option ? parseInt(selected_option) : undefined
-
-      if (selected_leaderboard_id) {
-        const guild_leaderboard = await app.db.guild_leaderboards.get(
-          interaction.guild_id,
-          selected_leaderboard_id,
-        )
-        if (!guild_leaderboard) throw new Errors.UnknownLeaderboard()
-        const leaderboard = await guild_leaderboard.leaderboard()
-        ctx.state.save.selected_leaderboard_name(leaderboard.data.name)
-        ctx.state.save.selected_leaderboard_id(leaderboard.data.id)
-        return leaderboardSettingsPage(ctx)
+      if (selected_option) {
+        const selected_leaderboard_id = parseInt(selected_option)
+        ctx.state.save.page('lb settings').save.selected_leaderboard_id(selected_leaderboard_id)
+        return {
+          type: InteractionResponseType.ChannelMessageWithSource,
+          data: await leaderboardSettingsPage(app, ctx),
+        }
       } else {
-        return await allGuildLeaderboardsPage(ctx, app, interaction.guild_id)
+        ctx.state.save.page('overview')
+        return {
+          type: InteractionResponseType.ChannelMessageWithSource,
+          data: await allGuildLeaderboardsPage(ctx, app, interaction.guild_id),
+        }
       }
     })
 
@@ -151,9 +151,6 @@ export default (app: App) =>
         if (ctx.state.is.page('lb settings')) {
           return onRenameModalSubmit(ctx, app)
         }
-      } else if (ctx.state.is.component('select:queue type')) {
-        let data = ctx.interaction.data as APIMessageStringSelectInteractionData
-        ctx.state.save.selected_type(data.values[0] === 'simple' ? 'simple' : '1v1')
       } else if (ctx.state.is.component('btn:create confirm')) {
         return await onCreateConfirm(ctx, app, interaction.guild_id)
       } else if (ctx.state.is.component('btn:delete')) {
@@ -166,7 +163,10 @@ export default (app: App) =>
       if (ctx.state.is.page('creating new')) {
         return creatingNewLeaderboardPage(ctx)
       } else if (ctx.state.is.page('lb settings')) {
-        return leaderboardSettingsPage(ctx)
+        return {
+          type: InteractionResponseType.UpdateMessage,
+          data: await leaderboardSettingsPage(app, ctx),
+        }
       }
 
       throw new Errors.UnknownState(`${JSON.stringify(ctx.state.data)}`)
@@ -219,55 +219,78 @@ export async function leaderboardsAutocomplete(
 }
 
 export async function allGuildLeaderboardsPage(
-  ctx: CommandContext<typeof leaderboards_cmd>,
+  ctx: CommandContext<typeof leaderboards_cmd_def>,
   app: App,
   guild_id: string,
-): Promise<CommandInteractionResponse> {
+): Promise<APIInteractionResponseCallbackData> {
   const guild = await getOrAddGuild(app, guild_id)
   const guild_leaderboards = await guild.guildLeaderboards()
 
-  let content = `Current Leaderboards. To manage a leaderboard, type ${await commandMention(
-    app,
-    leaderboards_cmd.options.command.name,
-  )} \`[name]\`\n`
+  let embeds: APIEmbed[] = [
+    {
+      title: 'Leaderboards',
+      description:
+        `You have **${guild_leaderboards.length}** leaderboard` +
+        `${guild_leaderboards.length === 1 ? '' : 's'}` + `. \n` +
+        `To manage a leaderboard, type ` +
+        `${await commandMention(app,leaderboards_cmd_def)} \`[name]\`\n`,
+      color: Colors.EmbedBackground,
+    },
+  ]
 
-  guild_leaderboards.forEach((item) => {
-    if (item.guild_leaderboard.data.display_channel_id) {
-      var channel_mention = channelMention(item.guild_leaderboard.data.display_channel_id)
-    } else {
-      channel_mention = `Either deleted or not set. Type ${commandMention(
-        app,
-        'restore',
-        ApplicationCommandType.ChatInput,
-      )} to restore it.`
-    }
-    content += `\n### ${item.leaderboard.data.name}\n Display Channel: ${channel_mention}`
+  guild_leaderboards.forEach(async (item) => {
+    embeds.push(await guildLeaderboardDetailsEmbed(app, item.leaderboard, item.guild_leaderboard))
   })
 
   return {
-    type: InteractionResponseType.ChannelMessageWithSource,
-    data: {
-      flags: MessageFlags.Ephemeral,
-      content: 'Make or edit leaderboards\n' + content,
-      components: [
-        {
-          type: ComponentType.ActionRow,
-          components: [
-            {
-              type: ComponentType.Button,
-              style: ButtonStyle.Primary,
-              custom_id: ctx.state.set.component('btn:create').encode(),
-              label: 'Make a Leaderboard',
-            },
-          ],
-        },
-      ],
-    },
+    flags: MessageFlags.Ephemeral,
+    embeds,
+    components: [
+      {
+        type: ComponentType.ActionRow,
+        components: [
+          {
+            type: ComponentType.Button,
+            style: ButtonStyle.Primary,
+            custom_id: ctx.state.set.component('btn:create').encode(),
+            label: 'Create a Leaderboard',
+          },
+        ],
+      },
+    ],
   }
 }
 
+
+async function guildLeaderboardDetailsEmbed(
+  app: App,
+  leaderboard: Leaderboard,
+  guild_leaderboard: GuildLeaderboard
+): Promise<APIEmbed> {
+  if (guild_leaderboard.data.display_message_id) {
+
+    const display_message_link = messageLink(
+      guild_leaderboard.data.guild_id,
+      guild_leaderboard.data.display_channel_id || '0',
+      guild_leaderboard.data.display_message_id || '0',
+    )
+
+    var display_message_msg = `Displaying here: ${display_message_link}`
+  } else {
+    display_message_msg =
+      `Not displayed in a message. Type` +
+      `${await commandMention(app, restore_cmd_def)} to restore it.`
+  }
+  return {
+    title: `${leaderboard.data.name}`,
+    description: `${display_message_msg}`,
+    color: Colors.EmbedBackground,
+  }
+}
+
+
 export function leaderboardNameModal(
-  ctx: Context<typeof leaderboards_cmd>,
+  ctx: Context<typeof leaderboards_cmd_def>,
 ): CommandInteractionResponse {
   let response: APIModalInteractionResponse = {
     type: InteractionResponseType.Modal,
@@ -293,58 +316,70 @@ export function leaderboardNameModal(
   return response
 }
 
-export async function leaderboardSettingsPage(
-  ctx: Context<typeof leaderboards_cmd>,
-): Promise<CommandInteractionResponse> {
-  ctx.state.save.page('lb settings')
+export async function leaderboardSettingsPage<Edit extends boolean>(
+  app: App,
+  ctx: Context<typeof leaderboards_cmd_def>,
+  edit: Edit = false as Edit,
+): Promise<APIInteractionResponseCallbackData> {
+  const interaction = checkGuildInteraction(ctx.interaction)
+
+  assertNonNullable(ctx.state.data.selected_leaderboard_id, 'selected_leaderboard_id')
+  const guild_leaderboard = await app.db.guild_leaderboards.get(
+    interaction.guild_id,
+    ctx.state.data.selected_leaderboard_id,
+  )
+  assertNonNullable(guild_leaderboard, 'guild_leaderboard')
+  const leaderboard = await guild_leaderboard.leaderboard()
+
+  const embed = await guildLeaderboardDetailsEmbed(app, leaderboard, guild_leaderboard)
+
   return {
-    type: InteractionResponseType.ChannelMessageWithSource,
-    data: {
-      flags: MessageFlags.Ephemeral,
-      content: `Leaderboard **${ctx.state.data.selected_leaderboard_name}**`,
-      components: [
-        {
-          type: ComponentType.ActionRow,
-          components: [
-            {
-              type: ComponentType.Button,
-              style: ButtonStyle.Secondary,
-              custom_id: ctx.state.set.component('btn:rename').encode(),
-              label: 'Rename',
-            },
-            {
-              type: ComponentType.Button,
-              style: ButtonStyle.Danger,
-              custom_id: ctx.state.set.component('btn:delete').encode(),
-              label: 'Delete',
-            },
-          ],
-        },
-      ],
-    },
+    flags: MessageFlags.Ephemeral,
+    embeds: [embed],
+    components: [
+      {
+        type: ComponentType.ActionRow,
+        components: [
+          {
+            type: ComponentType.Button,
+            style: ButtonStyle.Secondary,
+            custom_id: ctx.state.set.component('btn:rename').encode(),
+            label: 'Rename',
+          },
+          {
+            type: ComponentType.Button,
+            style: ButtonStyle.Danger,
+            custom_id: ctx.state.set.component('btn:delete').encode(),
+            label: 'Delete',
+          },
+        ],
+      },
+    ],
   }
 }
 
 export async function onRenameModalSubmit(
-  ctx: ComponentContext<typeof leaderboards_cmd>,
+  ctx: ComponentContext<typeof leaderboards_cmd_def>,
   app: App,
 ): Promise<ChatInteractionResponse> {
   assertNonNullable(ctx.state.data.selected_leaderboard_id, 'selected_leaderboard_id')
-  await updateLeaderboard(app, ctx.state.data.selected_leaderboard_id, {
+  const leaderboard = await getLeaderboardById(app.db, ctx.state.data.selected_leaderboard_id)
+  const old_name = leaderboard.data.name
+  await updateLeaderboard(app, leaderboard, {
     name: ctx.state.data.input_name,
   })
 
   return {
     type: InteractionResponseType.ChannelMessageWithSource,
     data: {
-      content: `Renamed **${ctx.state.data.selected_leaderboard_name}** to **${ctx.state.data.input_name}**`,
+      content: `Renamed **${old_name}** to **${leaderboard.data.name}**`,
       flags: MessageFlags.Ephemeral,
     },
   }
 }
 
 export function creatingNewLeaderboardPage(
-  ctx: ComponentContext<typeof leaderboards_cmd>,
+  ctx: ComponentContext<typeof leaderboards_cmd_def>,
 ): ChatInteractionResponse {
   const response_type = InteractionResponseType.ChannelMessageWithSource
 
@@ -378,7 +413,7 @@ export function creatingNewLeaderboardPage(
 }
 
 export async function onCreateConfirm(
-  ctx: ComponentContext<typeof leaderboards_cmd>,
+  ctx: ComponentContext<typeof leaderboards_cmd_def>,
   app: App,
   guild_id: string,
 ): Promise<ChatInteractionResponse> {
@@ -389,24 +424,14 @@ export async function onCreateConfirm(
   let result = await createNewLeaderboardInGuild(app, guild, {
     name: input_name,
   })
-
-  let response: APIInteractionResponse = {
-    type: InteractionResponseType.UpdateMessage,
-    data: {
-      flags: MessageFlags.Ephemeral,
-      content:
-        `Created a leaderboard named **${input_name}**` +
-        `\nDisplayed here: ${result.display_message_link}` +
-        (result.matches_channel_link
-          ? `\nMatches will be hosted in ${result.matches_channel_link}`
-          : ''),
-      components: [],
-    },
+  ctx.state.save.page('lb settings').save.selected_leaderboard_id(result.new_leaderboard.data.id)
+  return {
+    type: InteractionResponseType.ChannelMessageWithSource,
+    data: await leaderboardSettingsPage(app, ctx),
   }
-  return response
 }
 
-export async function onBtnDelete(ctx: ComponentContext<typeof leaderboards_cmd>, app: App) {
+export async function onBtnDelete(ctx: ComponentContext<typeof leaderboards_cmd_def>, app: App) {
   assertNonNullable(ctx.state.data.selected_leaderboard_id, 'selected_leaderboard_id')
   const leaderboard = await getLeaderboardById(app.db, ctx.state.data.selected_leaderboard_id)
 
@@ -435,7 +460,7 @@ export async function onBtnDelete(ctx: ComponentContext<typeof leaderboards_cmd>
 }
 
 export async function onDeleteCorfirm(
-  ctx: ComponentContext<typeof leaderboards_cmd>,
+  ctx: ComponentContext<typeof leaderboards_cmd_def>,
   app: App,
   modal_entries?: ModalSubmitComponent[],
 ): Promise<ChatInteractionResponse> {
@@ -455,19 +480,21 @@ export async function onDeleteCorfirm(
   }
 
   ctx.offload(async (ctx) => {
-    await deleteLeaderboard(app.bot, leaderboard)
-    sentry.debug('deleted leaderboard')
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     await ctx.editOriginal({
       flags: MessageFlags.Ephemeral,
-      content: `Deleted **\`${input}\`** and all of its divisions, players, and matches`,
+      content: `Deleted **\`${leaderboard.data.name}\`** and all of its divisions, players, and matches`,
     })
+    sentry.debug('deleting leaderboard')
+    await deleteLeaderboard(app.bot, leaderboard)
+    sentry.debug('deleted leaderboard')
   })
 
   return {
     type: InteractionResponseType.ChannelMessageWithSource,
     data: {
       flags: MessageFlags.Ephemeral,
-      content: `Deleting **\`${input}\`** and all of its divisions, players, and matches`,
+      content: `Deleting **${leaderboard.data.name}**...`,
       components: [],
     },
   }
