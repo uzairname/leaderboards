@@ -1,7 +1,6 @@
 /**
  * This cache is stored in a worker's isolate's global context
  */
-
 class Cache {
   private _cache: Record<string, unknown> = {}
 

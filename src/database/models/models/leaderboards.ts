@@ -16,8 +16,9 @@ import {
   LeaderboardDivisions,
   GuildLeaderboards,
 } from '../../schema'
-import { DbObject } from '../../object_manager'
-import { DbObjectManager } from '../../object_manager'
+import { DbObject } from '../managers'
+import { DbObjectManager } from '../managers'
+import { sentry } from '../../../utils/globals'
 
 export class Leaderboard extends DbObject<LeaderboardSelect> {
   async update(data: LeaderboardUpdate) {
@@ -32,28 +33,6 @@ export class Leaderboard extends DbObject<LeaderboardSelect> {
   }
 
   async delete() {
-    await Promise.all([
-      // Players, Matches reference LeaderboardDivisions
-      // LeaderboardDivisions reference Leaderboards
-      new Promise(async () => {
-        const lb_division_ids_to_delete = (await this.divisions()).map((d) => d.data.id)
-        await this.client.db
-          .delete(Players)
-          .where(inArray(Players.lb_division_id, lb_division_ids_to_delete))
-        await this.client.db
-          .delete(Matches)
-          .where(inArray(Matches.lb_division_id, lb_division_ids_to_delete))
-        this.client.db.delete(QueueTeams).where(eq(QueueTeams.queued_lb_division_id, this.data.id))
-        await this.client.db
-          .delete(LeaderboardDivisions)
-          .where(eq(LeaderboardDivisions.leaderboard_id, this.data.id))
-      }),
-      // GuildLeaderboards reference Leaderboards
-      this.client.db
-        .delete(GuildLeaderboards)
-        .where(eq(GuildLeaderboards.leaderboard_id, this.data.id)),
-    ])
-
     await this.client.db.delete(Leaderboards).where(eq(Leaderboards.id, this.data.id))
   }
 

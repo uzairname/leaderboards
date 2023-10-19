@@ -5,7 +5,7 @@ import { Sentry } from '../utils/sentry'
 import { config } from '../utils/globals'
 
 import { connect } from './connect'
-import DbCache from './cache'
+import DbCache from './utils/cache'
 import {
   SettingsManager,
   UsersManager,

@@ -3,8 +3,8 @@ import { eq } from 'drizzle-orm'
 import { GuildLeaderboard } from './guild_leaderboards'
 import { Leaderboard } from './leaderboards'
 import { Guilds, GuildLeaderboards, Leaderboards } from '../../schema'
-import { DbObject } from '../../object_manager'
-import { DbObjectManager } from '../../object_manager'
+import { DbObject } from '../managers'
+import { DbObjectManager } from '../managers'
 import { GuildSelect, GuildUpdate, GuildInsert } from '../types'
 
 export class Guild extends DbObject<GuildSelect> {

@@ -3,9 +3,9 @@ import { Match } from './matches'
 import { Player } from './players'
 import { LeaderboardDivisionSelect } from '../types'
 import { Players, Matches, LeaderboardDivisions } from '../../schema'
-import { DbObject } from '../../object_manager'
-import { DbObjectManager } from '../../object_manager'
-import { DatabaseErrors } from '../../errors'
+import { DbObject } from '../managers'
+import { DbObjectManager } from '../managers'
+import { DatabaseErrors } from '../../utils/errors'
 
 export class LeaderboardDivision extends DbObject<LeaderboardDivisionSelect> {
   /**

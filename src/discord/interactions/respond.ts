@@ -4,10 +4,10 @@ import { sentry } from '../../utils/globals'
 
 import { DiscordRESTClient } from '../rest/client'
 
-import { respondToUserInteraction } from './views/view_helpers'
-import { onInteractionErrorCallback } from './views/types'
-import { FindViewCallback } from './views/types'
-import { verify } from './verify'
+import { respondToUserInteraction } from './view_helpers'
+import { onInteractionErrorCallback } from './types'
+import { FindViewCallback } from './types'
+import { verify } from './utils/verify'
 import { json } from 'itty-router'
 
 export async function respondToDiscordInteraction(
@@ -20,8 +20,8 @@ export async function respondToDiscordInteraction(
   if (await verify(request, bot.public_key)) {
     var interaction = (await request.json()) as APIInteraction
   } else {
-    sentry.debug('Invalid interaction request')
-    return new Response(null, { status: 401 })
+    sentry.debug('Invalid signature')
+    return new Response('Invalid signature', { status: 401 })
   }
 
   if (interaction.type === InteractionType.Ping) {

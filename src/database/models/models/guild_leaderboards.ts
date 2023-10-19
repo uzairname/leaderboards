@@ -1,11 +1,11 @@
 import { and, eq } from 'drizzle-orm'
 import { GuildLeaderboardSelect, GuildLeaderboardUpdate, GuildLeaderboardInsert } from '../types'
-import { DbObject } from '../../object_manager'
-import { DbObjectManager } from '../../object_manager'
+import { DbObject } from '../managers'
+import { DbObjectManager } from '../managers'
 import { Guild } from './guilds'
 import { Leaderboard } from './leaderboards'
 import { GuildLeaderboards } from '../../schema'
-import { DatabaseErrors } from '../../errors'
+import { DatabaseErrors } from '../../utils/errors'
 
 export class GuildLeaderboard extends DbObject<GuildLeaderboardSelect> {
   async update(data: GuildLeaderboardUpdate) {

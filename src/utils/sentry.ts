@@ -44,7 +44,7 @@ export class Sentry extends Toucan {
       })
       .catch((e) => {
         this.logException(e)
-        return new Response(null, { status: 500 })
+        return new Response('Internal Server Error', { status: 500 })
       })
   }
 

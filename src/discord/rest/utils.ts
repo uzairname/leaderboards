@@ -1,8 +1,8 @@
 import * as D from 'discord-api-types/v10'
+import { DiscordAPIError } from '@discordjs/rest'
+
 import { DiscordRESTClient } from './client'
 import { DiscordErrors } from './errors'
-import { DiscordAPIError } from '@discordjs/rest'
-import { sentry } from '../../utils/globals'
 import { GuildChannelData, MessageData, RoleData } from './objects'
 import { RESTPostAPIGuildForumThreadsResult } from './types'
 

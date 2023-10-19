@@ -1,0 +1,572 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "id": "e938c898-ade8-4f00-8e13-6de75495afdd",
+  "prevId": "52cfe4ff-aeee-4756-a771-1f1f3ba4e979",
+  "tables": {
+    "AccessTokens": {
+      "name": "AccessTokens",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "purpose": {
+          "name": "purpose",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data": {
+          "name": "data",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "AccessTokens_user_id_Users_id_fk": {
+          "name": "AccessTokens_user_id_Users_id_fk",
+          "tableFrom": "AccessTokens",
+          "tableTo": "Users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {}
+    },
+    "GuildLeaderboards": {
+      "name": "GuildLeaderboards",
+      "schema": "",
+      "columns": {
+        "guild_id": {
+          "name": "guild_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "leaderboard_id": {
+          "name": "leaderboard_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_admin": {
+          "name": "is_admin",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "display_channel_id": {
+          "name": "display_channel_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "display_message_id": {
+          "name": "display_message_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "queue_message_id": {
+          "name": "queue_message_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "GuildLeaderboards_guild_id_Guilds_id_fk": {
+          "name": "GuildLeaderboards_guild_id_Guilds_id_fk",
+          "tableFrom": "GuildLeaderboards",
+          "tableTo": "Guilds",
+          "columnsFrom": [
+            "guild_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "GuildLeaderboards_leaderboard_id_Leaderboards_id_fk": {
+          "name": "GuildLeaderboards_leaderboard_id_Leaderboards_id_fk",
+          "tableFrom": "GuildLeaderboards",
+          "tableTo": "Leaderboards",
+          "columnsFrom": [
+            "leaderboard_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "GuildLeaderboards_guild_id_leaderboard_id": {
+          "name": "GuildLeaderboards_guild_id_leaderboard_id",
+          "columns": [
+            "guild_id",
+            "leaderboard_id"
+          ]
+        }
+      }
+    },
+    "Guilds": {
+      "name": "Guilds",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "admin_role_id": {
+          "name": "admin_role_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "match_results_text_channel_id": {
+          "name": "match_results_text_channel_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {}
+    },
+    "LeaderboardDivisions": {
+      "name": "LeaderboardDivisions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "leaderboard_id": {
+          "name": "leaderboard_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_created": {
+          "name": "time_created",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "LeaderboardDivision_by_leaderboard_id": {
+          "name": "LeaderboardDivision_by_leaderboard_id",
+          "columns": [
+            "leaderboard_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "LeaderboardDivisions_leaderboard_id_Leaderboards_id_fk": {
+          "name": "LeaderboardDivisions_leaderboard_id_Leaderboards_id_fk",
+          "tableFrom": "LeaderboardDivisions",
+          "tableTo": "Leaderboards",
+          "columnsFrom": [
+            "leaderboard_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {}
+    },
+    "Leaderboards": {
+      "name": "Leaderboards",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_guild_id": {
+          "name": "owner_guild_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_division_id": {
+          "name": "default_division_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_created": {
+          "name": "time_created",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "players_per_team": {
+          "name": "players_per_team",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 1
+        },
+        "queue_type": {
+          "name": "queue_type",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Leaderboards_owner_guild_id_Guilds_id_fk": {
+          "name": "Leaderboards_owner_guild_id_Guilds_id_fk",
+          "tableFrom": "Leaderboards",
+          "tableTo": "Guilds",
+          "columnsFrom": [
+            "owner_guild_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {}
+    },
+    "Matches": {
+      "name": "Matches",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "lb_division_id": {
+          "name": "lb_division_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "team_players": {
+          "name": "team_players",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "team_votes": {
+          "name": "team_votes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_started": {
+          "name": "time_started",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_finished": {
+          "name": "time_finished",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Matches_lb_division_id_LeaderboardDivisions_id_fk": {
+          "name": "Matches_lb_division_id_LeaderboardDivisions_id_fk",
+          "tableFrom": "Matches",
+          "tableTo": "LeaderboardDivisions",
+          "columnsFrom": [
+            "lb_division_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {}
+    },
+    "Players": {
+      "name": "Players",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lb_division_id": {
+          "name": "lb_division_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nickname": {
+          "name": "nickname",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rating": {
+          "name": "rating",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rd": {
+          "name": "rd",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stats": {
+          "name": "stats",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_created": {
+          "name": "time_created",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Players_user_id_Users_id_fk": {
+          "name": "Players_user_id_Users_id_fk",
+          "tableFrom": "Players",
+          "tableTo": "Users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "Players_lb_division_id_LeaderboardDivisions_id_fk": {
+          "name": "Players_lb_division_id_LeaderboardDivisions_id_fk",
+          "tableFrom": "Players",
+          "tableTo": "LeaderboardDivisions",
+          "columnsFrom": [
+            "lb_division_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "Players_user_id_lb_division_id": {
+          "name": "Players_user_id_lb_division_id",
+          "columns": [
+            "user_id",
+            "lb_division_id"
+          ]
+        }
+      }
+    },
+    "QueueTeams": {
+      "name": "QueueTeams",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "leaderboard_division_id": {
+          "name": "leaderboard_division_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_ids": {
+          "name": "user_ids",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pending_user_ids": {
+          "name": "pending_user_ids",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mmr": {
+          "name": "mmr",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_joined_queue": {
+          "name": "time_joined_queue",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "QueueTeams_leaderboard_division_id_LeaderboardDivisions_id_fk": {
+          "name": "QueueTeams_leaderboard_division_id_LeaderboardDivisions_id_fk",
+          "tableFrom": "QueueTeams",
+          "tableTo": "LeaderboardDivisions",
+          "columnsFrom": [
+            "leaderboard_division_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {}
+    },
+    "Settings": {
+      "name": "Settings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "default": 0
+        },
+        "last_deployed": {
+          "name": "last_deployed",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {}
+    },
+    "Users": {
+      "name": "Users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {}
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  }
+}

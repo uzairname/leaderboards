@@ -10,17 +10,19 @@ export const Users = pgTable('Users', {
   name: text('name'),
 })
 
+export type AccessTokenData = {
+  access_token: string
+  token_type: string
+  expires_in: number
+  refresh_token: string
+  scope: string
+}
+
 export const AccessTokens = pgTable('AccessTokens', {
   id: text('id').primaryKey(),
-  user_id: text('user_id').references(() => Users.id),
+  user_id: text('user_id').references(() => Users.id, {onDelete: 'cascade'}),
   purpose: text('purpose'),
-  data: jsonb('data').$type<{
-    access_token: string
-    token_type: string
-    expires_in: number
-    refresh_token: string
-    scope: string
-  }>(),
+  data: jsonb('data').$type<AccessTokenData>(),
 })
 
 export const Guilds = pgTable('Guilds', {
@@ -34,7 +36,7 @@ export const Guilds = pgTable('Guilds', {
 export const Leaderboards = pgTable('Leaderboards', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
-  owner_guild_id: text('owner_guild_id').notNull().references(() => Guilds.id),
+  owner_guild_id: text('owner_guild_id').notNull().references(() => Guilds.id, {onDelete: 'cascade'}),
   default_division_id: integer('default_division_id'),
   time_created: timestamp('time_created').defaultNow(),
   players_per_team: integer('players_per_team').default(1),
@@ -42,8 +44,8 @@ export const Leaderboards = pgTable('Leaderboards', {
 })
 
 export const GuildLeaderboards = pgTable('GuildLeaderboards', {
-  guild_id: text('guild_id').notNull().references(() => Guilds.id),
-  leaderboard_id: integer('leaderboard_id').notNull().references(() => Leaderboards.id),
+  guild_id: text('guild_id').notNull().references(() => Guilds.id, {onDelete: 'cascade'}),
+  leaderboard_id: integer('leaderboard_id').notNull().references(() => Leaderboards.id, {onDelete: 'cascade'}),
   is_admin: boolean('is_admin').default(false),
   display_channel_id: text('display_channel_id'),
   display_message_id: text('display_message_id'),
@@ -54,7 +56,7 @@ export const GuildLeaderboards = pgTable('GuildLeaderboards', {
 
 export const LeaderboardDivisions = pgTable('LeaderboardDivisions', {
   id: serial('id').primaryKey(),
-  leaderboard_id: integer('leaderboard_id').notNull().references(() => Leaderboards.id),
+  leaderboard_id: integer('leaderboard_id').notNull().references(() => Leaderboards.id, {onDelete: 'cascade'}),
   name: text('name'),
   time_created: timestamp('time_created').defaultNow(),
 }, (table) => { return {
@@ -62,8 +64,8 @@ export const LeaderboardDivisions = pgTable('LeaderboardDivisions', {
 }})
 
 export const Players = pgTable('Players', {
-  user_id: text('user_id').notNull().references(() => Users.id),
-  lb_division_id: integer('lb_division_id').notNull().references(() => LeaderboardDivisions.id),
+  user_id: text('user_id').notNull().references(() => Users.id, {onDelete: 'cascade'}),
+  lb_division_id: integer('lb_division_id').notNull().references(() => LeaderboardDivisions.id, {onDelete: 'cascade'}),
   nickname: text('nickname'),
   rating: real('rating'),
   rd: real('rd'),
@@ -75,7 +77,7 @@ export const Players = pgTable('Players', {
 
 export const QueueTeams = pgTable('QueueTeams', {
   id: serial('id').primaryKey(),
-  queued_lb_division_id: integer('leaderboard_division_id').references(() => LeaderboardDivisions.id,),
+  queued_lb_division_id: integer('leaderboard_division_id').references(() => LeaderboardDivisions.id, {onDelete: 'cascade'}),
   user_ids: jsonb('user_ids').$type<string[]>(),
   pending_user_ids: jsonb('pending_user_ids').$type<string[]>(),
   mmr: real('mmr'),
@@ -84,9 +86,9 @@ export const QueueTeams = pgTable('QueueTeams', {
 
 export const Matches = pgTable('Matches', {
   id: serial('id').primaryKey(),
-  lb_division_id: integer('lb_division_id').notNull().references(() => LeaderboardDivisions.id),
+  lb_division_id: integer('lb_division_id').notNull().references(() => LeaderboardDivisions.id, {onDelete: 'cascade'}),
   status: integer('status'),
-  team_players: json('team_players').$type<string[][]>(),
+  team_players: jsonb('team_players').$type<string[][]>(),
   team_votes: jsonb('team_votes').$type<number[]>(),
   outcome: jsonb('outcome').$type<number[]>(),
   time_started: timestamp('time_started'),

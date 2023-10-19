@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import * as dotenv from 'dotenv'
 
+
 async function migrate_database() {
   let postgres_urls = {
     env: process.env.POSTGRES_URL, // development, staging, or production
