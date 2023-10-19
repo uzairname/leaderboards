@@ -5,14 +5,13 @@ on:
     branches:
       - main
 
-env:
-  MIGRATIONS_SCRIPT_PATH: 'migrations/migrate.ts'
-  INIT_APP_ENDPOINT: 'https://firstplace-staging.5r.workers.dev/init'
-
 jobs:
   deploy:
     environment: staging
     runs-on: ubuntu-latest
+    env:
+      MIGRATIONS_SCRIPT_PATH: 'migrations/migrate.ts'
+      INIT_APP_ENDPOINT: 'https://firstplace-staging.5r.workers.dev/init'
     steps:
       - uses: actions/checkout@v2
 

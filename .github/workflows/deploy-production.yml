@@ -3,6 +3,7 @@ name: Deploy App (Production)
 on:
   workflow_dispatch:
 
+
 jobs:
   deploy:
     environment: production
@@ -34,7 +35,6 @@ jobs:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           APP_KEY: ${{ secrets.APP_KEY }}
           POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
-  
 
       - name: Wait 5 seconds
         run: sleep 5
@@ -42,6 +42,6 @@ jobs:
       - name: Initialize app
         uses: fjogeleit/http-request-action@v1
         with:
-          url: 
+          url: ${{ env.INIT_APP_ENDPOINT }}
           method: POST
           customHeaders: '{"Authorization":"${{ secrets.APP_KEY }}"}'
