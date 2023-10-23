@@ -1,4 +1,4 @@
-# Firstplace🏅
+# Firstplace
 
-An open source elo rating, matchmaking, and leaderboards system for Discord communities.
+A flexible Elo ranking and matchmaking system for Discord communities.
 
