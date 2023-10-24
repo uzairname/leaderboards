@@ -3,12 +3,13 @@ import {
   InteractionResponseType,
   MessageFlags,
 } from 'discord-api-types/v10'
-import { config, sentry } from '../../utils/globals'
+import { sentry } from '../../utils/globals'
 import { DiscordErrors } from '../../discord/rest/errors'
-import { Messages } from '../helpers/messages/messages'
+import { Messages } from '../utils/messages/messages'
 import { AppError } from '../errors'
 import { RateLimitError } from '@discordjs/rest'
 import { App } from '../app'
+import { Colors, toMarkdown } from '../utils/messages/message_pieces'
 
 export const onInteractionError = (app: App) =>
   function (e: unknown): APIInteractionResponseChannelMessageWithSource {
@@ -19,7 +20,7 @@ export const onInteractionError = (app: App) =>
       description = Messages.botPermisssionsErrorDescription(app.bot, e)
       title = 'Missing permissions'
     } else if (e instanceof RateLimitError) {
-      description = `Try again in ${e.timeToReset} seconds`
+      description = `Try again in ${e.timeToReset / 1000} seconds`
       title = 'Being Rate limited'
     } else if (e instanceof AppError) {
       description = e.message ? e.message : e.constructor.name
@@ -28,12 +29,12 @@ export const onInteractionError = (app: App) =>
       sentry.catchAfterResponding(e)
       title = 'Something went wrong'
 
-      if (config.features.DETAILED_ERROR_MESSAGES) {
+      if (app.config.features.DETAILED_ERROR_MESSAGES) {
         description = `Unexpected error
             \n\`\`\`Details:
             \n${
               e instanceof Error
-                ? JSON.stringify(
+                ? toMarkdown(JSON.stringify(
                     {
                       name: e.name,
                       message: e.message,
@@ -42,7 +43,7 @@ export const onInteractionError = (app: App) =>
                     },
                     null,
                     2,
-                  )
+                  ))
                 : e
             }
             \n\`\`\``
@@ -57,7 +58,6 @@ export const onInteractionError = (app: App) =>
 function errorResponse(
   title: string,
   description: string,
-  json_data?: JSON,
 ): APIInteractionResponseChannelMessageWithSource {
   return {
     type: InteractionResponseType.ChannelMessageWithSource,
@@ -66,7 +66,7 @@ function errorResponse(
         {
           title,
           description,
-          color: 0xff0000,
+          color: Colors.EmbedBackground,
         },
       ],
       flags: MessageFlags.Ephemeral,

@@ -1,17 +1,17 @@
-import { PermissionFlagsBits } from 'discord-api-types/v10'
-import { Env } from './env'
+import { Env } from '../utils/request'
 import { features } from './features'
+import { RequestArgs } from '../utils/request'
 
-export class Config {
-  readonly REQUIRED_BOT_PERMISSIONS =
-    PermissionFlagsBits.ManageChannels |
-    PermissionFlagsBits.ManageThreads |
-    PermissionFlagsBits.ManageRoles
 
-  readonly routes = {
+export const constants = {
+  routes: {
     OAUTH_CALLBACK: '/oauth/callback',
     OAUTH_LINKED_ROLES: '/oauth/linkedroles',
-  }
+  },
+}
+
+
+export class Config {
 
   readonly DEV_GUILD_ID = '1041458052055978024'
 
@@ -22,16 +22,16 @@ export class Config {
     production: '1110286104734740595', //support server
   }
 
-  readonly OAUTH_REDIRECT_URI: string
-
   readonly features: ReturnType<typeof features>
 
-  constructor(
-    readonly env: Env,
-    readonly execution_context: ExecutionContext,
-  ) {
-    this.HOME_GUILD_ID = this.home_guild_ids[env.ENVIRONMENT]
-    this.OAUTH_REDIRECT_URI = env.BASE_URL + this.routes.OAUTH_CALLBACK
-    this.features = features(env.ENVIRONMENT)
+  readonly OAUTH_REDIRECT_URI: string
+
+  readonly env: Env
+
+  constructor(ctx: RequestArgs) {
+    this.env = ctx.env
+    this.HOME_GUILD_ID = this.home_guild_ids[this.env.ENVIRONMENT]
+    this.OAUTH_REDIRECT_URI = this.env.BASE_URL + constants.routes.OAUTH_CALLBACK
+    this.features = features(this.env.ENVIRONMENT)
   }
 }

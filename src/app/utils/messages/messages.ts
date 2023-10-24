@@ -4,7 +4,7 @@ import { inviteUrl } from './message_pieces'
 
 export namespace Messages {
   export const concise_description =
-    'This bot enables communities to track TrueSkill Elo ratings for any game, with additional utilities for matchmaking, moderation, display, and statistics.'
+    'Track matches and Elo ratings for any game in your server. Find and play matches against players of your skill level. Additional utilities for moderation, display, and statistics.'
 
   export function botPermisssionsErrorDescription(
     bot: DiscordRESTClient,

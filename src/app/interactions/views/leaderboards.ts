@@ -15,6 +15,7 @@ import {
   ApplicationCommandOptionType,
   APIInteractionResponseCallbackData,
   APIEmbed,
+  APIEmbedField,
 } from 'discord-api-types/v10'
 
 import {
@@ -35,13 +36,18 @@ import {
 } from '../../../discord/interactions/utils/string_data'
 
 import { assertNonNullable } from '../../../utils/utils'
-import { config, sentry } from '../../../utils/globals'
 
 import { App } from '../../app'
 import { AppErrors, Errors } from '../../errors'
 
-import { Colors, commandMention, messageLink } from '../../helpers/messages/message_pieces'
-import { checkGuildInteraction, checkMemberBotAdmin } from '../../helpers/checks'
+import {
+  Colors,
+  commandMention,
+  messageLink,
+  relativeTimestamp,
+  toMarkdown,
+} from '../../utils/messages/message_pieces'
+import { checkGuildInteraction, checkMemberBotAdmin } from '../../utils/checks'
 
 import { getOrAddGuild } from '../../modules/guilds'
 import {
@@ -49,11 +55,12 @@ import {
   deleteLeaderboard,
   createNewLeaderboardInGuild,
   updateLeaderboard,
-  removeLeaderboardChannelsMessages,
 } from '../../modules/leaderboards'
+import { removeLeaderboardChannelsMessages } from '../../modules/channels/leaderboard_channels'
 
 import restore, { restore_cmd_def } from './restore'
 import { GuildLeaderboard, Leaderboard } from '../../../database/models'
+import { sentry } from '../../../utils/globals'
 
 const leaderboards_cmd_def = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -231,14 +238,29 @@ export async function allGuildLeaderboardsPage(
         `${guild_leaderboards.length === 1 ? '' : 's'}` +
         `. \n` +
         `To manage a leaderboard, type ` +
-        `${await commandMention(app, leaderboards_cmd_def)} \`[name]\`\n`,
+        `${await commandMention(app, leaderboards_cmd_def)} \`[name]\`\n` +
+        `To restore any leaderboard's channels or messages` +
+        `${await commandMention(app, restore_cmd_def)} to restore it.`,
       color: Colors.EmbedBackground,
     },
   ]
 
-  guild_leaderboards.forEach(async (item) => {
-    embeds.push(await guildLeaderboardDetailsEmbed(app, item.leaderboard, item.guild_leaderboard))
-  })
+  let fields: APIEmbedField[] = []
+
+  sentry.debug("guild_leaderboards: " + JSON.stringify(guild_leaderboards.length))
+  await Promise.all(
+    guild_leaderboards.map(async (item) => {
+      fields.push({
+        name: toMarkdown(item.leaderboard.data.name),
+        value: await guildLeaderboardDetails(app, item.guild_leaderboard),
+        inline: true,
+      })
+    }),
+  )
+
+  sentry.debug("fields: " + JSON.stringify(fields.length))
+
+  embeds[0].fields = fields
 
   return {
     flags: MessageFlags.Ephemeral,
@@ -259,11 +281,17 @@ export async function allGuildLeaderboardsPage(
   }
 }
 
-async function guildLeaderboardDetailsEmbed(
+async function guildLeaderboardDetails(
   app: App,
-  leaderboard: Leaderboard,
   guild_leaderboard: GuildLeaderboard,
-): Promise<APIEmbed> {
+): Promise<string> {
+  // created time
+  const created_time = (await guild_leaderboard.leaderboard()).data.time_created
+  const created_time_msg = created_time
+    ? `Created ${relativeTimestamp(created_time)}`
+    : `Created ${relativeTimestamp(new Date())}`
+
+  // display link
   if (guild_leaderboard.data.display_message_id) {
     const display_message_link = messageLink(
       guild_leaderboard.data.guild_id,
@@ -273,15 +301,12 @@ async function guildLeaderboardDetailsEmbed(
 
     var display_message_msg = `Displaying here: ${display_message_link}`
   } else {
-    display_message_msg =
-      `Not displayed in a message. Type` +
-      `${await commandMention(app, restore_cmd_def)} to restore it.`
+    display_message_msg = `Not displayed in a message anywhere`
   }
-  return {
-    title: `${leaderboard.data.name}`,
-    description: `${display_message_msg}`,
-    color: Colors.EmbedBackground,
-  }
+
+  const description = `${created_time_msg}\n` + `${display_message_msg}`
+
+  return description
 }
 
 export function leaderboardNameModal(
@@ -326,7 +351,10 @@ export async function leaderboardSettingsPage<Edit extends boolean>(
   assertNonNullable(guild_leaderboard, 'guild_leaderboard')
   const leaderboard = await guild_leaderboard.leaderboard()
 
-  const embed = await guildLeaderboardDetailsEmbed(app, leaderboard, guild_leaderboard)
+  const embed = {
+    title: leaderboard.data.name,
+    description: await guildLeaderboardDetails(app, guild_leaderboard),
+  }
 
   return {
     flags: MessageFlags.Ephemeral,
@@ -367,7 +395,7 @@ export async function onRenameModalSubmit(
   return {
     type: InteractionResponseType.ChannelMessageWithSource,
     data: {
-      content: `Renamed **${old_name}** to **${leaderboard.data.name}**`,
+      content: `Renamed **${toMarkdown(old_name)}** to **${toMarkdown(leaderboard.data.name)}**`,
       flags: MessageFlags.Ephemeral,
     },
   }
@@ -378,8 +406,7 @@ export function creatingNewLeaderboardPage(
 ): ChatInteractionResponse {
   const response_type = InteractionResponseType.ChannelMessageWithSource
 
-  assertNonNullable(ctx.state.data.input_name, 'input_name')
-  const content = `Creating a new leaderboard named **${ctx.state.data.input_name}**`
+  const content = `Creating a new leaderboard named **${toMarkdown(ctx.state.data.input_name)}**`
 
   ctx.state.save.page('creating new')
   const components: APIActionRowComponent<APIMessageActionRowComponent>[] = [
@@ -430,18 +457,34 @@ export async function onBtnDelete(ctx: ComponentContext<typeof leaderboards_cmd_
   assertNonNullable(ctx.state.data.selected_leaderboard_id, 'selected_leaderboard_id')
   const leaderboard = await getLeaderboardById(app.db, ctx.state.data.selected_leaderboard_id)
 
+  response = Modal()
+    .setTitle(`Delete leaderboard?`)
+    .setCustomId(ctx.state.set.component('modal:delete confirm').encode())
+    .setComponents([
+      ActionRow()
+        .addComponent(
+          TextInput()
+            .setLabel(`Type "delete" to delete "${leaderboard.data.name}"`)
+            .setPlaceholder(`delete`)
+            .setCustomId('name')
+            .setStyle(TextInputStyle.Short),
+        )
+        .toComponent(),
+    ])
+
+
   let response: APIModalInteractionResponse = {
     type: InteractionResponseType.Modal,
     data: {
       custom_id: ctx.state.set.component('modal:delete confirm').encode(),
-      title: `Do you want to delete "${leaderboard.data.name}"?`,
+      title: `Delete leaderboard?`,
       components: [
         {
           type: ComponentType.ActionRow,
           components: [
             {
               type: ComponentType.TextInput,
-              label: `Type "delete" to confirm`,
+              label: `Type "delete" to delete ${leaderboard.data.name}`.substring(0, 45),
               placeholder: `delete`,
               custom_id: 'name',
               style: TextInputStyle.Short,

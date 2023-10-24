@@ -8,11 +8,11 @@ import { CommandView } from '../../../discord/interactions/views'
 
 import { App } from '../../app'
 
-import { syncLeaderboardChannelsMessages } from '../../modules/leaderboards'
+import { syncLeaderboardChannelsMessages } from '../../modules/channels/leaderboard_channels'
 import { getOrAddGuild } from '../../modules/guilds'
 
-import { checkMemberBotAdmin } from '../../helpers/checks'
-import { checkGuildInteraction } from '../../helpers/checks'
+import { checkMemberBotAdmin } from '../../utils/checks'
+import { checkGuildInteraction } from '../../utils/checks'
 
 export const restore_cmd_def = new CommandView({
   type: ApplicationCommandType.ChatInput,

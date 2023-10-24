@@ -2,7 +2,6 @@ import { NeonDatabase } from 'drizzle-orm/neon-serverless'
 
 import * as schema from './schema'
 import { Sentry } from '../utils/sentry'
-import { config } from '../utils/globals'
 
 import { connect } from './connect'
 import DbCache from './utils/cache'
@@ -23,8 +22,8 @@ export class DbClient {
   public readonly db: NeonDatabase<typeof schema>
 
   constructor(
+    postgres_url: string,
     public sentry?: Sentry,
-    postgres_url = config.env.POSTGRES_URL,
   ) {
     this.db = connect(postgres_url)
     if (cache.get('db') === undefined) {
@@ -41,16 +40,4 @@ export class DbClient {
   players = new PlayersManager(this)
   queue_teams = new QueueTeamsManager(this)
   matches = new MatchesManager(this)
-
-  log(message: string) {
-    if (this.sentry) {
-      this.sentry.addBreadcrumb({
-        category: 'database',
-        message: message,
-        level: 'info',
-      })
-    } else {
-      console.log(message)
-    }
-  }
 }

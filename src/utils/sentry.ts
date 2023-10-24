@@ -1,6 +1,7 @@
 import { Toucan } from 'toucan-js'
 import { cache } from './cache'
 import { Config } from '../config/config'
+import { RequestArgs } from './request'
 
 export class Sentry extends Toucan {
   request_name: string
@@ -9,21 +10,20 @@ export class Sentry extends Toucan {
 
   private request: Request
 
-  constructor(
-    request: Request,
-    private config: Config,
-  ) {
+  constructor(private ctx: RequestArgs) {
+    console.log(ctx.env)
     super({
-      dsn: config.env.SENTRY_DSN,
+      dsn: ctx.env.SENTRY_DSN,
       release: '1.0.0',
-      environment: config.env.ENVIRONMENT,
-      context: config.execution_context,
-      request: request,
+      environment: ctx.env.ENVIRONMENT,
+      context: ctx.execution_context,
+      request: ctx.request,
     })
-
+    
     this.request_name = 'Request'
     cache.set('request_num', (cache.get('request_num') as number | undefined) || 1)
-    this.request = request
+    this.request = ctx.request
+    console.log('d')
   }
 
   async handler(handler: (request: Request) => Promise<Response>): Promise<Response> {
@@ -49,7 +49,7 @@ export class Sentry extends Toucan {
   }
 
   public waitUntil(callback: Promise<void>): void {
-    this.config.execution_context.waitUntil(
+    this.ctx.execution_context.waitUntil(
       new Promise<void>((resolve) => {
         callback
           .then(() => {

@@ -1,11 +1,9 @@
 import {
   APIApplicationCommandInteractionDataBooleanOption,
-  APIApplicationCommandInteractionDataStringOption,
   APIInteractionResponseCallbackData,
   ApplicationCommandOptionType,
   ApplicationCommandType,
   ButtonStyle,
-  ChannelType,
   ComponentType,
   InteractionResponseType,
   MessageFlags,
@@ -14,13 +12,11 @@ import {
 import {
   ChoiceField,
   NumberField,
-  StringData,
   StringField,
 } from '../../../discord/interactions/utils/string_data'
 import { CommandContext, CommandView, ComponentContext } from '../../../discord/interactions/views'
 import { App } from '../../app'
 import { AppErrors, Errors } from '../../errors'
-import { isContextMenuApplicationCommandInteraction } from 'discord-api-types/utils/v10'
 
 const test_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -54,11 +50,12 @@ export default (app: App) =>
       ctx.state.save.counter(0)
       app
 
-      const ephemeral = (
-        ctx.interaction.data.options?.find((o) => o.name === 'ephemeral') as
-          | APIApplicationCommandInteractionDataBooleanOption
-          | undefined
-      )?.value
+      const ephemeral =
+        (
+          ctx.interaction.data.options?.find((o) => o.name === 'ephemeral') as
+            | APIApplicationCommandInteractionDataBooleanOption
+            | undefined
+        )?.value ?? true
 
       return {
         type: InteractionResponseType.ChannelMessageWithSource,
@@ -75,8 +72,6 @@ export default (app: App) =>
       if (ctx.state.is.clicked_btn('wait')) {
         ctx.offload(async (ctx) => {
           const seconds = ctx.state.data.counter ?? 0
-
-          await new Promise((resolve) => setTimeout(resolve, seconds * 1000))
 
           await ctx.sendMessage({
             content: `waited ${seconds} seconds`,

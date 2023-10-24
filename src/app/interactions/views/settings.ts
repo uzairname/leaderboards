@@ -9,8 +9,8 @@ import {
 import { CommandView } from '../../../discord/interactions/views'
 import { ChoiceField } from '../../../discord/interactions/utils/string_data'
 
-import { checkGuildInteraction } from '../../helpers/checks'
-import { checkMemberBotAdmin } from '../../helpers/checks'
+import { checkGuildInteraction } from '../../utils/checks'
+import { checkMemberBotAdmin } from '../../utils/checks'
 import { getOrAddGuild, syncGuildAdminRole } from '../../modules/guilds'
 import { Errors } from '../../errors'
 import { App } from '../../app'

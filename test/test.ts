@@ -8,24 +8,49 @@ import {
   Users,
   QueueTeams,
   Settings,
-} from '../database/schema'
-import { DbClient } from '../database/client'
-import { config, sentry } from '../utils/globals'
+} from '../src/database/schema'
+import { DbClient } from '../src/database/client'
 import { getTableConfig } from 'drizzle-orm/pg-core'
+import { Sentry } from '../src/utils/sentry'
+import { Config } from '../src/config/config'
+import { Env } from '../src/utils/request'
+import { App } from '../src/app/app'
+import { initSentry, sentry } from '../src/utils/globals'
+
+const test_env: Env = {
+  ENVIRONMENT: 'test',
+  BASE_URL: 'https://example.com',
+  DISCORD_TOKEN: '',
+  PUBLIC_KEY: '',
+  APPLICATION_ID: '',
+  CLIENT_SECRET: '',
+  SENTRY_DSN: '',
+  APP_KEY: '',
+  POSTGRES_URL: '',
+}
 
 export async function runTests(): Promise<Response> {
-  if (!config.env.POSTGRES_URL_TEST) {
-    throw new Error('POSTGRES_URL_TEST not set')
+  const ctx = {
+    request: new Request('https://example.com'),
+    env: test_env,
+    execution_context: {
+      waitUntil: (promise: Promise<any>) => {
+        promise.then(() => {})
+      },
+      passThroughOnException: () => {},
+    },
   }
 
-  await testDatabase(config.env.POSTGRES_URL_TEST)
-  console.log(`Tested Leaderboards app (${config.env.ENVIRONMENT})`)
+  const app = new App(ctx, initSentry(ctx))
+
+  await testDatabase(app)
+  console.log(`Tested Leaderboards app (${ctx.env.ENVIRONMENT})`)
   return new Response('Successfully tested Leaderboards app', { status: 200 })
 }
 
-async function testDatabase(postgres_url: string) {
-  sentry.debug('testing database')
-  let client = new DbClient(sentry, postgres_url)
+async function testDatabase(app: App) {
+  app.sentry.debug('testing database')
+  let client = new DbClient(app.config.env.POSTGRES_URL, sentry)
   await client.db.delete(Settings)
   await client.db.delete(QueueTeams)
   await client.db.delete(Players)
@@ -37,7 +62,7 @@ async function testDatabase(postgres_url: string) {
 
   const table_config = getTableConfig(Users)
 
-  sentry.debug(table_config.foreignKeys.map((fk) => fk.onDelete).join(', '))
+  app.debug(table_config.foreignKeys.map((fk) => fk.onDelete).join(', '))
 
   const setting = await client.settings.getOrUpdate()
 

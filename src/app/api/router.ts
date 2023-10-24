@@ -1,6 +1,7 @@
 import { Router } from 'itty-router'
+import { App } from '../app'
 
-export const apiRouter = () =>
+export const apiRouter = (app: App) =>
   Router({ base: '/api' })
     .get('/', () => {
       return new Response('API')

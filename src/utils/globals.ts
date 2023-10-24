@@ -1,13 +1,12 @@
-import { Env } from '../config/env'
 import { Config } from '../config/config'
+import { RequestArgs } from './request'
 import { Sentry } from './sentry'
 
-export let config: Config
-export function initConfig(env: Env, ctx: ExecutionContext) {
-  config = new Config(env, ctx)
-}
-
 export let sentry: Sentry
-export function initSentry(request: Request, config: Config) {
-  sentry = new Sentry(request, config)
+export function initSentry(ctx: RequestArgs) {
+  console.log('b')
+  console.log(ctx.env)
+  sentry = new Sentry(ctx)
+  console.log('e')
+  return sentry
 }

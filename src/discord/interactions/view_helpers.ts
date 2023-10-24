@@ -8,14 +8,9 @@ import {
   APIModalSubmitInteraction,
   InteractionType,
   APIInteractionResponseChannelMessageWithSource,
-  APIActionRowComponent,
   APIInteractionResponse,
-  APIMessageActionRowComponent,
-  ButtonStyle,
-  ComponentType,
   InteractionResponseType,
   APIInteraction,
-  APITextInputComponent,
 } from 'discord-api-types/v10'
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
 
@@ -43,6 +38,7 @@ import { ViewErrors } from './utils/errors'
 import { ViewOffloadCallback, MessageView, CommandView } from './views'
 import { FindViewCallback } from './types'
 import { onInteractionErrorCallback } from './types'
+import { replaceMessageComponentsCustomIds } from '../messages/replaceMessageComponentsCustomIds'
 
 type DecodedCustomId = {
   prefix: string
@@ -354,27 +350,3 @@ export function replaceResponseCustomIds(
   }
 }
 
-export function replaceMessageComponentsCustomIds(
-  components:
-    | APIActionRowComponent<APIMessageActionRowComponent>[]
-    | APIActionRowComponent<APITextInputComponent>[]
-    | undefined
-    | null,
-  replace: (data?: string) => string,
-): void {
-  components?.forEach((row) => {
-    row.components.forEach((component) => {
-      if (
-        component.type === ComponentType.TextInput ||
-        component.type === ComponentType.StringSelect ||
-        component.type === ComponentType.MentionableSelect ||
-        component.type === ComponentType.UserSelect ||
-        component.type === ComponentType.RoleSelect ||
-        component.type === ComponentType.ChannelSelect ||
-        (component.type === ComponentType.Button && component.style !== ButtonStyle.Link)
-      ) {
-        component.custom_id = replace(component.custom_id)
-      }
-    })
-  })
-}

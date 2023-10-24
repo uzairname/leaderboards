@@ -1,3 +1,4 @@
+
 export interface Env {
   ENVIRONMENT: string
   BASE_URL: string
@@ -8,5 +9,10 @@ export interface Env {
   SENTRY_DSN: string
   APP_KEY: string
   POSTGRES_URL: string
-  POSTGRES_URL_TEST: string | undefined
+}
+
+export interface RequestArgs {
+  request: Request
+  env: Env
+  execution_context: ExecutionContext
 }

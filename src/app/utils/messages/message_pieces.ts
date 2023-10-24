@@ -1,7 +1,6 @@
-import { APIApplicationCommand, ApplicationCommandType } from 'discord-api-types/v10'
+import { APIApplicationCommand, ApplicationCommandType, PermissionFlagsBits } from 'discord-api-types/v10'
 
 import { AnyCommandView, DiscordRESTClient } from '../../../discord'
-import { config } from '../../../utils/globals'
 
 import { App } from '../../app'
 
@@ -17,6 +16,14 @@ export function relativeTimestamp(time: Date): string {
 
 export function dateTimestamp(time: Date): string {
   return `<t:${Math.floor(time.getTime() / 1000)}:D>`
+}
+
+/**
+ * Converts a string that may contain special markdown characters to Discord's markdown.
+ */
+export function toMarkdown(str?: string): string {
+  if (!str) return ''
+  return str.replace(/_/g, '\\_').replace(/\*/g, '\\*').replace(/~/g, '\\~').replace(/`/g, '\\`')
 }
 
 export function messageLink(guild_id: string, channel_id: string, message_id: string): string {
@@ -47,13 +54,21 @@ export async function _commandMention(
   return `</${name}:${command?.id || '0'}>`
 }
 
+
 export function inviteUrl(bot: DiscordRESTClient): string {
+  const REQUIRED_BOT_PERMISSIONS =
+    PermissionFlagsBits.ManageChannels |
+    PermissionFlagsBits.ManageThreads |
+    PermissionFlagsBits.ManageRoles
+
   return (
     'https://discord.com/api/oauth2/authorize?' +
     new URLSearchParams({
       client_id: bot.application_id,
       scope: 'bot',
-      permissions: config.REQUIRED_BOT_PERMISSIONS.toString(),
+      permissions: REQUIRED_BOT_PERMISSIONS.toString(),
     }).toString()
   )
 }
+
+

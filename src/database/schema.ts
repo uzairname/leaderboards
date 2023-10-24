@@ -7,6 +7,7 @@ export const Settings = pgTable('Settings', {
 
 export const Users = pgTable('Users', {
   id: text('id').primaryKey(),
+  // linked_roles_ranking_division: integer('linked_roles_ranking_division'), // for linked roles.
   name: text('name'),
 })
 
@@ -31,16 +32,19 @@ export const Guilds = pgTable('Guilds', {
   admin_role_id: text('admin_role_id'),
   category_id: text('category_id'),
   match_results_channel_id: text('match_results_text_channel_id'),
+  channel_settings: jsonb('channel_settings'),
 })
 
 export const Leaderboards = pgTable('Leaderboards', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
-  owner_guild_id: text('owner_guild_id').notNull().references(() => Guilds.id, {onDelete: 'cascade'}),
-  default_division_id: integer('default_division_id'),
   time_created: timestamp('time_created').defaultNow(),
+  default_division_id: integer('default_division_id'),
   players_per_team: integer('players_per_team').default(1),
+  // delete queue_type
   queue_type: integer('queue_type'),
+  // delete owner_guild_id
+  owner_guild_id: text('owner_guild_id').notNull().references(() => Guilds.id, {onDelete: 'cascade'}),
 })
 
 export const GuildLeaderboards = pgTable('GuildLeaderboards', {

@@ -1,5 +1,3 @@
-import { config } from '../../utils/globals'
-
 import { AnyView, isCommandView } from '../../discord/interactions/types'
 import { FindViewCallback } from '../../discord/interactions/types'
 
@@ -27,14 +25,14 @@ export function getAllViews(app: App): AnyView[] {
 
   let enabled_views = default_views
 
-  if (config.features.EXPERIMENTAL_COMMANDS) {
+  if (app.config.features.EXPERIMENTAL_COMMANDS) {
     enabled_views = enabled_views.concat(experimental_views)
   }
 
-  if (config.features.ALL_COMMANDS_GUILD) {
+  if (app.config.features.ALL_COMMANDS_GUILD) {
     enabled_views.forEach((view) => {
       if (isCommandView(view)) {
-        view.options.guild_id = config.DEV_GUILD_ID
+        view.options.guild_id = app.config.DEV_GUILD_ID
       }
       return view
     })

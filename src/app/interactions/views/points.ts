@@ -10,14 +10,14 @@ import {
 
 import { assertNonNullable } from '../../../utils/utils'
 
-import { checkGuildInteraction } from '../../helpers/checks'
-import { checkMemberBotAdmin } from '../../helpers/checks'
+import { checkGuildInteraction } from '../../utils/checks'
+import { checkMemberBotAdmin } from '../../utils/checks'
 import { getOrAddGuild } from '../../modules/guilds'
 import {
   getLeaderboardById,
   getLeaderboardCurrentDivision,
-  syncLbDisplayMessage,
 } from '../../modules/leaderboards'
+import { syncLbDisplayMessage } from '../../modules/channels/leaderboard_channels'
 import { CommandView } from '../../../discord/interactions/views'
 import { AppError } from '../../errors'
 import { getRegisterPlayer } from '../../modules/players'
@@ -105,12 +105,9 @@ export default (app: App) =>
         throw new AppError('Points must be a number')
       }
 
-      console.log('1A')
-
       // Get the selected leaderboard division
       let leaderboard = await getLeaderboardById(app.db, parseInt(options.leaderboard))
       let division = await getLeaderboardCurrentDivision(app.db, leaderboard)
-      console.log('1B')
 
       // Get the selected player in the division
       const user = interaction.data.resolved?.users?.[options.user]

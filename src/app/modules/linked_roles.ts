@@ -4,10 +4,10 @@ import {
   RESTPutAPICurrentUserApplicationRoleConnectionJSONBody,
 } from 'discord-api-types/v10'
 import { DiscordRESTClient } from '../../discord/rest/client'
-import { config } from '../../utils/globals'
+import { App } from '../app'
 
-export function getAppRoleConnectionsMetadata(): RESTPutAPIApplicationRoleConnectionMetadataJSONBody {
-  return config.features.ROLE_CONNECTIONS_METADATA
+export function getAppRoleConnectionsMetadata(app: App): RESTPutAPIApplicationRoleConnectionMetadataJSONBody {
+  return app.config.features.ROLE_CONNECTIONS_METADATA
     ? [
         {
           key: 'elorating',
@@ -19,8 +19,15 @@ export function getAppRoleConnectionsMetadata(): RESTPutAPIApplicationRoleConnec
     : []
 }
 
+/**
+ *
+ * @param bot
+ * @param access_token
+ * @param score
+ * @param platform_name Different for each user.
+ */
 export async function updateUserRoleConnectionData(
-  bot: DiscordRESTClient,
+  app: App,
   access_token: string,
   score: number,
   platform_name: string,
@@ -32,7 +39,7 @@ export async function updateUserRoleConnectionData(
     },
   }
 
-  if (config.features.ROLE_CONNECTIONS_METADATA) {
-    await bot.updateUserRoleConnection(access_token, body)
+  if (app.config.features.ROLE_CONNECTIONS_METADATA) {
+    await app.bot.updateUserRoleConnection(access_token, body)
   }
 }
