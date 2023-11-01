@@ -5,6 +5,7 @@ import * as dotenv from 'dotenv'
 
 async function migrate_database() {
   dotenv.config()
+  console.log(process.env.POSTGRES_URL)
   if (!process.env.POSTGRES_URL) throw new Error('POSTGRES_URL not set')
 
   console.log('migrating')
