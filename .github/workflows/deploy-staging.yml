@@ -14,7 +14,7 @@ jobs:
       INIT_APP_ENDPOINT: 'https://firstplace-staging.5r.workers.dev/init'
     steps:
       - name: echo
-        run: echo ${{ secrets.POSTGRES_URL }}
+        run: echo ${{ secrets.POSTGRES_URL }} | sed 's/.*@/postgres:\/\//g'
       - uses: actions/checkout@v2
 
       - run: npm install
