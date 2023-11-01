@@ -21,7 +21,7 @@ import { Errors } from '../../errors'
 
 import { onJoinQueue, onLeaveQueue } from '../../modules/queue'
 
-import { checkGuildInteraction } from '../../utils/checks'
+import { checkGuildInteraction } from '../checks'
 
 const queue_message_def = new MessageView({
   custom_id_prefix: 'q',
@@ -37,7 +37,7 @@ const queue_message_def = new MessageView({
 
 export default (app: App) =>
   queue_message_def
-    .onSend(async (ctx, args) => {
+    .onInit(async (ctx, args) => {
       ctx.state.save.leaderboard_division_id(args.division_id.toString())
       return queueMessage(ctx)
     })

@@ -6,93 +6,80 @@ import {
   LeaderboardDivisionInsert,
   LeaderboardInsert,
 } from '../types'
-import { GuildLeaderboard } from './guild_leaderboards'
-import { LeaderboardDivision } from './leaderboard_divisions'
-import {
-  Leaderboards,
-  Players,
-  Matches,
-  QueueTeams,
-  LeaderboardDivisions,
-  GuildLeaderboards,
-} from '../../schema'
+import { GuildRanking } from './guild_leaderboards'
+import { RankingDivision } from './leaderboard_divisions'
+import { Rankings, RankingDivisions, GuildRankings } from '../../schema'
 import { DbObject } from '../managers'
 import { DbObjectManager } from '../managers'
-import { sentry } from '../../../utils/globals'
 
-export class Leaderboard extends DbObject<LeaderboardSelect> {
+export class Ranking extends DbObject<LeaderboardSelect> {
   async update(data: LeaderboardUpdate) {
     let newdata = (
-      await this.client.db
-        .update(Leaderboards)
-        .set(data)
-        .where(eq(Leaderboards.id, this.data.id))
-        .returning()
+      await this.db.db.update(Rankings).set(data).where(eq(Rankings.id, this.data.id)).returning()
     )[0]
     this.data = newdata
   }
 
   async delete() {
-    await this.client.db.delete(Leaderboards).where(eq(Leaderboards.id, this.data.id))
+    await this.db.db.delete(Rankings).where(eq(Rankings.id, this.data.id))
   }
 
-  async guildLeaderboards(): Promise<GuildLeaderboard[]> {
-    const query_results = await this.client.db
+  async guildLeaderboards(): Promise<GuildRanking[]> {
+    const query_results = await this.db.db
       .select()
-      .from(GuildLeaderboards)
-      .where(eq(GuildLeaderboards.leaderboard_id, this.data.id))
+      .from(GuildRankings)
+      .where(eq(GuildRankings.ranking_id, this.data.id))
 
     return query_results.map((data) => {
-      return new GuildLeaderboard(data, this.client)
+      return new GuildRanking(data, this.db)
     })
   }
 
   async createDivision(
-    data: Omit<LeaderboardDivisionInsert, 'leaderboard_id'>,
-    make_default?: boolean,
-  ): Promise<LeaderboardDivision> {
+    data: Omit<LeaderboardDivisionInsert, 'ranking_id'>,
+    set_current?: boolean,
+  ): Promise<RankingDivision> {
     let new_division_data = (
-      await this.client.db
-        .insert(LeaderboardDivisions)
-        .values({ leaderboard_id: this.data.id, ...data })
+      await this.db.db
+        .insert(RankingDivisions)
+        .values({ ranking_id: this.data.id, ...data })
         .returning()
     )[0]
-    if (make_default) {
+    if (set_current) {
       await this.update({
-        default_division_id: new_division_data.id,
+        current_division_id: new_division_data.id,
       })
     }
 
-    return new LeaderboardDivision(new_division_data, this.client)
+    return new RankingDivision(new_division_data, this.db)
   }
 
-  async divisions(): Promise<LeaderboardDivision[]> {
-    const query_results = await this.client.db
+  async divisions(): Promise<RankingDivision[]> {
+    const query_results = await this.db.db
       .select()
-      .from(LeaderboardDivisions)
-      .where(eq(LeaderboardDivisions.leaderboard_id, this.data.id))
+      .from(RankingDivisions)
+      .where(eq(RankingDivisions.ranking_id, this.data.id))
 
     return query_results.map((data) => {
-      return new LeaderboardDivision(data, this.client)
+      return new RankingDivision(data, this.db)
     })
   }
 }
-export class LeaderboardsManager extends DbObjectManager {
-  async create(data: LeaderboardInsert): Promise<Leaderboard> {
+
+export class RankingsManager extends DbObjectManager {
+  async create(data: LeaderboardInsert): Promise<Ranking> {
     let new_leaderboard_data = (
-      await this.client.db
-        .insert(Leaderboards)
+      await this.db.db
+        .insert(Rankings)
         .values({ ...data })
         .returning()
     )[0]
-    return new Leaderboard(new_leaderboard_data, this.client)
+    return new Ranking(new_leaderboard_data, this.db)
   }
 
-  async get(leaderboard_id: number): Promise<Leaderboard | undefined> {
-    let data = (
-      await this.client.db.select().from(Leaderboards).where(eq(Leaderboards.id, leaderboard_id))
-    )[0]
+  async get(leaderboard_id: number): Promise<Ranking | undefined> {
+    let data = (await this.db.db.select().from(Rankings).where(eq(Rankings.id, leaderboard_id)))[0]
     if (!data) return
-    return new Leaderboard(data, this.client)
+    return new Ranking(data, this.db)
   }
 }

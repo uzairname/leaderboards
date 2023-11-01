@@ -1,4 +1,4 @@
-import { DiscordErrors, DiscordRESTClient } from '../../../discord'
+import { DiscordErrors, DiscordRESTClient } from '../../discord'
 
 import { inviteUrl } from './message_pieces'
 

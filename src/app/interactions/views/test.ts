@@ -32,6 +32,11 @@ const test_command = new CommandView({
         name: 'ephemeral',
         description: 'Whether the message is ephemeral',
       },
+      {
+        type: ApplicationCommandOptionType.User,
+        name: 'user',
+        description: 'The user to test',
+      },
     ],
   },
 
@@ -73,7 +78,8 @@ export default (app: App) =>
         ctx.offload(async (ctx) => {
           const seconds = ctx.state.data.counter ?? 0
 
-          await ctx.sendMessage({
+          await new Promise((resolve) => setTimeout(resolve, seconds * 1000))
+          ctx.send({
             content: `waited ${seconds} seconds`,
             flags: MessageFlags.Ephemeral,
           })

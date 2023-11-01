@@ -1,11 +1,11 @@
 import { APIUser } from 'discord-api-types/v10'
 import { DbClient } from '../../database/client'
-import { LeaderboardDivision, Player } from '../../database/models'
+import { RankingDivision, Player } from '../../database/models'
 
 export async function getRegisterPlayer(
   client: DbClient,
   discord_user: APIUser,
-  leaderboard_division: LeaderboardDivision,
+  leaderboard_division: RankingDivision,
 ): Promise<Player> {
   // Gets a player in the leaderboard's current division, with the user's id
 

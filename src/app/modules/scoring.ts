@@ -1,6 +1,6 @@
-import { LeaderboardDivision } from '../../database/models'
+import { RankingDivision } from '../../database/models'
 
-export async function scoreLeaderboardHistory(division: LeaderboardDivision) {
+export async function scoreLeaderboardHistory(division: RankingDivision) {
   /*
     update all players' score based on match history
     */
@@ -8,7 +8,7 @@ export async function scoreLeaderboardHistory(division: LeaderboardDivision) {
   const matches = await division.latestMatches()
 
   const team_history = matches.map((match) => {
-    return match.data.team_players
+    return match.data.team_users
   })
 
   const outcome_history = matches.map((match) => {

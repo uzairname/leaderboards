@@ -44,10 +44,7 @@ export async function oauthCallback(app: App, request: Request): Promise<Respons
   })
 }
 
-export async function saveUserAccessToken(
-  app: App,
-  token: RESTPostOAuth2AccessTokenResult,
-) {
+export async function saveUserAccessToken(app: App, token: RESTPostOAuth2AccessTokenResult) {
   const me = await app.bot.getOauthUser(token.access_token)
   const expires_at = Date.now() + token.expires_in * 1000
 

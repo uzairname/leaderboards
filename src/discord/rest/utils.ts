@@ -105,12 +105,10 @@ export class DiscordRESTUtils {
     }
   }
 
-  async deleteChannelIfExists(params: {
-    target_channel_id?: string | null
-  }): Promise<D.APIChannel | void> {
+  async deleteChannelIfExists(target_channel_id?: string | null): Promise<D.APIChannel | void> {
     try {
-      if (!params.target_channel_id) return
-      return await this.bot.deleteChannel(params.target_channel_id)
+      if (!target_channel_id) return
+      return await this.bot.deleteChannel(target_channel_id)
     } catch (e) {
       if (!(e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.UnknownChannel)) {
         throw e

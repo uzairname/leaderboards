@@ -14,7 +14,7 @@ import {
 } from 'discord-api-types/v10'
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
 
-import { clone_object } from '../../utils/utils'
+import { clone_json } from '../../utils/utils'
 import { StringData, StringDataSchema } from './utils/string_data'
 
 import { sentry } from '../../utils/globals'
@@ -37,8 +37,8 @@ import {
 import { ViewErrors } from './utils/errors'
 import { ViewOffloadCallback, MessageView, CommandView } from './views'
 import { FindViewCallback } from './types'
-import { onInteractionErrorCallback } from './types'
-import { replaceMessageComponentsCustomIds } from '../messages/replaceMessageComponentsCustomIds'
+import { onViewErrorCallback } from './types'
+import { replaceMessageComponentsCustomIds } from '../messages/custom_ids'
 
 type DecodedCustomId = {
   prefix: string
@@ -51,7 +51,7 @@ export async function respondToUserInteraction(
   interaction: APIInteraction,
   bot: DiscordRESTClient,
   find_view_callback: FindViewCallback,
-  onError: onInteractionErrorCallback,
+  onError: onViewErrorCallback,
   direct_response: boolean = true,
 ): Promise<APIInteractionResponse | undefined> {
   /*
@@ -232,7 +232,7 @@ async function executeViewOffloadCallback(args: {
     await args.callback({
       interaction: args.interaction,
       modal_entries: args.modal_entries,
-      sendMessage: async (response_data: APIInteractionResponseCallbackData) => {
+      send: async (response_data: APIInteractionResponseCallbackData) => {
         replaceMessageComponentsCustomIds(response_data.components, encodeCustomId(args.view))
         await args.bot.followupInteractionResponse(args.interaction.token, response_data)
       },
@@ -250,11 +250,11 @@ async function executeViewOffloadCallback(args: {
   }
 }
 
-export async function sendMessageView<Param>(
+export async function getMessageViewMessageData<Param>(
   view: AnyMessageView,
   params: Param,
 ): Promise<MessageData> {
-  let message = await view._sendCallback(
+  let message = await view._initCallback(
     {
       state: decodeViewCustomIdState(view),
     },
@@ -288,7 +288,7 @@ function getModalSubmitEntries(interaction: APIModalSubmitInteraction): ModalSub
   interaction = interaction as APIModalSubmitInteraction
   interaction.data.components.forEach((row) => {
     row.components.forEach((component) => {
-      let component_copy = clone_object(component)
+      let component_copy = clone_json(component)
       component_copy.custom_id = decodeCustomId(component.custom_id).content.toString()
       modal_submit_components.push(component_copy)
     })
@@ -349,4 +349,3 @@ export function replaceResponseCustomIds(
     replaceMessageComponentsCustomIds(response.data?.components, replace)
   }
 }
-

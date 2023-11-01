@@ -10,13 +10,10 @@ import {
 
 import { assertNonNullable } from '../../../utils/utils'
 
-import { checkGuildInteraction } from '../../utils/checks'
-import { checkMemberBotAdmin } from '../../utils/checks'
+import { checkGuildInteraction } from '../checks'
+import { checkMemberBotAdmin } from '../../modules/user_permissions'
 import { getOrAddGuild } from '../../modules/guilds'
-import {
-  getLeaderboardById,
-  getLeaderboardCurrentDivision,
-} from '../../modules/leaderboards'
+import { getLeaderboardById, getLeaderboardCurrentDivision } from '../../modules/leaderboards'
 import { syncLbDisplayMessage } from '../../modules/channels/leaderboard_channels'
 import { CommandView } from '../../../discord/interactions/views'
 import { AppError } from '../../errors'
@@ -42,8 +39,8 @@ const points_command = new CommandView({
         required: true,
       },
       {
-        name: 'leaderboard',
-        description: 'Leaderboard to apply points to',
+        name: 'ranking',
+        description: 'The ranking to apply points in',
         type: ApplicationCommandOptionType.String,
         autocomplete: true,
         required: true,
@@ -60,19 +57,19 @@ export default (app: App) =>
 
       let input_value =
         (
-          interaction.data.options?.find((o) => o.name === 'leaderboard') as
+          interaction.data.options?.find((o) => o.name === 'ranking') as
             | APIApplicationCommandInteractionDataStringOption
             | undefined
         )?.value ?? ''
 
       const guild = await getOrAddGuild(app, interaction.guild_id)
-      const lb_results = await guild.guildLeaderboards()
+      const lb_results = await guild.guildRankings()
 
       const choices: APIApplicationCommandOptionChoice[] = lb_results
-        .filter((lb) => lb.leaderboard.data.name.toLowerCase().includes(input_value.toLowerCase()))
-        .map((lb) => ({
-          name: lb.leaderboard.data.name,
-          value: lb.leaderboard.data.id.toString(),
+        .filter((r) => r.ranking.data.name?.toLowerCase().includes(input_value.toLowerCase()))
+        .map((r) => ({
+          name: r.ranking.data.name || 'unnamed ranking',
+          value: r.ranking.data.id.toString(),
         }))
 
       const response: APIApplicationCommandAutocompleteResponse = {
@@ -120,10 +117,7 @@ export default (app: App) =>
       })
 
       // update the leaderboard display
-      const guild_leaderboard = await app.db.guild_leaderboards.get(
-        guild.data.id,
-        leaderboard.data.id,
-      )
+      const guild_leaderboard = await app.db.guild_rankings.get(guild.data.id, leaderboard.data.id)
       assertNonNullable(guild_leaderboard)
 
       await syncLbDisplayMessage(app, guild_leaderboard)

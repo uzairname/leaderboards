@@ -1,15 +1,15 @@
 import { InferModel } from 'drizzle-orm'
 import {
   AccessTokens,
-  GuildLeaderboards,
   Guilds,
-  LeaderboardDivisions,
-  Leaderboards,
+  Rankings,
   Matches,
   Players,
   QueueTeams,
   Settings,
   Users,
+  GuildRankings,
+  RankingDivisions,
 } from '../schema'
 
 // Types for each model, for each type of query.
@@ -30,18 +30,18 @@ export type GuildSelect = InferModel<typeof Guilds, 'select'>
 export type GuildInsert = InferModel<typeof Guilds, 'insert'>
 export type GuildUpdate = Partial<Omit<GuildInsert, 'id'>>
 
-export type LeaderboardSelect = InferModel<typeof Leaderboards, 'select'>
-export type LeaderboardInsert = InferModel<typeof Leaderboards, 'insert'>
+export type LeaderboardSelect = InferModel<typeof Rankings, 'select'>
+export type LeaderboardInsert = InferModel<typeof Rankings, 'insert'>
 export type LeaderboardUpdate = Partial<Omit<LeaderboardInsert, 'id'>>
 
-export type GuildLeaderboardSelect = InferModel<typeof GuildLeaderboards, 'select'>
-export type GuildLeaderboardInsert = InferModel<typeof GuildLeaderboards, 'insert'>
+export type GuildLeaderboardSelect = InferModel<typeof GuildRankings, 'select'>
+export type GuildLeaderboardInsert = InferModel<typeof GuildRankings, 'insert'>
 export type GuildLeaderboardUpdate = Partial<
   Omit<GuildLeaderboardInsert, 'guild_id' | 'leaderboard_id'>
 >
 
-export type LeaderboardDivisionSelect = InferModel<typeof LeaderboardDivisions, 'select'>
-export type LeaderboardDivisionInsert = InferModel<typeof LeaderboardDivisions, 'insert'>
+export type LeaderboardDivisionSelect = InferModel<typeof RankingDivisions, 'select'>
+export type LeaderboardDivisionInsert = InferModel<typeof RankingDivisions, 'insert'>
 export type LeaderboardDivisionUpdate = Partial<
   Omit<LeaderboardDivisionInsert, 'id' | 'leaderboard_id'>
 >

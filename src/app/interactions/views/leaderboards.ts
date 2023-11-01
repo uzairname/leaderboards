@@ -46,8 +46,9 @@ import {
   messageLink,
   relativeTimestamp,
   toMarkdown,
-} from '../../utils/messages/message_pieces'
-import { checkGuildInteraction, checkMemberBotAdmin } from '../../utils/checks'
+} from '../../messages/message_pieces'
+import { checkGuildInteraction } from '../checks'
+import { checkMemberBotAdmin } from '../../modules/user_permissions'
 
 import { getOrAddGuild } from '../../modules/guilds'
 import {
@@ -56,10 +57,9 @@ import {
   createNewLeaderboardInGuild,
   updateLeaderboard,
 } from '../../modules/leaderboards'
-import { removeLeaderboardChannelsMessages } from '../../modules/channels/leaderboard_channels'
 
-import restore, { restore_cmd_def } from './restore'
-import { GuildLeaderboard, Leaderboard } from '../../../database/models'
+import { restore_cmd_def } from './restore'
+import { GuildRanking, Ranking } from '../../../database/models'
 import { sentry } from '../../../utils/globals'
 
 const leaderboards_cmd_def = new CommandView({
@@ -192,18 +192,18 @@ export async function leaderboardsAutocomplete(
 
   // Get leaderboards in this guild
   const guild = await getOrAddGuild(app, interaction.guild_id)
-  const guild_lbs = await guild.guildLeaderboards()
+  const guild_lbs = await guild.guildRankings()
 
   // Filter the leaderboards by name and map them to an array of choices.
   const choices: APIApplicationCommandOptionChoice[] = guild_lbs
     .filter(
       (lb) =>
         // if no input so far, include all leaderboards
-        !input_value || lb.leaderboard.data.name.toLowerCase().includes(input_value.toLowerCase()),
+        !input_value || lb.ranking.data.name?.toLowerCase().includes(input_value.toLowerCase()),
     )
     .map((lb) => ({
-      name: lb.leaderboard.data.name,
-      value: lb.leaderboard.data.id.toString(),
+      name: lb.ranking.data.name || 'Unnamed Leaderboard',
+      value: lb.ranking.data.id.toString(),
     }))
 
   // Add a choice to create a new leaderboard.
@@ -228,7 +228,7 @@ export async function allGuildLeaderboardsPage(
   guild_id: string,
 ): Promise<APIInteractionResponseCallbackData> {
   const guild = await getOrAddGuild(app, guild_id)
-  const guild_leaderboards = await guild.guildLeaderboards()
+  const guild_leaderboards = await guild.guildRankings()
 
   let embeds: APIEmbed[] = [
     {
@@ -247,18 +247,18 @@ export async function allGuildLeaderboardsPage(
 
   let fields: APIEmbedField[] = []
 
-  sentry.debug("guild_leaderboards: " + JSON.stringify(guild_leaderboards.length))
+  sentry.debug('guild_leaderboards: ' + JSON.stringify(guild_leaderboards.length))
   await Promise.all(
     guild_leaderboards.map(async (item) => {
       fields.push({
-        name: toMarkdown(item.leaderboard.data.name),
-        value: await guildLeaderboardDetails(app, item.guild_leaderboard),
+        name: toMarkdown(item.ranking.data.name),
+        value: await guildLeaderboardDetails(app, item.guild_ranking),
         inline: true,
       })
     }),
   )
 
-  sentry.debug("fields: " + JSON.stringify(fields.length))
+  sentry.debug('fields: ' + JSON.stringify(fields.length))
 
   embeds[0].fields = fields
 
@@ -281,10 +281,7 @@ export async function allGuildLeaderboardsPage(
   }
 }
 
-async function guildLeaderboardDetails(
-  app: App,
-  guild_leaderboard: GuildLeaderboard,
-): Promise<string> {
+async function guildLeaderboardDetails(app: App, guild_leaderboard: GuildRanking): Promise<string> {
   // created time
   const created_time = (await guild_leaderboard.leaderboard()).data.time_created
   const created_time_msg = created_time
@@ -292,11 +289,11 @@ async function guildLeaderboardDetails(
     : `Created ${relativeTimestamp(new Date())}`
 
   // display link
-  if (guild_leaderboard.data.display_message_id) {
+  if (guild_leaderboard.data.leaderboard_message_id) {
     const display_message_link = messageLink(
       guild_leaderboard.data.guild_id,
-      guild_leaderboard.data.display_channel_id || '0',
-      guild_leaderboard.data.display_message_id || '0',
+      guild_leaderboard.data.leaderboard_channel_id || '0',
+      guild_leaderboard.data.leaderboard_message_id,
     )
 
     var display_message_msg = `Displaying here: ${display_message_link}`
@@ -344,7 +341,7 @@ export async function leaderboardSettingsPage<Edit extends boolean>(
   const interaction = checkGuildInteraction(ctx.interaction)
 
   assertNonNullable(ctx.state.data.selected_leaderboard_id, 'selected_leaderboard_id')
-  const guild_leaderboard = await app.db.guild_leaderboards.get(
+  const guild_leaderboard = await app.db.guild_rankings.get(
     interaction.guild_id,
     ctx.state.data.selected_leaderboard_id,
   )
@@ -352,7 +349,7 @@ export async function leaderboardSettingsPage<Edit extends boolean>(
   const leaderboard = await guild_leaderboard.leaderboard()
 
   const embed = {
-    title: leaderboard.data.name,
+    title: leaderboard.data.name || 'Unnamed Leaderboard',
     description: await guildLeaderboardDetails(app, guild_leaderboard),
   }
 
@@ -456,22 +453,6 @@ export async function onCreateConfirm(
 export async function onBtnDelete(ctx: ComponentContext<typeof leaderboards_cmd_def>, app: App) {
   assertNonNullable(ctx.state.data.selected_leaderboard_id, 'selected_leaderboard_id')
   const leaderboard = await getLeaderboardById(app.db, ctx.state.data.selected_leaderboard_id)
-
-  response = Modal()
-    .setTitle(`Delete leaderboard?`)
-    .setCustomId(ctx.state.set.component('modal:delete confirm').encode())
-    .setComponents([
-      ActionRow()
-        .addComponent(
-          TextInput()
-            .setLabel(`Type "delete" to delete "${leaderboard.data.name}"`)
-            .setPlaceholder(`delete`)
-            .setCustomId('name')
-            .setStyle(TextInputStyle.Short),
-        )
-        .toComponent(),
-    ])
-
 
   let response: APIModalInteractionResponse = {
     type: InteractionResponseType.Modal,

@@ -5,13 +5,13 @@ import {
 } from 'discord-api-types/v10'
 import { sentry } from '../../utils/globals'
 import { DiscordErrors } from '../../discord/rest/errors'
-import { Messages } from '../utils/messages/messages'
+import { Messages } from '../messages/messages'
 import { AppError } from '../errors'
 import { RateLimitError } from '@discordjs/rest'
 import { App } from '../app'
-import { Colors, toMarkdown } from '../utils/messages/message_pieces'
+import { Colors, toMarkdown } from '../messages/message_pieces'
 
-export const onInteractionError = (app: App) =>
+export const onViewError = (app: App) =>
   function (e: unknown): APIInteractionResponseChannelMessageWithSource {
     let description: string
     let title: string
@@ -34,16 +34,18 @@ export const onInteractionError = (app: App) =>
             \n\`\`\`Details:
             \n${
               e instanceof Error
-                ? toMarkdown(JSON.stringify(
-                    {
-                      name: e.name,
-                      message: e.message,
-                      stack: e.stack?.split('\n') ?? undefined,
-                      error: e,
-                    },
-                    null,
-                    2,
-                  ))
+                ? toMarkdown(
+                    JSON.stringify(
+                      {
+                        name: e.name,
+                        message: e.message,
+                        stack: e.stack?.split('\n') ?? undefined,
+                        error: e,
+                      },
+                      null,
+                      2,
+                    ),
+                  )
                 : e
             }
             \n\`\`\``

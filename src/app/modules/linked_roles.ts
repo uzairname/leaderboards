@@ -6,7 +6,9 @@ import {
 import { DiscordRESTClient } from '../../discord/rest/client'
 import { App } from '../app'
 
-export function getAppRoleConnectionsMetadata(app: App): RESTPutAPIApplicationRoleConnectionMetadataJSONBody {
+export function getAppRoleConnectionsMetadata(
+  app: App,
+): RESTPutAPIApplicationRoleConnectionMetadataJSONBody {
   return app.config.features.ROLE_CONNECTIONS_METADATA
     ? [
         {

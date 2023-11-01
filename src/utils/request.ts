@@ -1,4 +1,3 @@
-
 export interface Env {
   ENVIRONMENT: string
   BASE_URL: string

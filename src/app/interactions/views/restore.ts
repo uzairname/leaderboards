@@ -11,8 +11,8 @@ import { App } from '../../app'
 import { syncLeaderboardChannelsMessages } from '../../modules/channels/leaderboard_channels'
 import { getOrAddGuild } from '../../modules/guilds'
 
-import { checkMemberBotAdmin } from '../../utils/checks'
-import { checkGuildInteraction } from '../../utils/checks'
+import { checkMemberBotAdmin } from '../../modules/user_permissions'
+import { checkGuildInteraction } from '../checks'
 
 export const restore_cmd_def = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -32,8 +32,8 @@ export default (app: App) =>
 
       await checkMemberBotAdmin(interaction.member, guild)
 
-      for (const result of await guild.guildLeaderboards()) {
-        await syncLeaderboardChannelsMessages(app, result.guild_leaderboard)
+      for (const result of await guild.guildRankings()) {
+        await syncLeaderboardChannelsMessages(app, result.guild_ranking)
       }
 
       await ctx.editOriginal({

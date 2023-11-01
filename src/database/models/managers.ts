@@ -1,12 +1,12 @@
 import { DbClient } from '../client'
 
 export class DbObjectManager {
-  constructor(protected client: DbClient) {}
+  constructor(protected db: DbClient) {}
 }
 
 export class DbObject<SelectType> {
   constructor(
     public data: SelectType,
-    protected client: DbClient,
+    protected db: DbClient,
   ) {}
 }

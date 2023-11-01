@@ -1,7 +1,7 @@
 export abstract class ViewError extends Error {
   constructor(message?: string) {
     super(message)
-    this.name = `InteractionError.${this.constructor.name}`
+    this.name = `ViewError.${this.constructor.name}`
   }
 }
 

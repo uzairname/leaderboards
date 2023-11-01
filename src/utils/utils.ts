@@ -21,6 +21,6 @@ export type ModifyType<T, K extends keyof T, U> = Omit<T, K> & {
   [P in K]: U
 }
 
-export function clone_object<T>(obj: T): T {
+export function clone_json<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj))
 }

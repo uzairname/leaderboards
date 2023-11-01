@@ -10,8 +10,8 @@ import {
 
 import { App } from '../../app'
 
-import { Messages } from '../../utils/messages/messages'
-import { Colors, dateTimestamp, inviteUrl } from '../../utils/messages/message_pieces'
+import { Messages } from '../../messages/messages'
+import { Colors, dateTimestamp, inviteUrl } from '../../messages/message_pieces'
 import { CommandView } from '../../../discord/interactions/views'
 
 const help_command = new CommandView({

@@ -3,7 +3,7 @@ import { isCommandView } from '../../discord/interactions/types'
 
 import { App } from '../app'
 
-import { getAllViews } from '../interactions/base_views'
+import { getAllViews } from '../interactions/find_view'
 import { getAppRoleConnectionsMetadata } from './linked_roles'
 
 export async function deployBot(app: App) {

@@ -3,7 +3,7 @@ import { APIChannel, APIRole, ChannelType } from 'discord-api-types/v10'
 import { Guild } from '../../database/models'
 
 import { App } from '../app'
-import { Colors } from '../utils/messages/message_pieces'
+import { Colors } from '../messages/message_pieces'
 import { GuildChannelData, RoleData } from '../../discord/rest/objects'
 
 export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> {

@@ -1,8 +1,12 @@
-import { APIApplicationCommand, ApplicationCommandType, PermissionFlagsBits } from 'discord-api-types/v10'
+import {
+  APIApplicationCommand,
+  ApplicationCommandType,
+  PermissionFlagsBits,
+} from 'discord-api-types/v10'
 
-import { AnyCommandView, DiscordRESTClient } from '../../../discord'
+import { AnyCommandView, DiscordRESTClient } from '../../discord'
 
-import { App } from '../../app'
+import { App } from '../app'
 
 export class Colors {
   static Primary = 0xa1ffda
@@ -21,7 +25,7 @@ export function dateTimestamp(time: Date): string {
 /**
  * Converts a string that may contain special markdown characters to Discord's markdown.
  */
-export function toMarkdown(str?: string): string {
+export function toMarkdown(str: string | undefined | null): string {
   if (!str) return ''
   return str.replace(/_/g, '\\_').replace(/\*/g, '\\*').replace(/~/g, '\\~').replace(/`/g, '\\`')
 }
@@ -54,7 +58,6 @@ export async function _commandMention(
   return `</${name}:${command?.id || '0'}>`
 }
 
-
 export function inviteUrl(bot: DiscordRESTClient): string {
   const REQUIRED_BOT_PERMISSIONS =
     PermissionFlagsBits.ManageChannels |
@@ -70,5 +73,3 @@ export function inviteUrl(bot: DiscordRESTClient): string {
     }).toString()
   )
 }
-
-

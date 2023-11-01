@@ -2,7 +2,6 @@ import { Env } from '../utils/request'
 import { features } from './features'
 import { RequestArgs } from '../utils/request'
 
-
 export const constants = {
   routes: {
     OAUTH_CALLBACK: '/oauth/callback',
@@ -10,9 +9,7 @@ export const constants = {
   },
 }
 
-
 export class Config {
-
   readonly DEV_GUILD_ID = '1041458052055978024'
 
   readonly HOME_GUILD_ID: string

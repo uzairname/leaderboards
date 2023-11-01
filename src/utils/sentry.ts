@@ -1,6 +1,5 @@
 import { Toucan } from 'toucan-js'
 import { cache } from './cache'
-import { Config } from '../config/config'
 import { RequestArgs } from './request'
 
 export class Sentry extends Toucan {
@@ -19,7 +18,7 @@ export class Sentry extends Toucan {
       context: ctx.execution_context,
       request: ctx.request,
     })
-    
+
     this.request_name = 'Request'
     cache.set('request_num', (cache.get('request_num') as number | undefined) || 1)
     this.request = ctx.request

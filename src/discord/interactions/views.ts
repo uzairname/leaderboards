@@ -11,7 +11,7 @@ import {
   ChatInteractionResponse,
   AnyCommandView,
 } from './types'
-import { sendMessageView } from './view_helpers'
+import { getMessageViewMessageData } from './view_helpers'
 
 declare type CommandInteraction<CommandType> =
   CommandType extends D.ApplicationCommandType.ChatInput
@@ -50,7 +50,7 @@ export interface ComponentContext<View extends BaseView<any>> {
 export interface OffloadContext<Schema extends StringDataSchema> {
   interaction: ChatInteraction
   modal_entries?: D.ModalSubmitComponent[]
-  sendMessage: (data: D.APIInteractionResponseCallbackData) => Promise<void>
+  send: (data: D.APIInteractionResponseCallbackData) => Promise<void>
   editOriginal: (data: D.APIInteractionResponseCallbackData) => Promise<void>
   state: StringData<Schema>
 }
@@ -161,7 +161,7 @@ interface MessageViewOptions<Schema extends StringDataSchema, Param> {
 }
 
 export class MessageView<Schema extends StringDataSchema, Param> extends BaseView<Schema> {
-  public _sendCallback: ViewCreateMessageCallback<MessageView<Schema, Param>, Param> = async () => {
+  public _initCallback: ViewCreateMessageCallback<MessageView<Schema, Param>, Param> = async () => {
     throw new Error('This view has no send callback')
   }
 
@@ -176,8 +176,8 @@ export class MessageView<Schema extends StringDataSchema, Param> extends BaseVie
     super(options)
   }
 
-  public async send(params: Param): Promise<MessageData> {
-    return await sendMessageView(this, params)
+  public async init(params: Param): Promise<MessageData> {
+    return await getMessageViewMessageData(this, params)
   }
 
   /**
@@ -185,8 +185,8 @@ export class MessageView<Schema extends StringDataSchema, Param> extends BaseVie
    * @param callback
    * @returns
    */
-  public onSend(callback: ViewCreateMessageCallback<MessageView<Schema, Param>, Param>) {
-    this._sendCallback = callback
+  public onInit(callback: ViewCreateMessageCallback<MessageView<Schema, Param>, Param>) {
+    this._initCallback = callback
     return this
   }
 }

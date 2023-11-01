@@ -10,8 +10,8 @@ import {
   UsersManager,
   GuildsManager,
   GuildLeaderboardsManager,
-  LeaderboardsManager,
-  LeaderboardDivisionsManager,
+  RankingsManager,
+  RankingDivisionsManager,
   MatchesManager,
   PlayersManager,
   QueueTeamsManager,
@@ -34,9 +34,9 @@ export class DbClient {
   settings = new SettingsManager(this)
   users = new UsersManager(this)
   guilds = new GuildsManager(this)
-  leaderboards = new LeaderboardsManager(this)
-  guild_leaderboards = new GuildLeaderboardsManager(this)
-  leaderboard_divisions = new LeaderboardDivisionsManager(this)
+  rankings = new RankingsManager(this)
+  guild_rankings = new GuildLeaderboardsManager(this)
+  ranking_divisions = new RankingDivisionsManager(this)
   players = new PlayersManager(this)
   queue_teams = new QueueTeamsManager(this)
   matches = new MatchesManager(this)
