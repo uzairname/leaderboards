@@ -20,21 +20,15 @@ jobs:
         run: npx tsc --build tsconfig.json
 
       - name: Run migrations
-        run: set POSTGRES_URL=${{ secrets.POSTGRES_URL }} && npx tsx ${{ env.MIGRATIONS_SCRIPT_PATH }}
+        env: 
+          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
+        run: npx tsx $MIGRATIONS_SCRIPT_PATH
 
       - name: Publish to Cloudflare Workers
         uses: cloudflare/wrangler-action@2.0.0
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           environment: production
-        env:
-          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
-          APPLICATION_ID: ${{ secrets.APPLICATION_ID }}
-          PUBLIC_KEY: ${{ secrets.PUBLIC_KEY }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          APP_KEY: ${{ secrets.APP_KEY }}
-          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
 
       - name: Wait 5 seconds
         run: sleep 5

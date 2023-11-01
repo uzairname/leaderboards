@@ -13,8 +13,6 @@ jobs:
       MIGRATIONS_SCRIPT_PATH: 'migrations/migrate.ts'
       INIT_APP_ENDPOINT: 'https://firstplace-staging.5r.workers.dev/init'
     steps:
-      - name: echo
-        run: echo ${{ secrets.POSTGRES_URL }} | sed 's/.*@/postgres:\/\//g'
       - uses: actions/checkout@v2
 
       - run: npm install
@@ -32,14 +30,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           environment: staging
-        env:
-          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
-          APPLICATION_ID: ${{ secrets.APPLICATION_ID }}
-          PUBLIC_KEY: ${{ secrets.PUBLIC_KEY }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          APP_KEY: ${{ secrets.APP_KEY }}
-          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
 
       - name: Wait 5 seconds
         run: sleep 5
