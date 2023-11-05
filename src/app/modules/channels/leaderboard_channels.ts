@@ -9,7 +9,7 @@ import { Guild, GuildRanking, Ranking, RankingDivision } from '../../../database
 import { DiscordRESTClient, GuildChannelData, MessageData } from '../../../discord'
 
 import { App } from '../../app'
-import queue from '../../interactions/message_views/queue'
+import queue from '../../interactions/messages/queue'
 import { Colors } from '../../messages/message_pieces'
 
 import { syncRankedCategory } from '../guilds'

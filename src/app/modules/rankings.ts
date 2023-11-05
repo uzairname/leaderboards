@@ -8,7 +8,7 @@ import { GuildRankings, Rankings } from '../../database/schema'
 import { Guild, GuildRanking, Ranking, RankingDivision } from '../../database/models'
 
 import { App } from '../app'
-import { AppError, Errors } from '../errors/errors'
+import { AppError, Errors } from '../messages/errors'
 
 import { LeaderboardUpdate } from '../../database/models/types'
 import { syncLeaderboardChannelsMessages } from './channels/leaderboard_channels'
@@ -33,7 +33,7 @@ export async function createNewRankingInGuild(
 }> {
   // make sure a leaderboard from this guild with the same name doesn't already exist
   let same_name_leaderboard = (
-    await app.db.db
+    await app.db.conn
       .select()
       .from(GuildRankings)
       .innerJoin(Rankings, eq(GuildRankings.ranking_id, Rankings.id))

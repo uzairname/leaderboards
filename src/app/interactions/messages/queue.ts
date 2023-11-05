@@ -17,7 +17,7 @@ import {
 import { ChatInteractionResponse } from '../../../discord/interactions/types'
 
 import { App } from '../../app'
-import { Errors } from '../../errors/errors'
+import { Errors } from '../../messages/errors'
 
 import { onJoinQueue, onLeaveQueue } from '../../modules/queue'
 

@@ -12,7 +12,7 @@ import { ChoiceField } from '../../../discord/interactions/utils/string_data'
 import { checkGuildInteraction } from '../utils/checks'
 import { checkMemberBotAdmin } from '../../modules/user_permissions'
 import { getOrAddGuild, syncGuildAdminRole } from '../../modules/guilds'
-import { Errors } from '../../errors/errors'
+import { Errors } from '../../messages/errors'
 import { App } from '../../app'
 
 const settings_command = new CommandView({

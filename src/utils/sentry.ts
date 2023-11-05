@@ -23,7 +23,7 @@ export class Sentry extends Toucan {
     this.request = ctx.request
   }
 
-  async handler(handler: (request: Request) => Promise<Response>): Promise<Response> {
+  async wrapHandler(handler: (request: Request) => Promise<Response>): Promise<Response> {
     this.setTag('cold-start', `${cache.get('request_num') == 1}`)
     this.request_name = `${this.request.method} ${new URL(this.request.url).pathname}`
     this.addBreadcrumb({

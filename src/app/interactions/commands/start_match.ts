@@ -17,7 +17,7 @@ import {
 import { CommandView } from '../../../discord/interactions/views'
 
 import { App } from '../../app'
-import { Errors } from '../../errors/errors'
+import { Errors } from '../../messages/errors'
 9
 const start_match_command = new CommandView({
   type: ApplicationCommandType.ChatInput,

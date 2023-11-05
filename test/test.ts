@@ -18,7 +18,6 @@ import { onJoinQueue } from '../src/app/modules/queue'
 import { getOrAddGuild } from '../src/app/modules/guilds'
 import test_env from './test_env'
 
-
 export async function runTests(): Promise<Response> {
   const ctx = {
     request: new Request('https://example.com'),
@@ -53,8 +52,6 @@ async function testLeaderboards(app: App) {
 
   let user1_player = await app.db.players.get('100', division.data.id)
   assert(user1_player?.data.user_id === '100', 'user 1 should have a player')
-
-
 }
 
 async function getRankingByName(app: App, guild_id: string, name: string) {
@@ -66,15 +63,15 @@ async function getRankingByName(app: App, guild_id: string, name: string) {
 }
 
 async function resetDatabase(client: DbClient) {
-  await client.db.delete(Settings)
-  await client.db.delete(QueueTeams)
-  await client.db.delete(Players)
-  await client.db.delete(Matches)
-  await client.db.delete(RankingDivisions)
-  await client.db.delete(Rankings)
-  await client.db.delete(Guilds)
-  await client.db.delete(AccessTokens)
-  await client.db.delete(Users)
+  await client.conn.delete(Settings)
+  await client.conn.delete(QueueTeams)
+  await client.conn.delete(Players)
+  await client.conn.delete(Matches)
+  await client.conn.delete(RankingDivisions)
+  await client.conn.delete(Rankings)
+  await client.conn.delete(Guilds)
+  await client.conn.delete(AccessTokens)
+  await client.conn.delete(Users)
 }
 
 async function addData(client: DbClient) {

@@ -38,7 +38,7 @@ import {
 import { assertNonNullable } from '../../../utils/utils'
 
 import { App } from '../../app'
-import { AppErrors, Errors } from '../../errors/errors'
+import { AppErrors, Errors } from '../../messages/errors'
 
 import {
   Colors,

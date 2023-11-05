@@ -10,13 +10,13 @@ import { GuildSelect, GuildUpdate, GuildInsert } from '../types'
 export class Guild extends DbObject<GuildSelect> {
   async update(data: GuildUpdate) {
     let db_data = (
-      await this.db.db.update(Guilds).set(data).where(eq(Guilds.id, this.data.id)).returning()
+      await this.db.conn.update(Guilds).set(data).where(eq(Guilds.id, this.data.id)).returning()
     )[0]
     this.data = db_data
   }
 
   async guildRankings() {
-    const query_results = await this.db.db
+    const query_results = await this.db.conn
       .select()
       .from(GuildRankings)
       .innerJoin(Rankings, eq(GuildRankings.ranking_id, Rankings.id))
@@ -34,7 +34,7 @@ export class Guild extends DbObject<GuildSelect> {
 export class GuildsManager extends DbObjectManager {
   async create(data: GuildInsert): Promise<Guild> {
     let new_db_data = (
-      await this.db.db
+      await this.db.conn
         .insert(Guilds)
         .values({ ...data })
         .returning()
@@ -43,7 +43,7 @@ export class GuildsManager extends DbObjectManager {
   }
 
   async get(guild_id: string): Promise<Guild | undefined> {
-    let db_data = (await this.db.db.select().from(Guilds).where(eq(Guilds.id, guild_id)))[0]
+    let db_data = (await this.db.conn.select().from(Guilds).where(eq(Guilds.id, guild_id)))[0]
     if (!db_data) return
     return new Guild(db_data, this.db)
   }

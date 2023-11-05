@@ -9,7 +9,7 @@ export class QueueTeam extends DbObject<QueueTeamSelect> {}
 export class QueueTeamsManager extends DbObjectManager {
   async create(data: QueueTeamInsert): Promise<QueueTeam> {
     let new_data = (
-      await this.db.db
+      await this.db.conn
         .insert(QueueTeams)
         .values({ ...data })
         .returning()

@@ -1,4 +1,4 @@
-import { APIInteraction, InteractionResponseType, InteractionType } from 'discord-api-types/v10'
+import { APIInteraction, APIInteractionResponse, InteractionResponseType, InteractionType } from 'discord-api-types/v10'
 
 import { sentry } from '../../utils/globals'
 
@@ -27,6 +27,7 @@ export async function respondToDiscordInteraction(
   if (interaction.type === InteractionType.Ping) {
     return json({ type: InteractionResponseType.Pong })
   } else {
+
     const response = await respondToUserInteraction(
       interaction,
       bot,

@@ -16,17 +16,17 @@ import { sentry } from '../../../utils/globals'
 export class Ranking extends DbObject<LeaderboardSelect> {
   async update(data: LeaderboardUpdate) {
     let newdata = (
-      await this.db.db.update(Rankings).set(data).where(eq(Rankings.id, this.data.id)).returning()
+      await this.db.conn.update(Rankings).set(data).where(eq(Rankings.id, this.data.id)).returning()
     )[0]
     this.data = newdata
   }
 
   async delete() {
-    await this.db.db.delete(Rankings).where(eq(Rankings.id, this.data.id))
+    await this.db.conn.delete(Rankings).where(eq(Rankings.id, this.data.id))
   }
 
   async guildLeaderboards(): Promise<GuildRanking[]> {
-    const query_results = await this.db.db
+    const query_results = await this.db.conn
       .select()
       .from(GuildRankings)
       .where(eq(GuildRankings.ranking_id, this.data.id))
@@ -41,7 +41,7 @@ export class Ranking extends DbObject<LeaderboardSelect> {
     set_current?: boolean,
   ): Promise<RankingDivision> {
     let new_division_data = (
-      await this.db.db
+      await this.db.conn
         .insert(RankingDivisions)
         .values({ ranking_id: this.data.id, ...data })
         .returning()
@@ -56,7 +56,7 @@ export class Ranking extends DbObject<LeaderboardSelect> {
   }
 
   async divisions(): Promise<RankingDivision[]> {
-    const query_results = await this.db.db
+    const query_results = await this.db.conn
       .select()
       .from(RankingDivisions)
       .where(eq(RankingDivisions.ranking_id, this.data.id))
@@ -70,7 +70,7 @@ export class Ranking extends DbObject<LeaderboardSelect> {
 export class RankingsManager extends DbObjectManager {
   async create(data: LeaderboardInsert): Promise<Ranking> {
     let new_leaderboard_data = (
-      await this.db.db
+      await this.db.conn
         .insert(Rankings)
         .values({ ...data })
         .returning()
@@ -79,7 +79,7 @@ export class RankingsManager extends DbObjectManager {
   }
 
   async get(id: number): Promise<Ranking | undefined> {
-    let data = (await this.db.db.select().from(Rankings).where(eq(Rankings.id, id)))[0]
+    let data = (await this.db.conn.select().from(Rankings).where(eq(Rankings.id, id)))[0]
     if (!data) return
     return new Ranking(data, this.db)
   }

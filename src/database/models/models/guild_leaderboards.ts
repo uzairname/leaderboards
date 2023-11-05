@@ -10,7 +10,7 @@ import { DatabaseErrors } from '../../utils/errors'
 export class GuildRanking extends DbObject<GuildLeaderboardSelect> {
   async update(data: GuildLeaderboardUpdate) {
     this.data = (
-      await this.db.db
+      await this.db.conn
         .update(GuildRankings)
         .set(data)
         .where(
@@ -45,7 +45,7 @@ export class GuildLeaderboardsManager extends DbObjectManager {
     data: Omit<GuildLeaderboardInsert, 'guild_id' | 'ranking_id'>,
   ): Promise<GuildRanking> {
     let new_data = (
-      await this.db.db
+      await this.db.conn
         .insert(GuildRankings)
         .values({
           guild_id: guild.data.id,
@@ -60,7 +60,7 @@ export class GuildLeaderboardsManager extends DbObjectManager {
 
   async get(guild_id: string, leaderboard_id: number): Promise<GuildRanking | undefined> {
     let data = (
-      await this.db.db
+      await this.db.conn
         .select()
         .from(GuildRankings)
         .where(

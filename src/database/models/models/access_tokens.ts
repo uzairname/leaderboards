@@ -8,7 +8,7 @@ import { AccessTokens } from '../../schema'
 export class AccessToken extends DbObject<AccessTokenSelect> {
   async update(user: User, data: AccessTokenUpdate): Promise<AccessToken> {
     let new_data = (
-      await this.db.db
+      await this.db.conn
         .update(AccessTokens)
         .set(data)
         .where(eq(AccessTokens.user_id, user.data.id))

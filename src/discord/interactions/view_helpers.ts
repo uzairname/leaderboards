@@ -114,7 +114,7 @@ export async function respondToUserInteraction(
       await bot.createInteractionResponse(interaction.id, interaction.token, response)
     }
   } catch (e) {
-    await bot.createInteractionResponse(interaction.id, interaction.token, onError(e))
+    return onError(e)
   }
 }
 
@@ -148,6 +148,43 @@ export async function respondToViewAutocompleteInteraction(
   return result
 }
 
+
+
+export async function f(
+  view: AnyCommandView,
+  interaction: APIApplicationCommandInteraction,
+  bot: DiscordRESTClient,
+  onError: (e: unknown) => APIInteractionResponseChannelMessageWithSource,
+): Promise<CommandInteractionResponse> {
+  return {
+    type: InteractionResponseType.ChannelMessageWithSource,
+    data: {
+      content: 'Loading.',
+    }
+  }
+  const state = decodeViewCustomIdState(view)
+  
+  var result = await view._commandCallback({
+    interaction: interaction as any,
+    offload: (callback) => {
+      sentry.waitUntil(
+        executeViewOffloadCallback({
+          view,
+          callback,
+          bot: bot,
+          interaction,
+          state,
+          onError,
+        }),
+      )
+    },
+    state,
+  })
+
+  replaceResponseCustomIds(result, encodeCustomId(view))
+  return result
+}
+
 export async function respondToViewCommandInteraction(
   view: AnyCommandView,
   interaction: APIApplicationCommandInteraction,
@@ -155,7 +192,7 @@ export async function respondToViewCommandInteraction(
   onError: (e: unknown) => APIInteractionResponseChannelMessageWithSource,
 ): Promise<CommandInteractionResponse> {
   const state = decodeViewCustomIdState(view)
-
+  
   var result = await view._commandCallback({
     interaction: interaction as any,
     offload: (callback) => {

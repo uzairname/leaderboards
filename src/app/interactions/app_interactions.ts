@@ -3,18 +3,21 @@ import {
   isCommandView,
   FindViewCallback,
   overwriteDiscordCommandsWithViews,
-} from '../../../discord'
+  respondToDiscordInteraction,
+} from '../../discord'
 
-import { App } from '../../app'
+import { App } from '../app'
 
-import help from '../commands/help'
-import rankings_command from '../commands/rankings'
-import points from '../commands/points'
-import queue from '../message_views/queue'
-import restore from '../commands/restore'
-import settings from '../commands/settings'
-import start_match from '../commands/start_match'
-import test from '../commands/test'
+import help from './commands/help'
+import rankings_command from './commands/rankings'
+import points from './commands/points'
+import queue from './messages/queue'
+import restore from './commands/restore'
+import settings from './commands/settings'
+import start_match from './commands/start_match'
+import test from './commands/test'
+import ping from './commands/ping'
+import { onViewError } from './utils/on_view_error'
 
 export function getAllViews(app: App): AnyView[] {
   const default_views: AnyView[] = [
@@ -25,7 +28,7 @@ export function getAllViews(app: App): AnyView[] {
     restore(app),
   ]
 
-  const experimental_views: AnyView[] = [queue(app), start_match(app), test(app)]
+  const experimental_views: AnyView[] = [queue(app), start_match(app), test(app), ping]
 
   let enabled_views = default_views
 

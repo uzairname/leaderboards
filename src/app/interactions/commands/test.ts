@@ -16,7 +16,7 @@ import {
 } from '../../../discord/interactions/utils/string_data'
 import { CommandContext, CommandView, ComponentContext } from '../../../discord/interactions/views'
 import { App } from '../../app'
-import { AppErrors, Errors } from '../../errors/errors'
+import { AppErrors, Errors } from '../../messages/errors'
 
 const test_command = new CommandView({
   type: ApplicationCommandType.ChatInput,

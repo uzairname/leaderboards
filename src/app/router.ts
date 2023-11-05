@@ -1,24 +1,22 @@
 import { Router } from 'itty-router'
 import { OAuth2Scopes } from 'discord-api-types/v10'
 
-import { respondToDiscordInteraction } from '../discord'
-
-import { App } from './app'
-import { deployBot } from './modules/deploy_bot'
-import { oauthRedirect, oauthCallback } from './modules/oauth'
 import { runTests } from '../../test/test'
-import { findView } from './interactions/handler/view_manager'
-import { onViewError } from './interactions/handler/on_view_error'
-import { constants } from '../config/config'
-import { RequestArgs } from '../utils/request'
-import { Sentry } from '../utils/sentry'
-import { handleDiscordinteraction } from './interactions/handler/handle_interaction'
+import { Env } from '../utils/request'
+import { App } from './app'
+import { respondToDiscordInteraction } from '../discord'
+import { oauthRedirect, oauthCallback } from './modules/oauth'
+import { findView, syncDiscordCommands } from './interactions/app_interactions'
+import { onViewError } from './interactions/utils/on_view_error'
+import { constants } from './config/config'
+import { syncAppRoleConnectionsMetadata } from './modules/linked_roles'
 
-export const authorize = (req: RequestArgs) => (request: Request) => {
-  if (request.headers.get('Authorization') !== req.env.APP_KEY) {
-    return new Response('Unauthorized', { status: 401 })
+export const authorize = (env: Env) =>
+  function (req: Request) {
+    if (req.headers.get('Authorization') !== env.APP_KEY) {
+      return new Response('Unauthorized', { status: 401 })
+    }
   }
-}
 
 export const apiRouter = (app: App) =>
   Router({ base: '/api' })
@@ -29,39 +27,36 @@ export const apiRouter = (app: App) =>
       return new Response('Not found', { status: 404 })
     })
 
-export const router = (req: RequestArgs, sentry: Sentry) =>
+export const router = (app: App) =>
   Router()
     .get('/', () => {
       return new Response(`👀`)
     })
 
     .post('/interactions', (request) => {
-      const app = new App(req, sentry)
-      return handleDiscordinteraction(app, request)
+      return respondToDiscordInteraction(app.bot, request, findView(app), onViewError(app))
     })
 
     .get(constants.routes.OAUTH_LINKED_ROLES, () => {
-      const app = new App(req, sentry)
       return oauthRedirect(app, [OAuth2Scopes.Identify, OAuth2Scopes.RoleConnectionsWrite])
     })
 
     .get(constants.routes.OAUTH_CALLBACK, (request) => {
-      const app = new App(req, sentry)
       return oauthCallback(app, request)
     })
 
-    .post('/init', authorize(req), async () => {
-      const app = new App(req, sentry)
-      await deployBot(app)
+    .post('/init', authorize(app.config.env), async () => {
+      await syncDiscordCommands(app)
+      await syncAppRoleConnectionsMetadata(app)
+      await app.db.settings.getOrUpdate({ last_deployed: new Date() })
       return new Response(`Deployed Leaderboards bot (${app.config.env.ENVIRONMENT})`)
     })
 
     .all('/api', async (request) => {
-      const app = new App(req, sentry)
       return apiRouter(app).handle(request)
     })
 
-    .post('/test', authorize(req), async () => {
+    .post('/test', authorize(app.config.env), async () => {
       return await runTests()
     })
 

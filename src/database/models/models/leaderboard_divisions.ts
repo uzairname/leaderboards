@@ -13,7 +13,7 @@ export class RankingDivision extends DbObject<LeaderboardDivisionSelect> {
    * @returns The top players in this division, ordered by highest rating to lowest
    */
   async getOrderedTopPlayers(): Promise<Player[]> {
-    let players = await this.db.db
+    let players = await this.db.conn
       .select()
       .from(Players)
       .where(eq(Players.ranking_division_id, this.data.id))
@@ -28,7 +28,7 @@ export class RankingDivision extends DbObject<LeaderboardDivisionSelect> {
    * @returns The latest n or all matches in this division, ordered by oldest to most recent
    */
   async latestMatches(n?: number): Promise<Match[]> {
-    let query = this.db.db
+    let query = this.db.conn
       .select()
       .from(Matches)
       .where(eq(Matches.ranking_division_id, this.data.id))
@@ -44,7 +44,7 @@ export class RankingDivision extends DbObject<LeaderboardDivisionSelect> {
 export class RankingDivisionsManager extends DbObjectManager {
   async getOrFail(id?: number | null): Promise<RankingDivision> {
     let data = id
-      ? (await this.db.db.select().from(RankingDivisions).where(eq(RankingDivisions.id, id)))[0]
+      ? (await this.db.conn.select().from(RankingDivisions).where(eq(RankingDivisions.id, id)))[0]
       : undefined
     if (!data) throw new DatabaseErrors.NotFoundError(`Leaderboard division ${id} not found`)
     return new RankingDivision(data, this.db)

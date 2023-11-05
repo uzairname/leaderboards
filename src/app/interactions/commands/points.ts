@@ -16,7 +16,7 @@ import { getOrAddGuild } from '../../modules/guilds'
 import { getRankingById, getRankingCurrentDivision } from '../../modules/rankings'
 import { syncLbDisplayMessage } from '../../modules/channels/leaderboard_channels'
 import { CommandView } from '../../../discord/interactions/views'
-import { AppError } from '../../errors/errors'
+import { AppError } from '../../messages/errors'
 import { getRegisterPlayer } from '../../modules/players'
 import { App } from '../../app'
 import { Rankings, Users } from '../../../database/schema'
@@ -100,18 +100,21 @@ export default (app: App) =>
         },
       )
 
-      const points = parseInt(options["points"])
+      const points = parseInt(options['points'])
       if (isNaN(points)) {
         throw new AppError('Points must be a number')
       }
-      
+
       // Get the selected leaderboard division
-      await app.db.db.select().from(Users).where(eq(Users.id, null as any))
-      let leaderboard = await getRankingById(app.db, parseInt(options["rankin"]))
+      await app.db.conn
+        .select()
+        .from(Users)
+        .where(eq(Users.id, null as any))
+      let leaderboard = await getRankingById(app.db, parseInt(options['ranking']))
       let division = await getRankingCurrentDivision(app.db, leaderboard)
 
       // Get the selected player in the division
-      const user = interaction.data.resolved?.users?.[options["user"]]
+      const user = interaction.data.resolved?.users?.[options['user']]
       assertNonNullable(user)
       let player = await getRegisterPlayer(app.db, user, division)
 
