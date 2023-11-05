@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 
-import { GuildRanking } from './guild_leaderboards'
-import { Ranking } from './leaderboards'
+import { GuildRanking } from './guild_rankings'
+import { Ranking } from './rankings'
 import { Guilds, GuildRankings, Rankings } from '../../schema'
 import { DbObject } from '../managers'
 import { DbObjectManager } from '../managers'

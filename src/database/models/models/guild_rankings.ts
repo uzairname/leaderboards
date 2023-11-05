@@ -3,7 +3,7 @@ import { GuildLeaderboardSelect, GuildLeaderboardUpdate, GuildLeaderboardInsert 
 import { DbObject } from '../managers'
 import { DbObjectManager } from '../managers'
 import { Guild } from './guilds'
-import { Ranking } from './leaderboards'
+import { Ranking } from './rankings'
 import { GuildRankings } from '../../schema'
 import { DatabaseErrors } from '../../utils/errors'
 

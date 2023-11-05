@@ -13,7 +13,6 @@ import {
   RankingDivisionsManager,
   MatchesManager,
   PlayersManager,
-  QueueTeamsManager,
 } from './models'
 
 import { cache } from '../utils/cache'
@@ -35,6 +34,5 @@ export class DbClient {
   guild_rankings = new GuildLeaderboardsManager(this)
   ranking_divisions = new RankingDivisionsManager(this)
   players = new PlayersManager(this)
-  queue_teams = new QueueTeamsManager(this)
   matches = new MatchesManager(this)
 }

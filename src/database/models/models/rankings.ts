@@ -6,8 +6,8 @@ import {
   LeaderboardDivisionInsert,
   LeaderboardInsert,
 } from '../types'
-import { GuildRanking } from './guild_leaderboards'
-import { RankingDivision } from './leaderboard_divisions'
+import { GuildRanking } from './guild_rankings'
+import { RankingDivision } from './ranking_divisions'
 import { Rankings, RankingDivisions, GuildRankings } from '../../schema'
 import { DbObject } from '../managers'
 import { DbObjectManager } from '../managers'

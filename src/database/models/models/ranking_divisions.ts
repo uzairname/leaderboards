@@ -1,11 +1,16 @@
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, sql } from 'drizzle-orm'
 import { Match } from './matches'
 import { Player } from './players'
 import { LeaderboardDivisionSelect } from '../types'
-import { Players, Matches, RankingDivisions } from '../../schema'
+import {
+  Players,
+  Matches,
+  RankingDivisions,
+} from '../../schema'
 import { DbObject } from '../managers'
 import { DbObjectManager } from '../managers'
 import { DatabaseErrors } from '../../utils/errors'
+import { User } from './users'
 
 export class RankingDivision extends DbObject<LeaderboardDivisionSelect> {
   /**
@@ -39,6 +44,29 @@ export class RankingDivision extends DbObject<LeaderboardDivisionSelect> {
       return new Match(item, this.db)
     })
   }
+
+  /**
+   * Returns a list of list of users, where each list of users is a team in the queue.
+   * @param contains_users
+   * @returns
+   */
+  // async queueTeams(contains_user?: User): Promise<Array<Array<User>>> {
+  //   let query = this.db.conn
+  //     .select()
+  //     .from(QueueTeams)
+  //     .where(eq(QueueTeams.ranking_division_id, this.data.id))
+
+  //   if (contains_user) {
+  //     var result = this.db.conn.execute(sql`
+  //       SELECT qt.id
+  //       FROM queue_teams qt
+  //       JOIN queue_team_players qtp ON qtp.queue_team_id = qt.id
+  //       WHERE qt.ranking_division_id = ${this.data.id}
+  //       AND qtp.user_id = ${contains_user.data.id}`)
+  //   }
+
+  //   let teams = await query
+  // }
 }
 
 export class RankingDivisionsManager extends DbObjectManager {

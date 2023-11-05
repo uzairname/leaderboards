@@ -3,7 +3,7 @@ import { Players } from '../../schema'
 import { PlayerSelect, PlayerUpdate, PlayerInsert } from '../types'
 import { DbObject } from '../managers'
 import { DbObjectManager } from '../managers'
-import { RankingDivision } from './leaderboard_divisions'
+import { RankingDivision } from './ranking_divisions'
 import { User } from './users'
 
 export class Player extends DbObject<PlayerSelect> {

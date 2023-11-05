@@ -1,5 +1,5 @@
-import { ApplicationCommandType, InteractionResponseType } from "discord-api-types/v10";
-import { CommandView } from "../../../discord";
+import { ApplicationCommandType, InteractionResponseType } from 'discord-api-types/v10'
+import { CommandView } from '../../../discord'
 
 const ping_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -17,6 +17,6 @@ export default ping_command.onCommand(async (ctx) => {
     type: InteractionResponseType.ChannelMessageWithSource,
     data: {
       content: 'pong',
-    }
+    },
   }
 })

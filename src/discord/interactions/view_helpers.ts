@@ -148,8 +148,6 @@ export async function respondToViewAutocompleteInteraction(
   return result
 }
 
-
-
 export async function f(
   view: AnyCommandView,
   interaction: APIApplicationCommandInteraction,
@@ -160,10 +158,10 @@ export async function f(
     type: InteractionResponseType.ChannelMessageWithSource,
     data: {
       content: 'Loading.',
-    }
+    },
   }
   const state = decodeViewCustomIdState(view)
-  
+
   var result = await view._commandCallback({
     interaction: interaction as any,
     offload: (callback) => {
@@ -192,7 +190,7 @@ export async function respondToViewCommandInteraction(
   onError: (e: unknown) => APIInteractionResponseChannelMessageWithSource,
 ): Promise<CommandInteractionResponse> {
   const state = decodeViewCustomIdState(view)
-  
+
   var result = await view._commandCallback({
     interaction: interaction as any,
     offload: (callback) => {
