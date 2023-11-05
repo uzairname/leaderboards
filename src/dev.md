@@ -90,10 +90,10 @@ curl.exe -X POST https://<subdomain>.workers.dev/init -H "Authorization:<APP_KEY
 
 <!--
 
-current total gzip size: 203.02 KiB
+Total Upload: 1094.97 KiB / gzip: 211.31 KiB
 
 npx drizzle-kit generate:pg
-npx tsx .\src\database\migrate.ts
+npx tsx .\migrations\migrate.ts
 
 test: test.bat
 

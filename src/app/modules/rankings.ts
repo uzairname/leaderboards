@@ -8,28 +8,28 @@ import { GuildRankings, Rankings } from '../../database/schema'
 import { Guild, GuildRanking, Ranking, RankingDivision } from '../../database/models'
 
 import { App } from '../app'
-import { AppError, Errors } from '../errors'
+import { AppError, Errors } from '../errors/errors'
 
 import { LeaderboardUpdate } from '../../database/models/types'
 import { syncLeaderboardChannelsMessages } from './channels/leaderboard_channels'
-import { removeLeaderboardChannelsMessages } from './channels/leaderboard_channels'
+import { removeRankingChannelsMessages } from './channels/leaderboard_channels'
 
 /**
  *
  * @param app
- * @param guild The guild creating the leaderboard
- * @param lb_options The new leaderboard's options
+ * @param guild The guild creating the ranking
+ * @param ranking_options The new ranking's options
  * @returns
  */
-export async function createNewLeaderboardInGuild(
+export async function createNewRankingInGuild(
   app: App,
   guild: Guild,
-  lb_options: {
+  ranking_options: {
     name: string
   },
 ): Promise<{
-  new_guild_leaderboard: GuildRanking
-  new_leaderboard: Ranking
+  new_guild_ranking: GuildRanking
+  new_ranking: Ranking
 }> {
   // make sure a leaderboard from this guild with the same name doesn't already exist
   let same_name_leaderboard = (
@@ -37,14 +37,16 @@ export async function createNewLeaderboardInGuild(
       .select()
       .from(GuildRankings)
       .innerJoin(Rankings, eq(GuildRankings.ranking_id, Rankings.id))
-      .where(and(eq(GuildRankings.guild_id, guild.data.id), eq(Rankings.name, lb_options.name)))
+      .where(
+        and(eq(GuildRankings.guild_id, guild.data.id), eq(Rankings.name, ranking_options.name)),
+      )
   )[0]
   if (same_name_leaderboard) {
-    throw new AppError(`You already have a leaderboard named \`${lb_options.name}\``)
+    throw new AppError(`You already have a leaderboard named \`${ranking_options.name}\``)
   }
 
   const new_ranking = await app.db.rankings.create({
-    name: lb_options.name,
+    name: ranking_options.name,
     time_created: new Date(),
   })
 
@@ -62,8 +64,8 @@ export async function createNewLeaderboardInGuild(
   await syncLeaderboardChannelsMessages(app, new_guild_leaderboard)
 
   return {
-    new_guild_leaderboard,
-    new_leaderboard: new_ranking,
+    new_guild_ranking: new_guild_leaderboard,
+    new_ranking: new_ranking,
   }
 }
 
@@ -82,27 +84,24 @@ export async function updateLeaderboard(
   )
 }
 
-export async function deleteLeaderboard(
-  bot: DiscordRESTClient,
-  leaderboard: Ranking,
-): Promise<void> {
-  await removeLeaderboardChannelsMessages(bot, leaderboard)
-  await leaderboard.delete()
+export async function deleteRanking(bot: DiscordRESTClient, ranking: Ranking): Promise<void> {
+  await removeRankingChannelsMessages(bot, ranking)
+  await ranking.delete()
 }
 
-export async function getLeaderboardCurrentDivision(
+export async function getRankingCurrentDivision(
   client: DbClient,
-  leaderboard: Ranking,
+  ranking: Ranking,
 ): Promise<RankingDivision> {
-  if (!leaderboard.data.current_division_id) throw new Error('Leaderboard has no current division')
-  let division = client.ranking_divisions.getOrFail(leaderboard.data.current_division_id)
+  if (!ranking.data.current_division_id) throw new Error('Leaderboard has no current division')
+  let division = client.ranking_divisions.getOrFail(ranking.data.current_division_id)
   return division
 }
 
-export async function getLeaderboardById(db: DbClient, id: number): Promise<Ranking> {
-  const leaderboard = await db.rankings.get(id)
-  if (!leaderboard) throw new Errors.UnknownLeaderboard()
-  return leaderboard
+export async function getRankingById(db: DbClient, id: number): Promise<Ranking> {
+  const ranking = await db.rankings.get(id)
+  if (!ranking) throw new Errors.UnknownRanking()
+  return ranking
 }
 
 export async function forumOrText(app: App, guild: Guild): Promise<'text' | 'forum'> {

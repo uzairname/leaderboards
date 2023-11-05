@@ -1,9 +1,8 @@
-import { QueueTeams, Users } from '../../schema'
-import { eq, sql } from 'drizzle-orm'
-import { QueueTeamSelect, UserInsert, UserSelect } from '../types'
+import { Users } from '../../schema'
+import { eq } from 'drizzle-orm'
+import { UserInsert, UserSelect } from '../types'
 import { DbObject } from '../managers'
 import { DbObjectManager } from '../managers'
-import { QueueTeam } from './queue_team'
 
 export class User extends DbObject<UserSelect> {}
 

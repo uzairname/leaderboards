@@ -10,15 +10,17 @@ import {
 
 import { assertNonNullable } from '../../../utils/utils'
 
-import { checkGuildInteraction } from '../checks'
+import { checkGuildInteraction } from '../utils/checks'
 import { checkMemberBotAdmin } from '../../modules/user_permissions'
 import { getOrAddGuild } from '../../modules/guilds'
-import { getLeaderboardById, getLeaderboardCurrentDivision } from '../../modules/leaderboards'
+import { getRankingById, getRankingCurrentDivision } from '../../modules/rankings'
 import { syncLbDisplayMessage } from '../../modules/channels/leaderboard_channels'
 import { CommandView } from '../../../discord/interactions/views'
-import { AppError } from '../../errors'
+import { AppError } from '../../errors/errors'
 import { getRegisterPlayer } from '../../modules/players'
 import { App } from '../../app'
+import { Rankings, Users } from '../../../database/schema'
+import { eq } from 'drizzle-orm'
 
 const points_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -91,23 +93,25 @@ export default (app: App) =>
       const options: {
         [key: string]: string
       } = {}
+
       ;(interaction.data.options as APIApplicationCommandInteractionDataStringOption[])?.forEach(
         (o) => {
           options[o.name] = o.value
         },
       )
 
-      const points = parseInt(options.points)
+      const points = parseInt(options["points"])
       if (isNaN(points)) {
         throw new AppError('Points must be a number')
       }
-
+      
       // Get the selected leaderboard division
-      let leaderboard = await getLeaderboardById(app.db, parseInt(options.leaderboard))
-      let division = await getLeaderboardCurrentDivision(app.db, leaderboard)
+      await app.db.db.select().from(Users).where(eq(Users.id, null as any))
+      let leaderboard = await getRankingById(app.db, parseInt(options["rankin"]))
+      let division = await getRankingCurrentDivision(app.db, leaderboard)
 
       // Get the selected player in the division
-      const user = interaction.data.resolved?.users?.[options.user]
+      const user = interaction.data.resolved?.users?.[options["user"]]
       assertNonNullable(user)
       let player = await getRegisterPlayer(app.db, user, division)
 

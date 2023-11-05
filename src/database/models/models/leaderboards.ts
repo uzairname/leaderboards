@@ -11,6 +11,7 @@ import { RankingDivision } from './leaderboard_divisions'
 import { Rankings, RankingDivisions, GuildRankings } from '../../schema'
 import { DbObject } from '../managers'
 import { DbObjectManager } from '../managers'
+import { sentry } from '../../../utils/globals'
 
 export class Ranking extends DbObject<LeaderboardSelect> {
   async update(data: LeaderboardUpdate) {
@@ -77,8 +78,8 @@ export class RankingsManager extends DbObjectManager {
     return new Ranking(new_leaderboard_data, this.db)
   }
 
-  async get(leaderboard_id: number): Promise<Ranking | undefined> {
-    let data = (await this.db.db.select().from(Rankings).where(eq(Rankings.id, leaderboard_id)))[0]
+  async get(id: number): Promise<Ranking | undefined> {
+    let data = (await this.db.db.select().from(Rankings).where(eq(Rankings.id, id)))[0]
     if (!data) return
     return new Ranking(data, this.db)
   }

@@ -10,7 +10,6 @@ export class Sentry extends Toucan {
   private request: Request
 
   constructor(private ctx: RequestArgs) {
-    console.log(ctx.env)
     super({
       dsn: ctx.env.SENTRY_DSN,
       release: '1.0.0',
@@ -22,7 +21,6 @@ export class Sentry extends Toucan {
     this.request_name = 'Request'
     cache.set('request_num', (cache.get('request_num') as number | undefined) || 1)
     this.request = ctx.request
-    console.log('d')
   }
 
   async handler(handler: (request: Request) => Promise<Response>): Promise<Response> {
@@ -38,10 +36,13 @@ export class Sentry extends Toucan {
 
     return handler(this.request)
       .then((res) => {
+        this.debug("handler's response")
         this.logResult(res, false)
+        this.debug('request finished')
         return res
       })
       .catch((e) => {
+        this.debug("handler's error")
         this.logException(e)
         return new Response('Internal Server Error', { status: 500 })
       })
@@ -86,14 +87,17 @@ export class Sentry extends Toucan {
         exception: e,
       },
     })
+    this.debug('caught exception')
     this.caught_exception = e
   }
 
   logResult(res?: Response, followup: boolean = false) {
     if (this.caught_exception) {
+      this.debug('caught exception')
       this.captureException(this.caught_exception)
       this.caught_exception = undefined // for waitUntil
     } else {
+      this.debug('no caught exception')
       this.captureEvent({
         message: `${this.request_name}` + (followup ? ' followup' : ''),
         level: 'info',

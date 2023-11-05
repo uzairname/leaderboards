@@ -16,7 +16,7 @@ import {
 } from '../../../discord/interactions/utils/string_data'
 import { CommandContext, CommandView, ComponentContext } from '../../../discord/interactions/views'
 import { App } from '../../app'
-import { AppErrors, Errors } from '../../errors'
+import { AppErrors, Errors } from '../../errors/errors'
 
 const test_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -53,7 +53,8 @@ export default (app: App) =>
       const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
       ctx.state.save.original_user(user_id)
       ctx.state.save.counter(0)
-      app
+
+      throw new AppErrors.NotComponentOwner(ctx.state.data.original_user)
 
       const ephemeral =
         (

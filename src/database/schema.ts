@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, bigint, } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb } from 'drizzle-orm/pg-core'
 
 
 export const Settings = pgTable('Settings', {
@@ -100,11 +100,35 @@ export const Matches = pgTable('Matches', {
 })
 
 
-export const QueueTeams = pgTable('QueueTeams', {
+export const Teams = pgTable('Teams', {
   id: serial('id').primaryKey(),
-  queued_ranking_division_id: integer('ranking_division_id').references(() => RankingDivisions.id, {onDelete: 'cascade'}),
-  user_ids: jsonb('user_ids').$type<string[]>(),
-  pending_user_ids: jsonb('pending_user_ids').$type<string[]>(),
-  mmr: real('mmr'),
-  time_joined_queue: timestamp('time_joined_queue'),
+  time_created: timestamp('time_created').defaultNow(),
+  rating: real('rating'),
 })
+
+
+export const TeamPlayers = pgTable('TeamPlayers', {
+  team_id: integer('team_id').notNull().references(() => Teams.id, {onDelete: 'cascade'}),
+  player_id: text('player_id').notNull().references(() => Players.user_id, {onDelete: 'cascade'}),
+  time_created: timestamp('time_created').defaultNow(),
+}, (table) => { return {
+  cpk: primaryKey(table.team_id, table.player_id),
+}})
+
+
+export const QueueTeams = pgTable('QueueTeams', {
+  ranking_division_id: integer('ranking_division_id').notNull().references(() => RankingDivisions.id, {onDelete: 'cascade'}),
+  team_id: integer('team_id').notNull().references(() => Teams.id, {onDelete: 'cascade'}),
+  time_created: timestamp('time_created').defaultNow(),
+}, (table) => { return {
+  cpk: primaryKey(table.ranking_division_id, table.team_id),
+}})
+
+
+export const QueuePlayers = pgTable('QueuePlayers', {
+  user_id: text('user_id').notNull().references(() => Users.id, {onDelete: 'cascade'}),
+  ranking_division_id: integer('ranking_division_id').notNull().references(() => RankingDivisions.id, {onDelete: 'cascade'}),
+  time_created: timestamp('time_created').defaultNow(),
+}, (table) => { return {
+  cpk: primaryKey(table.user_id, table.ranking_division_id),
+}})

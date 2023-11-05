@@ -8,6 +8,7 @@ export class App {
   public db: DbClient
   public bot: DiscordRESTClient
   public config: Config
+  public eventListeners: Record<string, (...args: unknown[]) => void> = {}
 
   constructor(
     ctx: RequestArgs,
@@ -24,7 +25,11 @@ export class App {
     })
   }
 
-  debug(...messages: unknown[]) {
-    this.sentry.debug(...messages)
+  listen(name: string, listener: (...args: unknown[]) => void) {
+    this.eventListeners[name] = listener
+  }
+
+  emit(name: string, ...args: unknown[]) {
+    this.eventListeners[name](...args)
   }
 }

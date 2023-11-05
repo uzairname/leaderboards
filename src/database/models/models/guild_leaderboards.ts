@@ -29,11 +29,11 @@ export class GuildRanking extends DbObject<GuildLeaderboardSelect> {
     return guild
   }
 
-  async leaderboard(): Promise<Ranking> {
-    const leaderboard = await this.db.rankings.get(this.data.ranking_id)
-    if (!leaderboard)
-      throw new DatabaseErrors.ReferenceError(`Leaderboard ${this.data.ranking_id} not found`)
-    return leaderboard
+  async ranking(): Promise<Ranking> {
+    const ranking = await this.db.rankings.get(this.data.ranking_id)
+    if (!ranking)
+      throw new DatabaseErrors.ReferenceError(`Ranking ${this.data.ranking_id} not found`)
+    return ranking
   }
 }
 

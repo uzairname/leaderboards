@@ -1,5 +1,5 @@
 import { APIBaseInteraction, APIGuildInteractionWrapper } from 'discord-api-types/v10'
-import { AppErrors } from '../errors'
+import { AppErrors } from '../../errors/errors'
 import { isGuildInteraction } from 'discord-api-types/utils/v10'
 
 export function checkGuildInteraction<T extends APIBaseInteraction<any, any>>(

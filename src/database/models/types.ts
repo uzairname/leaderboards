@@ -13,7 +13,7 @@ import {
 } from '../schema'
 
 // Types for each model, for each type of query.
-// The "Update" type of each model is the insert type without primary/foreign keys.
+// The "Update" type of each model is the insert type without primary keys.
 
 export type SettingSelect = InferModel<typeof Settings, 'select'>
 export type SettingUpdate = Partial<Omit<SettingSelect, 'id'>>
@@ -37,18 +37,18 @@ export type LeaderboardUpdate = Partial<Omit<LeaderboardInsert, 'id'>>
 export type GuildLeaderboardSelect = InferModel<typeof GuildRankings, 'select'>
 export type GuildLeaderboardInsert = InferModel<typeof GuildRankings, 'insert'>
 export type GuildLeaderboardUpdate = Partial<
-  Omit<GuildLeaderboardInsert, 'guild_id' | 'leaderboard_id'>
+  Omit<GuildLeaderboardInsert, 'guild_id' | 'ranking_id'>
 >
 
 export type LeaderboardDivisionSelect = InferModel<typeof RankingDivisions, 'select'>
 export type LeaderboardDivisionInsert = InferModel<typeof RankingDivisions, 'insert'>
 export type LeaderboardDivisionUpdate = Partial<
-  Omit<LeaderboardDivisionInsert, 'id' | 'leaderboard_id'>
+  Omit<LeaderboardDivisionInsert, 'id' | 'ranking_id'>
 >
 
 export type PlayerSelect = InferModel<typeof Players, 'select'>
 export type PlayerInsert = InferModel<typeof Players, 'insert'>
-export type PlayerUpdate = Partial<Omit<PlayerInsert, 'user_id' | 'lb_division_id'>>
+export type PlayerUpdate = Partial<Omit<PlayerInsert, 'user_id' | 'ranking_division_id'>>
 
 export type QueueTeamSelect = InferModel<typeof QueueTeams, 'select'>
 export type QueueTeamInsert = InferModel<typeof QueueTeams, 'insert'>
@@ -56,4 +56,4 @@ export type QueueTeamUpdate = Partial<Omit<QueueTeamInsert, 'id'>>
 
 export type MatchSelect = InferModel<typeof Matches, 'select'>
 export type MatchInsert = InferModel<typeof Matches, 'insert'>
-export type MatchUpdate = Partial<Omit<MatchInsert, 'id' | 'lb_division_id'>>
+export type MatchUpdate = Partial<Omit<MatchInsert, 'id'>>

@@ -3,13 +3,13 @@ import {
   InteractionResponseType,
   MessageFlags,
 } from 'discord-api-types/v10'
-import { sentry } from '../../utils/globals'
-import { DiscordErrors } from '../../discord/rest/errors'
-import { Messages } from '../messages/messages'
-import { AppError } from '../errors'
+import { sentry } from '../../../utils/globals'
+import { DiscordErrors } from '../../../discord/rest/errors'
+import { Messages } from '../../messages/messages'
+import { AppError } from '../../errors/errors'
 import { RateLimitError } from '@discordjs/rest'
-import { App } from '../app'
-import { Colors, toMarkdown } from '../messages/message_pieces'
+import { App } from '../../app'
+import { Colors, toMarkdown } from '../../messages/message_pieces'
 
 export const onViewError = (app: App) =>
   function (e: unknown): APIInteractionResponseChannelMessageWithSource {
@@ -26,6 +26,7 @@ export const onViewError = (app: App) =>
       description = e.message ? e.message : e.constructor.name
       title = 'Something went wrong'
     } else {
+      sentry.debug("Unknown error, sending to sentry")
       sentry.catchAfterResponding(e)
       title = 'Something went wrong'
 

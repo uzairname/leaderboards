@@ -17,11 +17,11 @@ import {
 import { ChatInteractionResponse } from '../../../discord/interactions/types'
 
 import { App } from '../../app'
-import { Errors } from '../../errors'
+import { Errors } from '../../errors/errors'
 
 import { onJoinQueue, onLeaveQueue } from '../../modules/queue'
 
-import { checkGuildInteraction } from '../checks'
+import { checkGuildInteraction } from '../utils/checks'
 
 const queue_message_def = new MessageView({
   custom_id_prefix: 'q',
@@ -32,13 +32,13 @@ const queue_message_def = new MessageView({
     }),
     leaderboard_division_id: new StringField(),
   },
-  args: (_: { division_id: number }) => null,
+  args: (_: number) => null,
 })
 
 export default (app: App) =>
   queue_message_def
-    .onInit(async (ctx, args) => {
-      ctx.state.save.leaderboard_division_id(args.division_id.toString())
+    .onInit(async (ctx, division_id) => {
+      ctx.state.save.leaderboard_division_id(division_id.toString())
       return queueMessage(ctx)
     })
     .onComponent(async (ctx) => {

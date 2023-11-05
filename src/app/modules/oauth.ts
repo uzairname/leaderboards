@@ -2,7 +2,7 @@ import { OAuth2Scopes, RESTPostOAuth2AccessTokenResult } from 'discord-api-types
 import { updateUserRoleConnectionData } from './linked_roles'
 import { sentry } from '../../utils/globals'
 import { assertNonNullable } from '../../utils/utils'
-import { Errors } from '../errors'
+import { Errors } from '../errors/errors'
 import { DiscordRESTClient } from '../../discord/rest/client'
 import { App } from '../app'
 

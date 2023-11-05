@@ -49,5 +49,5 @@ export namespace Errors {
     }
   }
 
-  export class UnknownLeaderboard extends Error {}
+  export class UnknownRanking extends Error {}
 }

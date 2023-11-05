@@ -1,21 +1,25 @@
-import { AnyView, isCommandView } from '../../discord/interactions/types'
-import { FindViewCallback } from '../../discord/interactions/types'
+import {
+  AnyView,
+  isCommandView,
+  FindViewCallback,
+  overwriteDiscordCommandsWithViews,
+} from '../../../discord'
 
-import { App } from '../app'
+import { App } from '../../app'
 
-import help from './views/help'
-import leaderboards_command from './views/leaderboards'
-import points from './views/points'
-import queue from './views/queue'
-import restore from './views/restore'
-import settings from './views/settings'
-import start_match from './views/start_match'
-import test from './views/test'
+import help from '../commands/help'
+import rankings_command from '../commands/rankings'
+import points from '../commands/points'
+import queue from '../message_views/queue'
+import restore from '../commands/restore'
+import settings from '../commands/settings'
+import start_match from '../commands/start_match'
+import test from '../commands/test'
 
 export function getAllViews(app: App): AnyView[] {
   const default_views: AnyView[] = [
     help(app),
-    leaderboards_command(app),
+    rankings_command(app),
     points(app),
     settings(app),
     restore(app),
@@ -69,4 +73,8 @@ export function findView(app: App): FindViewCallback {
     }
     return view
   }
+}
+
+export async function syncDiscordCommands(app: App) {
+  await overwriteDiscordCommandsWithViews(app.bot, getAllViews(app).filter(isCommandView))
 }

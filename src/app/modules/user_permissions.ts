@@ -1,6 +1,6 @@
 import { APIInteractionGuildMember, PermissionFlagsBits } from 'discord-api-types/v10'
 import { Guild } from '../../database/models'
-import { AppErrors } from '../errors'
+import { AppErrors } from '../errors/errors'
 
 export async function checkMemberBotAdmin(
   member: APIInteractionGuildMember,

@@ -58,7 +58,7 @@ export async function syncGuildAdminRole(
     guild_id: guild.data.id,
     target_role_id: guild.data.admin_role_id,
     roleData: async () => {
-      return new RoleData({ name: 'Firstplace Admin', color: Colors.Primary, permissions: '0' })
+      return new RoleData({ name: 'Leaderboards Admin', color: Colors.Primary, permissions: '0' })
     },
   })
 

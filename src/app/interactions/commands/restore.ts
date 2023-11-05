@@ -12,7 +12,7 @@ import { syncLeaderboardChannelsMessages } from '../../modules/channels/leaderbo
 import { getOrAddGuild } from '../../modules/guilds'
 
 import { checkMemberBotAdmin } from '../../modules/user_permissions'
-import { checkGuildInteraction } from '../checks'
+import { checkGuildInteraction } from '../utils/checks'
 
 export const restore_cmd_def = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -21,7 +21,7 @@ export const restore_cmd_def = new CommandView({
     name: 'restore',
     description: 'Restores all channels and messages managed by this bot',
   },
-  custom_id_prefix: 'r',
+  custom_id_prefix: 'restore',
 })
 
 export default (app: App) =>

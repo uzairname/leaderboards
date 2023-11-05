@@ -7,11 +7,10 @@ export async function scoreLeaderboardHistory(division: RankingDivision) {
 
   const matches = await division.latestMatches()
 
-  const team_history = matches.map((match) => {
-    return match.data.team_users
-  })
-
-  const outcome_history = matches.map((match) => {
-    return match.data.outcome
+  const history = matches.map((match) => {
+    return {
+      users: match.data.team_users,
+      outcome: match.data.outcome,
+    }
   })
 }
