@@ -1,13 +1,13 @@
+import { RateLimitError } from '@discordjs/rest'
 import {
   APIInteractionResponseChannelMessageWithSource,
   InteractionResponseType,
   MessageFlags,
 } from 'discord-api-types/v10'
-import { sentry } from '../../utils/globals'
-import { DiscordErrors } from '../../discord/rest/errors'
+import { DiscordErrors } from '../../discord-framework'
+import { sentry } from '../../logging/globals'
 import { Messages } from '../messages/messages'
 import { AppError } from '../errors'
-import { RateLimitError } from '@discordjs/rest'
 import { App } from '../app'
 import { Colors, toMarkdown } from '../messages/message_pieces'
 

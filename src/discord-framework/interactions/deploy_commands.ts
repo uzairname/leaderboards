@@ -1,7 +1,7 @@
 import { RESTPostAPIApplicationCommandsJSONBody } from 'discord-api-types/v10'
 import { DiscordRESTClient } from '../rest/client'
 import { AnyCommandView, isChatInputCommandView } from './types'
-import { sentry } from '../../utils/globals'
+import { sentry } from '../../logging/globals'
 
 export async function overwriteDiscordCommandsWithViews(
   bot: DiscordRESTClient,

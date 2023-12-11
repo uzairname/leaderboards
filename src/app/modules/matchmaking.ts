@@ -1,4 +1,4 @@
-import { Ranking, RankingDivision, Player } from '../../database/models'
+import { Ranking, Player } from '../../database/models'
 import { Errors } from '../errors'
 
 /**
@@ -15,7 +15,7 @@ async function findMatchFromQueue(leaderboard: Ranking): Promise<Array<Array<Pla
  * Given
  */
 export async function createMatchWithTeams(params: {
-  leaderboard_division: RankingDivision
+  ranking: Ranking
   teams: Array<Array<Player>>
 }): Promise<void> {
   const match_teams = params.teams.map((team) => {

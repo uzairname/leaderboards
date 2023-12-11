@@ -13,10 +13,16 @@ import {
   ChoiceField,
   NumberField,
   StringField,
-} from '../../../discord/interactions/utils/string_data'
-import { CommandContext, CommandView, ComponentContext } from '../../../discord/interactions/views'
+  CommandContext,
+  CommandView,
+  ComponentContext,
+  ListField,
+} from '../../../discord-framework'
 import { App } from '../../app'
 import { AppErrors, Errors } from '../../errors'
+
+import help from './help'
+import { assertValue } from '../../../utils/utils'
 
 const test_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -41,9 +47,10 @@ const test_command = new CommandView({
   },
 
   state_schema: {
-    clicked_btn: new ChoiceField({ wait: null, increment: null }),
+    clicked_btn: new ChoiceField({ wait: null, increment: null, one: null, two: null }),
     counter: new NumberField(),
     original_user: new StringField(),
+    value: new ListField(),
   },
 })
 
@@ -53,7 +60,10 @@ export default (app: App) =>
       const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
       ctx.state.save.original_user(user_id)
       ctx.state.save.counter(0)
-      app
+
+      ctx.state.save.value(new Array(2).fill('0'))
+
+      const last_deployed = (await app.db.settings.getOrUpdate()).data.last_deployed
 
       const ephemeral =
         (
@@ -94,7 +104,28 @@ export default (app: App) =>
         }
       } else if (ctx.state.is.clicked_btn('increment')) {
         ctx.state.save.counter((ctx.state.data.counter ?? 0) + 1)
+
         return { type: InteractionResponseType.UpdateMessage, data: testMessageData(ctx) }
+      } else if (ctx.state.is.clicked_btn('one')) {
+        const current_value = ctx.state.data.value
+        assertValue(current_value, 'value')
+
+        current_value[0] += '1'
+        ctx.state.save.value(current_value)
+        return {
+          type: InteractionResponseType.UpdateMessage,
+          data: testMessageData(ctx),
+        }
+      } else if (ctx.state.is.clicked_btn('two')) {
+        const current_value = ctx.state.data.value
+        assertValue(current_value, 'value')
+
+        current_value[1] += '2'
+        ctx.state.save.value(current_value)
+        return {
+          type: InteractionResponseType.UpdateMessage,
+          data: testMessageData(ctx),
+        }
       } else {
         throw new Errors.UnknownState(ctx.state.data.clicked_btn)
       }
@@ -105,6 +136,7 @@ function testMessageData(
   ephemeral = false,
 ): APIInteractionResponseCallbackData {
   return {
+    content: `Value: ${ctx.state.data.value?.join(', ')}\nCounter: ${ctx.state.data.counter}`,
     components: [
       {
         type: ComponentType.ActionRow,
@@ -119,6 +151,18 @@ function testMessageData(
             type: ComponentType.Button,
             label: 'Increment',
             custom_id: ctx.state.set.clicked_btn('increment').encode(),
+            style: ButtonStyle.Primary,
+          },
+          {
+            type: ComponentType.Button,
+            label: 'One',
+            custom_id: ctx.state.set.clicked_btn('one').encode(),
+            style: ButtonStyle.Primary,
+          },
+          {
+            type: ComponentType.Button,
+            label: 'Two',
+            custom_id: ctx.state.set.clicked_btn('two').encode(),
             style: ButtonStyle.Primary,
           },
         ],

@@ -1,9 +1,10 @@
 import { eq } from 'drizzle-orm'
-import { DbObject } from '../managers'
-import { DbObjectManager } from '../managers'
+
+import { AccessTokens } from '../../schema'
+
+import { DbObject, DbObjectManager } from '../managers'
 import { AccessTokenSelect, AccessTokenUpdate } from '../types'
 import { User } from '..'
-import { AccessTokens } from '../../schema'
 
 export class AccessToken extends DbObject<AccessTokenSelect> {
   async update(user: User, data: AccessTokenUpdate): Promise<AccessToken> {

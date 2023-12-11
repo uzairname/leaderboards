@@ -2,7 +2,7 @@ import * as D from 'discord-api-types/v10'
 import { I as InternalRequest } from '@discordjs/rest/dist/types-65527f29'
 import { DiscordAPIError, REST, RequestData, RequestMethod } from '@discordjs/rest'
 
-import { sentry } from '../../utils/globals'
+import { sentry } from '../../logging/globals'
 
 import { DiscordErrors } from './errors'
 
@@ -63,6 +63,15 @@ export class DiscordRESTClient extends REST {
     return (await this.fetch(RequestMethod.Put, D.Routes.applicationCommands(this.application_id), {
       body,
     })) as D.RESTPutAPIApplicationCommandsResult[]
+  }
+
+  // USERS
+
+  async getUser(user_id: string) {
+    return (await this.fetch(
+      RequestMethod.Get,
+      D.Routes.user(user_id),
+    )) as D.RESTGetAPIUserResult
   }
 
   // CHANNELS
@@ -195,6 +204,13 @@ export class DiscordRESTClient extends REST {
       RequestMethod.Get,
       D.Routes.guild(guild_id),
     )) as D.RESTGetAPIGuildResult
+  }
+
+  async getGuildMember(guild_id: string, user_id: string) {
+    return (await this.fetch(
+      RequestMethod.Get,
+      D.Routes.guildMember(guild_id, user_id),
+    )) as D.RESTGetAPIGuildMemberResult
   }
 
   // GUILD ROLES

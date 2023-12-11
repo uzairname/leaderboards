@@ -1,10 +1,10 @@
 import { APIChannel, APIRole, ChannelType } from 'discord-api-types/v10'
+import { GuildChannelData, RoleData } from '../../discord-framework'
 
 import { Guild } from '../../database/models'
 
 import { App } from '../app'
 import { Colors } from '../messages/message_pieces'
-import { GuildChannelData, RoleData } from '../../discord/rest/objects'
 
 export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> {
   let app_guild = await app.db.guilds.get(guild_id)
@@ -58,7 +58,7 @@ export async function syncGuildAdminRole(
     guild_id: guild.data.id,
     target_role_id: guild.data.admin_role_id,
     roleData: async () => {
-      return new RoleData({ name: 'Firstplace Admin', color: Colors.Primary, permissions: '0' })
+      return new RoleData({ name: 'Leaderboards Admin', color: Colors.Primary, permissions: '0' })
     },
   })
 

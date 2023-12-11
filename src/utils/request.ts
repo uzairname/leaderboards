@@ -1,17 +1,13 @@
-export interface Env {
-  ENVIRONMENT: string
-  BASE_URL: string
-  DISCORD_TOKEN: string
-  PUBLIC_KEY: string
-  APPLICATION_ID: string
-  CLIENT_SECRET: string
-  SENTRY_DSN: string
-  APP_KEY: string
-  POSTGRES_URL: string
-}
+import { Env } from "../config/env"
 
 export interface RequestArgs {
   request: Request
   env: Env
   execution_context: ExecutionContext
+}
+
+export const authorize = (req: RequestArgs) => (request: Request) => {
+  if (request.headers.get('Authorization') !== req.env.APP_KEY) {
+    return new Response('Unauthorized', { status: 401 })
+  }
 }

@@ -1,11 +1,11 @@
 import { APIInteraction, InteractionResponseType, InteractionType } from 'discord-api-types/v10'
 
-import { sentry } from '../../utils/globals'
+import { sentry } from '../../logging/globals'
 
 import { DiscordRESTClient } from '../rest/client'
 
 import { respondToUserInteraction } from './view_helpers'
-import { onViewErrorCallback } from './types'
+import { ViewErrorCallback } from './types'
 import { FindViewCallback } from './types'
 import { verify } from './utils/verify'
 import { json } from 'itty-router'
@@ -14,7 +14,7 @@ export async function respondToDiscordInteraction(
   bot: DiscordRESTClient,
   request: Request,
   getView: FindViewCallback,
-  onError: onViewErrorCallback,
+  onError: ViewErrorCallback,
   direct_response: boolean = true,
 ): Promise<Response> {
   if (await verify(request, bot.public_key)) {

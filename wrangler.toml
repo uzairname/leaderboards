@@ -2,13 +2,13 @@ main = "src/index.ts"
 compatibility_date = "2023-04-16"
 minify = false
 
-name = "firstplace-dev"
-vars = { ENVIRONMENT = "development", BASE_URL = "https://firstplace-dev.5r.workers.dev" }
+name = "leaderboards-dev"
+vars = { ENVIRONMENT = "development", BASE_URL = "https://leaderboards-dev.5r.workers.dev" }
 
 [env.staging]
-name = "firstplace-staging"
-vars = { ENVIRONMENT = "staging", BASE_URL = "https://firstplace-staging.5r.workers.dev"}
+name = "leaderboards-staging"
+vars = { ENVIRONMENT = "staging", BASE_URL = "https://leaderboards-staging.5r.workers.dev"}
 
 [env.production]
-name = "firstplace"
-vars = { ENVIRONMENT = "production", BASE_URL = "https://firstplace.5r.workers.dev" }
+name = "leaderboards"
+vars = { ENVIRONMENT = "production", BASE_URL = "https://leaderboards.5r.workers.dev" }

@@ -3,7 +3,7 @@ import {
   RESTPutAPIApplicationRoleConnectionMetadataJSONBody,
   RESTPutAPICurrentUserApplicationRoleConnectionJSONBody,
 } from 'discord-api-types/v10'
-import { DiscordRESTClient } from '../../discord/rest/client'
+import { DiscordRESTClient } from '../../discord-framework'
 import { App } from '../app'
 
 export function getAppRoleConnectionsMetadata(

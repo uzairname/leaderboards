@@ -6,8 +6,7 @@ import {
   MessageFlags,
 } from 'discord-api-types/v10'
 
-import { CommandView } from '../../../discord/interactions/views'
-import { ChoiceField } from '../../../discord/interactions/utils/string_data'
+import { CommandView, ChoiceField } from '../../../discord-framework'
 
 import { checkGuildInteraction } from '../checks'
 import { checkMemberBotAdmin } from '../../modules/user_permissions'

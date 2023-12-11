@@ -31,25 +31,24 @@ export interface AutocompleteContext {
   interaction: D.APIApplicationCommandAutocompleteInteraction
 }
 
-// Command
-export interface CommandContext<View extends AnyCommandView> {
-  interaction: CommandInteraction<View['options']['type']>
-  offload: (callback: ViewOffloadCallback<View>) => void
+export interface BaseContext<View extends BaseView<any>> {
   state: StringData<View['options']['state_schema']>
+  offload: (callback: ViewOffloadCallback<View>) => void
+}
+
+// Command
+export interface CommandContext<View extends AnyCommandView> extends BaseContext<View> {
+  interaction: CommandInteraction<View['options']['type']>
 }
 
 // Component
-export interface ComponentContext<View extends BaseView<any>> {
+export interface ComponentContext<View extends BaseView<any>> extends BaseContext<View> {
   interaction: ComponentInteraction
-  modal_entries?: D.ModalSubmitComponent[]
-  offload: (callback: ViewOffloadCallback<View>) => void
-  state: StringData<View['options']['state_schema']>
 }
 
 // Offload
 export interface OffloadContext<Schema extends StringDataSchema> {
   interaction: ChatInteraction
-  modal_entries?: D.ModalSubmitComponent[]
   send: (data: D.APIInteractionResponseCallbackData) => Promise<void>
   editOriginal: (data: D.APIInteractionResponseCallbackData) => Promise<void>
   state: StringData<Schema>
@@ -107,6 +106,7 @@ type CommandViewOptions<Schema extends StringDataSchema, Type extends D.Applicat
   state_schema: Schema
   guild_id?: string
   custom_id_prefix?: string
+  experimental?: boolean
 }
 
 export abstract class BaseView<Schema extends StringDataSchema> {

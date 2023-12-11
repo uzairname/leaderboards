@@ -54,4 +54,4 @@ export type FindViewCallback = (
   custom_id_prefix?: string,
 ) => Promise<AnyView | undefined>
 
-export type onViewErrorCallback = (e: unknown) => APIInteractionResponseChannelMessageWithSource
+export type ViewErrorCallback = (e: unknown) => APIInteractionResponseChannelMessageWithSource

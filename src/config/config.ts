@@ -1,15 +1,17 @@
-import { Env } from '../utils/request'
+import { Env } from "./env"
 import { features } from './features'
 import { RequestArgs } from '../utils/request'
 
-export const constants = {
-  routes: {
+export class Config {
+  readonly routes = {
+    INTERACTIONS: '/interactions',
     OAUTH_CALLBACK: '/oauth/callback',
     OAUTH_LINKED_ROLES: '/oauth/linkedroles',
-  },
-}
+    TEST: '/test',
+    INIT: '/init',
+    BASE_API: '/api',
+  }
 
-export class Config {
   readonly DEV_GUILD_ID = '1041458052055978024'
 
   readonly HOME_GUILD_ID: string
@@ -28,7 +30,7 @@ export class Config {
   constructor(ctx: RequestArgs) {
     this.env = ctx.env
     this.HOME_GUILD_ID = this.home_guild_ids[this.env.ENVIRONMENT]
-    this.OAUTH_REDIRECT_URI = this.env.BASE_URL + constants.routes.OAUTH_CALLBACK
+    this.OAUTH_REDIRECT_URI = this.env.BASE_URL + this.routes.OAUTH_CALLBACK
     this.features = features(this.env.ENVIRONMENT)
   }
 }

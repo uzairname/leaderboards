@@ -1,6 +1,6 @@
 import { Toucan } from 'toucan-js'
-import { cache } from './cache'
-import { RequestArgs } from './request'
+import { cache } from '../utils/cache'
+import { RequestArgs } from '../utils/request'
 
 export class Sentry extends Toucan {
   request_name: string
@@ -25,7 +25,7 @@ export class Sentry extends Toucan {
     console.log('d')
   }
 
-  async handler(handler: (request: Request) => Promise<Response>): Promise<Response> {
+  async handlerWrapper(handler: (request: Request) => Promise<Response>): Promise<Response> {
     this.setTag('cold-start', `${cache.get('request_num') == 1}`)
     this.request_name = `${this.request.method} ${new URL(this.request.url).pathname}`
     this.addBreadcrumb({

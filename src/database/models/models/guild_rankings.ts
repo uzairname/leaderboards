@@ -1,14 +1,15 @@
 import { and, eq } from 'drizzle-orm'
-import { GuildLeaderboardSelect, GuildLeaderboardUpdate, GuildLeaderboardInsert } from '../types'
-import { DbObject } from '../managers'
-import { DbObjectManager } from '../managers'
-import { Guild } from './guilds'
-import { Ranking } from './leaderboards'
+
 import { GuildRankings } from '../../schema'
+
 import { DatabaseErrors } from '../../utils/errors'
 
-export class GuildRanking extends DbObject<GuildLeaderboardSelect> {
-  async update(data: GuildLeaderboardUpdate) {
+import { DbObject, DbObjectManager } from '../managers'
+import { GuildRankingSelect, GuildRankingUpdate, GuildRankingInsert } from '../types'
+import { Guild, Ranking } from '..'
+
+export class GuildRanking extends DbObject<GuildRankingSelect> {
+  async update(data: GuildRankingUpdate) {
     this.data = (
       await this.db.db
         .update(GuildRankings)
@@ -29,20 +30,20 @@ export class GuildRanking extends DbObject<GuildLeaderboardSelect> {
     return guild
   }
 
-  async leaderboard(): Promise<Ranking> {
-    const leaderboard = await this.db.rankings.get(this.data.ranking_id)
-    if (!leaderboard)
-      throw new DatabaseErrors.ReferenceError(`Leaderboard ${this.data.ranking_id} not found`)
-    return leaderboard
+  async ranking(): Promise<Ranking> {
+    const ranking = await this.db.rankings.get(this.data.ranking_id)
+    if (!ranking)
+      throw new DatabaseErrors.ReferenceError(`Ranking ${this.data.ranking_id} not found`)
+    return ranking
   }
 }
 
-export class GuildLeaderboardsManager extends DbObjectManager {
-  // when creating, pass in guild and leaderboard objects instead of ids
+export class GuildRankingsManager extends DbObjectManager {
+  // when creating, pass in guild and ranking objects instead of ids
   async create(
     guild: Guild,
     ranking: Ranking,
-    data: Omit<GuildLeaderboardInsert, 'guild_id' | 'ranking_id'>,
+    data: Omit<GuildRankingInsert, 'guild_id' | 'ranking_id'>,
   ): Promise<GuildRanking> {
     let new_data = (
       await this.db.db
@@ -58,13 +59,13 @@ export class GuildLeaderboardsManager extends DbObjectManager {
     return new GuildRanking(new_data, this.db)
   }
 
-  async get(guild_id: string, leaderboard_id: number): Promise<GuildRanking | undefined> {
+  async get(guild_id: string, ranking_id: number): Promise<GuildRanking | undefined> {
     let data = (
       await this.db.db
         .select()
         .from(GuildRankings)
         .where(
-          and(eq(GuildRankings.guild_id, guild_id), eq(GuildRankings.ranking_id, leaderboard_id)),
+          and(eq(GuildRankings.guild_id, guild_id), eq(GuildRankings.ranking_id, ranking_id)),
         )
     )[0]
     if (!data) return

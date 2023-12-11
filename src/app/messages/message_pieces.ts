@@ -4,7 +4,7 @@ import {
   PermissionFlagsBits,
 } from 'discord-api-types/v10'
 
-import { AnyCommandView, DiscordRESTClient } from '../../discord'
+import { AnyCommandView, DiscordRESTClient } from '../../discord-framework'
 
 import { App } from '../app'
 

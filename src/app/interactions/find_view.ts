@@ -1,40 +1,40 @@
-import { AnyView, isCommandView } from '../../discord/interactions/types'
-import { FindViewCallback } from '../../discord/interactions/types'
+import { AnyView, isCommandView, FindViewCallback } from '../../discord-framework'
 
 import { App } from '../app'
 
 import help from './views/help'
 import leaderboards_command from './views/leaderboards'
 import points from './views/points'
-import queue from './views/queue'
 import restore from './views/restore'
 import settings from './views/settings'
+import record_match from './views/record_match'
 import start_match from './views/start_match'
-import test from './views/test'
+import queue from './views/queue'
+import test from './views/test_command'
+import temp from './views/temp_command'
 
 export function getAllViews(app: App): AnyView[] {
-  const default_views: AnyView[] = [
-    help(app),
-    leaderboards_command(app),
-    points(app),
-    settings(app),
+  const all_views: AnyView[] = [help(app), leaderboards_command(app), points(app)]
+
+  const experimental_views: AnyView[] = [
     restore(app),
+    settings(app),
+    record_match(app),
+    start_match(app),
+    queue(app),
+    test(app),
+    temp(app),
   ]
 
-  const experimental_views: AnyView[] = [queue(app), start_match(app), test(app)]
+  let enabled_views = all_views
 
-  let enabled_views = default_views
-
-  if (app.config.features.EXPERIMENTAL_COMMANDS) {
+  if (app.config.features.EXPERIMENTAL_VIEWS) {
     enabled_views = enabled_views.concat(experimental_views)
   }
 
   if (app.config.features.ALL_COMMANDS_GUILD) {
-    enabled_views.forEach((view) => {
-      if (isCommandView(view)) {
-        view.options.guild_id = app.config.DEV_GUILD_ID
-      }
-      return view
+    enabled_views.filter(isCommandView).forEach((view) => {
+      view.options.guild_id = app.config.DEV_GUILD_ID
     })
   }
 
@@ -42,6 +42,7 @@ export function getAllViews(app: App): AnyView[] {
   const custom_id_prefixes = enabled_views
     .map((view) => view.options.custom_id_prefix)
     .filter(Boolean)
+
   if (custom_id_prefixes.length !== new Set(custom_id_prefixes).size) {
     throw new Error(`Duplicate custom id prefixes found in views: ${custom_id_prefixes}`)
   }

@@ -1,5 +1,7 @@
 
 
+temp_data/*
+
 env.js
 dump
 .wrangler

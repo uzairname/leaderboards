@@ -1,10 +1,16 @@
 import {
   APIActionRowComponent,
   APIMessageActionRowComponent,
-  ButtonStyle,
-  ComponentType,
   APITextInputComponent,
+  ComponentType,
+  ButtonStyle,
+  APIModalSubmitInteraction,
+  ModalSubmitComponent,
 } from 'discord-api-types/v10'
+
+import { clone_json } from '../../../utils/utils'
+
+import { decodeCustomId } from '../view_helpers'
 
 export function replaceMessageComponentsCustomIds(
   components:
@@ -29,4 +35,18 @@ export function replaceMessageComponentsCustomIds(
       }
     })
   })
+}
+
+export function getModalSubmitEntries(
+  interaction: APIModalSubmitInteraction,
+): ModalSubmitComponent[] {
+  let modal_submit_components: ModalSubmitComponent[] = []
+  interaction.data.components.forEach((row) => {
+    row.components.forEach((component) => {
+      let component_copy = clone_json(component)
+      component_copy.custom_id = decodeCustomId(component.custom_id).content.toString()
+      modal_submit_components.push(component_copy)
+    })
+  })
+  return modal_submit_components
 }

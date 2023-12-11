@@ -1,9 +1,10 @@
-export function assertNonNullable<T>(
-  value: T,
-  value_name?: string,
-): asserts value is NonNullable<T> {
+export function assertValue<T>(value: T, value_name?: string): asserts value is NonNullable<T> {
   if (value === null || value === undefined)
     throw new Error(`${value_name || 'value'} is null or undefined`)
+}
+
+export function assert(condition: boolean, message?: string): asserts condition {
+  if (!condition) throw new Error(message)
 }
 
 export function getEnumValue<T extends Record<string, string | number>>(

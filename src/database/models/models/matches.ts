@@ -1,6 +1,6 @@
 import { Matches } from '../../schema'
-import { DbObject } from '../managers'
-import { DbObjectManager } from '../managers'
+
+import { DbObject, DbObjectManager } from '../managers'
 import { MatchInsert, MatchSelect } from '../types'
 
 export class Match extends DbObject<MatchSelect> {}

@@ -1,8 +1,9 @@
 import { not, eq } from 'drizzle-orm'
-import { SettingSelect, SettingUpdate } from '../types'
+
 import { Settings } from '../../schema'
-import { DbObject } from '../managers'
-import { DbObjectManager } from '../managers'
+
+import { DbObject, DbObjectManager } from '../managers'
+import { SettingSelect, SettingUpdate } from '../types'
 
 export class Setting extends DbObject<SettingSelect> {}
 

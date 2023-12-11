@@ -5,16 +5,17 @@ import {
   MessageFlags,
 } from 'discord-api-types/v10'
 
-import { ChoiceField, StringField } from '../../../discord/interactions/utils/string_data'
-import { assertNonNullable } from '../../../utils/utils'
-
-import { MessageData } from '../../../discord'
 import {
+  ChatInteractionResponse,
+  ChoiceField,
   ComponentContext,
   MessageCreateContext,
+  MessageData,
   MessageView,
-} from '../../../discord/interactions/views'
-import { ChatInteractionResponse } from '../../../discord/interactions/types'
+  StringField,
+} from '../../../discord-framework'
+
+import { assertValue } from '../../../utils/utils'
 
 import { App } from '../../app'
 import { Errors } from '../../errors'
@@ -30,60 +31,42 @@ const queue_message_def = new MessageView({
       join: null,
       leave: null,
     }),
-    leaderboard_division_id: new StringField(),
+    ranking_id: new StringField(),
   },
-  args: (_: { division_id: number }) => null,
+  args: (_: { ranking_id: number }) => null,
 })
 
 export default (app: App) =>
   queue_message_def
     .onInit(async (ctx, args) => {
-      ctx.state.save.leaderboard_division_id(args.division_id.toString())
+      ctx.state.save.ranking_id(args.ranking_id.toString())
       return queueMessage(ctx)
     })
     .onComponent(async (ctx) => {
-      return await handleQueueInteraction(app, ctx)
+      const interaction = checkGuildInteraction(ctx.interaction)
+      assertValue(ctx.state.data.ranking_id)
+
+      if (ctx.state.is.component('join')) {
+        ctx.offload(async (ctx) => {
+          ctx.send({
+            content: 'Joined queue',
+            flags: MessageFlags.Ephemeral,
+          })
+        })
+        const result = await onJoinQueue(app, parseInt(ctx.state.data.ranking_id), interaction.member.user)
+
+      } else if (ctx.state.is.component('leave')) {
+        ctx.offload(async (ctx) => {
+          ctx.send({
+            content: 'Left queue',
+            flags: MessageFlags.Ephemeral,
+          })
+        })
+        await onLeaveQueue(app, parseInt(ctx.state.data.ranking_id), interaction.member.user)
+      } else {
+        throw new Errors.UnknownState(ctx.state.data.component)
+      }
     })
-
-async function handleQueueInteraction(
-  app: App,
-  ctx: ComponentContext<typeof queue_message_def>,
-): Promise<ChatInteractionResponse> {
-  const interaction = checkGuildInteraction(ctx.interaction)
-  assertNonNullable(ctx.state.data.leaderboard_division_id)
-
-  if (ctx.state.is.component('join')) {
-    await onJoinQueue(
-      app,
-      parseInt(ctx.state.data.leaderboard_division_id),
-      interaction.member.user,
-    )
-
-    return {
-      type: InteractionResponseType.ChannelMessageWithSource,
-      data: {
-        content: 'Joined queue',
-        flags: MessageFlags.Ephemeral,
-      },
-    }
-  } else if (ctx.state.is.component('leave')) {
-    await onLeaveQueue(
-      app,
-      parseInt(ctx.state.data.leaderboard_division_id),
-      interaction.member.user,
-    )
-
-    return {
-      type: InteractionResponseType.ChannelMessageWithSource,
-      data: {
-        content: 'Left queue',
-        flags: MessageFlags.Ephemeral,
-      },
-    }
-  } else {
-    throw new Errors.UnknownState(ctx.state.data.component)
-  }
-}
 
 export function queueMessage(ctx: MessageCreateContext<typeof queue_message_def>) {
   return new MessageData({

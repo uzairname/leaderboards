@@ -1,4 +1,4 @@
-import { RequestArgs } from './request'
+import { RequestArgs } from '../utils/request'
 import { Sentry } from './sentry'
 
 export let sentry: Sentry

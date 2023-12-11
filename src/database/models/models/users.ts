@@ -1,9 +1,9 @@
-import { QueueTeams, Users } from '../../schema'
-import { eq, sql } from 'drizzle-orm'
-import { QueueTeamSelect, UserInsert, UserSelect } from '../types'
-import { DbObject } from '../managers'
-import { DbObjectManager } from '../managers'
-import { QueueTeam } from './queue_team'
+import { eq } from 'drizzle-orm'
+
+import { Users } from '../../schema'
+
+import { DbObject, DbObjectManager } from '../managers'
+import { UserInsert, UserSelect } from '../types'
 
 export class User extends DbObject<UserSelect> {}
 
@@ -14,13 +14,13 @@ export class UsersManager extends DbObjectManager {
     if (result) {
       return new User(result, this.db)
     } else {
-      let new_db_data = (
+      let new_data = (
         await this.db.db
           .insert(Users)
           .values({ ...data })
           .returning()
       )[0]
-      return new User(new_db_data, this.db)
+      return new User(new_data, this.db)
     }
   }
 }

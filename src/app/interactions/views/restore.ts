@@ -4,7 +4,7 @@ import {
   MessageFlags,
 } from 'discord-api-types/v10'
 
-import { CommandView } from '../../../discord/interactions/views'
+import { CommandView } from '../../../discord-framework'
 
 import { App } from '../../app'
 

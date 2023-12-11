@@ -1,3 +1,4 @@
+import { int } from 'drizzle-orm/mysql-core'
 import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, bigint, } from 'drizzle-orm/pg-core'
 
 
@@ -6,12 +7,11 @@ export const Settings = pgTable('Settings', {
   last_deployed: timestamp('last_deployed').defaultNow(),
 })
 
-
 export const Users = pgTable('Users', {
   id: text('id').primaryKey(),
   name: text('name'),
+  time_created: timestamp('time_created').defaultNow(),
 })
-
 
 export type AccessTokenData = {
   access_token: string
@@ -35,17 +35,23 @@ export const Guilds = pgTable('Guilds', {
   time_created: timestamp('time_created').defaultNow(),
   admin_role_id: text('admin_role_id'),
   category_id: text('category_id'),
-  match_results_channel_id: text('match_results_text_channel_id'),
 })
 
+
+export type EloSettings = {
+  initial_rating: number
+  initial_rd: number
+}
 
 export const Rankings = pgTable('Rankings', {
   id: serial('id').primaryKey(),
   name: text('name'),
   time_created: timestamp('time_created').defaultNow(),
-  current_division_id: integer('current_division_id'),
   players_per_team: integer('players_per_team'),
   num_teams: integer('num_teams'),
+  elo_settings: jsonb('elo_settings').$type<EloSettings>(),
+  // ranks: jsonb('ranks'),
+  // match_settings: jsonb('match_settings'),
 })
 
 
@@ -56,6 +62,8 @@ export const GuildRankings = pgTable('GuildRankings', {
   is_admin: boolean('is_admin'),
   leaderboard_channel_id: text('leaderboard_channel_id'),
   leaderboard_message_id: text('leaderboard_message_id'),
+  ongoing_matches_channel_id: text('ongoing_matches_channel_id'),
+  match_results_channel_id: text('match_results_channel_id'),
   queue_channel_id: text('queue_channel_id'),
   queue_message_id: text('queue_message_id'),
 },(table) => { return {
@@ -63,48 +71,85 @@ export const GuildRankings = pgTable('GuildRankings', {
 }})
 
 
-export const RankingDivisions = pgTable('RankingDivisions', {
-  id: serial('id').primaryKey(),
+export const Players = pgTable('Players', {
+  user_id: text('user_id').notNull().references(() => Users.id, {onDelete: 'cascade'}),
   ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, {onDelete: 'cascade'}),
   time_created: timestamp('time_created').defaultNow(),
   name: text('name'),
-}, (table) => { return {
-  idx_ranking: index('RankingDivision_by_ranking_id').on(table.ranking_id),
-}})
-
-
-export const Players = pgTable('Players', {
-  user_id: text('user_id').notNull().references(() => Users.id, {onDelete: 'cascade'}),
-  ranking_division_id: integer('ranking_division_id').notNull().references(() => RankingDivisions.id, {onDelete: 'cascade'}),
-  time_created: timestamp('time_created').defaultNow(),
-  nickname: text('nickname'),
   rating: real('rating'),
   rd: real('rd'),
   stats: jsonb('stats'),
 }, (table) => { return {
-  cpk: primaryKey(table.user_id, table.ranking_division_id),
+  cpk: primaryKey(table.user_id, table.ranking_id),
 }})
+
+
+export const Teams = pgTable('Teams', {
+  id: serial('id').primaryKey(),
+  ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, {onDelete: 'cascade'}),
+  time_created: timestamp('time_created').defaultNow(),
+  rating: real('rating'),
+  name: text('name'),
+})
+
+
+export const TeamPlayers = pgTable('TeamPlayers', {
+  team_id: integer('team_id').notNull().references(() => Teams.id, {onDelete: 'cascade'}),
+  user_id: text('user_id').notNull().references(() => Players.user_id, {onDelete: 'cascade'}),
+  time_created: timestamp('time_created').defaultNow(),
+}, (table) => { return {
+  cpk: primaryKey(table.team_id, table.user_id),
+}})
+
+
+export const QueueTeams = pgTable('QueueTeams', {
+  team_id: integer('team_id').primaryKey().references(() => Teams.id, {onDelete: 'cascade'}),
+  time_created: timestamp('time_created').defaultNow(),
+}, (table) => { return {
+}})
+
+
+export const ActiveMatches = pgTable('ActiveMatches', {
+  id: serial('id').primaryKey(),
+  ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, {onDelete: 'cascade'}),
+  time_created: timestamp('time_created').defaultNow(),
+  status: integer('status'),
+  team_users: jsonb('team_users').$type<string[][]>(),
+  team_votes: jsonb('team_votes').$type<number[]>(),
+  channel_id: text('channel_id'),
+  message_id: text('message_id'),
+})
 
 
 export const Matches = pgTable('Matches', {
   id: serial('id').primaryKey(),
-  ranking_division_id: integer('ranking_division_id').notNull().references(() => RankingDivisions.id, {onDelete: 'cascade'}),
+  ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, {onDelete: 'cascade'}),
   time_created: timestamp('time_created').defaultNow(),
   time_finished: timestamp('time_finished'),
   number: integer('number'),
   team_users: jsonb('team_users').$type<string[][]>(),
   outcome: jsonb('outcome').$type<number[]>(),
   metadata: jsonb('metadata'),
-  summary_channel_id: text('summary_channel_id'),
-  summary_message_id: text('summary_message_id'),
 })
 
 
-export const QueueTeams = pgTable('QueueTeams', {
-  id: serial('id').primaryKey(),
-  queued_ranking_division_id: integer('ranking_division_id').references(() => RankingDivisions.id, {onDelete: 'cascade'}),
-  user_ids: jsonb('user_ids').$type<string[]>(),
-  pending_user_ids: jsonb('pending_user_ids').$type<string[]>(),
-  mmr: real('mmr'),
-  time_joined_queue: timestamp('time_joined_queue'),
-})
+export const MatchSummaryMessages = pgTable('MatchSummaryMessages', {
+  match_id: integer('match_id').notNull().references(() => Matches.id, {onDelete: 'cascade'}),
+  guild_id: text('guild_id').notNull().references(() => Guilds.id, {onDelete: 'cascade'}),
+  channel_id: text('channel_id'),
+  message_id: text('message_id'),
+}, (table) => { return {
+  cpk: primaryKey(table.match_id, table.guild_id),
+}})
+
+
+export const MatchPlayers = pgTable('MatchPlayers', {
+  match_id: integer('match_id').notNull().references(() => Matches.id, {onDelete: 'cascade'}),
+  user_id: text('user_id').notNull().references(() => Players.user_id, {onDelete: 'cascade'}),
+  team_num: integer('team_num'),
+  rating_before: real('rating_before'),
+  rd_before: real('rd_before'),
+  time_created: timestamp('time_created').defaultNow(),
+}, (table) => { return {
+  cpk: primaryKey(table.match_id, table.user_id),
+}})

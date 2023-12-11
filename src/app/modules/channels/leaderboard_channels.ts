@@ -5,15 +5,14 @@ import {
   PermissionFlagsBits,
 } from 'discord-api-types/v10'
 
-import { Guild, GuildRanking, Ranking, RankingDivision } from '../../../database/models'
-import { DiscordRESTClient, GuildChannelData, MessageData } from '../../../discord'
+import { Guild, GuildRanking, Ranking } from '../../../database/models'
+import { DiscordRESTClient, GuildChannelData, MessageData } from '../../../discord-framework'
 
 import { App } from '../../app'
 import queue from '../../interactions/views/queue'
 import { Colors } from '../../messages/message_pieces'
 
 import { syncRankedCategory } from '../guilds'
-import { getLeaderboardById, getLeaderboardCurrentDivision } from '../leaderboards'
 
 export async function syncLeaderboardChannelsMessages(
   app: App,
@@ -56,7 +55,7 @@ export async function syncLbDisplayChannel(
   guild_leaderboard: GuildRanking,
 ): Promise<void> {
   const guild = await guild_leaderboard.guild()
-  const leaderboard = await guild_leaderboard.leaderboard()
+  const leaderboard = await guild_leaderboard.ranking()
 
   const result = await app.bot.utils.syncGuildChannel({
     target_channel_id: guild_leaderboard.data.leaderboard_channel_id,
@@ -77,8 +76,7 @@ export async function syncLbDisplayMessage(
   guild_leaderboard: GuildRanking,
 ): Promise<void> {
   // update all the messages and channels associated with this guild leaderboard
-  const leaderboard = await guild_leaderboard.leaderboard()
-  const division = await getLeaderboardCurrentDivision(app.db, leaderboard)
+  const ranking = await guild_leaderboard.ranking()
   const guild = await guild_leaderboard.guild()
 
   // a channel for the leaderboard and queue
@@ -86,10 +84,10 @@ export async function syncLbDisplayMessage(
     target_channel_id: guild_leaderboard.data.leaderboard_channel_id,
     target_message_id: guild_leaderboard.data.leaderboard_message_id,
     message: async () => {
-      return generateLeaderboardMessage(app, division)
+      return generateLeaderboardMessage(app, ranking)
     },
     channelData: async () => {
-      return await lbChanneldata(app, guild, leaderboard)
+      return await lbChanneldata(app, guild, ranking)
     },
   })
 
@@ -105,12 +103,9 @@ export async function syncLbDisplayMessage(
   }
 }
 
-export async function generateLeaderboardMessage(
-  app: App,
-  leaderboard_division: RankingDivision,
-): Promise<MessageData> {
-  const players = await leaderboard_division.getOrderedTopPlayers()
-  const lb_name = (await getLeaderboardById(app.db, leaderboard_division.data.ranking_id)).data.name
+export async function generateLeaderboardMessage(app: App, ranking: Ranking): Promise<MessageData> {
+  const players = await ranking.getOrderedTopPlayers()
+  const lb_name = (await app.db.rankings.get(ranking.data.id)).data.name
 
   const displayed_players: Map<string, number> = new Map()
 
@@ -180,10 +175,7 @@ export async function haveLeaderboardQueueMessage(
     target_channel_id: guild_leaderboard.data.leaderboard_channel_id,
     target_message_id: guild_leaderboard.data.queue_message_id,
     message: async () => {
-      let division_id = (
-        await getLeaderboardCurrentDivision(app.db, await guild_leaderboard.leaderboard())
-      ).data.id
-      return await queue(app).init({ division_id })
+      return await queue(app).init({ ranking_id: guild_leaderboard.data.ranking_id })
     },
     channelData: async () => {
       throw new Error('No channel to post queue message in. Need to make leaderboard message first')
@@ -201,7 +193,7 @@ export async function removeLeaderboardChannelsMessages(
   bot: DiscordRESTClient,
   leaderboard: Ranking,
 ): Promise<void> {
-  const guild_leaderboards = await leaderboard.guildLeaderboards()
+  const guild_leaderboards = await leaderboard.guildRankings()
   await Promise.all(
     guild_leaderboards.map(async (guild_leaderboard) => {
       await bot.utils.deleteChannelIfExists(guild_leaderboard.data.leaderboard_channel_id)

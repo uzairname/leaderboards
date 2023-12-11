@@ -56,7 +56,7 @@ export class StringData<T extends StringDataSchema> {
       this.data[key] = this.schema[key].default_value
 
       this.save[key] = (value: T[typeof key]['default_value']) => {
-        this.data[key] = this.validateValue(key, value)
+        this.data[key] = this.validateAndCompress(key, value)
         return this
       }
 
@@ -65,12 +65,12 @@ export class StringData<T extends StringDataSchema> {
         temp.data = {
           ...this.data,
         }
-        temp.data[key] = this.validateValue(key, value)
+        temp.data[key] = this.validateAndCompress(key, value)
         return temp
       }
 
       this.is[key] = (value: T[typeof key]['default_value']) => {
-        return this.data[key] === this.validateValue(key, value)
+        return this.data[key] === this.validateAndCompress(key, value)
       }
     }
 
@@ -83,7 +83,7 @@ export class StringData<T extends StringDataSchema> {
     }
   }
 
-  private validateValue(key: string, value: unknown): unknown {
+  private validateAndCompress(key: string, value: unknown): unknown {
     if (!this.schema.hasOwnProperty(key)) throw new Error('Key does not exist')
     const field = this.schema[key]
     field.compress(value)

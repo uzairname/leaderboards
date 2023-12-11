@@ -5,7 +5,6 @@ import {
   ModalSubmitComponent,
   APIInteractionResponseCallbackData,
   RESTPatchAPIWebhookWithTokenMessageJSONBody,
-  APIModalSubmitInteraction,
   InteractionType,
   APIInteractionResponseChannelMessageWithSource,
   APIInteractionResponse,
@@ -14,10 +13,9 @@ import {
 } from 'discord-api-types/v10'
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
 
-import { clone_json } from '../../utils/utils'
 import { StringData, StringDataSchema } from './utils/string_data'
 
-import { sentry } from '../../utils/globals'
+import { sentry } from '../../logging/globals'
 
 import { MessageData } from '../rest/objects'
 import { DiscordRESTClient } from '../rest/client'
@@ -35,23 +33,16 @@ import {
   AnyMessageView,
 } from './types'
 import { ViewErrors } from './utils/errors'
-import { ViewOffloadCallback, MessageView, CommandView } from './views'
+import { ViewOffloadCallback } from './views'
 import { FindViewCallback } from './types'
-import { onViewErrorCallback } from './types'
-import { replaceMessageComponentsCustomIds } from '../messages/custom_ids'
-
-type DecodedCustomId = {
-  prefix: string
-  content: OriginalCustomId
-}
-
-class OriginalCustomId extends String {}
+import { ViewErrorCallback } from './types'
+import { replaceMessageComponentsCustomIds } from './utils/interaction_utils'
 
 export async function respondToUserInteraction(
   interaction: APIInteraction,
   bot: DiscordRESTClient,
   find_view_callback: FindViewCallback,
-  onError: onViewErrorCallback,
+  onError: ViewErrorCallback,
   direct_response: boolean = true,
 ): Promise<APIInteractionResponse | undefined> {
   /*
@@ -177,25 +168,26 @@ export async function respondToViewCommandInteraction(
   return result
 }
 
+type DecodedCustomId = {
+  prefix: string
+  content: EncodedCustomIdState
+}
+
+class EncodedCustomIdState extends String {}
+
 export async function respondToViewComponentInteraction(
   view: AnyView,
   interaction: ComponentInteraction,
-  custom_id_state: OriginalCustomId,
+  custom_id_state: EncodedCustomIdState,
   bot: DiscordRESTClient,
   onError: (e: unknown) => APIInteractionResponseChannelMessageWithSource,
 ): Promise<ChatInteractionResponse | undefined> {
-  const modal_entries =
-    interaction.type === InteractionType.ModalSubmit
-      ? getModalSubmitEntries(interaction)
-      : undefined
-
   if (!view._componentCallback) throw new ViewErrors.NoComponentCallback()
 
   const state = decodeViewCustomIdState(view, custom_id_state)
 
   var result = await view._componentCallback({
     interaction,
-    modal_entries,
     offload: (callback) => {
       sentry.waitUntil(
         executeViewOffloadCallback({
@@ -204,7 +196,6 @@ export async function respondToViewComponentInteraction(
           bot: bot,
           interaction,
           state,
-          modal_entries,
           onError,
         }),
       )
@@ -222,7 +213,6 @@ async function executeViewOffloadCallback(args: {
   callback: ViewOffloadCallback<any>
   interaction: ChatInteraction
   state: StringData<any>
-  modal_entries?: ModalSubmitComponent[] | undefined
   bot: DiscordRESTClient
   onError: (e: unknown) => APIInteractionResponseChannelMessageWithSource
 }): Promise<void> {
@@ -231,7 +221,6 @@ async function executeViewOffloadCallback(args: {
   try {
     await args.callback({
       interaction: args.interaction,
-      modal_entries: args.modal_entries,
       send: async (response_data: APIInteractionResponseCallbackData) => {
         replaceMessageComponentsCustomIds(response_data.components, encodeCustomId(args.view))
         await args.bot.followupInteractionResponse(args.interaction.token, response_data)
@@ -268,38 +257,26 @@ export async function getMessageViewMessageData<Param>(
 
 function decodeViewCustomIdState<Schema extends StringDataSchema>(
   view: AnyView,
-  data?: OriginalCustomId,
+  data?: EncodedCustomIdState,
 ): StringData<Schema> {
   let state = new StringData(view.options.state_schema).decode(data?.valueOf() || '')
+  let data_temp = state.data.valueOf()
   sentry.addBreadcrumb({
     category: 'interaction',
     message: 'Decoded custom id state',
     level: 'debug',
     data: {
       'custom id': data?.valueOf(),
-      'decoded state': state.data,
+      'decoded state': data_temp,
     },
   })
   return state
 }
 
-function getModalSubmitEntries(interaction: APIModalSubmitInteraction): ModalSubmitComponent[] {
-  let modal_submit_components: ModalSubmitComponent[] = []
-  interaction = interaction as APIModalSubmitInteraction
-  interaction.data.components.forEach((row) => {
-    row.components.forEach((component) => {
-      let component_copy = clone_json(component)
-      component_copy.custom_id = decodeCustomId(component.custom_id).content.toString()
-      modal_submit_components.push(component_copy)
-    })
-  })
-  return modal_submit_components
-}
-
 const CUSTOM_ID_PREFIX = '0'
 
-function encodeCustomId(view: AnyView): (str?: OriginalCustomId) => string {
-  return (str?: OriginalCustomId) => {
+function encodeCustomId(view: AnyView): (str?: EncodedCustomIdState) => string {
+  return (str?: EncodedCustomIdState) => {
     let custom_id: string
     custom_id = `${view.options.custom_id_prefix}.${str || ''}`
     custom_id = CUSTOM_ID_PREFIX + custom_id
@@ -309,7 +286,7 @@ function encodeCustomId(view: AnyView): (str?: OriginalCustomId) => string {
   }
 }
 
-function decodeCustomId(custom_id: string): DecodedCustomId {
+export function decodeCustomId(custom_id: string): DecodedCustomId {
   let decompressed_custom_id = decompressFromUTF16(custom_id)
 
   if (!decompressed_custom_id)
@@ -319,15 +296,12 @@ function decodeCustomId(custom_id: string): DecodedCustomId {
     throw new ViewErrors.InvalidEncodedCustomId(
       `${decompressed_custom_id} doesn't start with ${CUSTOM_ID_PREFIX}`,
     )
-    // Any components made by this class are ignored by the message component handler. Fail the prefix check.
-    // This is to allow for custom ids that are not made by this class to be used in the same message.
   }
-  decompressed_custom_id = decompressed_custom_id.slice(1)
 
-  let [view_class, ...extra] = decompressed_custom_id.split('.')
+  let [view_class, ...extra] = decompressed_custom_id.slice(1).split('.')
   return {
     prefix: view_class,
-    content: new OriginalCustomId(extra.join('.')),
+    content: new EncodedCustomIdState(extra.join('.')),
   }
 }
 
@@ -336,16 +310,15 @@ export function replaceResponseCustomIds(
   replace: (data?: string) => string,
 ): void {
   // replaces all instances of a custom_id in a discord interaction response with replace(custom_id)
-
-  if (response.type === InteractionResponseType.Modal) {
-    response.data.custom_id = replace(response.data.custom_id)
-  }
-
   if (
     response.type === InteractionResponseType.ChannelMessageWithSource ||
     response.type === InteractionResponseType.UpdateMessage ||
     response.type === InteractionResponseType.Modal
   ) {
     replaceMessageComponentsCustomIds(response.data?.components, replace)
+  }
+
+  if (response.type === InteractionResponseType.Modal) {
+    response.data.custom_id = replace(response.data.custom_id)
   }
 }

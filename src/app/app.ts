@@ -1,8 +1,8 @@
-import { DiscordRESTClient } from '../discord'
+import { DiscordRESTClient } from '../discord-framework'
 import { DbClient } from '../database/client'
 import { Config } from '../config/config'
 import { RequestArgs } from '../utils/request'
-import { Sentry } from '../utils/sentry'
+import { Sentry } from '../logging/sentry'
 
 export class App {
   public db: DbClient
@@ -22,9 +22,5 @@ export class App {
       client_secret: this.config.env.CLIENT_SECRET,
       public_key: this.config.env.PUBLIC_KEY,
     })
-  }
-
-  debug(...messages: unknown[]) {
-    this.sentry.debug(...messages)
   }
 }

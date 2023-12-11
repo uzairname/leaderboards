@@ -5,9 +5,8 @@ export class AppError extends Error {
   }
 }
 
+// Errors that are expected and displayed to the user
 export namespace AppErrors {
-  // Errors that are expected and displayed to the user
-
   export class InteractionNotGuild extends AppError {
     constructor() {
       super('Use this command in a server')
@@ -34,20 +33,28 @@ export namespace AppErrors {
 }
 
 // Other errors
+
+export class UnexpectedError extends Error {
+  constructor(message?: string) {
+    super(message)
+    this.name = `${UnexpectedError.name}.${this.constructor.name}`
+  }
+}
+
 export namespace Errors {
-  export class UnknownState extends Error {
+  export class UnknownState extends UnexpectedError {
     constructor(state?: string) {
       super(`Unhandled custom id state "${state}"`)
     }
   }
 
-  export class NotImplimented extends Error {}
+  export class NotImplimented extends UnexpectedError {}
 
-  export class MissingIdentifyScope extends Error {
+  export class MissingIdentifyScope extends UnexpectedError {
     constructor() {
       super("Can't save oauth token: No identify scope")
     }
   }
 
-  export class UnknownLeaderboard extends Error {}
+  export class UnknownRanking extends UnexpectedError {}
 }

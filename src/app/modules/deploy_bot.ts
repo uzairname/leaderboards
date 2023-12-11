@@ -1,5 +1,4 @@
-import { overwriteDiscordCommandsWithViews } from '../../discord/interactions/set_commands'
-import { isCommandView } from '../../discord/interactions/types'
+import { overwriteDiscordCommandsWithViews, isCommandView } from '../../discord-framework'
 
 import { App } from '../app'
 

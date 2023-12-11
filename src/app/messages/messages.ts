@@ -1,10 +1,12 @@
-import { DiscordErrors, DiscordRESTClient } from '../../discord'
+import { DiscordErrors, DiscordRESTClient } from '../../discord-framework'
 
 import { inviteUrl } from './message_pieces'
 
 export namespace Messages {
   export const concise_description =
     'Track matches and Elo ratings for any game in your server. Find and play matches against players of your skill level. Additional utilities for moderation, display, and statistics.'
+
+  export const github_url = 'https://github.com/uzairname/leaderboards'
 
   export function botPermisssionsErrorDescription(
     bot: DiscordRESTClient,

@@ -8,14 +8,13 @@ import {
   MessageFlags,
 } from 'discord-api-types/v10'
 
-import { assertNonNullable } from '../../../utils/utils'
+import { CommandView } from '../../../discord-framework'
+import { assertValue } from '../../../utils/utils'
 
 import { checkGuildInteraction } from '../checks'
 import { checkMemberBotAdmin } from '../../modules/user_permissions'
 import { getOrAddGuild } from '../../modules/guilds'
-import { getLeaderboardById, getLeaderboardCurrentDivision } from '../../modules/leaderboards'
 import { syncLbDisplayMessage } from '../../modules/channels/leaderboard_channels'
-import { CommandView } from '../../../discord/interactions/views'
 import { AppError } from '../../errors'
 import { getRegisterPlayer } from '../../modules/players'
 import { App } from '../../app'
@@ -102,14 +101,13 @@ export default (app: App) =>
         throw new AppError('Points must be a number')
       }
 
-      // Get the selected leaderboard division
-      let leaderboard = await getLeaderboardById(app.db, parseInt(options.leaderboard))
-      let division = await getLeaderboardCurrentDivision(app.db, leaderboard)
+      // Get the selected ranking
+      let ranking = await app.db.rankings.get(parseInt(options.leaderboard))
 
-      // Get the selected player in the division
+      // Get the selected player in the ranking
       const user = interaction.data.resolved?.users?.[options.user]
-      assertNonNullable(user)
-      let player = await getRegisterPlayer(app.db, user, division)
+      assertValue(user)
+      let player = await getRegisterPlayer(app.db, user, ranking)
 
       // add points to player
       await player.update({
@@ -117,15 +115,15 @@ export default (app: App) =>
       })
 
       // update the leaderboard display
-      const guild_leaderboard = await app.db.guild_rankings.get(guild.data.id, leaderboard.data.id)
-      assertNonNullable(guild_leaderboard)
+      const guild_leaderboard = await app.db.guild_rankings.get(guild.data.id, ranking.data.id)
+      assertValue(guild_leaderboard)
 
       await syncLbDisplayMessage(app, guild_leaderboard)
 
       return {
         type: InteractionResponseType.ChannelMessageWithSource,
         data: {
-          content: `Added ${points} points to <@${user.id}> in ${leaderboard.data.name}`,
+          content: `Added ${points} points to <@${user.id}> in ${ranking.data.name}`,
           flags: MessageFlags.Ephemeral,
           allowed_mentions: {
             parse: [],

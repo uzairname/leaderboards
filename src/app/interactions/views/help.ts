@@ -12,7 +12,7 @@ import { App } from '../../app'
 
 import { Messages } from '../../messages/messages'
 import { Colors, dateTimestamp, inviteUrl } from '../../messages/message_pieces'
-import { CommandView } from '../../../discord/interactions/views'
+import { CommandView } from '../../../discord-framework'
 
 const help_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -27,12 +27,17 @@ const help_command = new CommandView({
 export default (app: App) =>
   help_command.onCommand(async () => {
     const last_deployed = (await app.db.settings.getOrUpdate()).data.last_deployed
+
     let last_deployed_timestamp = last_deployed ? dateTimestamp(last_deployed) : 'unknown'
 
     const embed: APIEmbed = {
-      title: 'Firstplace',
+      title: 'Leaderboards',
       description: Messages.concise_description,
       fields: [
+        {
+          name: `Source Code`,
+          value: `This bot is open source. [GitHub](${Messages.github_url})`,
+        },
         {
           name: `Version`,
           value: `This bot was last updated on ${last_deployed_timestamp}`,
