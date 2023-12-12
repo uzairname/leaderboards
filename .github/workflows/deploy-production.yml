@@ -19,6 +19,9 @@ jobs:
       - name: Compile TypeScript
         run: npx tsc --build tsconfig.json
 
+      - name: postgres
+        run: echo ${{ secrets.POSTGRES_URL }}
+
       - name: Run migrations
         run: set POSTGRES_URL=${{ secrets.POSTGRES_URL }} && npx tsx ${{ env.MIGRATIONS_SCRIPT_PATH }}
 
