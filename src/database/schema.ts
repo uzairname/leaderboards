@@ -4,6 +4,7 @@ import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, i
 export const Settings = pgTable('Settings', {
   id: integer('id').primaryKey().default(1),
   last_deployed: timestamp('last_deployed').defaultNow(),
+  config: jsonb('config').$type<any>(),
 })
 
 export const Users = pgTable('Users', {

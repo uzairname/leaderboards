@@ -9,8 +9,31 @@ import { DatabaseErrors } from '../../utils/errors'
 import { DbObject, DbObjectManager } from '../managers'
 import { RankingSelect, RankingUpdate, RankingInsert } from '../types'
 import { GuildRanking, Match, Player, Team } from '..'
+import { DbClient } from '../../client'
+
+export const default_players_per_team = 1
+export const default_num_teams = 2
+
+export const default_elo_settings = {
+  initial_rating: 25,
+  initial_rd: 25 / 3,
+}
 
 export class Ranking extends DbObject<RankingSelect> {
+  constructor(data: RankingSelect, db: DbClient) {
+    super(data, db)
+    let update: RankingUpdate = {}
+    if (!data.elo_settings) {
+      update['elo_settings'] = default_elo_settings
+    }
+    if (!data.num_teams || data.players_per_team) {
+      update['num_teams'] = default_num_teams
+      update['players_per_team'] = default_players_per_team
+    }
+    this.data = { ...this.data, ...update }
+    this.update(update).then(() => {})
+  }
+
   async guildRankings(): Promise<GuildRanking[]> {
     const query_results = await this.db.db
       .select()

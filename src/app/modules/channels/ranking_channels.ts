@@ -41,7 +41,7 @@ export async function syncRankingChannelsMessages(
   }
 }
 
-export async function lbChanneldata(
+export async function lbChannelData(
   app: App,
   guild: Guild,
   ranking: Ranking,
@@ -72,7 +72,7 @@ export async function syncRankingLbChannel(app: App, guild_ranking: GuildRanking
   const result = await app.bot.utils.syncGuildChannel({
     target_channel_id: guild_ranking.data.leaderboard_channel_id,
     channelData: async () => {
-      return await lbChanneldata(app, guild, ranking)
+      return await lbChannelData(app, guild, ranking)
     },
   })
 
@@ -96,7 +96,7 @@ export async function syncRankingLbMessage(app: App, guild_ranking: GuildRanking
       return generateLeaderboardMessage(app, ranking)
     },
     channelData: async () => {
-      return await lbChanneldata(app, guild, ranking)
+      return await lbChannelData(app, guild, ranking)
     },
   })
 
@@ -128,7 +128,7 @@ export async function generateLeaderboardMessage(app: App, ranking: Ranking): Pr
   const players_text = [...displayed_players.entries()]
     .map(([player_id, points]) => {
       place++
-      return `### ${place}. <@${player_id}> (${points})`
+      return `### ${place}. <@${player_id}> ${(points * 10).toFixed(0)}`
     })
     .join('\n\n')
 

@@ -19,6 +19,29 @@ export async function finishMatch(
   time_started: Date = new Date(),
   metadata?: { [key: string]: any },
 ) {
+  const players = await Promise.all(
+    team_player_ids.map(async (team) => {
+      return await Promise.all(
+        team.map(async (player_id) => {
+          return await app.db.players.getById(player_id)
+        }),
+      )
+    }),
+  )
+
+  // make sure all players are from the same ranking, and no duplicate player ids
+  const ranking_id = players[0][0].data.ranking_id
+  if (players.flat().length !== new Set(players.flat().map((p) => p.data.id)).size) {
+    throw new AppError('Duplicate players in one match')
+  }
+  players.forEach((team) => {
+    team.forEach((player) => {
+      if (player.data.ranking_id !== ranking_id) {
+        throw new AppError('Players from different rankings in one match')
+      }
+    })
+  })
+
   const match = await app.db.matches.create({
     ranking_id: ranking.data.id,
     team_players: team_player_ids,
@@ -29,14 +52,12 @@ export async function finishMatch(
   })
 
   await Promise.all(
-    team_player_ids.map(async (team, team_num) => {
+    players.map(async (team, team_num) => {
       await Promise.all(
-        team.map(async (player_id) => {
-          const player = await app.db.players.getById(player_id)
-
+        team.map(async (player) => {
           await app.db.db.insert(MatchPlayers).values({
             match_id: match.data.id,
-            player_id: player_id,
+            player_id: player.data.id,
             team_num,
             rating_before: player.data.rating,
             rd_before: player.data.rd,
@@ -67,14 +88,6 @@ export async function scoreOneMatch(app: App, match: Match) {
   // make sure all players are from the same ranking
   const ranking_id = players[0][0].data.ranking_id
 
-  players.forEach((team) => {
-    team.forEach((player) => {
-      if (player.data.ranking_id !== ranking_id) {
-        throw new AppError('Players from different rankings in one match')
-      }
-    })
-  })
-
   const ranking = await app.db.rankings.get(ranking_id)
   assertValue(ranking.data.elo_settings)
 
@@ -86,13 +99,19 @@ export async function scoreOneMatch(app: App, match: Match) {
     ranking.data.elo_settings.initial_rd,
   )
 
+  sentry.debug(`elo settings ${JSON.stringify(ranking.data.elo_settings)}`)
+
   let player_ratings = players.map((team) => {
     return team.map((player) => {
       return env.createRating(player.data.rating ?? undefined, player.data.rd ?? undefined)
     })
   })
 
+  sentry.debug(`player ratings ${JSON.stringify(player_ratings)}`)
+
   player_ratings = env.rate(player_ratings, team_ranks)
+
+  sentry.debug(`player ratings after ${JSON.stringify(player_ratings)}`)
 
   // update player ratings in database
   await Promise.all(

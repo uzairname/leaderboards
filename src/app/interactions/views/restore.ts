@@ -11,7 +11,7 @@ import { App } from '../../app'
 import { syncRankingChannelsMessages } from '../../modules/channels/ranking_channels'
 import { getOrAddGuild } from '../../modules/guilds'
 
-import { checkMemberBotAdmin } from '../../modules/user_permissions'
+import { checkInteractionMemberPerms } from '../checks'
 import { checkGuildInteraction } from '../checks'
 
 export const restore_cmd_def = new CommandView({
@@ -29,8 +29,7 @@ export default (app: App) =>
     ctx.offload(async (ctx) => {
       const interaction = checkGuildInteraction(ctx.interaction)
       const guild = await getOrAddGuild(app, interaction.guild_id)
-
-      await checkMemberBotAdmin(interaction.member, guild)
+      await checkInteractionMemberPerms(app, ctx, guild)
 
       for (const result of await guild.guildRankings()) {
         await syncRankingChannelsMessages(app, result.guild_ranking)

@@ -39,6 +39,7 @@ import rankings from './rankings'
 import { finishMatch } from '../../modules/scoring'
 import { Ranking } from '../../../database/models'
 import { Colors } from '../../messages/message_pieces'
+import { checkInteractionMemberPerms } from '../checks'
 
 const record_match_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -146,7 +147,7 @@ export default (app: App) =>
             sentry.debug('winner id', winner.data.id)
             sentry.debug('loser id', loser.data.id)
 
-            await finishMatch(app, ranking, [[winner.data.id], [loser.data.id]], [1, 0])
+            await confirmMatch(ctx, app, ranking, [[winner.data.id], [loser.data.id]], [1, 0])
 
             return await ctx.editOriginal({
               content: `Recorded match.`,
@@ -401,7 +402,7 @@ async function onConfirmMatch(
       .map((_, i) => (i == ctx.state.data.selected_winning_team_index ? 1 : 0))
     sentry.debug('relative scores', relative_scores, 'player teams', num_teams)
 
-    await finishMatch(app, ranking, player_teams, relative_scores)
+    await confirmMatch(ctx, app, ranking, player_teams, relative_scores)
 
     const embed: APIEmbed = {
       title: `Match recorded`,
@@ -447,3 +448,14 @@ async function onConfirmMatch(
 }
 
 const placeholder_user_id = '0'
+
+async function confirmMatch(
+  ctx: BaseContext<typeof record_match_command>,
+  app: App,
+  ranking: Ranking,
+  player_teams: number[][],
+  relative_scores: number[],
+): Promise<void> {
+  await checkInteractionMemberPerms(app, ctx)
+  await finishMatch(app, ranking, player_teams, relative_scores)
+}

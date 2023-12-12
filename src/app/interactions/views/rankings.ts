@@ -37,15 +37,10 @@ import { sentry } from '../../../logging/globals'
 import { App } from '../../app'
 import { AppErrors, UserErrors } from '../../errors'
 
-import { checkMemberBotAdmin } from '../../modules/user_permissions'
 import { getOrAddGuild } from '../../modules/guilds'
-import {
-  deleteRanking,
-  createNewRankingInGuild,
-  updateRanking,
-  default_players_per_team,
-  default_num_teams,
-} from '../../modules/rankings'
+import { deleteRanking, createNewRankingInGuild, updateRanking } from '../../modules/rankings'
+import { default_num_teams } from '../../../database/models/models/rankings'
+import { default_players_per_team } from '../../../database/models/models/rankings'
 
 import { GuildRanking } from '../../../database/models'
 import {
@@ -55,6 +50,7 @@ import {
   relativeTimestamp,
   toMarkdown,
 } from '../../messages/message_pieces'
+import { checkInteractionMemberPerms } from '../checks'
 import { checkGuildInteraction } from '../checks'
 
 import { restore_cmd_def } from './restore'
@@ -144,7 +140,6 @@ export default (app: App) =>
       if (!ctx.state.is.owner_id(ctx.interaction.member?.user.id)) {
         throw new UserErrors.NotComponentOwner(ctx.state.data.owner_id)
       }
-      checkMemberBotAdmin(interaction.member, await getOrAddGuild(app, interaction.guild_id))
 
       // Component
       if (ctx.state.is.component('btn:create')) {
@@ -356,6 +351,8 @@ export async function onRenameModalSubmit(
   assertValue(ctx.state.data.selected_ranking_id, 'selected_ranking_id')
   const ranking = await app.db.rankings.get(ctx.state.data.selected_ranking_id)
   const old_name = ranking.data.name
+
+  await checkInteractionMemberPerms(app, ctx)
   await updateRanking(app, ranking, {
     name: ctx.state.data.input_name,
   })
@@ -424,7 +421,10 @@ export async function onCreateConfirm(
   ctx.offload(async (ctx) => {
     let input_name = ctx.state.data.input_name
     assertValue(input_name, 'input_name')
-    let guild = await getOrAddGuild(app, guild_id)
+
+    const guild = await getOrAddGuild(app, guild_id)
+    await checkInteractionMemberPerms(app, ctx, guild)
+
     let result = await createNewRankingInGuild(app, guild, {
       name: input_name,
     })
@@ -491,6 +491,7 @@ export async function onDeleteCorfirm(
   }
 
   ctx.offload(async (ctx) => {
+    await checkInteractionMemberPerms(app, ctx)
     await deleteRanking(app.bot, ranking)
 
     await ctx.editOriginal({

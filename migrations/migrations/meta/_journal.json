@@ -15,6 +15,13 @@
       "when": 1702371346831,
       "tag": "0001_greedy_sphinx",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1702374492921,
+      "tag": "0002_nifty_onslaught",
+      "breakpoints": true
     }
   ]
 }

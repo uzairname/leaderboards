@@ -9,7 +9,7 @@ import {
 import { CommandView, ChoiceField } from '../../../discord-framework'
 
 import { checkGuildInteraction } from '../checks'
-import { checkMemberBotAdmin } from '../../modules/user_permissions'
+import { checkInteractionMemberPerms } from '../checks'
 import { getOrAddGuild, syncGuildAdminRole } from '../../modules/guilds'
 import { AppErrors, UserErrors } from '../../errors'
 import { App } from '../../app'
@@ -37,14 +37,14 @@ export default (app: App) =>
       return {
         type: InteractionResponseType.ChannelMessageWithSource,
         data: {
-          content: 'Settings',
+          content: 'Create a role for bot admin permissions',
           components: [
             {
               type: ComponentType.ActionRow,
               components: [
                 {
                   type: ComponentType.Button,
-                  label: 'admin role',
+                  label: 'create admin role',
                   style: ButtonStyle.Primary,
                   custom_id: ctx.state.set.page('admin role').encode(),
                 },
@@ -61,8 +61,7 @@ export default (app: App) =>
       let guild = await getOrAddGuild(app, interaction.guild_id)
 
       if (ctx.state.is.page('admin role')) {
-        checkMemberBotAdmin(interaction.member, guild)
-
+        await checkInteractionMemberPerms(app, ctx)
         const role_result = await syncGuildAdminRole(app, guild)
         await app.bot.addRoleToMember(
           interaction.guild_id,

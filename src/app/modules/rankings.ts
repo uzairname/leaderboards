@@ -13,9 +13,12 @@ import { UserError, UserErrors } from '../errors'
 import { RankingUpdate } from '../../database/models/types'
 import { syncRankingChannelsMessages } from './channels/ranking_channels'
 import { removeRankingChannelsMessages } from './channels/ranking_channels'
-
-export const default_players_per_team = 1
-export const default_num_teams = 2
+import { checkInteractionMemberPerms } from '../interactions/checks'
+import {
+  default_elo_settings,
+  default_players_per_team,
+} from '../../database/models/models/rankings'
+import { default_num_teams } from '../../database/models/models/rankings'
 
 /**
  *
@@ -51,10 +54,7 @@ export async function createNewRankingInGuild(
     time_created: new Date(),
     players_per_team: default_players_per_team,
     num_teams: default_num_teams,
-    elo_settings: {
-      initial_rating: 25,
-      initial_rd: 25 / 3,
-    },
+    elo_settings: default_elo_settings,
     // TODO: specify players per team and num teams
   })
 
