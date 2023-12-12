@@ -85,7 +85,7 @@ export function queueMessage(ctx: MessageCreateContext<typeof queue_message_def>
         components: [
           {
             type: ComponentType.Button,
-            style: ButtonStyle.Success,
+            style: ButtonStyle.Primary,
             custom_id: ctx.state.set.component('join').encode(),
             label: 'Join Queue',
           },

@@ -50,10 +50,7 @@ export async function lbChanneldata(
   }
 }
 
-export async function syncRankingLbChannel(
-  app: App,
-  guild_ranking: GuildRanking,
-): Promise<void> {
+export async function syncRankingLbChannel(app: App, guild_ranking: GuildRanking): Promise<void> {
   const guild = await guild_ranking.guild()
   const ranking = await guild_ranking.ranking()
 
@@ -71,10 +68,7 @@ export async function syncRankingLbChannel(
   }
 }
 
-export async function syncRankingLbMessage(
-  app: App,
-  guild_ranking: GuildRanking,
-): Promise<void> {
+export async function syncRankingLbMessage(app: App, guild_ranking: GuildRanking): Promise<void> {
   // update all the messages and channels associated with this guild leaderboard
   const ranking = await guild_ranking.ranking()
   const guild = await guild_ranking.guild()
@@ -119,9 +113,9 @@ export async function generateLeaderboardMessage(app: App, ranking: Ranking): Pr
   const players_text = [...displayed_players.entries()]
     .map(([player_id, points]) => {
       place++
-      return `${place <= 3 ? `### ` : ``}${place}. <@${player_id}> (${points})`
+      return `### ${place}. <@${player_id}> (${points})`
     })
-    .join('\n')
+    .join('\n\n')
 
   let embed: APIEmbed = {
     description: `${players_text}` || 'No players yet',

@@ -11,8 +11,13 @@ import { App } from '../app'
 import { UserError, UserErrors } from '../errors'
 
 import { RankingUpdate } from '../../database/models/types'
-import { syncRankingChannelsMessages } from './channels/leaderboard_channels'
-import { removeRankingChannelsMessages as removeRankingChannelsMessages } from './channels/leaderboard_channels'
+import { syncRankingChannelsMessages } from './channels/ranking_channels'
+import { removeRankingChannelsMessages as removeRankingChannelsMessages } from './channels/ranking_channels'
+
+
+export const default_players_per_team = 1
+export const default_num_teams = 2
+
 
 /**
  *
@@ -46,8 +51,8 @@ export async function createNewRankingInGuild(
   const new_ranking = await app.db.rankings.create({
     name: lb_options.name,
     time_created: new Date(),
-    players_per_team: 1,
-    num_teams: 2,
+    players_per_team: default_players_per_team,
+    num_teams: default_num_teams,
     elo_settings: {
       initial_rating: 1000,
       initial_rd: 350,

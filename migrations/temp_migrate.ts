@@ -3,11 +3,11 @@ import fastcsv from 'fast-csv'
 import fs from 'fs'
 import dotenv from 'dotenv'
 
-// download all tables from database as csv files
 
 dotenv.config()
 
 async function download() {
+  // download all tables from database as csv files
   const pool = new pg.Pool({
     connectionString: process.env.POSTGRES_URL_PRODUCTION_OLD,
     ssl: true,

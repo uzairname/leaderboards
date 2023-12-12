@@ -39,7 +39,7 @@ import { UserErrors } from '../../errors'
 
 import { checkMemberBotAdmin } from '../../modules/user_permissions'
 import { getOrAddGuild } from '../../modules/guilds'
-import { deleteRanking, createNewRankingInGuild, updateRanking } from '../../modules/rankings'
+import { deleteRanking, createNewRankingInGuild, updateRanking, default_players_per_team, default_num_teams } from '../../modules/rankings'
 
 import { GuildRanking } from '../../../database/models'
 import {
@@ -91,6 +91,8 @@ const rankings_cmd_def = new CommandView({
     }),
     selected_ranking_id: new NumberField(),
     input_name: new StringField(),
+    input_players_per_team: new NumberField(),
+    input_num_teams: new NumberField(),
   },
 })
 
@@ -363,27 +365,38 @@ export async function onRenameModalSubmit(
 export function creatingNewRankingPage(
   ctx: ComponentContext<typeof rankings_cmd_def>,
 ): ChatInteractionResponse {
-  const response_type = InteractionResponseType.ChannelMessageWithSource
-
-  const content = `Creating a new  named **${toMarkdown(ctx.state.data.input_name)}**`
-
   ctx.state.save.page('creating new')
+
+  const players_per_team = ctx.state.data.input_players_per_team || default_players_per_team
+  const num_teams = ctx.state.data.input_num_teams || default_num_teams
+
+  const content = `Creating a new ranking named **${toMarkdown(ctx.state.data.input_name)}**`
+    + ` with the following settings:`
+    + `\nEvery match has **${players_per_team}** player` + (players_per_team === 1 ? '' : 's') + ` per team`
+    + ` and **${num_teams}** teams`
+
+  const embed: APIEmbed = {
+    title: `Confirm?`,
+    description: content,
+    color: Colors.EmbedBackground,
+  }
+
   const components: APIActionRowComponent<APIMessageActionRowComponent>[] = [
     {
       type: ComponentType.ActionRow,
       components: [
         {
           type: ComponentType.Button,
-          style: ButtonStyle.Primary,
+          style: ButtonStyle.Success,
           custom_id: ctx.state.set.component('btn:create confirm').encode(),
-          label: 'Create',
+          label: 'Confirm',
         },
       ],
     },
   ]
 
   const response: ChatInteractionResponse = {
-    type: response_type,
+    type: InteractionResponseType.ChannelMessageWithSource,
     data: {
       flags: MessageFlags.Ephemeral,
       content,

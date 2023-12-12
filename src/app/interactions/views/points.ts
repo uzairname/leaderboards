@@ -14,10 +14,12 @@ import { assertValue } from '../../../utils/utils'
 import { checkGuildInteraction } from '../checks'
 import { checkMemberBotAdmin } from '../../modules/user_permissions'
 import { getOrAddGuild } from '../../modules/guilds'
-import { syncRankingLbMessage } from '../../modules/channels/leaderboard_channels'
+import { syncRankingLbMessage } from '../../modules/channels/ranking_channels'
 import { UserError } from '../../errors'
 import { getRegisterPlayer } from '../../modules/players'
 import { App } from '../../app'
+import { rankingsAutocomplete } from '../common'
+import { sentry } from '../../../logging/globals'
 
 const points_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -51,35 +53,7 @@ const points_command = new CommandView({
 
 export default (app: App) =>
   points_command
-    .onAutocomplete(async (ctx) => {
-      const interaction = checkGuildInteraction(ctx.interaction)
-
-      let input_value =
-        (
-          interaction.data.options?.find((o) => o.name === 'ranking') as
-            | APIApplicationCommandInteractionDataStringOption
-            | undefined
-        )?.value ?? ''
-
-      const guild = await getOrAddGuild(app, interaction.guild_id)
-      const lb_results = await guild.guildRankings()
-
-      const choices: APIApplicationCommandOptionChoice[] = lb_results
-        .filter((r) => r.ranking.data.name?.toLowerCase().includes(input_value.toLowerCase()))
-        .map((r) => ({
-          name: r.ranking.data.name || 'unnamed ranking',
-          value: r.ranking.data.id.toString(),
-        }))
-
-      const response: APIApplicationCommandAutocompleteResponse = {
-        type: InteractionResponseType.ApplicationCommandAutocompleteResult,
-        data: {
-          choices,
-        },
-      }
-
-      return response
-    })
+    .onAutocomplete(rankingsAutocomplete(app))
     .onCommand(async (ctx) => {
       // Check if the user has bot admin perms in the guild.
       const interaction = checkGuildInteraction(ctx.interaction)
@@ -102,6 +76,8 @@ export default (app: App) =>
       }
 
       // Get the selected ranking
+      const ranking_id = parseInt(options['ranking'])
+      sentry.debug(`ranking_id: ${ranking_id}`)
       let ranking = await app.db.rankings.get(parseInt(options['ranking']))
 
       // Get the selected player in the ranking

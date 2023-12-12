@@ -8,7 +8,7 @@ import { CommandView } from '../../../discord-framework'
 
 import { App } from '../../app'
 
-import { syncRankingChannelsMessages } from '../../modules/channels/leaderboard_channels'
+import { syncRankingChannelsMessages } from '../../modules/channels/ranking_channels'
 import { getOrAddGuild } from '../../modules/guilds'
 
 import { checkMemberBotAdmin } from '../../modules/user_permissions'
