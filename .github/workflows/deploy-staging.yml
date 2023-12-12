@@ -15,34 +15,15 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      # - name: postgres
-      # # determine whether POSTGRES_URL environment secret is set
-      #   run: |
-      #     if [ -z "${POSTGRES_URL}" ]; then
-      #       echo "POSTGRES_URL environment secret is not set"
-      #       exit 1
-      #     fi
-
-      - name: Set env as secret
-        env:
-          MY_VAL: ${{ secrets.POSTGRES_URL }}
-        run: |
-          import os
-          data = open("file", "w")
-          for q in (os.getenv("MY_VAL")):
-            print(q)
-            data.write(q)
-        shell: python
-
-
-
       - run: npm install
 
       - name: Compile TypeScript
         run: npx tsc --build tsconfig.json
 
       - name: Run migrations
-        run: set POSTGRES_URL=${{ secrets.POSTGRES_URL }} && npx tsx ${{ env.MIGRATIONS_SCRIPT_PATH }}
+        env: 
+          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
+        run: npx tsx ${{ env.MIGRATIONS_SCRIPT_PATH }}
 
       - name: Publish to Cloudflare Workers
         uses: cloudflare/wrangler-action@2.0.0
