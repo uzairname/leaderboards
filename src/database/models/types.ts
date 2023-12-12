@@ -46,10 +46,6 @@ export type TeamSelect = InferSelectModel<typeof Teams>
 export type TeamInsert = Omit<InferInsertModel<typeof Teams>, 'id'>
 export type TeamUpdate = Partial<Omit<TeamInsert, 'ranking_id'>>
 
-export type QueueTeamSelect = InferSelectModel<typeof QueueTeams>
-export type QueueTeamInsert = InferInsertModel<typeof QueueTeams>
-export type QueueTeamUpdate = Partial<Omit<QueueTeamInsert, 'ranking_id' | 'team_id'>>
-
 export type MatchSelect = InferSelectModel<typeof Matches>
 export type MatchInsert = Omit<InferInsertModel<typeof Matches>, 'id'>
 export type MatchUpdate = Partial<MatchInsert>

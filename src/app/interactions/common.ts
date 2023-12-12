@@ -41,7 +41,7 @@ export function rankingsAutocomplete(
         value: lb.ranking.data.id.toString(),
       }))
 
-    if (create_new_choice) {
+    if (create_new_choice || choices.length == 0) {
       // Add a choice to create a new ranking.
       choices.push({
         name: 'Create a new ranking',

@@ -1,21 +1,21 @@
-export class AppError extends Error {
+export class UserError extends Error {
   constructor(message?: string) {
     super(message)
-    this.name = `${AppError.name}.${this.constructor.name}`
+    this.name = `${UserError.name}.${this.constructor.name}`
   }
 }
 
 // Errors that are expected and displayed to the user
-export namespace AppErrors {
-  export class InteractionNotGuild extends AppError {
+export namespace UserErrors {
+  export class InteractionNotGuild extends UserError {
     constructor() {
       super('Use this command in a server')
     }
   }
 
-  export class UserMissingPermissions extends AppError {}
+  export class UserMissingPermissions extends UserError {}
 
-  export class NotComponentOwner extends AppError {
+  export class NotComponentOwner extends UserError {
     constructor(owner_id?: string) {
       super(
         owner_id
@@ -25,36 +25,35 @@ export namespace AppErrors {
     }
   }
 
-  export class InvalidQueueTeamSize extends AppError {
+  export class InvalidQueueTeamSize extends UserError {
     constructor(public required_team_size: number) {
       super(`Team must be of size ${required_team_size}`)
     }
   }
 }
 
-// Other errors
-
-export class UnexpectedError extends Error {
+// Other errors that are not expected
+export class AppError extends Error {
   constructor(message?: string) {
     super(message)
-    this.name = `${UnexpectedError.name}.${this.constructor.name}`
+    this.name = `${AppError.name}.${this.constructor.name}`
   }
 }
 
-export namespace Errors {
-  export class UnknownState extends UnexpectedError {
+export namespace UserErrors {
+  export class UnknownState extends AppError {
     constructor(state?: string) {
       super(`Unhandled custom id state "${state}"`)
     }
   }
 
-  export class NotImplimented extends UnexpectedError {}
+  export class NotImplimented extends AppError {}
 
-  export class MissingIdentifyScope extends UnexpectedError {
+  export class MissingIdentifyScope extends AppError {
     constructor() {
       super("Can't save oauth token: No identify scope")
     }
   }
 
-  export class UnknownRanking extends UnexpectedError {}
+  export class UnknownRanking extends AppError {}
 }

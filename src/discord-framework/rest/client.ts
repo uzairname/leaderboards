@@ -68,10 +68,7 @@ export class DiscordRESTClient extends REST {
   // USERS
 
   async getUser(user_id: string) {
-    return (await this.fetch(
-      RequestMethod.Get,
-      D.Routes.user(user_id),
-    )) as D.RESTGetAPIUserResult
+    return (await this.fetch(RequestMethod.Get, D.Routes.user(user_id))) as D.RESTGetAPIUserResult
   }
 
   // CHANNELS

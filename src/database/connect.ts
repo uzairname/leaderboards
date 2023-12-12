@@ -18,16 +18,18 @@ class DrizzleLogger implements Logger {
   constructor(private sentry?: Sentry) {}
 
   logQuery(query: string, params?: unknown[]): void {
-    if (this.sentry === undefined) return
-
-    this.sentry.addBreadcrumb({
-      data: {
-        query: query,
-        params: params,
-      },
-      category: 'database',
-      type: 'query',
-      level: 'info',
-    })
+    if (this.sentry) {
+      this.sentry.addBreadcrumb({
+        data: {
+          query: query,
+          params: params,
+        },
+        category: 'database',
+        type: 'query',
+        level: 'info',
+      })
+    } else {
+      console.log('query', query, params)
+    }
   }
 }

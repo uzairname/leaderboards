@@ -24,7 +24,7 @@ export function respond(req: RequestArgs): Promise<Response> {
     })
 
     .post('/interactions', (request) => {
-      return respondToDiscordInteraction(app.bot, request, findView(app), onViewError(app), false)
+      return respondToDiscordInteraction(app.bot, request, findView(app), onViewError(app), true)
     })
 
     .get(config.routes.OAUTH_LINKED_ROLES, () => {

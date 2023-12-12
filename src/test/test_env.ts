@@ -1,4 +1,4 @@
-import { Env } from "../config/env"
+import { Env } from '../config/env'
 
 export default {
   ENVIRONMENT: 'test',
@@ -9,5 +9,5 @@ export default {
   CLIENT_SECRET: '',
   SENTRY_DSN: '',
   APP_KEY: 'keye',
-  POSTGRES_URL: "",
+  POSTGRES_URL: '',
 } satisfies Env

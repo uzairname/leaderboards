@@ -8,7 +8,7 @@ import { GuildRankings, Rankings } from '../../database/schema'
 import { Guild, GuildRanking, Ranking } from '../../database/models'
 
 import { App } from '../app'
-import { AppError, Errors } from '../errors'
+import { UserError, UserErrors } from '../errors'
 
 import { RankingUpdate } from '../../database/models/types'
 import { syncLeaderboardChannelsMessages } from './channels/leaderboard_channels'
@@ -40,7 +40,7 @@ export async function createNewRankingInGuild(
       .where(and(eq(GuildRankings.guild_id, guild.data.id), eq(Rankings.name, lb_options.name)))
   )[0]
   if (same_name_ranking) {
-    throw new AppError(`You already have a ranking named \`${lb_options.name}\``)
+    throw new UserError(`You already have a ranking named \`${lb_options.name}\``)
   }
 
   const new_ranking = await app.db.rankings.create({
@@ -48,6 +48,10 @@ export async function createNewRankingInGuild(
     time_created: new Date(),
     players_per_team: 1,
     num_teams: 2,
+    elo_settings: {
+      initial_rating: 1000,
+      initial_rd: 350,
+    },
     // TODO: specify players per team and num teams
   })
 
@@ -74,10 +78,7 @@ export async function updateRanking(app: App, ranking: Ranking, options: Ranking
   )
 }
 
-export async function deleteRanking(
-  bot: DiscordRESTClient,
-  ranking: Ranking,
-): Promise<void> {
+export async function deleteRanking(bot: DiscordRESTClient, ranking: Ranking): Promise<void> {
   await removeLeaderboardChannelsMessages(bot, ranking)
   await ranking.delete()
 }

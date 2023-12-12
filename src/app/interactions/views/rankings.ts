@@ -27,6 +27,7 @@ import {
   ChoiceField,
   NumberField,
   StringField,
+  BaseContext,
 } from '../../../discord-framework'
 
 import { assertValue } from '../../../utils/utils'
@@ -34,15 +35,11 @@ import { assertValue } from '../../../utils/utils'
 import { sentry } from '../../../logging/globals'
 
 import { App } from '../../app'
-import { AppErrors, Errors } from '../../errors'
+import { UserErrors } from '../../errors'
 
 import { checkMemberBotAdmin } from '../../modules/user_permissions'
 import { getOrAddGuild } from '../../modules/guilds'
-import {
-  deleteRanking,
-  createNewRankingInGuild,
-  updateRanking,
-} from '../../modules/rankings'
+import { deleteRanking, createNewRankingInGuild, updateRanking } from '../../modules/rankings'
 
 import { GuildRanking } from '../../../database/models'
 import {
@@ -99,21 +96,21 @@ const rankings_cmd_def = new CommandView({
 
 export default (app: App) =>
   rankings_cmd_def
-    .onAutocomplete(rankingsAutocomplete(app))
+    .onAutocomplete(rankingsAutocomplete(app, true))
 
     .onCommand(async (ctx) => {
       const interaction = checkGuildInteraction(ctx.interaction)
       ctx.state.save.owner_id(interaction.member.user.id)
 
       let selected_option = (
-        interaction.data.options?.find((o) => o.name === 'leaderboard') as
+        interaction.data.options?.find((o) => o.name === 'ranking') as
           | APIApplicationCommandInteractionDataStringOption
           | undefined
       )?.value
 
       if (selected_option === 'create') {
         ctx.state.save.page('creating new')
-        return leaderboardNameModal(ctx)
+        return rankingNameModal(ctx)
       }
 
       if (selected_option) {
@@ -135,17 +132,17 @@ export default (app: App) =>
     .onComponent(async (ctx) => {
       // Checks
       const interaction = checkGuildInteraction(ctx.interaction)
-      checkMemberBotAdmin(interaction.member, await getOrAddGuild(app, interaction.guild_id))
       if (!ctx.state.is.owner_id(ctx.interaction.member?.user.id)) {
-        throw new AppErrors.NotComponentOwner(ctx.state.data.owner_id)
+        throw new UserErrors.NotComponentOwner(ctx.state.data.owner_id)
       }
+      checkMemberBotAdmin(interaction.member, await getOrAddGuild(app, interaction.guild_id))
 
       // Component
       if (ctx.state.is.component('btn:create')) {
         ctx.state.save.page('creating new')
-        return leaderboardNameModal(ctx)
+        return rankingNameModal(ctx)
       } else if (ctx.state.is.component('btn:rename')) {
-        return leaderboardNameModal(ctx)
+        return rankingNameModal(ctx)
       } else if (ctx.state.is.component('modal:name')) {
         ctx.state.save.input_name(
           getModalSubmitEntries(ctx.interaction as APIModalSubmitInteraction).find(
@@ -173,7 +170,7 @@ export default (app: App) =>
         }
       }
 
-      throw new Errors.UnknownState(`${JSON.stringify(ctx.state.data)}`)
+      throw new UserErrors.UnknownState(`${JSON.stringify(ctx.state.data)}`)
     })
 
 export async function allGuildRankingsPage(
@@ -189,12 +186,18 @@ export async function allGuildRankingsPage(
       title: 'Rankings',
       description:
         `You have **${guild_rankings.length}** ranking` +
-        `${guild_rankings.length === 1 ? '' : 's'}` +
-        `. \n` +
-        `To manage a ranking, type ` +
-        `${await commandMention(app, rankings_cmd_def)} \`[name]\`\n` +
-        `To restore any ranking's channels or messages` +
-        `${await commandMention(app, restore_cmd_def)} to restore it.`,
+        `${guild_rankings.length === 1 ? '' : 's'} in this server`,
+      fields: [
+        {
+          name: `Helpful Commands`,
+          value:
+            `${await commandMention(app, rankings_cmd_def)} \`[name]\` - Manage a ranking\n` +
+            `${await commandMention(
+              app,
+              restore_cmd_def,
+            )} - Restore a ranking's channels or messages`,
+        },
+      ],
       color: Colors.EmbedBackground,
     },
   ]
@@ -226,7 +229,7 @@ export async function allGuildRankingsPage(
             type: ComponentType.Button,
             style: ButtonStyle.Primary,
             custom_id: ctx.state.set.component('btn:create').encode(),
-            label: 'Create a Leaderboard',
+            label: 'Create a Ranking',
           },
         ],
       },
@@ -259,14 +262,16 @@ async function guildLeaderboardDetails(app: App, guild_leaderboard: GuildRanking
   return description
 }
 
-export function leaderboardNameModal(
+export function rankingNameModal(
   ctx: Context<typeof rankings_cmd_def>,
 ): CommandInteractionResponse {
+  const example_names = [`Smash 1v1`, `Starcraft 2v2`, `Valorant 5s`, `Chess`, `Ping Pong 1v1`]
+
   let response: APIModalInteractionResponse = {
     type: InteractionResponseType.Modal,
     data: {
       custom_id: ctx.state.set.component('modal:name').encode(),
-      title: 'Name your leaderboard',
+      title: 'Name your new ranking',
       components: [
         {
           type: ComponentType.ActionRow,
@@ -276,7 +281,9 @@ export function leaderboardNameModal(
               style: TextInputStyle.Short,
               custom_id: 'name',
               label: 'Name',
-              placeholder: 'e.g. Smash 1v1',
+              placeholder: `e.g. ${
+                example_names[Math.floor(Math.random() * example_names.length)]
+              }`,
             },
           ],
         },
@@ -288,7 +295,7 @@ export function leaderboardNameModal(
 
 export async function leaderboardSettingsPage<Edit extends boolean>(
   app: App,
-  ctx: Context<typeof rankings_cmd_def>,
+  ctx: BaseContext<typeof rankings_cmd_def>,
   edit: Edit = false as Edit,
 ): Promise<APIInteractionResponseCallbackData> {
   const interaction = checkGuildInteraction(ctx.interaction)
@@ -309,6 +316,7 @@ export async function leaderboardSettingsPage<Edit extends boolean>(
   return {
     flags: MessageFlags.Ephemeral,
     embeds: [embed],
+    content: ``,
     components: [
       {
         type: ComponentType.ActionRow,
@@ -356,7 +364,7 @@ export function creatingNewLeaderboardPage(
 ): ChatInteractionResponse {
   const response_type = InteractionResponseType.ChannelMessageWithSource
 
-  const content = `Creating a new leaderboard named **${toMarkdown(ctx.state.data.input_name)}**`
+  const content = `Creating a new  named **${toMarkdown(ctx.state.data.input_name)}**`
 
   ctx.state.save.page('creating new')
   const components: APIActionRowComponent<APIMessageActionRowComponent>[] = [
@@ -389,17 +397,23 @@ export async function onCreateConfirm(
   app: App,
   guild_id: string,
 ): Promise<ChatInteractionResponse> {
-  let input_name = ctx.state.data.input_name
-  assertValue(input_name, 'input_name')
-
-  let guild = await getOrAddGuild(app, guild_id)
-  let result = await createNewRankingInGuild(app, guild, {
-    name: input_name,
+  ctx.offload(async (ctx) => {
+    let input_name = ctx.state.data.input_name
+    assertValue(input_name, 'input_name')
+    let guild = await getOrAddGuild(app, guild_id)
+    let result = await createNewRankingInGuild(app, guild, {
+      name: input_name,
+    })
+    ctx.state.save.page('ranking settings').save.selected_ranking_id(result.new_ranking.data.id)
+    await ctx.editOriginal(await leaderboardSettingsPage(app, ctx))
   })
-  ctx.state.save.page('ranking settings').save.selected_ranking_id(result.new_ranking.data.id)
+
   return {
     type: InteractionResponseType.ChannelMessageWithSource,
-    data: await leaderboardSettingsPage(app, ctx),
+    data: {
+      flags: MessageFlags.Ephemeral,
+      content: `Creating Ranking...`,
+    },
   }
 }
 

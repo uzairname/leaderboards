@@ -1,11 +1,9 @@
-import { runTests } from "./test";
+import { runTests } from './test'
 
-
-export default { 
+export default {
   async fetch(request, env, ctx) {
     console.log('test3')
     await runTests()
-    return new Response('Hello World', { status: 200 });
-  }
+    return new Response('Hello World', { status: 200 })
+  },
 }
-

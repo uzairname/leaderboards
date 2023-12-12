@@ -5,7 +5,7 @@ import { assertValue } from '../../utils/utils'
 
 import { updateUserRoleConnectionData } from './linked_roles'
 import { sentry } from '../../logging/globals'
-import { Errors } from '../errors'
+import { UserErrors } from '../errors'
 import { App } from '../app'
 
 export function oauthRedirect(app: App, scopes: OAuth2Scopes[]): Response {
@@ -53,7 +53,7 @@ export async function saveUserAccessToken(app: App, token: RESTPostOAuth2AccessT
   if (me.user) {
     // save token
   } else {
-    throw new Errors.MissingIdentifyScope()
+    throw new UserErrors.MissingIdentifyScope()
   }
 
   if (me.scopes.includes(OAuth2Scopes.RoleConnectionsWrite)) {

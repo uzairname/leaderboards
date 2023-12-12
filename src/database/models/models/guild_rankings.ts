@@ -26,14 +26,14 @@ export class GuildRanking extends DbObject<GuildRankingSelect> {
 
   async guild(): Promise<Guild> {
     const guild = await this.db.guilds.get(this.data.guild_id)
-    if (!guild) throw new DatabaseErrors.ReferenceError(`Guild ${this.data.guild_id} not found`)
+    if (!guild) throw new DatabaseErrors.NotFoundError(`Guild ${this.data.guild_id} not found`)
     return guild
   }
 
   async ranking(): Promise<Ranking> {
     const ranking = await this.db.rankings.get(this.data.ranking_id)
     if (!ranking)
-      throw new DatabaseErrors.ReferenceError(`Ranking ${this.data.ranking_id} not found`)
+      throw new DatabaseErrors.NotFoundError(`Ranking ${this.data.ranking_id} not found`)
     return ranking
   }
 }
@@ -64,9 +64,7 @@ export class GuildRankingsManager extends DbObjectManager {
       await this.db.db
         .select()
         .from(GuildRankings)
-        .where(
-          and(eq(GuildRankings.guild_id, guild_id), eq(GuildRankings.ranking_id, ranking_id)),
-        )
+        .where(and(eq(GuildRankings.guild_id, guild_id), eq(GuildRankings.ranking_id, ranking_id)))
     )[0]
     if (!data) return
     return new GuildRanking(data, this.db)

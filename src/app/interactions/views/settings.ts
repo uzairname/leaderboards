@@ -11,7 +11,7 @@ import { CommandView, ChoiceField } from '../../../discord-framework'
 import { checkGuildInteraction } from '../checks'
 import { checkMemberBotAdmin } from '../../modules/user_permissions'
 import { getOrAddGuild, syncGuildAdminRole } from '../../modules/guilds'
-import { Errors } from '../../errors'
+import { UserErrors } from '../../errors'
 import { App } from '../../app'
 
 const settings_command = new CommandView({
@@ -77,6 +77,6 @@ export default (app: App) =>
           },
         }
       } else {
-        throw new Errors.UnknownState(ctx.state.data.page)
+        throw new UserErrors.UnknownState(ctx.state.data.page)
       }
     })

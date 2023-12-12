@@ -175,7 +175,7 @@ export async function haveLeaderboardQueueMessage(
     target_channel_id: guild_leaderboard.data.leaderboard_channel_id,
     target_message_id: guild_leaderboard.data.queue_message_id,
     message: async () => {
-      return await queue(app).init({ ranking_id: guild_leaderboard.data.ranking_id })
+      return await queue(app).send({ ranking_id: guild_leaderboard.data.ranking_id })
     },
     channelData: async () => {
       throw new Error('No channel to post queue message in. Need to make leaderboard message first')

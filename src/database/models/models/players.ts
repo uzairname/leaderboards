@@ -22,14 +22,10 @@ export class Player extends DbObject<PlayerSelect> {
 
   async teams(): Promise<Team[]> {
     const data = await this.db.db
-      .select({team: Teams}).from(TeamPlayers)
-      .where(eq(TeamPlayers.user_id, this.data.user_id))
-      .innerJoin(Teams,
-        and(
-          eq(Teams.id, TeamPlayers.team_id), 
-          eq(Teams.ranking_id, this.data.ranking_id)
-        ),
-      )
+      .select({ team: Teams })
+      .from(TeamPlayers)
+      .where(eq(TeamPlayers.player_id, this.data.id))
+      .innerJoin(Teams, and(eq(Teams.id, TeamPlayers.team_id)))
 
     return data.map((data) => new Team(data.team, this.db))
   }
@@ -37,20 +33,10 @@ export class Player extends DbObject<PlayerSelect> {
   async queueTeams() {
     const data = await this.db.db
       .select({ team: Teams })
-      .from(QueueTeams).innerJoin(TeamPlayers,
-        and(
-          eq(TeamPlayers.team_id, QueueTeams.team_id),
-        ),
-      ).innerJoin(Teams,
-        and(
-          eq(Teams.id, QueueTeams.team_id),
-        ),
-      ).where(
-        and(
-          eq(TeamPlayers.user_id, this.data.user_id),
-          eq(Teams.ranking_id, this.data.ranking_id),
-        )
-      )
+      .from(QueueTeams)
+      .innerJoin(TeamPlayers, eq(TeamPlayers.team_id, QueueTeams.team_id))
+      .innerJoin(Teams, eq(Teams.id, QueueTeams.team_id))
+      .where(eq(TeamPlayers.player_id, this.data.id))
     return data.map((data) => new Team(data.team, this.db))
   }
 
@@ -59,9 +45,9 @@ export class Player extends DbObject<PlayerSelect> {
       sql`DELETE FROM ${QueueTeams}
       WHERE ${QueueTeams.team_id} IN (
         SELECT ${TeamPlayers.team_id} FROM ${TeamPlayers}
-        INNER JOIN ${Teams} ON ${Teams.id} = ${TeamPlayers.team_id}
-        WHERE ${TeamPlayers.user_id} = ${this.data.user_id}
-        AND ${Teams.ranking_id} = ${this.data.ranking_id}
+        INNER JOIN ${Teams} ON 
+          ${Teams.id} = ${TeamPlayers.team_id} 
+          AND ${TeamPlayers.player_id} = ${this.data.id}
       )`,
     )
   }
@@ -92,17 +78,5 @@ export class PlayersManager extends DbObjectManager {
     )[0]
     if (!data) return
     return new Player(data, this.db)
-  }
-
-  getPartial(user_id: string, ranking_id: number): Player {
-    return new Player({ 
-      user_id, 
-      ranking_id,
-      name: null,
-      rating: null,
-      time_created: null,
-      rd: null,
-      stats: null,
-    }, this.db)
   }
 }

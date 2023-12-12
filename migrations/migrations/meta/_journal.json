@@ -1,1 +1,13 @@
-{"version":"5","dialect":"pg","entries":[]}
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1702326698678,
+      "tag": "0000_absurd_ultron",
+      "breakpoints": true
+    }
+  ]
+}

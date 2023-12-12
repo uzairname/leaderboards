@@ -19,10 +19,10 @@ import {
   ListField,
 } from '../../../discord-framework'
 import { App } from '../../app'
-import { AppErrors, Errors } from '../../errors'
 
 import help from './help'
 import { assertValue } from '../../../utils/utils'
+import { UserErrors } from '../../errors'
 
 const test_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -81,7 +81,7 @@ export default (app: App) =>
       const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
 
       if (ctx.state.data.original_user !== user_id) {
-        throw new AppErrors.NotComponentOwner(ctx.state.data.original_user)
+        throw new UserErrors.NotComponentOwner(ctx.state.data.original_user)
       }
 
       if (ctx.state.is.clicked_btn('wait')) {
@@ -89,7 +89,7 @@ export default (app: App) =>
           const seconds = ctx.state.data.counter ?? 0
 
           await new Promise((resolve) => setTimeout(resolve, seconds * 1000))
-          ctx.send({
+          ctx.followup({
             content: `waited ${seconds} seconds`,
             flags: MessageFlags.Ephemeral,
           })
@@ -127,7 +127,7 @@ export default (app: App) =>
           data: testMessageData(ctx),
         }
       } else {
-        throw new Errors.UnknownState(ctx.state.data.clicked_btn)
+        throw new UserErrors.UnknownState(ctx.state.data.clicked_btn)
       }
     })
 

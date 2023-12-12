@@ -14,7 +14,7 @@ export class Team extends DbObject<TeamSelect> {
       .select({ player: Players })
       .from(TeamPlayers)
       .where(eq(TeamPlayers.team_id, this.data.id))
-      .innerJoin(Players, eq(Players.user_id, TeamPlayers.user_id))
+      .innerJoin(Players, eq(Players.id, TeamPlayers.player_id))
 
     return data.map((data) => new Player(data.player, this.db))
   }
@@ -30,7 +30,10 @@ export class Team extends DbObject<TeamSelect> {
 
     await this.db.db
       .insert(TeamPlayers)
-      .values({ team_id: this.data.id, user_id: player.data.user_id })
+      .values({
+        team_id: this.data.id,
+        player_id: player.data.id,
+      })
       .onConflictDoNothing()
     return this
   }
@@ -40,10 +43,10 @@ export class Team extends DbObject<TeamSelect> {
     return this
   }
 
-  async removePlayer(user_id: string): Promise<this> {
+  async removePlayer(player: Player): Promise<this> {
     await this.db.db
       .delete(TeamPlayers)
-      .where(and(eq(TeamPlayers.team_id, this.data.id), eq(TeamPlayers.user_id, user_id)))
+      .where(and(eq(TeamPlayers.team_id, this.data.id), eq(TeamPlayers.player_id, player.data.id)))
     return this
   }
 

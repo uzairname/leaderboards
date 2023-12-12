@@ -3,7 +3,7 @@ import { AnyView, isCommandView, FindViewCallback } from '../../discord-framewor
 import { App } from '../app'
 
 import help from './views/help'
-import leaderboards_command from './views/leaderboards'
+import leaderboards_command from './views/rankings'
 import points from './views/points'
 import restore from './views/restore'
 import settings from './views/settings'

@@ -1,6 +1,6 @@
 import { APIInteractionGuildMember, PermissionFlagsBits } from 'discord-api-types/v10'
 import { Guild } from '../../database/models'
-import { AppErrors } from '../errors'
+import { UserErrors } from '../errors'
 
 export async function checkMemberBotAdmin(
   member: APIInteractionGuildMember,
@@ -13,7 +13,7 @@ export async function checkMemberBotAdmin(
     PermissionFlagsBits.Administrator
 
   if (!hasAdminRole && !hasAdminPerms) {
-    throw new AppErrors.UserMissingPermissions(
+    throw new UserErrors.UserMissingPermissions(
       `You need${admin_role_id ? ` the <@&${admin_role_id}> role or` : ``} admin perms to do this`,
     )
   }

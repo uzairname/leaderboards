@@ -3,7 +3,7 @@ import { APIUser } from 'discord-api-types/v10'
 import { App } from '../app'
 
 import { getRegisterPlayer } from './players'
-import { type Player, type Ranking, type Team } from '../../database/models'
+import { type Team } from '../../database/models'
 
 /**
  * When a user uses a command or button to join queue.
@@ -18,7 +18,7 @@ export async function onJoinQueue(
 }> {
   const ranking = await app.db.rankings.get(ranking_id)
 
-  const player = await getRegisterPlayer(app.db, user, ranking)
+  const player = await getRegisterPlayer(app, user, ranking)
 
   const player_queue_teams = await player.queueTeams()
 
@@ -53,11 +53,6 @@ export async function onJoinQueue(
 /**
  * When a user uses a command or button to leave queue.
  */
-export async function onLeaveQueue(
-  app: App, 
-  ranking_id: number, 
-  user: APIUser
-) {
+export async function onLeaveQueue(app: App, ranking_id: number, user: APIUser) {
   // find the team the user is in in the ranking's queue
 }
-

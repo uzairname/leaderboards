@@ -7,7 +7,7 @@ import { Rankings, GuildRankings, Players, Matches, QueueTeams } from '../../sch
 import { DatabaseErrors } from '../../utils/errors'
 
 import { DbObject, DbObjectManager } from '../managers'
-import { RankingSelect, RankingUpdate, RankingInsert, QueueTeamInsert } from '../types'
+import { RankingSelect, RankingUpdate, RankingInsert } from '../types'
 import { GuildRanking, Match, Player, Team } from '..'
 
 export class Ranking extends DbObject<RankingSelect> {
@@ -86,7 +86,7 @@ export class RankingsManager extends DbObjectManager {
   async get(leaderboard_id: number): Promise<Ranking> {
     let data = (await this.db.db.select().from(Rankings).where(eq(Rankings.id, leaderboard_id)))[0]
     if (!data) {
-      throw new DatabaseErrors.NotFoundError(`Leaderboard ${leaderboard_id} not found`)
+      throw new DatabaseErrors.NotFoundError(`Ranking doesn't exist`)
     }
     return new Ranking(data, this.db)
   }

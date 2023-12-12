@@ -31,9 +31,9 @@ export class StringData<T extends StringDataSchema> {
     [K in keyof T]: (value: T[K]['default_value']) => StringData<T>
   }
   // returns a new StringData with the new value, without modifying the original.
-  data = {} as {
+  data = {} as Partial<{
     [K in keyof T]: T[K]['default_value']
-  }
+  }>
   // the value of the field.
   is = {} as {
     [K in keyof T]: (value: T[K]['default_value']) => boolean

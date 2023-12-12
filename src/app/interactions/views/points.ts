@@ -15,7 +15,7 @@ import { checkGuildInteraction } from '../checks'
 import { checkMemberBotAdmin } from '../../modules/user_permissions'
 import { getOrAddGuild } from '../../modules/guilds'
 import { syncLbDisplayMessage } from '../../modules/channels/leaderboard_channels'
-import { AppError } from '../../errors'
+import { UserError } from '../../errors'
 import { getRegisterPlayer } from '../../modules/players'
 import { App } from '../../app'
 
@@ -98,7 +98,7 @@ export default (app: App) =>
 
       const points = parseInt(options.points)
       if (isNaN(points)) {
-        throw new AppError('Points must be a number')
+        throw new UserError('Points must be a number')
       }
 
       // Get the selected ranking
@@ -107,7 +107,7 @@ export default (app: App) =>
       // Get the selected player in the ranking
       const user = interaction.data.resolved?.users?.[options.user]
       assertValue(user)
-      let player = await getRegisterPlayer(app.db, user, ranking)
+      let player = await getRegisterPlayer(app, user, ranking)
 
       // add points to player
       await player.update({

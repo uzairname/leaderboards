@@ -1,5 +1,4 @@
-import { int } from 'drizzle-orm/mysql-core'
-import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, bigint, } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, bigint } from 'drizzle-orm/pg-core'
 
 
 export const Settings = pgTable('Settings', {
@@ -72,6 +71,7 @@ export const GuildRankings = pgTable('GuildRankings', {
 
 
 export const Players = pgTable('Players', {
+  id: serial('id').primaryKey(),
   user_id: text('user_id').notNull().references(() => Users.id, {onDelete: 'cascade'}),
   ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, {onDelete: 'cascade'}),
   time_created: timestamp('time_created').defaultNow(),
@@ -80,7 +80,8 @@ export const Players = pgTable('Players', {
   rd: real('rd'),
   stats: jsonb('stats'),
 }, (table) => { return {
-  cpk: primaryKey(table.user_id, table.ranking_id),
+  user_idx: index('player_user_id_index').on(table.user_id),
+  ranking_idx: index('player_ranking_id_index').on(table.ranking_id),
 }})
 
 
@@ -95,10 +96,10 @@ export const Teams = pgTable('Teams', {
 
 export const TeamPlayers = pgTable('TeamPlayers', {
   team_id: integer('team_id').notNull().references(() => Teams.id, {onDelete: 'cascade'}),
-  user_id: text('user_id').notNull().references(() => Players.user_id, {onDelete: 'cascade'}),
+  player_id: integer('player_id').notNull().references(() => Players.id, {onDelete: 'cascade'}),
   time_created: timestamp('time_created').defaultNow(),
 }, (table) => { return {
-  cpk: primaryKey(table.team_id, table.user_id),
+  cpk: primaryKey(table.team_id, table.player_id),
 }})
 
 
@@ -145,11 +146,11 @@ export const MatchSummaryMessages = pgTable('MatchSummaryMessages', {
 
 export const MatchPlayers = pgTable('MatchPlayers', {
   match_id: integer('match_id').notNull().references(() => Matches.id, {onDelete: 'cascade'}),
-  user_id: text('user_id').notNull().references(() => Players.user_id, {onDelete: 'cascade'}),
+  player_id: integer('player_id').notNull().references(() => Players.id, {onDelete: 'cascade'}),
   team_num: integer('team_num'),
   rating_before: real('rating_before'),
   rd_before: real('rd_before'),
   time_created: timestamp('time_created').defaultNow(),
 }, (table) => { return {
-  cpk: primaryKey(table.match_id, table.user_id),
+  cpk: primaryKey(table.match_id, table.player_id),
 }})

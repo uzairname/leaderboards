@@ -18,11 +18,12 @@ import {
 import { assertValue } from '../../../utils/utils'
 
 import { App } from '../../app'
-import { Errors } from '../../errors'
+import { UserErrors } from '../../errors'
 
 import { onJoinQueue, onLeaveQueue } from '../../modules/queue'
 
 import { checkGuildInteraction } from '../checks'
+import { sentry } from '../../../logging/globals'
 
 const queue_message_def = new MessageView({
   custom_id_prefix: 'q',
@@ -45,26 +46,33 @@ export default (app: App) =>
     .onComponent(async (ctx) => {
       const interaction = checkGuildInteraction(ctx.interaction)
       assertValue(ctx.state.data.ranking_id)
+      const ranking_id = parseInt(ctx.state.data.ranking_id)
 
       if (ctx.state.is.component('join')) {
         ctx.offload(async (ctx) => {
-          ctx.send({
-            content: 'Joined queue',
-            flags: MessageFlags.Ephemeral,
-          })
+          await onJoinQueue(app, ranking_id, interaction.member.user)
         })
-        const result = await onJoinQueue(app, parseInt(ctx.state.data.ranking_id), interaction.member.user)
 
+        return {
+          type: InteractionResponseType.ChannelMessageWithSource,
+          data: {
+            content: 'Joined Queue',
+            flags: MessageFlags.Ephemeral,
+          },
+        }
       } else if (ctx.state.is.component('leave')) {
         ctx.offload(async (ctx) => {
-          ctx.send({
+          await onLeaveQueue(app, ranking_id, interaction.member.user)
+        })
+        return {
+          type: InteractionResponseType.ChannelMessageWithSource,
+          data: {
             content: 'Left queue',
             flags: MessageFlags.Ephemeral,
-          })
-        })
-        await onLeaveQueue(app, parseInt(ctx.state.data.ranking_id), interaction.member.user)
+          },
+        }
       } else {
-        throw new Errors.UnknownState(ctx.state.data.component)
+        throw new UserErrors.UnknownState(ctx.state.data.component)
       }
     })
 

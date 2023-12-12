@@ -12,7 +12,7 @@ import { assertValue } from '../../../utils/utils'
 import { ChoiceField, NumberField, ListField, CommandView } from '../../../discord-framework'
 
 import { App } from '../../app'
-import { Errors } from '../../errors'
+import { UserErrors } from '../../errors'
 
 const start_match_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -145,6 +145,6 @@ export default (app: App) =>
           },
         }
       } else {
-        throw new Errors.UnknownState(ctx.state.data.component)
+        throw new UserErrors.UnknownState(ctx.state.data.component)
       }
     })

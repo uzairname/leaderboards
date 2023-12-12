@@ -33,7 +33,7 @@ import {
   AnyMessageView,
 } from './types'
 import { ViewErrors } from './utils/errors'
-import { ViewOffloadCallback } from './views'
+import { RespondWithCommand, ViewOffloadCallback } from './views'
 import { FindViewCallback } from './types'
 import { ViewErrorCallback } from './types'
 import { replaceMessageComponentsCustomIds } from './utils/interaction_utils'
@@ -74,7 +74,7 @@ export async function respondToUserInteraction(
       interaction.type === InteractionType.ModalSubmit
     ) {
       // view can be any view if it's a component interaction
-      let parsed_custom_id = decodeCustomId(interaction.data.custom_id)
+      let parsed_custom_id = decompressCustomIdUTF16(interaction.data.custom_id)
       let view = await findView(find_view_callback, undefined, parsed_custom_id.prefix)
       sentry.request_name = `${
         isCommandView(view) ? view.options.command.name : view.options.custom_id_prefix
@@ -95,7 +95,7 @@ export async function respondToUserInteraction(
       message: 'Responding to interaction',
       level: 'info',
       data: {
-        response,
+        response: JSON.stringify(response),
       },
     })
 
@@ -152,20 +152,32 @@ export async function respondToViewCommandInteraction(
     offload: (callback) => {
       sentry.waitUntil(
         executeViewOffloadCallback({
-          view,
           callback,
-          bot: bot,
+          onError,
+          view,
+          bot,
           interaction,
           state,
-          onError,
         }),
       )
+    },
+    _ctx: {
+      bot,
+      onError,
     },
     state,
   })
 
-  replaceResponseCustomIds(result, encodeCustomId(view))
-  return result
+  let response: CommandInteractionResponse
+  if (result instanceof RespondWithCommand) {
+    response = result.response
+    replaceResponseCustomIds(response, compressCustomIdUTF16(result.command))
+  } else {
+    response = result
+    replaceResponseCustomIds(response, compressCustomIdUTF16(view))
+  }
+
+  return response
 }
 
 type DecodedCustomId = {
@@ -193,22 +205,26 @@ export async function respondToViewComponentInteraction(
         executeViewOffloadCallback({
           view,
           callback,
-          bot: bot,
+          bot,
           interaction,
           state,
           onError,
         }),
       )
     },
+    _ctx: {
+      bot,
+      onError,
+    },
     state,
   })
 
   if (!result) return
-  replaceResponseCustomIds(result, encodeCustomId(view))
+  replaceResponseCustomIds(result, compressCustomIdUTF16(view))
   return result
 }
 
-async function executeViewOffloadCallback(args: {
+export async function executeViewOffloadCallback(args: {
   view: AnyView
   callback: ViewOffloadCallback<any>
   interaction: ChatInteraction
@@ -221,20 +237,27 @@ async function executeViewOffloadCallback(args: {
   try {
     await args.callback({
       interaction: args.interaction,
-      send: async (response_data: APIInteractionResponseCallbackData) => {
-        replaceMessageComponentsCustomIds(response_data.components, encodeCustomId(args.view))
+      followup: async (response_data: APIInteractionResponseCallbackData) => {
+        replaceMessageComponentsCustomIds(
+          response_data.components,
+          compressCustomIdUTF16(args.view),
+        )
         await args.bot.followupInteractionResponse(args.interaction.token, response_data)
       },
       editOriginal: async (data: RESTPatchAPIWebhookWithTokenMessageJSONBody) => {
-        replaceMessageComponentsCustomIds(data.components, encodeCustomId(args.view))
+        replaceMessageComponentsCustomIds(data.components, compressCustomIdUTF16(args.view))
         await args.bot.editOriginalInteractionResponse(args.interaction.token, data)
       },
       state: args.state,
+      _ctx: {
+        bot: args.bot,
+        onError: args.onError,
+      },
     })
   } catch (e) {
     let response_data = args.onError(e).data
     if (!response_data) return
-    replaceMessageComponentsCustomIds(response_data.components, encodeCustomId(args.view))
+    replaceMessageComponentsCustomIds(response_data.components, compressCustomIdUTF16(args.view))
     await args.bot.followupInteractionResponse(args.interaction.token, response_data)
   }
 }
@@ -251,7 +274,7 @@ export async function getMessageViewMessageData<Param>(
   )
 
   let message_json = message.patchdata
-  replaceMessageComponentsCustomIds(message_json.components, encodeCustomId(view))
+  replaceMessageComponentsCustomIds(message_json.components, compressCustomIdUTF16(view))
   return new MessageData(message_json)
 }
 
@@ -275,7 +298,7 @@ function decodeViewCustomIdState<Schema extends StringDataSchema>(
 
 const CUSTOM_ID_PREFIX = '0'
 
-function encodeCustomId(view: AnyView): (str?: EncodedCustomIdState) => string {
+export function compressCustomIdUTF16(view: AnyView): (str?: EncodedCustomIdState) => string {
   return (str?: EncodedCustomIdState) => {
     let custom_id: string
     custom_id = `${view.options.custom_id_prefix}.${str || ''}`
@@ -286,7 +309,7 @@ function encodeCustomId(view: AnyView): (str?: EncodedCustomIdState) => string {
   }
 }
 
-export function decodeCustomId(custom_id: string): DecodedCustomId {
+export function decompressCustomIdUTF16(custom_id: string): DecodedCustomId {
   let decompressed_custom_id = decompressFromUTF16(custom_id)
 
   if (!decompressed_custom_id)

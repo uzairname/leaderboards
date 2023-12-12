@@ -10,8 +10,21 @@ import {
   ComponentInteraction,
   ChatInteractionResponse,
   AnyCommandView,
+  AnyView,
 } from './types'
-import { getMessageViewMessageData } from './view_helpers'
+import {
+  compressCustomIdUTF16,
+  executeViewOffloadCallback,
+  getMessageViewMessageData,
+  replaceResponseCustomIds,
+} from './view_helpers'
+import { sentry } from '../../logging/globals'
+import { DiscordRESTClient } from '../rest/client'
+import { APIInteractionResponseChannelMessageWithSource } from 'discord-api-types/v10'
+import {
+  isChatInputApplicationCommandInteraction,
+  isContextMenuApplicationCommandInteraction,
+} from 'discord-api-types/utils/v10'
 
 declare type CommandInteraction<CommandType> =
   CommandType extends D.ApplicationCommandType.ChatInput
@@ -32,26 +45,31 @@ export interface AutocompleteContext {
 }
 
 export interface BaseContext<View extends BaseView<any>> {
+  interaction: ChatInteraction
   state: StringData<View['options']['state_schema']>
-  offload: (callback: ViewOffloadCallback<View>) => void
+  _ctx: {
+    bot: DiscordRESTClient
+    onError: (e: unknown) => APIInteractionResponseChannelMessageWithSource
+  }
 }
 
 // Command
 export interface CommandContext<View extends AnyCommandView> extends BaseContext<View> {
   interaction: CommandInteraction<View['options']['type']>
+  offload: (callback: ViewOffloadCallback<View>) => void
 }
 
 // Component
 export interface ComponentContext<View extends BaseView<any>> extends BaseContext<View> {
   interaction: ComponentInteraction
+  offload: (callback: ViewOffloadCallback<View>) => void
 }
 
 // Offload
-export interface OffloadContext<Schema extends StringDataSchema> {
-  interaction: ChatInteraction
-  send: (data: D.APIInteractionResponseCallbackData) => Promise<void>
+export interface OffloadContext<Schema extends StringDataSchema>
+  extends BaseContext<BaseView<Schema>> {
+  followup: (data: D.APIInteractionResponseCallbackData) => Promise<void>
   editOriginal: (data: D.APIInteractionResponseCallbackData) => Promise<void>
-  state: StringData<Schema>
 }
 
 // Message
@@ -73,7 +91,7 @@ export type ViewAutocompleteCallback<Type extends D.ApplicationCommandType> = (
 // Command
 export type ViewCommandCallback<View extends AnyCommandView> = (
   ctx: CommandContext<View>,
-) => Promise<CommandInteractionResponse>
+) => Promise<CommandInteractionResponse | RespondWithCommand>
 
 // Component
 export type ViewComponentCallback<View extends BaseView<any>> = (
@@ -127,6 +145,13 @@ export abstract class BaseView<Schema extends StringDataSchema> {
   }
 }
 
+export class RespondWithCommand {
+  constructor(
+    public readonly response: CommandInteractionResponse,
+    public readonly command: AnyCommandView,
+  ) {}
+}
+
 export class CommandView<
   Schema extends StringDataSchema,
   Type extends D.ApplicationCommandType,
@@ -152,6 +177,61 @@ export class CommandView<
     this._autocompleteCallback = callback
     return this
   }
+
+  validateInteraction(
+    interaction: D.APIApplicationCommandInteraction,
+  ): asserts interaction is CommandInteraction<Type> {
+    if (isChatInputApplicationCommandInteraction(interaction)) {
+      if (this.options.type !== D.ApplicationCommandType.ChatInput) {
+        throw new Error(
+          `Expected a chat input command interaction, but got a ${interaction.type} command interaction`,
+        )
+      }
+    } else if (isContextMenuApplicationCommandInteraction(interaction)) {
+      if (
+        this.options.type !== D.ApplicationCommandType.User &&
+        this.options.type !== D.ApplicationCommandType.Message
+      ) {
+        throw new Error(
+          `Expected a user or message command interaction, but got a ${interaction.type} command interaction`,
+        )
+      }
+    }
+  }
+
+  public async sendToCommandInteraction(
+    ctx: CommandContext<AnyCommandView>,
+    state_data: StringData<Schema>['data'],
+  ): Promise<RespondWithCommand> {
+    const state = new StringData<Schema>(this.options.state_schema)
+    state.data = state_data
+
+    // make sure the type of command interaction matches the type of this view's command interactions.
+    this.validateInteraction(ctx.interaction)
+
+    const result = await this._commandCallback({
+      interaction: ctx.interaction,
+      state,
+      _ctx: ctx._ctx,
+      offload: (callback) => {
+        sentry.waitUntil(
+          executeViewOffloadCallback({
+            view: this,
+            callback,
+            bot: ctx._ctx.bot,
+            interaction: ctx.interaction,
+            state,
+            onError: ctx._ctx.onError,
+          }),
+        )
+      },
+    })
+
+    if (result instanceof RespondWithCommand) {
+      return result
+    }
+    return new RespondWithCommand(result, this)
+  }
 }
 
 interface MessageViewOptions<Schema extends StringDataSchema, Param> {
@@ -176,7 +256,7 @@ export class MessageView<Schema extends StringDataSchema, Param> extends BaseVie
     super(options)
   }
 
-  public async init(params: Param): Promise<MessageData> {
+  public async send(params: Param): Promise<MessageData> {
     return await getMessageViewMessageData(this, params)
   }
 
