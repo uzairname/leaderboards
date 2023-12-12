@@ -2,6 +2,7 @@ import {
   APIActionRowComponent,
   APIApplicationCommandInteractionDataStringOption,
   APIApplicationCommandInteractionDataUserOption,
+  APIEmbed,
   APIMessageActionRowComponent,
   APIMessageSelectMenuInteractionData,
   APIMessageStringSelectInteractionData,
@@ -21,6 +22,8 @@ import {
   ComponentContext,
   CommandView,
   BaseContext,
+  ChatInteraction,
+  ChatInteractionResponse,
 } from '../../../discord-framework'
 import { assert, assertValue } from '../../../utils/utils'
 import { sentry } from '../../../logging/globals'
@@ -33,7 +36,9 @@ import { checkGuildInteraction } from '../checks'
 import { rankingsAutocomplete } from '../common'
 import { getRegisterPlayer } from '../../modules/players'
 import rankings from './rankings'
-import { check } from 'drizzle-orm/sqlite-core'
+import { finishMatch } from '../../modules/scoring'
+import { Ranking } from '../../../database/models'
+import { Colors } from '../../messages/message_pieces'
 
 const record_match_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -41,13 +46,6 @@ const record_match_command = new CommandView({
     name: 'record-match',
     description: 'record a match',
     options: [
-      {
-        name: 'ranking',
-        description: 'ranking to record match for',
-        type: ApplicationCommandOptionType.String,
-        required: false,
-        autocomplete: true,
-      },
       {
         name: 'winner',
         description: 'winner',
@@ -60,6 +58,13 @@ const record_match_command = new CommandView({
         type: ApplicationCommandOptionType.User,
         required: false,
       },
+      {
+        name: 'ranking',
+        description: 'ranking to record match for',
+        type: ApplicationCommandOptionType.String,
+        required: false,
+        autocomplete: true,
+      },
     ],
   },
   custom_id_prefix: 'rm',
@@ -71,7 +76,7 @@ const record_match_command = new CommandView({
       'confirm match': null,
     }),
     selected_team: new NumberField(),
-    selected_winner: new NumberField(),
+    selected_winning_team_index: new NumberField(),
     users: new ListField(),
     ranking_id: new NumberField(),
   },
@@ -83,7 +88,7 @@ export default (app: App) =>
 
     .onCommand(async (ctx) => {
       const interaction = checkGuildInteraction(ctx.interaction)
-      let selected_ranking_id = (
+      const selected_ranking_id = (
         interaction.data.options?.find((o) => o.name === 'ranking') as
           | APIApplicationCommandInteractionDataStringOption
           | undefined
@@ -91,67 +96,77 @@ export default (app: App) =>
 
       // TODO return a page from another command
       if (selected_ranking_id == 'create') {
-        let res = await rankings(app).sendToCommandInteraction(ctx, {
+        return await rankings(app).sendToCommandInteraction(ctx, {
           owner_id: interaction.member.user.id,
           page: 'creating new',
         })
-        return res
       }
 
-      /*Save the selected ranking id to the state. 
+      ctx.offload(async (ctx) => {
+        /*Save the selected ranking id to the state. 
         If the ranking was not specified, try to use the only ranking in the guild. 
         If not and there is more than one ranking, throw an error
        */
-      if (selected_ranking_id) {
-        var ranking = await app.db.rankings.get(parseInt(selected_ranking_id))
-      } else {
-        const guild = await getOrAddGuild(app, interaction.guild_id)
-        const rankings = await guild.guildRankings()
-        if (rankings.length == 1) {
-          ranking = rankings[0].ranking
+        if (selected_ranking_id) {
+          var ranking = await app.db.rankings.get(parseInt(selected_ranking_id))
         } else {
-          throw new UserError('Please specify a ranking to record the match for')
-        }
-      }
-      ctx.state.save.ranking_id(ranking.data.id)
-
-      const players_per_team = ranking.data.players_per_team
-      const num_teams = ranking.data.num_teams
-      assertValue(players_per_team, 'players_per_team')
-      assertValue(num_teams, 'num_teams')
-      if (players_per_team == 1 && num_teams == 2) {
-        // If this is a 1v1 ranking, check if the winner and loser were specified
-
-        const winner_id = (
-          interaction.data.options?.find((o) => o.name === 'winner') as
-            | APIApplicationCommandInteractionDataUserOption
-            | undefined
-        )?.value
-        const loser_id = (
-          interaction.data.options?.find((o) => o.name === 'loser') as
-            | APIApplicationCommandInteractionDataUserOption
-            | undefined
-        )?.value
-
-        if (winner_id && loser_id) {
-          const winner = await getRegisterPlayer(app, winner_id, ranking)
-          const loser = await getRegisterPlayer(app, loser_id, ranking)
-
-          return {
-            type: InteractionResponseType.ChannelMessageWithSource,
-            data: {
-              content: `Recorded match. Winner: ${winner.data.name}, Loser: ${loser.data.name}`,
-              flags: MessageFlags.Ephemeral,
-            },
+          const guild = await getOrAddGuild(app, interaction.guild_id)
+          const rankings = await guild.guildRankings()
+          if (rankings.length == 1) {
+            ranking = rankings[0].ranking
+          } else {
+            throw new UserError('Please specify a ranking to record the match for')
           }
         }
-      }
 
-      // Otherwise, select teams
+        ctx.state.save.ranking_id(ranking.data.id)
+
+        const players_per_team = ranking.data.players_per_team
+        const num_teams = ranking.data.num_teams
+        assertValue(players_per_team, 'players_per_team')
+        assertValue(num_teams, 'num_teams')
+        if (players_per_team == 1 && num_teams == 2) {
+          // If this is a 1v1 ranking, check if the winner and loser were specified
+
+          const winner_id = (
+            interaction.data.options?.find((o) => o.name === 'winner') as
+              | APIApplicationCommandInteractionDataUserOption
+              | undefined
+          )?.value
+          const loser_id = (
+            interaction.data.options?.find((o) => o.name === 'loser') as
+              | APIApplicationCommandInteractionDataUserOption
+              | undefined
+          )?.value
+
+          if (winner_id && loser_id) {
+            const winner = await getRegisterPlayer(app, winner_id, ranking)
+            const loser = await getRegisterPlayer(app, loser_id, ranking)
+
+            sentry.debug('winner id', winner.data.id)
+            sentry.debug('loser id', loser.data.id)
+
+            await finishMatch(app, ranking, [[winner.data.id], [loser.data.id]], [1, 0])
+
+            return await ctx.editOriginal({
+              content: `Recorded match.`,
+              flags: MessageFlags.Ephemeral,
+            })
+          }
+        }
+
+        // Otherwise, select teams
+        return await ctx.editOriginal({
+          content: '',
+          components: await selectTeamComponents(app, ctx),
+          flags: MessageFlags.Ephemeral,
+        })
+      })
+
       return {
         type: InteractionResponseType.ChannelMessageWithSource,
         data: {
-          components: await selectTeamComponents(app, ctx),
+          content: `Please wait`,
           flags: MessageFlags.Ephemeral,
         },
       }
@@ -167,14 +182,13 @@ export default (app: App) =>
       assertValue(num_teams, 'num_teams')
 
       if (ctx.state.data.clicked_component == 'select team') {
-        let data = ctx.interaction.data as unknown as APIMessageUserSelectInteractionData
+        const data = ctx.interaction.data as unknown as APIMessageUserSelectInteractionData
         const selected_user_ids = data.values
-
-        // Determine number of players
 
         // make a copy of players so we don't mutate the state
         let current_users =
-          ctx.state.data.users?.slice() || new Array(num_teams * players_per_team).fill('0')
+          ctx.state.data.users?.slice() ||
+          new Array(num_teams * players_per_team).fill(placeholder_user_id)
 
         assertValue(ctx.state.data.selected_team, 'selected_team')
 
@@ -190,7 +204,7 @@ export default (app: App) =>
 
         ctx.state.save.users(current_users)
 
-        if (current_users.every((p) => p != '0')) {
+        if (current_users.every((p) => p != placeholder_user_id)) {
           // if all teams have been selected
           assertValue(ranking.data.num_teams, 'num_teams')
 
@@ -221,8 +235,8 @@ export default (app: App) =>
           },
         }
       } else if (ctx.state.is.clicked_component('select outcome')) {
-        let data = ctx.interaction.data as unknown as APIMessageStringSelectInteractionData
-        ctx.state.save.selected_winner(parseInt(data.values[0]))
+        const data = ctx.interaction.data as unknown as APIMessageStringSelectInteractionData
+        ctx.state.save.selected_winning_team_index(parseInt(data.values[0]))
 
         return {
           type: InteractionResponseType.UpdateMessage,
@@ -232,28 +246,7 @@ export default (app: App) =>
           },
         }
       } else if (ctx.state.is.clicked_component('confirm match')) {
-        let current_users = ctx.state.data.users?.slice()
-        assertValue(current_users, 'current_users')
-        assert(
-          current_users.every((p) => p != '0'),
-          'not all teams have been selected',
-        )
-        let c = current_users
-        const player_teams = new Array(num_teams).fill(0).map((_, i) => {
-          return c.slice(i * players_per_team, (i + 1) * players_per_team).map((user_id) => {
-            return getRegisterPlayer(app, user_id, ranking)
-          })
-        })
-
-        return {
-          type: InteractionResponseType.UpdateMessage,
-          data: {
-            content: `Recorded match ${JSON.stringify(player_teams)}. Winner: ${
-              ctx.state.data.selected_winner
-            }`,
-            flags: MessageFlags.Ephemeral,
-          },
-        }
+        return await onConfirmMatch(app, ctx, ranking, num_teams, players_per_team)
       }
     })
 
@@ -354,7 +347,7 @@ async function selectOutcomeComponents(
             return {
               label: team_names ? team_names[i] : `Team ${i + 1}`,
               value: i.toString(),
-              default: ctx.state.data.selected_winner == i,
+              default: ctx.state.data.selected_winning_team_index == i,
             }
           }),
         },
@@ -373,3 +366,84 @@ async function selectOutcomeComponents(
     },
   ]
 }
+
+async function onConfirmMatch(
+  app: App,
+  ctx: ComponentContext<typeof record_match_command>,
+  ranking: Ranking,
+  num_teams: number,
+  players_per_team: number,
+): Promise<ChatInteractionResponse> {
+  ctx.offload(async (ctx) => {
+    const current_user_ids = ctx.state.data.users
+    assertValue(current_user_ids, 'current_users')
+    assert(
+      current_user_ids.every((p) => p != placeholder_user_id),
+      'not all teams have been selected',
+    )
+    const c = current_user_ids
+
+    const player_teams = await Promise.all(
+      new Array(num_teams).fill(0).map(async (_, i) => {
+        return (
+          await Promise.all(
+            c.slice(i * players_per_team, (i + 1) * players_per_team).map((user_id) => {
+              return getRegisterPlayer(app, user_id, ranking)
+            }),
+          )
+        ).map((p) => p.data.id)
+      }),
+    )
+
+    assertValue(ctx.state.data.selected_winning_team_index, 'selected_winner')
+    const relative_scores = new Array(num_teams)
+      .fill(0)
+      .map((_, i) => (i == ctx.state.data.selected_winning_team_index ? 1 : 0))
+    sentry.debug('relative scores', relative_scores, 'player teams', num_teams)
+
+    await finishMatch(app, ranking, player_teams, relative_scores)
+
+    const embed: APIEmbed = {
+      title: `Match recorded`,
+      description: `**${ranking.data.name}**`,
+      fields: [
+        {
+          name: 'Teams',
+          value: player_teams
+            .map((team) => {
+              return team
+                .map((player_id) => `<@${player_id}>`)
+                .join(players_per_team == 1 ? ', ' : '\n')
+            })
+            .join('\n\n'),
+        },
+        {
+          name: 'Outcome',
+          value: relative_scores
+            .map((score, i) => {
+              return `${i}: ${score}`
+            })
+            .join('\n'),
+        },
+      ],
+      color: Colors.Primary,
+    }
+
+    await ctx.editOriginal({
+      content: `Recorded match`,
+      components: [],
+      embeds: [embed],
+      flags: MessageFlags.Ephemeral,
+    })
+  })
+
+  return {
+    type: InteractionResponseType.UpdateMessage,
+    data: {
+      content: `Please wait`,
+      flags: MessageFlags.Ephemeral,
+    },
+  }
+}
+
+const placeholder_user_id = '0'

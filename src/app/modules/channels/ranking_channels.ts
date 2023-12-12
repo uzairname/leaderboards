@@ -14,6 +14,21 @@ import { Colors } from '../../messages/message_pieces'
 
 import { syncRankedCategory } from '../guilds'
 
+export function addRankingChannelsListeners(app: App) {
+  app.addEventListener('update_ranking', async (ranking: Ranking) => {
+    const guild_rankings = await ranking.guildRankings()
+    await Promise.all(
+      guild_rankings.map(async (guild_ranking) => {
+        await syncRankingChannelsMessages(app, guild_ranking)
+      }),
+    )
+  })
+
+  app.addEventListener('update_guild_ranking', async (guild_ranking: GuildRanking) => {
+    await syncRankingChannelsMessages(app, guild_ranking)
+  })
+}
+
 export async function syncRankingChannelsMessages(
   app: App,
   guild_ranking: GuildRanking,

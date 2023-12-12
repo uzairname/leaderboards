@@ -12,13 +12,13 @@ export const Users = pgTable('Users', {
   time_created: timestamp('time_created').defaultNow(),
 })
 
-export type AccessTokenData = {
+export type AccessTokenData = Partial<{
   access_token: string
   token_type: string
   expires_in: number
   refresh_token: string
   scope: string
-}
+}>
 
 export const AccessTokens = pgTable('AccessTokens', {
   id: text('id').primaryKey(),
@@ -37,10 +37,10 @@ export const Guilds = pgTable('Guilds', {
 })
 
 
-export type EloSettings = {
+export type EloSettings = Partial<{
   initial_rating: number
   initial_rd: number
-}
+}>
 
 export const Rankings = pgTable('Rankings', {
   id: serial('id').primaryKey(),
@@ -115,7 +115,7 @@ export const ActiveMatches = pgTable('ActiveMatches', {
   ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, {onDelete: 'cascade'}),
   time_created: timestamp('time_created').defaultNow(),
   status: integer('status'),
-  team_users: jsonb('team_users').$type<string[][]>(),
+  team_players: jsonb('team_players').$type<number[][]>(),
   team_votes: jsonb('team_votes').$type<number[]>(),
   channel_id: text('channel_id'),
   message_id: text('message_id'),
@@ -128,7 +128,7 @@ export const Matches = pgTable('Matches', {
   time_created: timestamp('time_created').defaultNow(),
   time_finished: timestamp('time_finished'),
   number: integer('number'),
-  team_users: jsonb('team_users').$type<string[][]>(),
+  team_players: jsonb('team_players').$type<number[][]>(),
   outcome: jsonb('outcome').$type<number[]>(),
   metadata: jsonb('metadata'),
 })

@@ -1,5 +1,5 @@
 import { Ranking, Player } from '../../database/models'
-import { UserErrors } from '../errors'
+import { AppErrors, UserErrors } from '../errors'
 
 /**
  *
@@ -8,7 +8,7 @@ async function findMatchFromQueue(ranking: Ranking): Promise<Array<Array<Player>
   /*
   When a match is created, all queue users are removed from all other queue teams they're in.
   */
-  throw new UserErrors.NotImplimented()
+  throw new AppErrors.NotImplimented()
 }
 
 /**

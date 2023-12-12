@@ -3,7 +3,7 @@ import { OAuth2Scopes } from 'discord-api-types/v10'
 
 import { respondToDiscordInteraction } from '../discord-framework'
 import { RequestArgs, authorize } from '../utils/request'
-import { initSentry } from '../logging/globals'
+import { initSentry, sentry } from '../logging/globals'
 
 import { App } from './app'
 import { apiRouter } from './api/router'
@@ -14,8 +14,8 @@ import { findView } from './interactions/find_view'
 import { onViewError } from './interactions/on_view_error'
 
 export function respond(req: RequestArgs): Promise<Response> {
-  const sentry = initSentry(req)
-  const app = new App(req, sentry)
+  initSentry(req)
+  const app = new App(req)
   const config = app.config
 
   const route = Router()
@@ -24,7 +24,13 @@ export function respond(req: RequestArgs): Promise<Response> {
     })
 
     .post('/interactions', (request) => {
-      return respondToDiscordInteraction(app.bot, request, findView(app), onViewError(app), true)
+      return respondToDiscordInteraction(
+        app.bot,
+        request,
+        findView(app),
+        onViewError(app),
+        app.config.features.DIRECT_RESPONSE,
+      )
     })
 
     .get(config.routes.OAUTH_LINKED_ROLES, () => {

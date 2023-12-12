@@ -18,7 +18,7 @@ import {
 import { assertValue } from '../../../utils/utils'
 
 import { App } from '../../app'
-import { UserErrors } from '../../errors'
+import { AppErrors, UserErrors } from '../../errors'
 
 import { onJoinQueue, onLeaveQueue } from '../../modules/queue'
 
@@ -72,7 +72,7 @@ export default (app: App) =>
           },
         }
       } else {
-        throw new UserErrors.UnknownState(ctx.state.data.component)
+        throw new AppErrors.UnknownState(ctx.state.data.component)
       }
     })
 

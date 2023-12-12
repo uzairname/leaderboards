@@ -22,7 +22,7 @@ import { App } from '../../app'
 
 import help from './help'
 import { assertValue } from '../../../utils/utils'
-import { UserErrors } from '../../errors'
+import { AppErrors, UserErrors } from '../../errors'
 
 const test_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -127,7 +127,7 @@ export default (app: App) =>
           data: testMessageData(ctx),
         }
       } else {
-        throw new UserErrors.UnknownState(ctx.state.data.clicked_btn)
+        throw new AppErrors.UnknownState(ctx.state.data.clicked_btn)
       }
     })
 

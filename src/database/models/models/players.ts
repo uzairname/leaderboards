@@ -5,6 +5,7 @@ import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
 import { DbObject, DbObjectManager } from '../managers'
 import { PlayerSelect, PlayerUpdate, PlayerInsert } from '../types'
 import { User, Ranking, Team } from '..'
+import { DatabaseErrors } from '../../utils/errors'
 
 export class Player extends DbObject<PlayerSelect> {
   async update(data: PlayerUpdate): Promise<Player> {
@@ -30,14 +31,17 @@ export class Player extends DbObject<PlayerSelect> {
     return data.map((data) => new Team(data.team, this.db))
   }
 
-  async queueTeams() {
+  async queueTeams(): Promise<{ team: Team; in_queue: boolean }[]> {
     const data = await this.db.db
-      .select({ team: Teams })
-      .from(QueueTeams)
-      .innerJoin(TeamPlayers, eq(TeamPlayers.team_id, QueueTeams.team_id))
-      .innerJoin(Teams, eq(Teams.id, QueueTeams.team_id))
-      .where(eq(TeamPlayers.player_id, this.data.id))
-    return data.map((data) => new Team(data.team, this.db))
+      .select({ team: Teams, queue_team: QueueTeams })
+      .from(Teams)
+      .innerJoin(
+        TeamPlayers,
+        and(eq(TeamPlayers.team_id, Teams.id), eq(TeamPlayers.player_id, this.data.id)),
+      )
+      .leftJoin(QueueTeams, eq(QueueTeams.team_id, Teams.id))
+
+    return data.map((data) => ({ team: new Team(data.team, this.db), in_queue: !!data.queue_team }))
   }
 
   async removeTeamsFromQueue(): Promise<void> {
@@ -77,6 +81,12 @@ export class PlayersManager extends DbObjectManager {
         .where(and(eq(Players.user_id, user_id), eq(Players.ranking_id, ranking)))
     )[0]
     if (!data) return
+    return new Player(data, this.db)
+  }
+
+  async getById(id: number): Promise<Player> {
+    let data = (await this.db.db.select().from(Players).where(eq(Players.id, id)))[0]
+    if (!data) throw new DatabaseErrors.NotFoundError(`Player ${id} doesn't exist`)
     return new Player(data, this.db)
   }
 }

@@ -77,18 +77,30 @@ async function testQueueTeams(app: App) {
 
   // get player 100's queue teams. should be team 1 and 3
   let player100_queue_teams = await player100.queueTeams()
-  assert(player100_queue_teams.length == 2, 'player 100 should be in queue team 1 and 3')
+  assert(
+    player100_queue_teams.filter((t) => t.in_queue).length == 2,
+    'player 100 should be in queue team 1 and 3',
+  )
 
   // user 100 leaves the queue
-  assert((await player300.queueTeams()).length == 2, 'player 300 should be in queue team 2 and 3')
+  assert(
+    (await player300.queueTeams()).filter((t) => t.in_queue).length == 2,
+    'player 300 should be in queue team 2 and 3',
+  )
 
   await player100.removeTeamsFromQueue()
   // queue teams: team_1_2 (100, 400, ranking 2), team_2 (200, 300, ranking 1)
 
-  assert((await player100.queueTeams()).length == 0, 'player 200 should not be in queue')
-  assert((await player200.queueTeams()).length == 1, 'player 200 should be in queue team 2')
   assert(
-    (await player100_2.queueTeams()).length == 1,
+    (await player100.queueTeams()).filter((t) => t.in_queue).length == 0,
+    'player 200 should not be in queue',
+  )
+  assert(
+    (await player200.queueTeams()).filter((t) => t.in_queue).length == 1,
+    'player 200 should be in queue team 2',
+  )
+  assert(
+    (await player100_2.queueTeams()).filter((t) => t.in_queue).length == 1,
     'player 100 should still be in queue team 1 ranking 2',
   )
 }

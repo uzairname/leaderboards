@@ -7,16 +7,12 @@ export async function overwriteDiscordCommandsWithViews(
   bot: DiscordRESTClient,
   views: AnyCommandView[],
 ) {
-  /*
-  Overwrites all commands in discord with provided commands
-  */
-
   let guild_commands: {
     [guild_id: string]: RESTPostAPIApplicationCommandsJSONBody[]
   } = {}
   let global_commands: RESTPostAPIApplicationCommandsJSONBody[] = []
 
-  views.forEach((view) => {
+  views.map((view) => {
     if (view.options.guild_id) {
       if (!guild_commands[view.options.guild_id]) {
         guild_commands[view.options.guild_id] = []
@@ -27,11 +23,11 @@ export async function overwriteDiscordCommandsWithViews(
     }
   })
 
-  for (const guild_id in guild_commands) {
-    await bot.overwriteGuildCommands(guild_id, guild_commands[guild_id])
-  }
-
-  await bot.overwriteGlobalCommands(global_commands)
+  await Promise.all(
+    Object.entries(guild_commands)
+      .map(([guild_id, commands]) => bot.overwriteGuildCommands(guild_id, commands))
+      .concat(bot.overwriteGlobalCommands(global_commands)),
+  )
 
   sentry.addBreadcrumb({
     category: 'discord',

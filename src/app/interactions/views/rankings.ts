@@ -35,11 +35,17 @@ import { assertValue } from '../../../utils/utils'
 import { sentry } from '../../../logging/globals'
 
 import { App } from '../../app'
-import { UserErrors } from '../../errors'
+import { AppErrors, UserErrors } from '../../errors'
 
 import { checkMemberBotAdmin } from '../../modules/user_permissions'
 import { getOrAddGuild } from '../../modules/guilds'
-import { deleteRanking, createNewRankingInGuild, updateRanking, default_players_per_team, default_num_teams } from '../../modules/rankings'
+import {
+  deleteRanking,
+  createNewRankingInGuild,
+  updateRanking,
+  default_players_per_team,
+  default_num_teams,
+} from '../../modules/rankings'
 
 import { GuildRanking } from '../../../database/models'
 import {
@@ -54,6 +60,7 @@ import { checkGuildInteraction } from '../checks'
 import { restore_cmd_def } from './restore'
 import { rankingsAutocomplete } from '../common'
 import { getModalSubmitEntries } from '../../../discord-framework'
+import { help_command_def } from './help'
 
 const rankings_cmd_def = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -172,7 +179,7 @@ export default (app: App) =>
         }
       }
 
-      throw new UserErrors.UnknownState(`${JSON.stringify(ctx.state.data)}`)
+      throw new AppErrors.UnknownState(`${JSON.stringify(ctx.state.data)}`)
     })
 
 export async function allGuildRankingsPage(
@@ -187,19 +194,20 @@ export async function allGuildRankingsPage(
     {
       title: 'Rankings',
       description:
-        `You have **${guild_rankings.length}** ranking` +
-        `${guild_rankings.length === 1 ? '' : 's'} in this server`,
-      fields: [
-        {
-          name: `Helpful Commands`,
-          value:
-            `${await commandMention(app, rankings_cmd_def)} \`[name]\` - Manage a ranking\n` +
-            `${await commandMention(
-              app,
-              restore_cmd_def,
-            )} - Restore a ranking's channels or messages`,
-        },
-      ],
+        `You have **${guild_rankings.length}** ranking${guild_rankings.length === 1 ? `` : `s`}` +
+        ` in this server`,
+      fields: [],
+      color: Colors.EmbedBackground,
+    },
+    {
+      title: 'Helpful Commands',
+      description:
+        `${await commandMention(app, rankings_cmd_def)} **[name]** - Manage a ranking` +
+        `\n${await commandMention(
+          app,
+          restore_cmd_def,
+        )} - Restore or update missing channels and messages` +
+        `\n${await commandMention(app, help_command_def)} - Help`,
       color: Colors.EmbedBackground,
     },
   ]
@@ -253,13 +261,12 @@ async function guildRankingDetails(app: App, guild_ranking: GuildRanking): Promi
       guild_ranking.data.leaderboard_channel_id || '0',
       guild_ranking.data.leaderboard_message_id,
     )
-
-    var display_message_msg = `Displaying here: ${display_message_link}`
+    var display_message_msg = `${display_message_link}`
   } else {
     display_message_msg = `Not displayed in a message anywhere`
   }
 
-  const description = `${created_time_msg}\n` + `${display_message_msg}`
+  const description = `${display_message_msg}` + `\n${created_time_msg}`
 
   return description
 }
@@ -370,10 +377,13 @@ export function creatingNewRankingPage(
   const players_per_team = ctx.state.data.input_players_per_team || default_players_per_team
   const num_teams = ctx.state.data.input_num_teams || default_num_teams
 
-  const content = `Creating a new ranking named **${toMarkdown(ctx.state.data.input_name)}**`
-    + ` with the following settings:`
-    + `\nEvery match has **${players_per_team}** player` + (players_per_team === 1 ? '' : 's') + ` per team`
-    + ` and **${num_teams}** teams`
+  const content =
+    `Creating a new ranking named **${toMarkdown(ctx.state.data.input_name)}**` +
+    ` with the following settings:` +
+    `\n- Every match in this ranking will have **${num_teams}** teams` +
+    ` and **${players_per_team}** player` +
+    (players_per_team === 1 ? '' : 's') +
+    ` per team`
 
   const embed: APIEmbed = {
     title: `Confirm?`,

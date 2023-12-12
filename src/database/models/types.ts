@@ -5,7 +5,6 @@ import {
   Rankings,
   Matches,
   Players,
-  QueueTeams,
   Settings,
   Users,
   GuildRankings,

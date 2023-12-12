@@ -7,13 +7,13 @@ import { App } from '../app'
 export async function getRegisterPlayer(
   app: App,
   discord_user: APIUser | string,
-  ranking: Ranking,
+  ranking: Ranking | number,
 ): Promise<Player> {
   // Gets a player in the leaderboard, with the user's id
 
   let player = await app.db.players.get(
     typeof discord_user == 'string' ? discord_user : discord_user.id,
-    ranking.data.id,
+    typeof ranking == 'number' ? ranking : ranking.data.id,
   )
 
   if (!player) {
@@ -25,15 +25,18 @@ export async function getRegisterPlayer(
       name: discord_user.username,
     })
 
+    ranking = typeof ranking == 'number' ? await app.db.rankings.get(ranking) : ranking
+
     assertValue(ranking.data.elo_settings?.initial_rating, 'initial rating')
+    assertValue(ranking.data.elo_settings?.initial_rd, 'initial rd')
 
     player = await app.db.players.create(app_user, ranking, {
       time_created: new Date(),
-      rating: ranking.data.elo_settings?.initial_rating,
+      name: discord_user.username,
+      rating: ranking.data.elo_settings.initial_rating,
+      rd: ranking.data.elo_settings.initial_rd,
     })
   }
 
   return player
 }
-
-async function add_points_to_player(user: APIUser, ranking_id: number, points: number) {}

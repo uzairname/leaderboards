@@ -7,5 +7,7 @@ export const features = (environment: string) => {
     DETAILED_ERROR_MESSAGES: dev,
     EXPERIMENTAL_VIEWS: dev,
     ALL_COMMANDS_GUILD: dev,
+    HELP_REFERENCE: dev,
+    DIRECT_RESPONSE: true,
   }
 }

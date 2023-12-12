@@ -40,7 +40,7 @@ export class AppError extends Error {
   }
 }
 
-export namespace UserErrors {
+export namespace AppErrors {
   export class UnknownState extends AppError {
     constructor(state?: string) {
       super(`Unhandled custom id state "${state}"`)
@@ -54,6 +54,4 @@ export namespace UserErrors {
       super("Can't save oauth token: No identify scope")
     }
   }
-
-  export class UnknownRanking extends AppError {}
 }

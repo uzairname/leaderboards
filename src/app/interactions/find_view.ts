@@ -14,19 +14,21 @@ import test from './views/test_command'
 import temp from './views/temp_command'
 
 export function getAllViews(app: App): AnyView[] {
-  const all_views: AnyView[] = [help(app), rankings(app), points(app)]
+  let enabled_views: AnyView[] = [
+    help(app), 
+    rankings(app),
+    points(app), 
+    record_match(app),
+    restore(app),
+  ] // prettier-ignore
 
   const experimental_views: AnyView[] = [
-    restore(app),
     settings(app),
-    record_match(app),
     start_match(app),
     queue(app),
     test(app),
     temp(app),
-  ]
-
-  let enabled_views = all_views
+  ] // prettier-ignore
 
   if (app.config.features.EXPERIMENTAL_VIEWS) {
     enabled_views = enabled_views.concat(experimental_views)
@@ -39,9 +41,7 @@ export function getAllViews(app: App): AnyView[] {
   }
 
   // check for duplicate custom_id_prefixes
-  const custom_id_prefixes = enabled_views
-    .map((view) => view.options.custom_id_prefix)
-    .filter(Boolean)
+  const custom_id_prefixes = enabled_views.filter((view) => !!view.options.custom_id_prefix)
 
   if (custom_id_prefixes.length !== new Set(custom_id_prefixes).size) {
     throw new Error(`Duplicate custom id prefixes found in views: ${custom_id_prefixes}`)

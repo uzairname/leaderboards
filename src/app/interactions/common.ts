@@ -18,7 +18,7 @@ export function rankingsAutocomplete(
     const interaction = checkGuildInteraction(ctx.interaction)
 
     // Get the ranking name typed so far.
-    let input_value =
+    const input_value =
       (
         interaction.data.options?.find((o) => o.name === 'ranking') as
           | APIApplicationCommandInteractionDataStringOption

@@ -4,13 +4,15 @@ import {
   InteractionResponseType,
   MessageFlags,
 } from 'discord-api-types/v10'
-import { DiscordErrors } from '../../discord-framework'
+
 import { sentry } from '../../logging/globals'
 import { Messages } from '../messages/messages'
-import { UserError } from '../errors'
 import { App } from '../app'
 import { Colors, toMarkdown } from '../messages/message_pieces'
-import { DatabaseError, DatabaseErrors } from '../../database/utils/errors'
+
+import { DiscordErrors } from '../../discord-framework'
+import { AppError, UserError } from '../errors'
+import { DatabaseError } from '../../database/utils/errors'
 
 export const onViewError = (app: App) =>
   function (e: unknown): APIInteractionResponseChannelMessageWithSource {
@@ -23,11 +25,8 @@ export const onViewError = (app: App) =>
     } else if (e instanceof RateLimitError) {
       description = `Try again in ${e.timeToReset / 1000} seconds`
       title = 'Being Rate limited'
-    } else if (e instanceof UserError) {
+    } else if (e instanceof UserError || e instanceof DatabaseError || e instanceof AppError) {
       description = e.message ? e.message : e.constructor.name
-      title = 'Something went wrong'
-    } else if (e instanceof DatabaseErrors.NotFoundError) {
-      description = e.message
       title = 'Something went wrong'
     } else {
       sentry.catchAfterResponding(e)

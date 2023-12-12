@@ -12,12 +12,10 @@ import { UserError, UserErrors } from '../errors'
 
 import { RankingUpdate } from '../../database/models/types'
 import { syncRankingChannelsMessages } from './channels/ranking_channels'
-import { removeRankingChannelsMessages as removeRankingChannelsMessages } from './channels/ranking_channels'
-
+import { removeRankingChannelsMessages } from './channels/ranking_channels'
 
 export const default_players_per_team = 1
 export const default_num_teams = 2
-
 
 /**
  *
@@ -54,8 +52,8 @@ export async function createNewRankingInGuild(
     players_per_team: default_players_per_team,
     num_teams: default_num_teams,
     elo_settings: {
-      initial_rating: 1000,
-      initial_rd: 350,
+      initial_rating: 25,
+      initial_rd: 25 / 3,
     },
     // TODO: specify players per team and num teams
   })
@@ -74,13 +72,7 @@ export async function createNewRankingInGuild(
 
 export async function updateRanking(app: App, ranking: Ranking, options: RankingUpdate) {
   await ranking.update(options)
-
-  const guild_rankings = await ranking.guildRankings()
-  await Promise.all(
-    guild_rankings.map(async (guild_ranking) => {
-      await syncRankingChannelsMessages(app, guild_ranking)
-    }),
-  )
+  await app.emitEvent('update_ranking', ranking)
 }
 
 export async function deleteRanking(bot: DiscordRESTClient, ranking: Ranking): Promise<void> {
