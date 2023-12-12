@@ -20,10 +20,10 @@ export async function finishMatch(
     metadata: metadata,
   })
 
-  await scoreLeaderboardHistory(ranking)
+  await scoreRankingHistory(ranking)
 }
 
-export async function scoreLeaderboardHistory(ranking: Ranking) {
+export async function scoreRankingHistory(ranking: Ranking) {
   /*
     update all players' score based on match history
     */

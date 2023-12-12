@@ -4,7 +4,7 @@ import { UserErrors } from '../errors'
 /**
  *
  */
-async function findMatchFromQueue(leaderboard: Ranking): Promise<Array<Array<Player>>> {
+async function findMatchFromQueue(ranking: Ranking): Promise<Array<Array<Player>>> {
   /*
   When a match is created, all queue users are removed from all other queue teams they're in.
   */

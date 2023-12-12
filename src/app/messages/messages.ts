@@ -4,11 +4,11 @@ import { inviteUrl } from './message_pieces'
 
 export namespace Messages {
   export const concise_description =
-    'Track matches and Elo ratings for any game in your server. Find and play matches against players of your skill level. Additional utilities for moderation, display, and statistics.'
+    'This bot tracks Elo ratings for any game. Players can match against players of their skill level and record the results of their games. There are additional utilities for moderation, display, and statistics.'
 
   export const github_url = 'https://github.com/uzairname/leaderboards'
 
-  export function botPermisssionsErrorDescription(
+  export function botPermisssionsError(
     bot: DiscordRESTClient,
     e: DiscordErrors.BotPermissions,
   ): string {

@@ -11,8 +11,8 @@ import { App } from '../app'
 import { UserError, UserErrors } from '../errors'
 
 import { RankingUpdate } from '../../database/models/types'
-import { syncLeaderboardChannelsMessages } from './channels/leaderboard_channels'
-import { removeLeaderboardChannelsMessages } from './channels/leaderboard_channels'
+import { syncRankingChannelsMessages } from './channels/leaderboard_channels'
+import { removeRankingChannelsMessages as removeRankingChannelsMessages } from './channels/leaderboard_channels'
 
 /**
  *
@@ -59,7 +59,7 @@ export async function createNewRankingInGuild(
     is_admin: true,
   })
 
-  await syncLeaderboardChannelsMessages(app, new_guild_ranking)
+  await syncRankingChannelsMessages(app, new_guild_ranking)
 
   return {
     new_guild_ranking: new_guild_ranking,
@@ -73,13 +73,13 @@ export async function updateRanking(app: App, ranking: Ranking, options: Ranking
   const guild_rankings = await ranking.guildRankings()
   await Promise.all(
     guild_rankings.map(async (guild_ranking) => {
-      await syncLeaderboardChannelsMessages(app, guild_ranking)
+      await syncRankingChannelsMessages(app, guild_ranking)
     }),
   )
 }
 
 export async function deleteRanking(bot: DiscordRESTClient, ranking: Ranking): Promise<void> {
-  await removeLeaderboardChannelsMessages(bot, ranking)
+  await removeRankingChannelsMessages(bot, ranking)
   await ranking.delete()
 }
 

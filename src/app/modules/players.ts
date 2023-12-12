@@ -36,4 +36,4 @@ export async function getRegisterPlayer(
   return player
 }
 
-async function add_points_to_player(user: APIUser, leaderboard_id: number, points: number) {}
+async function add_points_to_player(user: APIUser, ranking_id: number, points: number) {}

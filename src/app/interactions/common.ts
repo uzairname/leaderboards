@@ -17,7 +17,7 @@ export function rankingsAutocomplete(
   return async (ctx: AutocompleteContext) => {
     const interaction = checkGuildInteraction(ctx.interaction)
 
-    // Get the leaderboard name typed so far.
+    // Get the ranking name typed so far.
     let input_value =
       (
         interaction.data.options?.find((o) => o.name === 'ranking') as

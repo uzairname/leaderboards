@@ -8,7 +8,7 @@ import { CommandView } from '../../../discord-framework'
 
 import { App } from '../../app'
 
-import { syncLeaderboardChannelsMessages } from '../../modules/channels/leaderboard_channels'
+import { syncRankingChannelsMessages } from '../../modules/channels/leaderboard_channels'
 import { getOrAddGuild } from '../../modules/guilds'
 
 import { checkMemberBotAdmin } from '../../modules/user_permissions'
@@ -33,7 +33,7 @@ export default (app: App) =>
       await checkMemberBotAdmin(interaction.member, guild)
 
       for (const result of await guild.guildRankings()) {
-        await syncLeaderboardChannelsMessages(app, result.guild_ranking)
+        await syncRankingChannelsMessages(app, result.guild_ranking)
       }
 
       await ctx.editOriginal({

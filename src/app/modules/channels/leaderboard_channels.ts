@@ -14,22 +14,22 @@ import { Colors } from '../../messages/message_pieces'
 
 import { syncRankedCategory } from '../guilds'
 
-export async function syncLeaderboardChannelsMessages(
+export async function syncRankingChannelsMessages(
   app: App,
-  guild_leaderboard: GuildRanking,
+  guild_ranking: GuildRanking,
 ): Promise<void> {
-  await syncLbDisplayChannel(app, guild_leaderboard)
-  await syncLbDisplayMessage(app, guild_leaderboard)
+  await syncRankingLbChannel(app, guild_ranking)
+  await syncRankingLbMessage(app, guild_ranking)
 
   if (app.config.features.QUEUE_MESSAGE) {
-    await haveLeaderboardQueueMessage(app, guild_leaderboard)
+    await haveRankingQueueMessage(app, guild_ranking)
   }
 }
 
 export async function lbChanneldata(
   app: App,
   guild: Guild,
-  leaderboard: Ranking,
+  ranking: Ranking,
 ): Promise<{
   guild_id: string
   data: GuildChannelData
@@ -40,7 +40,7 @@ export async function lbChanneldata(
     data: new GuildChannelData({
       type: ChannelType.GuildText,
       parent_id: category.id,
-      name: `${leaderboard.data.name} Leaderboard`,
+      name: `${ranking.data.name} Leaderboard`,
       topic: 'This leaderboard is displayed and updated live here',
       permission_overwrites: leaderboardChannelPermissionOverwrites(
         guild.data.id,
@@ -50,39 +50,39 @@ export async function lbChanneldata(
   }
 }
 
-export async function syncLbDisplayChannel(
+export async function syncRankingLbChannel(
   app: App,
-  guild_leaderboard: GuildRanking,
+  guild_ranking: GuildRanking,
 ): Promise<void> {
-  const guild = await guild_leaderboard.guild()
-  const leaderboard = await guild_leaderboard.ranking()
+  const guild = await guild_ranking.guild()
+  const ranking = await guild_ranking.ranking()
 
   const result = await app.bot.utils.syncGuildChannel({
-    target_channel_id: guild_leaderboard.data.leaderboard_channel_id,
+    target_channel_id: guild_ranking.data.leaderboard_channel_id,
     channelData: async () => {
-      return await lbChanneldata(app, guild, leaderboard)
+      return await lbChanneldata(app, guild, ranking)
     },
   })
 
   if (result.is_new_channel) {
-    await guild_leaderboard.update({
+    await guild_ranking.update({
       leaderboard_channel_id: result.channel.id,
     })
   }
 }
 
-export async function syncLbDisplayMessage(
+export async function syncRankingLbMessage(
   app: App,
-  guild_leaderboard: GuildRanking,
+  guild_ranking: GuildRanking,
 ): Promise<void> {
   // update all the messages and channels associated with this guild leaderboard
-  const ranking = await guild_leaderboard.ranking()
-  const guild = await guild_leaderboard.guild()
+  const ranking = await guild_ranking.ranking()
+  const guild = await guild_ranking.guild()
 
   // a channel for the leaderboard and queue
   const update_display_message_result = await app.bot.utils.syncChannelMessage({
-    target_channel_id: guild_leaderboard.data.leaderboard_channel_id,
-    target_message_id: guild_leaderboard.data.leaderboard_message_id,
+    target_channel_id: guild_ranking.data.leaderboard_channel_id,
+    target_message_id: guild_ranking.data.leaderboard_message_id,
     message: async () => {
       return generateLeaderboardMessage(app, ranking)
     },
@@ -92,12 +92,12 @@ export async function syncLbDisplayMessage(
   })
 
   if (update_display_message_result.new_channel) {
-    await guild_leaderboard.update({
+    await guild_ranking.update({
       leaderboard_channel_id: update_display_message_result.new_channel.id,
     })
   }
   if (update_display_message_result.is_new_message) {
-    await guild_leaderboard.update({
+    await guild_ranking.update({
       leaderboard_message_id: update_display_message_result.message.id,
     })
   }
@@ -167,36 +167,36 @@ export function leaderboardChannelPermissionOverwrites(
   ]
 }
 
-export async function haveLeaderboardQueueMessage(
+export async function haveRankingQueueMessage(
   app: App,
-  guild_leaderboard: GuildRanking,
+  guild_ranking: GuildRanking,
 ): Promise<void> {
   const result = await app.bot.utils.syncChannelMessage({
-    target_channel_id: guild_leaderboard.data.leaderboard_channel_id,
-    target_message_id: guild_leaderboard.data.queue_message_id,
+    target_channel_id: guild_ranking.data.leaderboard_channel_id,
+    target_message_id: guild_ranking.data.queue_message_id,
     message: async () => {
-      return await queue(app).send({ ranking_id: guild_leaderboard.data.ranking_id })
+      return await queue(app).send({ ranking_id: guild_ranking.data.ranking_id })
     },
     channelData: async () => {
-      throw new Error('No channel to post queue message in. Need to make leaderboard message first')
+      throw new Error('No channel to post queue message in. Need to make ranking message first')
     },
   })
 
   if (result.is_new_message) {
-    await guild_leaderboard.update({
+    await guild_ranking.update({
       queue_message_id: result.message.id,
     })
   }
 }
 
-export async function removeLeaderboardChannelsMessages(
+export async function removeRankingChannelsMessages(
   bot: DiscordRESTClient,
-  leaderboard: Ranking,
+  ranking: Ranking,
 ): Promise<void> {
-  const guild_leaderboards = await leaderboard.guildRankings()
+  const guild_rankings = await ranking.guildRankings()
   await Promise.all(
-    guild_leaderboards.map(async (guild_leaderboard) => {
-      await bot.utils.deleteChannelIfExists(guild_leaderboard.data.leaderboard_channel_id)
+    guild_rankings.map(async (guild_ranking) => {
+      await bot.utils.deleteChannelIfExists(guild_ranking.data.leaderboard_channel_id)
     }),
   )
 }

@@ -31,7 +31,7 @@ export default (app: App) =>
     let last_deployed_timestamp = last_deployed ? dateTimestamp(last_deployed) : 'unknown'
 
     const embed: APIEmbed = {
-      title: 'Leaderboards',
+      title: '🏅Leaderboards',
       description: Messages.concise_description,
       fields: [
         {

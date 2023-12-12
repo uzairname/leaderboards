@@ -120,7 +120,7 @@ export default (app: App) =>
       assertValue(players_per_team, 'players_per_team')
       assertValue(num_teams, 'num_teams')
       if (players_per_team == 1 && num_teams == 2) {
-        // If this is a 1v1 leaderboard, check if the winner and loser were specified
+        // If this is a 1v1 ranking, check if the winner and loser were specified
 
         const winner_id = (
           interaction.data.options?.find((o) => o.name === 'winner') as

@@ -33,7 +33,7 @@ export async function syncRankedCategory(
       return {
         guild_id: guild.data.id,
         data: new GuildChannelData({
-          name: 'LEADERBOARDS',
+          name: 'RANKED',
           type: ChannelType.GuildCategory,
         }),
       }

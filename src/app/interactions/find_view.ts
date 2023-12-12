@@ -3,7 +3,7 @@ import { AnyView, isCommandView, FindViewCallback } from '../../discord-framewor
 import { App } from '../app'
 
 import help from './views/help'
-import leaderboards_command from './views/rankings'
+import rankings from './views/rankings'
 import points from './views/points'
 import restore from './views/restore'
 import settings from './views/settings'
@@ -14,7 +14,7 @@ import test from './views/test_command'
 import temp from './views/temp_command'
 
 export function getAllViews(app: App): AnyView[] {
-  const all_views: AnyView[] = [help(app), leaderboards_command(app), points(app)]
+  const all_views: AnyView[] = [help(app), rankings(app), points(app)]
 
   const experimental_views: AnyView[] = [
     restore(app),

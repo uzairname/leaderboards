@@ -14,7 +14,7 @@ import { assertValue } from '../../../utils/utils'
 import { checkGuildInteraction } from '../checks'
 import { checkMemberBotAdmin } from '../../modules/user_permissions'
 import { getOrAddGuild } from '../../modules/guilds'
-import { syncLbDisplayMessage } from '../../modules/channels/leaderboard_channels'
+import { syncRankingLbMessage } from '../../modules/channels/leaderboard_channels'
 import { UserError } from '../../errors'
 import { getRegisterPlayer } from '../../modules/players'
 import { App } from '../../app'
@@ -102,7 +102,7 @@ export default (app: App) =>
       }
 
       // Get the selected ranking
-      let ranking = await app.db.rankings.get(parseInt(options.leaderboard))
+      let ranking = await app.db.rankings.get(parseInt(options['ranking']))
 
       // Get the selected player in the ranking
       const user = interaction.data.resolved?.users?.[options.user]
@@ -115,10 +115,10 @@ export default (app: App) =>
       })
 
       // update the leaderboard display
-      const guild_leaderboard = await app.db.guild_rankings.get(guild.data.id, ranking.data.id)
-      assertValue(guild_leaderboard)
+      const guild_ranking = await app.db.guild_rankings.get(guild.data.id, ranking.data.id)
+      assertValue(guild_ranking)
 
-      await syncLbDisplayMessage(app, guild_leaderboard)
+      await syncRankingLbMessage(app, guild_ranking)
 
       return {
         type: InteractionResponseType.ChannelMessageWithSource,

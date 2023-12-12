@@ -78,7 +78,7 @@ export default (app: App) =>
 
 export function queueMessage(ctx: MessageCreateContext<typeof queue_message_def>) {
   return new MessageData({
-    content: 'Queue for leaderboard',
+    content: '',
     components: [
       {
         type: ComponentType.ActionRow,
@@ -87,13 +87,13 @@ export function queueMessage(ctx: MessageCreateContext<typeof queue_message_def>
             type: ComponentType.Button,
             style: ButtonStyle.Success,
             custom_id: ctx.state.set.component('join').encode(),
-            label: 'Join',
+            label: 'Join Queue',
           },
           {
             type: ComponentType.Button,
             style: ButtonStyle.Secondary,
             custom_id: ctx.state.set.component('leave').encode(),
-            label: 'Leave',
+            label: 'Leave Queue',
           },
         ],
       },

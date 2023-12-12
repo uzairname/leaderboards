@@ -74,17 +74,17 @@ export class RankingsManager extends DbObjectManager {
       'players_per_team must be <= 25',
     )
 
-    let new_leaderboard_data = (
+    let new_ranking_data = (
       await this.db.db
         .insert(Rankings)
         .values({ ...data })
         .returning()
     )[0]
-    return new Ranking(new_leaderboard_data, this.db)
+    return new Ranking(new_ranking_data, this.db)
   }
 
-  async get(leaderboard_id: number): Promise<Ranking> {
-    let data = (await this.db.db.select().from(Rankings).where(eq(Rankings.id, leaderboard_id)))[0]
+  async get(ranking_id: number): Promise<Ranking> {
+    let data = (await this.db.db.select().from(Rankings).where(eq(Rankings.id, ranking_id)))[0]
     if (!data) {
       throw new DatabaseErrors.NotFoundError(`Ranking doesn't exist`)
     }

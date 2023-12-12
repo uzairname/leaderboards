@@ -114,11 +114,11 @@ export default (app: App) =>
       }
 
       if (selected_option) {
-        const selected_leaderboard_id = parseInt(selected_option)
-        ctx.state.save.page('ranking settings').save.selected_ranking_id(selected_leaderboard_id)
+        const selected_ranking_id = parseInt(selected_option)
+        ctx.state.save.page('ranking settings').save.selected_ranking_id(selected_ranking_id)
         return {
           type: InteractionResponseType.ChannelMessageWithSource,
-          data: await leaderboardSettingsPage(app, ctx),
+          data: await rankingSettingsPage(app, ctx),
         }
       } else {
         ctx.state.save.page('overview')
@@ -162,11 +162,11 @@ export default (app: App) =>
 
       // Page
       if (ctx.state.is.page('creating new')) {
-        return creatingNewLeaderboardPage(ctx)
+        return creatingNewRankingPage(ctx)
       } else if (ctx.state.is.page('ranking settings')) {
         return {
           type: InteractionResponseType.UpdateMessage,
-          data: await leaderboardSettingsPage(app, ctx),
+          data: await rankingSettingsPage(app, ctx),
         }
       }
 
@@ -208,7 +208,7 @@ export async function allGuildRankingsPage(
     guild_rankings.map(async (item) => {
       fields.push({
         name: toMarkdown(item.ranking.data.name),
-        value: await guildLeaderboardDetails(app, item.guild_ranking),
+        value: await guildRankingDetails(app, item.guild_ranking),
         inline: true,
       })
     }),
@@ -237,19 +237,19 @@ export async function allGuildRankingsPage(
   }
 }
 
-async function guildLeaderboardDetails(app: App, guild_leaderboard: GuildRanking): Promise<string> {
+async function guildRankingDetails(app: App, guild_ranking: GuildRanking): Promise<string> {
   // created time
-  const created_time = (await guild_leaderboard.ranking()).data.time_created
+  const created_time = (await guild_ranking.ranking()).data.time_created
   const created_time_msg = created_time
     ? `Created ${relativeTimestamp(created_time)}`
     : `Created ${relativeTimestamp(new Date())}`
 
   // display link
-  if (guild_leaderboard.data.leaderboard_message_id) {
+  if (guild_ranking.data.leaderboard_message_id) {
     const display_message_link = messageLink(
-      guild_leaderboard.data.guild_id,
-      guild_leaderboard.data.leaderboard_channel_id || '0',
-      guild_leaderboard.data.leaderboard_message_id,
+      guild_ranking.data.guild_id,
+      guild_ranking.data.leaderboard_channel_id || '0',
+      guild_ranking.data.leaderboard_message_id,
     )
 
     var display_message_msg = `Displaying here: ${display_message_link}`
@@ -293,24 +293,25 @@ export function rankingNameModal(
   return response
 }
 
-export async function leaderboardSettingsPage<Edit extends boolean>(
+export async function rankingSettingsPage<Edit extends boolean>(
   app: App,
   ctx: BaseContext<typeof rankings_cmd_def>,
   edit: Edit = false as Edit,
 ): Promise<APIInteractionResponseCallbackData> {
   const interaction = checkGuildInteraction(ctx.interaction)
 
-  assertValue(ctx.state.data.selected_ranking_id, 'selected_leaderboard_id')
-  const guild_leaderboard = await app.db.guild_rankings.get(
+  assertValue(ctx.state.data.selected_ranking_id, 'selected_ranking_id')
+  const guild_ranking = await app.db.guild_rankings.get(
     interaction.guild_id,
     ctx.state.data.selected_ranking_id,
   )
-  assertValue(guild_leaderboard, 'guild_leaderboard')
-  const leaderboard = await guild_leaderboard.ranking()
+  assertValue(guild_ranking, 'guild_ranking')
+  const ranking = await guild_ranking.ranking()
 
-  const embed = {
-    title: leaderboard.data.name || 'Unnamed Leaderboard',
-    description: await guildLeaderboardDetails(app, guild_leaderboard),
+  const embed: APIEmbed = {
+    title: ranking.data.name || 'Unnamed Ranking',
+    description: await guildRankingDetails(app, guild_ranking),
+    color: Colors.EmbedBackground,
   }
 
   return {
@@ -343,23 +344,23 @@ export async function onRenameModalSubmit(
   ctx: ComponentContext<typeof rankings_cmd_def>,
   app: App,
 ): Promise<ChatInteractionResponse> {
-  assertValue(ctx.state.data.selected_ranking_id, 'selected_leaderboard_id')
-  const leaderboard = await app.db.rankings.get(ctx.state.data.selected_ranking_id)
-  const old_name = leaderboard.data.name
-  await updateRanking(app, leaderboard, {
+  assertValue(ctx.state.data.selected_ranking_id, 'selected_ranking_id')
+  const ranking = await app.db.rankings.get(ctx.state.data.selected_ranking_id)
+  const old_name = ranking.data.name
+  await updateRanking(app, ranking, {
     name: ctx.state.data.input_name,
   })
 
   return {
     type: InteractionResponseType.ChannelMessageWithSource,
     data: {
-      content: `Renamed **${toMarkdown(old_name)}** to **${toMarkdown(leaderboard.data.name)}**`,
+      content: `Renamed **${toMarkdown(old_name)}** to **${toMarkdown(ranking.data.name)}**`,
       flags: MessageFlags.Ephemeral,
     },
   }
 }
 
-export function creatingNewLeaderboardPage(
+export function creatingNewRankingPage(
   ctx: ComponentContext<typeof rankings_cmd_def>,
 ): ChatInteractionResponse {
   const response_type = InteractionResponseType.ChannelMessageWithSource
@@ -405,7 +406,7 @@ export async function onCreateConfirm(
       name: input_name,
     })
     ctx.state.save.page('ranking settings').save.selected_ranking_id(result.new_ranking.data.id)
-    await ctx.editOriginal(await leaderboardSettingsPage(app, ctx))
+    await ctx.editOriginal(await rankingSettingsPage(app, ctx))
   })
 
   return {
@@ -418,21 +419,21 @@ export async function onCreateConfirm(
 }
 
 export async function onBtnDelete(ctx: ComponentContext<typeof rankings_cmd_def>, app: App) {
-  assertValue(ctx.state.data.selected_ranking_id, 'selected_leaderboard_id')
-  const leaderboard = await app.db.rankings.get(ctx.state.data.selected_ranking_id)
+  assertValue(ctx.state.data.selected_ranking_id, 'selected_ranking_id')
+  const ranking = await app.db.rankings.get(ctx.state.data.selected_ranking_id)
 
   let response: APIModalInteractionResponse = {
     type: InteractionResponseType.Modal,
     data: {
       custom_id: ctx.state.set.component('modal:delete confirm').encode(),
-      title: `Delete leaderboard?`,
+      title: `Delete ranking?`,
       components: [
         {
           type: ComponentType.ActionRow,
           components: [
             {
               type: ComponentType.TextInput,
-              label: `Type "delete" to delete ${leaderboard.data.name}`.substring(0, 45),
+              label: `Type "delete" to delete ${ranking.data.name}`.substring(0, 45),
               placeholder: `delete`,
               custom_id: 'name',
               style: TextInputStyle.Short,
@@ -453,25 +454,25 @@ export async function onDeleteCorfirm(
     (c) => c.custom_id === 'name',
   )?.value
 
-  assertValue(ctx.state.data.selected_ranking_id, 'selected_leaderboard_id')
-  const leaderboard = await app.db.rankings.get(ctx.state.data.selected_ranking_id)
+  assertValue(ctx.state.data.selected_ranking_id, 'selected_ranking_id')
+  const ranking = await app.db.rankings.get(ctx.state.data.selected_ranking_id)
 
   if (input?.toLowerCase() !== 'delete') {
     return {
       type: InteractionResponseType.ChannelMessageWithSource,
       data: {
         flags: MessageFlags.Ephemeral,
-        content: `Didn't delete ${leaderboard.data.name}`,
+        content: `Didn't delete ${ranking.data.name}`,
       },
     }
   }
 
   ctx.offload(async (ctx) => {
-    await deleteRanking(app.bot, leaderboard)
+    await deleteRanking(app.bot, ranking)
 
     await ctx.editOriginal({
       flags: MessageFlags.Ephemeral,
-      content: `Deleted **\`${leaderboard.data.name}\`** and all of its players and matches`,
+      content: `Deleted **\`${ranking.data.name}\`** and all of its players and matches`,
     })
   })
 
@@ -479,7 +480,7 @@ export async function onDeleteCorfirm(
     type: InteractionResponseType.ChannelMessageWithSource,
     data: {
       flags: MessageFlags.Ephemeral,
-      content: `Deleting **${leaderboard.data.name}**...`,
+      content: `Deleting **${ranking.data.name}**...`,
       components: [],
     },
   }

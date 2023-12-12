@@ -28,7 +28,7 @@ const start_match_command = new CommandView({
     }),
     selected_team: new NumberField(),
     players: new ListField(),
-    leaderboard_id: new NumberField(),
+    ranking_id: new NumberField(),
   },
 })
 

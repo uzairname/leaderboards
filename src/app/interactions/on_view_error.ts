@@ -18,7 +18,7 @@ export const onViewError = (app: App) =>
     let title: string
 
     if (e instanceof DiscordErrors.BotPermissions) {
-      description = Messages.botPermisssionsErrorDescription(app.bot, e)
+      description = Messages.botPermisssionsError(app.bot, e)
       title = 'Missing permissions'
     } else if (e instanceof RateLimitError) {
       description = `Try again in ${e.timeToReset / 1000} seconds`
