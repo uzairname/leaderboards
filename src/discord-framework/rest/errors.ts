@@ -26,7 +26,7 @@ export namespace DiscordErrors {
 
   export class ForumInNonCommunityServer extends Error {
     constructor() {
-      super('You must enable community for your server to create a forum channel')
+      super('Unable to create forum channel. Community is disabled for this server')
     }
   }
 }

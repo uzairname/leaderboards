@@ -1,6 +1,6 @@
 import { APIInteraction, InteractionResponseType, InteractionType } from 'discord-api-types/v10'
 
-import { sentry } from '../../logging/globals'
+import { sentry } from '../../request/sentry'
 
 import { DiscordRESTClient } from '../rest/client'
 

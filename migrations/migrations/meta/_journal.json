@@ -22,6 +22,20 @@
       "when": 1702374492921,
       "tag": "0002_nifty_onslaught",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1702416192629,
+      "tag": "0003_dashing_selene",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1702418900860,
+      "tag": "0004_complete_sir_ram",
+      "breakpoints": true
     }
   ]
 }

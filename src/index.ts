@@ -1,5 +1,4 @@
-import { Env } from './config/env'
-import { respond } from './app/router'
+import { respond } from './main/router'
 
 export default {
   fetch: (request: Request, env: Env, execution_context: ExecutionContext) =>

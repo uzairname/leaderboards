@@ -1,7 +1,7 @@
 import { NeonDatabase } from 'drizzle-orm/neon-serverless'
 
 import * as schema from './schema'
-import { Sentry } from '../logging/sentry'
+import { Sentry } from '../request/sentry'
 
 import { connect } from './connect'
 import DbCache from './utils/cache'
@@ -15,7 +15,7 @@ import {
   PlayersManager,
   TeamsManager,
 } from './models'
-import { cache } from '../utils/cache'
+import { cache } from '../request/cache'
 
 export class DbClient {
   public readonly db: NeonDatabase<typeof schema>

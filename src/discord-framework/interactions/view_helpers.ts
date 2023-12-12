@@ -15,7 +15,7 @@ import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
 
 import { StringData, StringDataSchema } from './utils/string_data'
 
-import { sentry } from '../../logging/globals'
+import { sentry } from '../../request/sentry'
 
 import { MessageData } from '../rest/objects'
 import { DiscordRESTClient } from '../rest/client'
@@ -48,6 +48,11 @@ export async function respondToUserInteraction(
   /*
   Handle any non-ping interaction. Might return a Response
   */
+  sentry.setExtra(
+    'username',
+    interaction.user?.username ?? interaction.member?.user.username ?? undefined,
+  )
+
   try {
     let response: APIInteractionResponse | undefined
     if (

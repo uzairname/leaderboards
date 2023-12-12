@@ -119,7 +119,7 @@ export class DiscordRESTUtils {
   async syncChannelMessage(params: {
     target_channel_id?: string | null
     target_message_id?: string | null
-    message: () => Promise<MessageData>
+    messageData: () => Promise<MessageData>
     channelData: () => Promise<{
       guild_id: string
       data: GuildChannelData
@@ -133,7 +133,7 @@ export class DiscordRESTUtils {
     try {
       if (params.target_channel_id && params.target_message_id) {
         // Try to edit the message
-        const msg = await params.message()
+        const msg = await params.messageData()
         let existing_message = await this.bot.editMessage(
           params.target_channel_id,
           params.target_message_id,
@@ -165,7 +165,7 @@ export class DiscordRESTUtils {
       }
     }
 
-    const msg = await params.message()
+    const msg = await params.messageData()
     let new_message = await this.bot.createMessage(
       new_channel?.id || params.target_channel_id!,
       msg.postdata,
@@ -231,9 +231,13 @@ export class DiscordRESTUtils {
       data: GuildChannelData
     }>
   }): Promise<{
+    // The message in the post. There is never a new message without a new post.
     message: D.APIMessage
+    // the thread id of the post
     thread_id: string
+    // the post, if a new one was created
     new_post?: RESTPostAPIGuildForumThreadsResult
+    // the forum channel, if a new one was created
     new_forum?: D.APIChannel
   }> {
     // Makes sure an original message with the provided data exists in the provided thread, or forum.
@@ -300,22 +304,11 @@ export class DiscordRESTUtils {
       // forum doesn't exist
     }
 
-    try {
-      var new_forum = (
-        await this.syncGuildChannel({
-          channelData: params.new_forum,
-        })
-      ).channel
-    } catch (e) {
-      if (
-        e instanceof DiscordAPIError &&
-        e.code === D.RESTJSONErrorCodes.CannotExecuteActionOnThisChannelType
-      ) {
-        throw new DiscordErrors.ForumInNonCommunityServer()
-      } else {
-        throw e
-      }
-    }
+    var new_forum = (
+      await this.syncGuildChannel({
+        channelData: params.new_forum,
+      })
+    ).channel
 
     let new_post = await this.bot.makeForumPost(new_forum.id, body)
     return {

@@ -69,4 +69,12 @@ export class GuildRankingsManager extends DbObjectManager {
     if (!data) return
     return new GuildRanking(data, this.db)
   }
+
+  async getByRanking(ranking_id: number): Promise<GuildRanking[]> {
+    let data = await this.db.db
+      .select()
+      .from(GuildRankings)
+      .where(eq(GuildRankings.ranking_id, ranking_id))
+    return data.map((item) => new GuildRanking(item, this.db))
+  }
 }

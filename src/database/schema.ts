@@ -35,6 +35,8 @@ export const Guilds = pgTable('Guilds', {
   time_created: timestamp('time_created').defaultNow(),
   admin_role_id: text('admin_role_id'),
   category_id: text('category_id'),
+  match_results_textchannel_id: text('match_results_textchannel_id'),
+  match_results_forum_id: text('match_results_forum_id'),
 })
 
 
@@ -63,7 +65,8 @@ export const GuildRankings = pgTable('GuildRankings', {
   leaderboard_channel_id: text('leaderboard_channel_id'),
   leaderboard_message_id: text('leaderboard_message_id'),
   ongoing_matches_channel_id: text('ongoing_matches_channel_id'),
-  match_results_channel_id: text('match_results_channel_id'),
+  match_results_textchannel_id: text('match_results_textchannel_id'),
+  match_results_forum_id: text('match_results_forum_id'),
   queue_channel_id: text('queue_channel_id'),
   queue_message_id: text('queue_message_id'),
 },(table) => { return {
@@ -107,8 +110,7 @@ export const TeamPlayers = pgTable('TeamPlayers', {
 export const QueueTeams = pgTable('QueueTeams', {
   team_id: integer('team_id').primaryKey().references(() => Teams.id, {onDelete: 'cascade'}),
   time_created: timestamp('time_created').defaultNow(),
-}, (table) => { return {
-}})
+})
 
 
 export const ActiveMatches = pgTable('ActiveMatches', {
@@ -126,19 +128,21 @@ export const ActiveMatches = pgTable('ActiveMatches', {
 export const Matches = pgTable('Matches', {
   id: serial('id').primaryKey(),
   ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, {onDelete: 'cascade'}),
-  time_created: timestamp('time_created').defaultNow(),
+  time_started: timestamp('time_started'),
   time_finished: timestamp('time_finished'),
   number: integer('number'),
   team_players: jsonb('team_players').$type<number[][]>(),
   outcome: jsonb('outcome').$type<number[]>(),
   metadata: jsonb('metadata'),
-})
+}, (table) => { return {
+  ranking_idx: index('match_ranking_id_index').on(table.ranking_id),
+}})
 
 
 export const MatchSummaryMessages = pgTable('MatchSummaryMessages', {
   match_id: integer('match_id').notNull().references(() => Matches.id, {onDelete: 'cascade'}),
   guild_id: text('guild_id').notNull().references(() => Guilds.id, {onDelete: 'cascade'}),
-  channel_id: text('channel_id'),
+  forum_thread_id: text('forum_thread_id'),
   message_id: text('message_id'),
 }, (table) => { return {
   cpk: primaryKey(table.match_id, table.guild_id),

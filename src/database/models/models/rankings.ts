@@ -1,6 +1,6 @@
 import { eq, desc, sql, inArray } from 'drizzle-orm'
 
-import { assert } from '../../../utils/utils'
+import { ModifyType, assert } from '../../../utils/utils'
 
 import { Rankings, GuildRankings, Players, Matches, QueueTeams } from '../../schema'
 
@@ -20,29 +20,18 @@ export const default_elo_settings = {
 }
 
 export class Ranking extends DbObject<RankingSelect> {
-  constructor(data: RankingSelect, db: DbClient) {
+  public partial: boolean
+
+  constructor(data: RankingSelect, db: DbClient, partial?: boolean) {
+    !data.elo_settings && (data.elo_settings = default_elo_settings)
+    !data.num_teams && (data.num_teams = default_num_teams)
+    !data.players_per_team && (data.players_per_team = default_players_per_team)
     super(data, db)
-    let update: RankingUpdate = {}
-    if (!data.elo_settings) {
-      update['elo_settings'] = default_elo_settings
-    }
-    if (!data.num_teams || data.players_per_team) {
-      update['num_teams'] = default_num_teams
-      update['players_per_team'] = default_players_per_team
-    }
-    this.data = { ...this.data, ...update }
-    this.update(update).then(() => {})
+    this.partial = partial ?? false
   }
 
   async guildRankings(): Promise<GuildRanking[]> {
-    const query_results = await this.db.db
-      .select()
-      .from(GuildRankings)
-      .where(eq(GuildRankings.ranking_id, this.data.id))
-
-    return query_results.map((data) => {
-      return new GuildRanking(data, this.db)
-    })
+    return this.db.guild_rankings.getByRanking(this.data.id)
   }
 
   /**

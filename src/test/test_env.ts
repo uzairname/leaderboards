@@ -1,5 +1,3 @@
-import { Env } from '../config/env'
-
 export default {
   ENVIRONMENT: 'test',
   BASE_URL: 'https://example.com',

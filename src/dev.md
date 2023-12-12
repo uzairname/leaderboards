@@ -90,6 +90,6 @@ curl.exe -X POST https://<subdomain>.workers.dev/init -H "Authorization:<APP_KEY
 
 <!--
 
-current total gzip size: 216.32 KiB
+current total gzip size: 292.03 KiB
 
 -->

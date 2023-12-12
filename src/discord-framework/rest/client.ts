@@ -2,7 +2,7 @@ import * as D from 'discord-api-types/v10'
 import { I as InternalRequest } from '@discordjs/rest/dist/types-65527f29'
 import { DiscordAPIError, REST, RequestData, RequestMethod } from '@discordjs/rest'
 
-import { sentry } from '../../logging/globals'
+import { sentry } from '../../request/sentry'
 
 import { DiscordErrors } from './errors'
 
@@ -75,9 +75,19 @@ export class DiscordRESTClient extends REST {
 
   @requiresBotPermissions(D.PermissionFlagsBits.ManageChannels)
   async makeGuildChannel(guild_id: string, body: D.RESTPostAPIGuildChannelJSONBody) {
-    return (await this.fetch(RequestMethod.Post, D.Routes.guildChannels(guild_id), {
-      body,
-    })) as D.RESTPostAPIGuildChannelResult
+    try {
+      return (await this.fetch(RequestMethod.Post, D.Routes.guildChannels(guild_id), {
+        body,
+      })) as D.RESTPostAPIGuildChannelResult
+    } catch (e) {
+      if (
+        e instanceof DiscordAPIError &&
+        e.code === D.RESTJSONErrorCodes.CannotExecuteActionOnThisChannelType
+      ) {
+        throw new DiscordErrors.ForumInNonCommunityServer()
+      }
+      throw e
+    }
   }
 
   async getChannel(channel_id: string) {

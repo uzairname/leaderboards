@@ -2,7 +2,7 @@ import { Pool } from '@neondatabase/serverless'
 import { NeonDatabase, drizzle } from 'drizzle-orm/neon-serverless'
 import * as schema from './schema'
 import { Logger } from 'drizzle-orm'
-import { Sentry } from '../logging/sentry'
+import { Sentry } from '../request/sentry'
 
 export function connect(connection_string: string, sentry?: Sentry): NeonDatabase<typeof schema> {
   const pool = new Pool({

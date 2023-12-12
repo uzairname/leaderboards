@@ -8,17 +8,19 @@ import { User, Ranking, Team } from '..'
 import { DatabaseErrors } from '../../utils/errors'
 
 export class Player extends DbObject<PlayerSelect> {
-  async update(data: PlayerUpdate): Promise<Player> {
+  async update(data: PlayerUpdate): Promise<this> {
     const new_data = (
       await this.db.db
         .update(Players)
         .set(data)
-        .where(
-          and(eq(Players.user_id, this.data.user_id), eq(Players.ranking_id, this.data.ranking_id)),
-        )
+        .where(and(
+          eq(Players.user_id, this.data.user_id), 
+          eq(Players.ranking_id, this.data.ranking_id)
+        ))
         .returning()
-    )[0]
-    return new Player(new_data, this.db)
+    )[0] // prettier-ignore
+    this.data = new_data
+    return this
   }
 
   async teams(): Promise<Team[]> {
@@ -26,7 +28,7 @@ export class Player extends DbObject<PlayerSelect> {
       .select({ team: Teams })
       .from(TeamPlayers)
       .where(eq(TeamPlayers.player_id, this.data.id))
-      .innerJoin(Teams, and(eq(Teams.id, TeamPlayers.team_id)))
+      .innerJoin(Teams, eq(Teams.id, TeamPlayers.team_id))
 
     return data.map((data) => new Team(data.team, this.db))
   }

@@ -15,9 +15,9 @@ import {
   GuildRankings,
 } from '../database/schema'
 import { DbClient } from '../database/client'
-import { App } from '../app/app'
-import { getOrAddGuild } from '../app/modules/guilds'
-import { sentry } from '../logging/globals'
+import { App } from '../main/app/app'
+import { getOrAddGuild } from '../main/modules/guilds'
+import { sentry } from '../request/sentry'
 import { assertValue } from '../utils/utils'
 import { sql } from 'drizzle-orm'
 
@@ -28,7 +28,49 @@ export async function runTests(app: App): Promise<Response> {
 }
 
 async function testDatabase(app: App) {
-  await testQueueTeams(app)
+  await testMatches(app)
+  // await testQueueTeams(app)
+}
+
+async function testMatches(app: App) {
+  await resetDatabase(app.db)
+  await addData(app.db)
+
+  const match_1_1 = await app.db.matches.create({
+    ranking_id: 1,
+    team_players: [
+      [1, 2],
+      [3, 4],
+    ],
+    outcome: [0, 1],
+    metadata: {},
+    time_started: new Date(),
+    time_finished: new Date(),
+  })
+
+  const match_1_2 = await app.db.matches.create({
+    ranking_id: 2,
+    team_players: [
+      [1, 2],
+      [3, 4],
+    ],
+    outcome: [0, 1],
+    metadata: {},
+    time_started: new Date(),
+    time_finished: new Date(),
+  })
+
+  const match_2_1 = await app.db.matches.create({
+    ranking_id: 1,
+    team_players: [
+      [1, 2],
+      [3, 4],
+    ],
+    outcome: [0, 1],
+    metadata: {},
+    time_started: new Date(),
+    time_finished: new Date(),
+  })
 }
 
 async function testQueueTeams(app: App) {
