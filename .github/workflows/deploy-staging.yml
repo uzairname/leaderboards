@@ -15,18 +15,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - run: npm install
-
-      - name: Compile TypeScript
-        run: npx tsc --build tsconfig.json
-
-      - name: postgres
-      # determine whether POSTGRES_URL environment secret is set
-        run: |
-          if [ -z "${POSTGRES_URL}" ]; then
-            echo "POSTGRES_URL environment secret is not set"
-            exit 1
-          fi
+      # - name: postgres
+      # # determine whether POSTGRES_URL environment secret is set
+      #   run: |
+      #     if [ -z "${POSTGRES_URL}" ]; then
+      #       echo "POSTGRES_URL environment secret is not set"
+      #       exit 1
+      #     fi
 
       - name: Set env as secret
         env:
@@ -38,6 +33,13 @@ jobs:
             print(q)
             data.write(q)
         shell: python
+
+
+
+      - run: npm install
+
+      - name: Compile TypeScript
+        run: npx tsc --build tsconfig.json
 
       - name: Run migrations
         run: set POSTGRES_URL=${{ secrets.POSTGRES_URL }} && npx tsx ${{ env.MIGRATIONS_SCRIPT_PATH }}
