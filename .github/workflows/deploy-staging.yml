@@ -30,6 +30,14 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           environment: staging
+          secrets: |
+            DISCORD_TOKEN
+            APPLICATION_ID
+            PUBLIC_KEY
+            CLIENT_SECRET
+            SENTRY_DSN
+            APP_KEY
+            POSTGRES_URL
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
           APPLICATION_ID: ${{ secrets.APPLICATION_ID }}
@@ -38,14 +46,6 @@ jobs:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           APP_KEY: ${{ secrets.APP_KEY }}
           POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
-        secrets: |
-          DISCORD_TOKEN
-          APPLICATION_ID
-          PUBLIC_KEY
-          CLIENT_SECRET
-          SENTRY_DSN
-          APP_KEY
-          POSTGRES_URL
 
       - name: Wait 5 seconds
         run: sleep 5
