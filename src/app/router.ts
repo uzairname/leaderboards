@@ -7,7 +7,7 @@ import { initSentry } from '../logging/globals'
 
 import { App } from './app'
 import { apiRouter } from './api/router'
-import { deployBot } from './modules/deploy_bot'
+import { deployApp } from './modules/deploy_app'
 import { oauthRedirect, oauthCallback } from './modules/oauth'
 import { runTests } from '../test/test'
 import { findView } from './interactions/find_view'
@@ -36,7 +36,7 @@ export function respond(req: RequestArgs): Promise<Response> {
     })
 
     .post('/init', authorize(req), async () => {
-      await deployBot(app)
+      await deployApp(app)
       return new Response(`Deployed Leaderboards bot (${app.config.env.ENVIRONMENT})`)
     })
 
