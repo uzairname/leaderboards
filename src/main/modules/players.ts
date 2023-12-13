@@ -1,7 +1,6 @@
 import { APIUser } from 'discord-api-types/v10'
-import { DbClient } from '../../database/client'
 import { Player, Ranking } from '../../database/models'
-import { assertValue } from '../../utils/utils'
+import { nonNullable } from '../../utils/utils'
 import { App } from '../app/app'
 
 export async function getRegisterPlayer(
@@ -27,14 +26,11 @@ export async function getRegisterPlayer(
 
     ranking = typeof ranking == 'number' ? await app.db.rankings.get(ranking) : ranking
 
-    assertValue(ranking.data.elo_settings?.initial_rating, 'initial rating')
-    assertValue(ranking.data.elo_settings?.initial_rd, 'initial rd')
-
     player = await app.db.players.create(app_user, ranking, {
       time_created: new Date(),
       name: discord_user.username,
-      rating: ranking.data.elo_settings.initial_rating,
-      rd: ranking.data.elo_settings.initial_rd,
+      rating: nonNullable(ranking.data.elo_settings?.initial_rating, 'initial_rating'),
+      rd: nonNullable(ranking.data.elo_settings?.initial_rd, 'initial_rd'),
     })
   }
 

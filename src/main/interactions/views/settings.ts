@@ -9,7 +9,7 @@ import {
 import { CommandView, ChoiceField } from '../../../discord-framework'
 
 import { checkGuildInteraction } from '../utils/checks'
-import { checkInteractionMemberPerms } from '../utils/checks'
+import { ensureAdminPerms } from '../utils/checks'
 import { getOrAddGuild, syncGuildAdminRole } from '../../../main/modules/guilds'
 import { AppErrors, UserErrors } from '../../../main/app/errors'
 import { App } from '../../../main/app/app'
@@ -61,7 +61,7 @@ export default (app: App) =>
       let guild = await getOrAddGuild(app, interaction.guild_id)
 
       if (ctx.state.is.page('admin role')) {
-        await checkInteractionMemberPerms(app, ctx)
+        await ensureAdminPerms(app, ctx)
         const role_result = await syncGuildAdminRole(app, guild)
         await app.bot.addRoleToMember(
           interaction.guild_id,

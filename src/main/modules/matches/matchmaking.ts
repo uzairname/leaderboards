@@ -1,5 +1,5 @@
-import { Ranking, Player } from '../../database/models'
-import { AppErrors, UserErrors } from '../app/errors'
+import { Ranking, Player } from '../../../database/models'
+import { AppErrors, UserErrors } from '../../app/errors'
 
 /**
  *

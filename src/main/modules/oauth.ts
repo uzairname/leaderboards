@@ -1,7 +1,7 @@
 import { OAuth2Scopes, RESTPostOAuth2AccessTokenResult } from 'discord-api-types/v10'
 
 import { DiscordRESTClient } from '../../discord-framework'
-import { assertValue } from '../../utils/utils'
+import { nonNullable } from '../../utils/utils'
 
 import { updateUserRoleConnectionData } from './linked_roles'
 import { sentry } from '../../request/sentry'
@@ -31,8 +31,7 @@ export async function oauthCallback(app: App, request: Request): Promise<Respons
   }
 
   try {
-    const code = url.searchParams.get('code')
-    assertValue(code)
+    const code = nonNullable(url.searchParams.get('code'), 'code')
     var tokendata = await app.bot.getOauthToken(code, app.config.OAUTH_REDIRECT_URI)
   } catch (e) {
     sentry.catchAfterResponding(e)

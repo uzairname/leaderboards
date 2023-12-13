@@ -5,16 +5,17 @@ import {
   PermissionFlagsBits,
 } from 'discord-api-types/v10'
 
-import { Guild, GuildRanking, Match, Player, Ranking } from '../../../database/models'
-import { DiscordRESTClient, GuildChannelData, MessageData } from '../../../discord-framework'
+import type { Guild, GuildRanking, Match, Player, Ranking } from '../../../database/models'
+import { type DiscordRESTClient, GuildChannelData, MessageData } from '../../../discord-framework'
 
-import { App } from '../../app/app'
+import { type App } from '../../app/app'
 import queue_message from '../../interactions/views/queue'
 import { Colors } from '../../messages/message_pieces'
 
 import { syncRankedCategory } from '../guilds'
 import { events } from '../../app/events'
 import { sentry } from '../../../request/sentry'
+import { syncMatchSummaryChannel } from '../matches/match_summary'
 
 export function addRankingChannelsListeners(app: App) {
   app.on(events.RankingUpdated, async (ranking: Ranking) => {
@@ -26,7 +27,7 @@ export function addRankingChannelsListeners(app: App) {
     )
   })
 
-  app.on(events.MatchFinished, async (match: Match, players: Player[][]) => {
+  app.on(events.MatchScored, async (match: Match, players: Player[][]) => {
     const guild_rankings = await app.db.guild_rankings.getByRanking(match.data.ranking_id)
     await Promise.all(
       guild_rankings.map(async (guild_ranking) => {
@@ -37,6 +38,7 @@ export function addRankingChannelsListeners(app: App) {
 
   app.on(events.GuildRankingUpdated, async (guild_ranking: GuildRanking) => {
     await syncRankingChannelsMessages(app, guild_ranking)
+    await syncMatchSummaryChannel(app, guild_ranking)
   })
 }
 

@@ -21,7 +21,7 @@ import {
 import { App } from '../../../main/app/app'
 
 import help from './help'
-import { assertValue } from '../../../utils/utils'
+import { nonNullable } from '../../../utils/utils'
 import { AppErrors, UserErrors } from '../../../main/app/errors'
 
 const test_command = new CommandView({
@@ -85,30 +85,30 @@ export default (app: App) =>
       }
 
       if (ctx.state.is.clicked_btn('wait')) {
-        ctx.offload(async (ctx) => {
-          const seconds = ctx.state.data.counter ?? 0
-
-          await new Promise((resolve) => setTimeout(resolve, seconds * 1000))
-          ctx.followup({
-            content: `waited ${seconds} seconds`,
-            flags: MessageFlags.Ephemeral,
-          })
-        })
-
-        return {
-          data: {
-            content: `waiting`,
-            flags: MessageFlags.Ephemeral,
+        return ctx.defer(
+          {
+            data: {
+              content: `waiting`,
+              flags: MessageFlags.Ephemeral,
+            },
+            type: InteractionResponseType.ChannelMessageWithSource,
           },
-          type: InteractionResponseType.ChannelMessageWithSource,
-        }
+          async (ctx) => {
+            const seconds = ctx.state.data.counter ?? 0
+
+            await new Promise((resolve) => setTimeout(resolve, seconds * 1000))
+            return ctx.followup({
+              content: `waited ${seconds} seconds`,
+              flags: MessageFlags.Ephemeral,
+            })
+          },
+        )
       } else if (ctx.state.is.clicked_btn('increment')) {
         ctx.state.save.counter((ctx.state.data.counter ?? 0) + 1)
 
         return { type: InteractionResponseType.UpdateMessage, data: testMessageData(ctx) }
       } else if (ctx.state.is.clicked_btn('one')) {
-        const current_value = ctx.state.data.value
-        assertValue(current_value, 'value')
+        const current_value = nonNullable(ctx.state.data.value, 'value')
 
         current_value[0] += '1'
         ctx.state.save.value(current_value)
@@ -117,8 +117,7 @@ export default (app: App) =>
           data: testMessageData(ctx),
         }
       } else if (ctx.state.is.clicked_btn('two')) {
-        const current_value = ctx.state.data.value
-        assertValue(current_value, 'value')
+        const current_value = nonNullable(ctx.state.data.value, 'value')
 
         current_value[1] += '2'
         ctx.state.save.value(current_value)

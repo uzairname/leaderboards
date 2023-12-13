@@ -1,6 +1,7 @@
-export function assertValue<T>(value: T, value_name?: string): asserts value is NonNullable<T> {
+export function nonNullable<T>(value: T, value_name?: string): NonNullable<T> {
   if (value === null || value === undefined)
     throw new Error(`${value_name || 'value'} is null or undefined`)
+  return value
 }
 
 export function assert(condition: boolean, message?: string): asserts condition {
@@ -22,6 +23,6 @@ export type ModifyType<T, K extends keyof T, U> = Omit<T, K> & {
   [P in K]: U
 }
 
-export function clone_object<T>(obj: T): T {
+export function cloneSimpleObj<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj))
 }

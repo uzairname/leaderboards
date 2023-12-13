@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm'
 
-import { assertValue } from '../../../utils/utils'
+import { nonNullable } from '../../../utils/utils'
 
 import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
 
@@ -103,8 +103,7 @@ export class TeamsManager extends DbObjectManager {
 }
 
 function calculateTeamRating(players: Player[], ranking: Ranking): number {
-  const initial_rating = ranking.data.elo_settings?.initial_rating
-  assertValue(initial_rating, 'initial rating')
+  const initial_rating = nonNullable(ranking.data.elo_settings?.initial_rating, 'initial_rating')
   return players.length > 0
     ? players.reduce((acc, player) => {
         let rating = player.data.rating ?? initial_rating

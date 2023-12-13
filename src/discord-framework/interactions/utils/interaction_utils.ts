@@ -8,11 +8,11 @@ import {
   ModalSubmitComponent,
 } from 'discord-api-types/v10'
 
-import { clone_object } from '../../../utils/utils'
+import { cloneSimpleObj } from '../../../utils/utils'
 
 import { decompressCustomIdUTF16 } from '../view_helpers'
 
-export function replaceMessageComponentsCustomIds(
+export function replaceMessageComponentsCustomIdsInPlace(
   components:
     | APIActionRowComponent<APIMessageActionRowComponent>[]
     | APIActionRowComponent<APITextInputComponent>[]
@@ -43,7 +43,7 @@ export function getModalSubmitEntries(
   let modal_submit_components: ModalSubmitComponent[] = []
   interaction.data.components.forEach((row) => {
     row.components.forEach((component) => {
-      let component_copy = clone_object(component)
+      let component_copy = cloneSimpleObj(component)
       component_copy.custom_id = decompressCustomIdUTF16(component.custom_id).content.toString()
       modal_submit_components.push(component_copy)
     })

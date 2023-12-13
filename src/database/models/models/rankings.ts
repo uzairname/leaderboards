@@ -1,14 +1,14 @@
-import { eq, desc, sql, inArray } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 
-import { ModifyType, assert } from '../../../utils/utils'
+import { assert } from '../../../utils/utils'
 
-import { Rankings, GuildRankings, Players, Matches, QueueTeams } from '../../schema'
+import { Rankings, Players, Matches } from '../../schema'
 
 import { DatabaseErrors } from '../../utils/errors'
 
 import { DbObject, DbObjectManager } from '../managers'
 import { RankingSelect, RankingUpdate, RankingInsert } from '../types'
-import { GuildRanking, Match, Player, Team } from '..'
+import { GuildRanking, Match, Player } from '..'
 import { DbClient } from '../../client'
 
 export const default_players_per_team = 1

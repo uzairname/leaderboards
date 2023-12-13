@@ -5,11 +5,11 @@ import {
 } from 'discord-api-types/v10'
 import { isGuildInteraction } from 'discord-api-types/utils/v10'
 
-import { BaseContext } from '../../../discord-framework'
+import { Context } from '../../../discord-framework'
 
 import { Guild } from '../../../database/models'
 
-import { UserError, UserErrors } from '../../app/errors'
+import { UserErrors } from '../../app/errors'
 import { App } from '../../app/app'
 import { getOrAddGuild } from '../../modules/guilds'
 import { sentry } from '../../../request/sentry'
@@ -22,11 +22,8 @@ export function checkGuildInteraction<T extends APIBaseInteraction<any, any>>(
   }
   return interaction as APIGuildInteractionWrapper<T>
 }
-export async function checkInteractionMemberPerms(
-  app: App,
-  ctx: BaseContext<any>,
-  guild?: Guild,
-): Promise<void> {
+
+async function determineAdminPerms(app: App, ctx: Context<any>, guild?: Guild) {
   let guild_interaction = checkGuildInteraction(ctx.interaction)
   if (!guild) {
     guild = await getOrAddGuild(app, guild_interaction.guild_id)
@@ -45,8 +42,21 @@ export async function checkInteractionMemberPerms(
     `member ${member.user.username}, has_admin_role: ${has_admin_role}, has_admin_perms: ${has_admin_perms}, is_owner: ${is_owner}`,
   )
 
-  if (!has_admin_role && !has_admin_perms && !is_owner) {
-    sentry.debug('no perms')
+  return {
+    has_perms: has_admin_role || has_admin_perms || is_owner,
+    admin_role_id,
+  }
+}
+
+export async function hasAdminPerms(app: App, ctx: Context<any>, guild?: Guild) {
+  const { has_perms } = await determineAdminPerms(app, ctx, guild)
+  return has_perms
+}
+
+export async function ensureAdminPerms(app: App, ctx: Context<any>, guild?: Guild): Promise<void> {
+  const { has_perms, admin_role_id } = await determineAdminPerms(app, ctx, guild)
+
+  if (!(await hasAdminPerms(app, ctx, guild))) {
     throw new UserErrors.UserMissingPermissions(
       `You need${admin_role_id ? ` the <@&${admin_role_id}> role or` : ``} admin perms to do this`,
     )

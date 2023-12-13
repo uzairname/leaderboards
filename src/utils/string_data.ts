@@ -22,6 +22,13 @@ function decodeString(str: string): string {
   return str.replace(/z([zqj])/g, (match, p1) => p1)
 }
 
+export class StringDataError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'StringDataError'
+  }
+}
+
 export class StringData<T extends StringDataSchema> {
   save = {} as {
     [K in keyof T]: (value: T[K]['default_value']) => this
@@ -84,7 +91,7 @@ export class StringData<T extends StringDataSchema> {
   }
 
   private validateAndCompress(key: string, value: unknown): unknown {
-    if (!this.schema.hasOwnProperty(key)) throw new Error('Key does not exist')
+    if (!this.schema.hasOwnProperty(key)) throw new StringDataError('Key does not exist')
     const field = this.schema[key]
     field.compress(value)
     return value
@@ -131,7 +138,7 @@ export class StringData<T extends StringDataSchema> {
       const [keyid, ...value] = field_list
       let key = this.keyid_to_key[decodeString(keyid)]
       const field = this.schema[key] // key: [K in keyof T]
-      if (!field) throw new Error(`Invalid encoded string ${encoded_str}`)
+      if (!field) throw new StringDataError(`Invalid encoded string ${encoded_str}`)
       const validKey = key as keyof T
 
       this.data[validKey] = field.decompress(value)
@@ -198,7 +205,7 @@ export class ChoiceField<
 
   compress(option: keyof T) {
     if (!this.options.hasOwnProperty(option))
-      throw new Error(`Option ${option.toString()} does not exist`)
+      throw new StringDataError(`Option ${option.toString()} does not exist`)
     return [this.option_to_option_id[option]]
   }
 

@@ -21,6 +21,8 @@ export namespace Messages {
     }
     return msg + `\n[Click here to re-invite me with the required perms](${inviteUrl(bot)})`
   }
+
+  export const no_rankings_description = `This server has no rankings. A ranking allows you to have ranked matches and leaderboards for a specific game.`
 }
 
 function permsToString(perms: string[]) {

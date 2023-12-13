@@ -3,8 +3,8 @@ import { DiscordRESTClient } from '../../discord-framework'
 import { DbClient } from '../../database/client'
 import { type RequestArgs } from '../../request/request'
 import { Config } from './config'
-import { addRankingChannelsListeners } from '../modules/channels/ranking_channels'
-import { addMatchSummaryMessagesListeners } from '../modules/channels/match_summary_channels'
+import { addRankingChannelsListeners } from '../modules/rankings/ranking_channels'
+import { addMatchSummaryMessagesListeners } from '../modules/matches/match_summary'
 
 export class App {
   public db: DbClient
@@ -46,4 +46,7 @@ export class App {
       await Promise.all(this.event_callbacks[event].map((callback) => callback(...args)))
     }
   }
+
 }
+
+

@@ -1,10 +1,10 @@
 import * as D from 'discord-api-types/v10'
 
-import { StringData, StringDataSchema } from './utils/string_data'
+import type { StringData, StringDataSchema } from '../../utils/string_data'
 
-import { MessageData } from '../rest/objects'
+import type { MessageData } from '../rest/objects'
 
-import {
+import type {
   ChatInteraction,
   CommandInteractionResponse,
   ComponentInteraction,
@@ -12,15 +12,11 @@ import {
   AnyCommandView,
   AnyView,
 } from './types'
+import type { DiscordRESTClient } from '../rest/client'
+import type { APIInteractionResponseChannelMessageWithSource } from 'discord-api-types/v10'
 import {
-  compressCustomIdUTF16,
-  executeViewOffloadCallback,
   getMessageViewMessageData,
-  replaceResponseCustomIds,
 } from './view_helpers'
-import { sentry } from '../../request/sentry'
-import { DiscordRESTClient } from '../rest/client'
-import { APIInteractionResponseChannelMessageWithSource } from 'discord-api-types/v10'
 import {
   isChatInputApplicationCommandInteraction,
   isContextMenuApplicationCommandInteraction,
@@ -37,14 +33,13 @@ declare type CommandInteraction<CommandType> =
 
 // CALLBACK CONTEXTS
 
-export type Context<View extends AnyCommandView> = CommandContext<View> | ComponentContext<View>
-
 // Autocomplete
 export interface AutocompleteContext {
   interaction: D.APIApplicationCommandAutocompleteInteraction
 }
 
-export interface BaseContext<View extends BaseView<any>> {
+// CommandContext, ComponentContext, or OffloadContext
+export interface Context<View extends BaseView<any>> {
   interaction: ChatInteraction
   state: StringData<View['options']['state_schema']>
   _ctx: {
@@ -54,22 +49,33 @@ export interface BaseContext<View extends BaseView<any>> {
 }
 
 // Command
-export interface CommandContext<View extends AnyCommandView> extends BaseContext<View> {
+export interface CommandContext<View extends AnyCommandView> extends Context<View> {
   interaction: CommandInteraction<View['options']['type']>
-  offload: (callback: ViewOffloadCallback<View>) => void
+  defer: (
+    initial_response: CommandInteractionResponse,
+    callback: ViewDeferCallback<View>,
+  ) => CommandInteractionResponse
 }
 
 // Component
-export interface ComponentContext<View extends BaseView<any>> extends BaseContext<View> {
+export interface ComponentContext<View extends BaseView<any>> extends Context<View> {
   interaction: ComponentInteraction
-  offload: (callback: ViewOffloadCallback<View>) => void
+  defer: (
+    initial_response: ChatInteractionResponse,
+    callback: ViewDeferCallback<View>,
+  ) => ChatInteractionResponse
 }
 
-// Offload
-export interface OffloadContext<Schema extends StringDataSchema>
-  extends BaseContext<BaseView<Schema>> {
-  followup: (data: D.APIInteractionResponseCallbackData) => Promise<void>
-  editOriginal: (data: D.APIInteractionResponseCallbackData) => Promise<void>
+export type InitialChatContext<View extends AnyView> =
+  | CommandContext<CommandView<View['options']['state_schema'], any>>
+  | ComponentContext<View>
+
+// Defer
+export interface DeferContext<Schema extends StringDataSchema> extends Context<BaseView<Schema>> {
+  interaction: ChatInteraction
+  followup: (data: D.APIInteractionResponseCallbackData) => Promise<DeferResponseConfirmation>
+  editOriginal: (data: D.APIInteractionResponseCallbackData) => Promise<DeferResponseConfirmation>
+  ignore: () => DeferResponseConfirmation
 }
 
 // Message
@@ -89,19 +95,26 @@ export type ViewAutocompleteCallback<Type extends D.ApplicationCommandType> = (
 >
 
 // Command
+
 export type ViewCommandCallback<View extends AnyCommandView> = (
   ctx: CommandContext<View>,
-) => Promise<CommandInteractionResponse | RespondWithCommand>
+) => Promise<CommandInteractionResponse>
 
 // Component
 export type ViewComponentCallback<View extends BaseView<any>> = (
   ctx: ComponentContext<View>,
-) => Promise<ChatInteractionResponse | void>
+) => Promise<ChatInteractionResponse>
 
-// Offload
-export type ViewOffloadCallback<View extends BaseView<any>> = (
-  ctx: OffloadContext<View['options']['state_schema']>,
-) => Promise<void>
+// Defer
+
+export class DeferResponseConfirmation {
+  // signifies that a deferred response has been followed up with/edited
+  private a = null
+}
+
+export type ViewDeferCallback<View extends BaseView<any>> = (
+  ctx: DeferContext<View['options']['state_schema']>,
+) => Promise<DeferResponseConfirmation>
 
 // Message Create
 export type ViewCreateMessageCallback<View extends MessageView<any, any>, Params> = (
@@ -143,13 +156,6 @@ export abstract class BaseView<Schema extends StringDataSchema> {
     this._componentCallback = callback
     return this
   }
-}
-
-export class RespondWithCommand {
-  constructor(
-    public readonly response: CommandInteractionResponse,
-    public readonly command: AnyCommandView,
-  ) {}
 }
 
 export class CommandView<
@@ -198,46 +204,12 @@ export class CommandView<
       }
     }
   }
-
-  public async sendToCommandInteraction(
-    ctx: CommandContext<AnyCommandView>,
-    state_data: StringData<Schema>['data'],
-  ): Promise<RespondWithCommand> {
-    const state = new StringData<Schema>(this.options.state_schema)
-    state.data = state_data
-
-    // make sure the type of command interaction matches the type of this view's command interactions.
-    this.validateInteraction(ctx.interaction)
-
-    const result = await this._commandCallback({
-      interaction: ctx.interaction,
-      state,
-      _ctx: ctx._ctx,
-      offload: (callback) => {
-        sentry.waitUntil(
-          executeViewOffloadCallback({
-            view: this,
-            callback,
-            bot: ctx._ctx.bot,
-            interaction: ctx.interaction,
-            state,
-            onError: ctx._ctx.onError,
-          }),
-        )
-      },
-    })
-
-    if (result instanceof RespondWithCommand) {
-      return result
-    }
-    return new RespondWithCommand(result, this)
-  }
 }
 
 interface MessageViewOptions<Schema extends StringDataSchema, Param> {
   custom_id_prefix?: string
   state_schema: Schema
-  args?: (arg: Param) => void
+  param?: (_: Param) => void
 }
 
 export class MessageView<Schema extends StringDataSchema, Param> extends BaseView<Schema> {

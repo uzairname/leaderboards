@@ -19,7 +19,7 @@ import { App } from '../../../main/app/app'
 import { Messages } from '../../../main/messages/messages'
 import { Colors, dateTimestamp, inviteUrl } from '../../../main/messages/message_pieces'
 import {
-  BaseContext,
+  Context,
   ChatInteractionResponse,
   ChoiceField,
   CommandInteractionResponse,
@@ -63,7 +63,7 @@ export default (app: App) =>
 
 async function helpComponents(
   app: App,
-  ctx: BaseContext<typeof help_command_def>,
+  ctx: Context<typeof help_command_def>,
 ): Promise<APIActionRowComponent<APIMessageActionRowComponent>[]> {
   let components: APIButtonComponent[] = []
   let action_rows: APIActionRowComponent<APIMessageActionRowComponent>[] = [
@@ -94,32 +94,25 @@ async function helpComponents(
   }
 
   if (ctx.state.is.page('main')) {
-    if (ctx.state.is.page('main')) {
-      action_rows.push({
-        type: ComponentType.ActionRow,
-        components: [
-          {
-            type: ComponentType.Button,
-            url: inviteUrl(app.bot),
-            label: 'Invite',
-            style: ButtonStyle.Link,
-          },
-        ],
-      })
-    }
+    action_rows.push({
+      type: ComponentType.ActionRow,
+      components: [
+        {
+          type: ComponentType.Button,
+          url: inviteUrl(app.bot),
+          label: 'Invite',
+          style: ButtonStyle.Link,
+        },
+      ],
+    })
   }
 
-  return [
-    {
-      type: ComponentType.ActionRow,
-      components,
-    },
-  ]
+  return action_rows
 }
 
 async function mainPage<Send extends boolean>(
   app: App,
-  ctx: BaseContext<typeof help_command_def>,
+  ctx: Context<typeof help_command_def>,
   send: boolean = false as Send,
 ): Promise<APIInteractionResponseCallbackData> {
   const last_deployed = (await app.db.settings.getOrUpdate()).data.last_deployed
@@ -151,7 +144,7 @@ async function mainPage<Send extends boolean>(
 
 async function referencePage(
   app: App,
-  ctx: BaseContext<typeof help_command_def>,
+  ctx: Context<typeof help_command_def>,
 ): Promise<APIInteractionResponseCallbackData> {
   const embed: APIEmbed = {
     title: 'Help',

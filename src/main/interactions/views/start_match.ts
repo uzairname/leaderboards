@@ -6,13 +6,14 @@ import {
   ButtonStyle,
   ComponentType,
   InteractionResponseType,
+  MessageFlags,
 } from 'discord-api-types/v10'
 
-import { assertValue } from '../../../utils/utils'
+import { nonNullable } from '../../../utils/utils'
 import { ChoiceField, NumberField, ListField, CommandView } from '../../../discord-framework'
 
 import { App } from '../../../main/app/app'
-import { AppErrors, UserErrors } from '../../../main/app/errors'
+import { AppErrors } from '../../../main/app/errors'
 
 const start_match_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -65,7 +66,7 @@ export default (app: App) =>
               ],
             },
           ],
-          flags: 64,
+          flags: MessageFlags.Ephemeral,
         },
       }
     })
@@ -77,8 +78,7 @@ export default (app: App) =>
       let selected_players = data.players || new Array<string>(num_teams * players_per_team)
 
       if (ctx.state.is.component('select team')) {
-        let selected_team_num = data.selected_team
-        assertValue(selected_team_num)
+        let selected_team_num = nonNullable(data.selected_team, 'selected_team')
 
         let interaction = ctx.interaction.data as unknown as APIMessageUserSelectInteractionData
 
@@ -132,7 +132,7 @@ export default (app: App) =>
           type: InteractionResponseType.UpdateMessage,
           data: {
             components,
-            flags: 64,
+            flags: MessageFlags.Ephemeral,
           },
         }
       } else if (ctx.state.is.component('confirm players')) {
@@ -141,7 +141,7 @@ export default (app: App) =>
           data: {
             content:
               'Starting match between ' + selected_players.map((p) => '<@' + p + '>').join(' '),
-            flags: 64,
+            flags: MessageFlags.Ephemeral,
           },
         }
       } else {

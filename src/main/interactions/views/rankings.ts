@@ -23,14 +23,13 @@ import {
   CommandContext,
   CommandView,
   ComponentContext,
-  Context,
   ChoiceField,
   NumberField,
   StringField,
-  BaseContext,
+  Context,
 } from '../../../discord-framework'
 
-import { assertValue } from '../../../utils/utils'
+import { nonNullable } from '../../../utils/utils'
 
 import { sentry } from '../../../request/sentry'
 
@@ -42,7 +41,7 @@ import {
   deleteRanking,
   createNewRankingInGuild,
   updateRanking,
-} from '../../../main/modules/rankings'
+} from '../../modules/rankings/rankings'
 import { default_num_teams } from '../../../database/models/models/rankings'
 import { default_players_per_team } from '../../../database/models/models/rankings'
 
@@ -50,19 +49,21 @@ import { GuildRanking } from '../../../database/models'
 import {
   Colors,
   commandMention,
+  dateTimestamp,
   messageLink,
   relativeTimestamp,
   toMarkdown,
 } from '../../../main/messages/message_pieces'
-import { checkInteractionMemberPerms } from '../utils/checks'
+import { ensureAdminPerms } from '../utils/checks'
 import { checkGuildInteraction } from '../utils/checks'
 
 import { restore_cmd_def } from './restore'
 import { rankingsAutocomplete } from '../utils/common'
 import { getModalSubmitEntries } from '../../../discord-framework'
 import { help_command_def } from './help'
+import { Messages } from '../../messages/messages'
 
-const rankings_cmd_def = new CommandView({
+export const rankings_command_def = new CommandView({
   type: ApplicationCommandType.ChatInput,
 
   custom_id_prefix: 'lbs',
@@ -104,7 +105,7 @@ const rankings_cmd_def = new CommandView({
 })
 
 export default (app: App) =>
-  rankings_cmd_def
+  rankings_command_def
     .onAutocomplete(rankingsAutocomplete(app, true))
 
     .onCommand(async (ctx) => {
@@ -133,7 +134,7 @@ export default (app: App) =>
         ctx.state.save.page('overview')
         return {
           type: InteractionResponseType.ChannelMessageWithSource,
-          data: await allGuildRankingsPage(ctx, app, interaction.guild_id),
+          data: await allGuildRankingsPage(ctx, app),
         }
       }
     })
@@ -182,30 +183,31 @@ export default (app: App) =>
     })
 
 export async function allGuildRankingsPage(
-  ctx: CommandContext<typeof rankings_cmd_def>,
+  ctx: CommandContext<typeof rankings_command_def>,
   app: App,
-  guild_id: string,
 ): Promise<APIInteractionResponseCallbackData> {
-  const guild = await getOrAddGuild(app, guild_id)
+  const interaction = checkGuildInteraction(ctx.interaction)
+  const guild = await getOrAddGuild(app, interaction.guild_id)
   const guild_rankings = await guild.guildRankings()
 
   let embeds: APIEmbed[] = [
     {
       title: 'Rankings',
       description:
-        `You have **${guild_rankings.length}** ranking${guild_rankings.length === 1 ? `` : `s`}` +
-        ` in this server`,
+        guild_rankings.length === 0
+          ? Messages.no_rankings_description
+          : `\nYou have **${guild_rankings.length}** ranking${
+              guild_rankings.length === 1 ? `` : `s`
+            }` + ` in this server`,
       fields: [],
       color: Colors.EmbedBackground,
     },
     {
       title: 'Helpful Commands',
       description:
-        `${await commandMention(app, rankings_cmd_def)} **[name]** - Manage a ranking` +
-        `\n${await commandMention(
-          app,
-          restore_cmd_def,
-        )} - Restore or update missing channels and messages` +
+        `${await commandMention(app, rankings_command_def)} **[name]** - Manage a ranking` +
+        `\n${await commandMention(app, restore_cmd_def)}` +
+        ` - Restore or update missing channels and messages` +
         `\n${await commandMention(app, help_command_def)} - Help`,
       color: Colors.EmbedBackground,
     },
@@ -249,9 +251,7 @@ export async function allGuildRankingsPage(
 async function guildRankingDetails(app: App, guild_ranking: GuildRanking): Promise<string> {
   // created time
   const created_time = (await guild_ranking.ranking()).data.time_created
-  const created_time_msg = created_time
-    ? `Created ${relativeTimestamp(created_time)}`
-    : `Created ${relativeTimestamp(new Date())}`
+  const created_time_msg = created_time ? `Created on ${dateTimestamp(created_time)}` : ``
 
   // display link
   if (guild_ranking.data.leaderboard_message_id) {
@@ -271,7 +271,7 @@ async function guildRankingDetails(app: App, guild_ranking: GuildRanking): Promi
 }
 
 export function rankingNameModal(
-  ctx: Context<typeof rankings_cmd_def>,
+  ctx: Context<typeof rankings_command_def>,
 ): CommandInteractionResponse {
   const example_names = [`Smash 1v1`, `Starcraft 2v2`, `Valorant 5s`, `Chess`, `Ping Pong 1v1`]
 
@@ -303,18 +303,19 @@ export function rankingNameModal(
 
 export async function rankingSettingsPage<Edit extends boolean>(
   app: App,
-  ctx: BaseContext<typeof rankings_cmd_def>,
+  ctx: Context<typeof rankings_command_def>,
   edit: Edit = false as Edit,
 ): Promise<APIInteractionResponseCallbackData> {
   const interaction = checkGuildInteraction(ctx.interaction)
 
-  assertValue(ctx.state.data.selected_ranking_id, 'selected_ranking_id')
-  const guild_ranking = await app.db.guild_rankings.get(
-    interaction.guild_id,
-    ctx.state.data.selected_ranking_id,
+  const guild_ranking = nonNullable(
+    await app.db.guild_rankings.get(
+      interaction.guild_id,
+      nonNullable(ctx.state.data.selected_ranking_id, 'selected_ranking_id'),
+    ),
+    'guild_ranking',
   )
-  assertValue(guild_ranking, 'guild_ranking')
-  const ranking = await guild_ranking.ranking()
+  const ranking = await nonNullable(guild_ranking).ranking()
 
   const embed: APIEmbed = {
     title: ranking.data.name || 'Unnamed Ranking',
@@ -349,14 +350,15 @@ export async function rankingSettingsPage<Edit extends boolean>(
 }
 
 export async function onRenameModalSubmit(
-  ctx: ComponentContext<typeof rankings_cmd_def>,
+  ctx: ComponentContext<typeof rankings_command_def>,
   app: App,
 ): Promise<ChatInteractionResponse> {
-  assertValue(ctx.state.data.selected_ranking_id, 'selected_ranking_id')
-  const ranking = await app.db.rankings.get(ctx.state.data.selected_ranking_id)
+  const ranking = await app.db.rankings.get(
+    nonNullable(ctx.state.data.selected_ranking_id, 'selected_ranking_id'),
+  )
   const old_name = ranking.data.name
 
-  await checkInteractionMemberPerms(app, ctx)
+  await ensureAdminPerms(app, ctx)
   await updateRanking(app, ranking, {
     name: ctx.state.data.input_name,
   })
@@ -371,7 +373,7 @@ export async function onRenameModalSubmit(
 }
 
 export function creatingNewRankingPage(
-  ctx: ComponentContext<typeof rankings_cmd_def>,
+  ctx: ComponentContext<typeof rankings_command_def>,
 ): ChatInteractionResponse {
   ctx.state.save.page('creating new')
 
@@ -418,36 +420,37 @@ export function creatingNewRankingPage(
 }
 
 export async function onCreateConfirm(
-  ctx: ComponentContext<typeof rankings_cmd_def>,
+  ctx: ComponentContext<typeof rankings_command_def>,
   app: App,
   guild_id: string,
 ): Promise<ChatInteractionResponse> {
-  ctx.offload(async (ctx) => {
-    let input_name = ctx.state.data.input_name
-    assertValue(input_name, 'input_name')
-
-    const guild = await getOrAddGuild(app, guild_id)
-    await checkInteractionMemberPerms(app, ctx, guild)
-
-    let result = await createNewRankingInGuild(app, guild, {
-      name: input_name,
-    })
-    ctx.state.save.page('ranking settings').save.selected_ranking_id(result.new_ranking.data.id)
-    await ctx.editOriginal(await rankingSettingsPage(app, ctx))
-  })
-
-  return {
-    type: InteractionResponseType.ChannelMessageWithSource,
-    data: {
-      flags: MessageFlags.Ephemeral,
-      content: `Creating Ranking...`,
+  return ctx.defer(
+    {
+      type: InteractionResponseType.ChannelMessageWithSource,
+      data: {
+        flags: MessageFlags.Ephemeral,
+        content: `Creating Ranking...`,
+      },
     },
-  }
+    async (ctx) => {
+      let input_name = nonNullable(ctx.state.data.input_name, 'input_name')
+
+      const guild = await getOrAddGuild(app, guild_id)
+      await ensureAdminPerms(app, ctx, guild)
+
+      let result = await createNewRankingInGuild(app, guild, {
+        name: input_name,
+      })
+      ctx.state.save.page('ranking settings').save.selected_ranking_id(result.new_ranking.data.id)
+      return await ctx.editOriginal(await rankingSettingsPage(app, ctx))
+    },
+  )
 }
 
-export async function onBtnDelete(ctx: ComponentContext<typeof rankings_cmd_def>, app: App) {
-  assertValue(ctx.state.data.selected_ranking_id, 'selected_ranking_id')
-  const ranking = await app.db.rankings.get(ctx.state.data.selected_ranking_id)
+export async function onBtnDelete(ctx: ComponentContext<typeof rankings_command_def>, app: App) {
+  const ranking = await app.db.rankings.get(
+    nonNullable(ctx.state.data.selected_ranking_id, 'selected_ranking_id'),
+  )
 
   let response: APIModalInteractionResponse = {
     type: InteractionResponseType.Modal,
@@ -474,41 +477,37 @@ export async function onBtnDelete(ctx: ComponentContext<typeof rankings_cmd_def>
 }
 
 export async function onDeleteCorfirm(
-  ctx: ComponentContext<typeof rankings_cmd_def>,
+  ctx: ComponentContext<typeof rankings_command_def>,
   app: App,
 ): Promise<ChatInteractionResponse> {
   let input = getModalSubmitEntries(ctx.interaction as APIModalSubmitInteraction).find(
     (c) => c.custom_id === 'name',
   )?.value
 
-  assertValue(ctx.state.data.selected_ranking_id, 'selected_ranking_id')
-  const ranking = await app.db.rankings.get(ctx.state.data.selected_ranking_id)
-
-  if (input?.toLowerCase() !== 'delete') {
-    return {
-      type: InteractionResponseType.ChannelMessageWithSource,
-      data: {
-        flags: MessageFlags.Ephemeral,
-        content: `Didn't delete ${ranking.data.name}`,
-      },
-    }
-  }
-
-  ctx.offload(async (ctx) => {
-    await checkInteractionMemberPerms(app, ctx)
-    await deleteRanking(app, ranking)
-    await ctx.editOriginal({
-      flags: MessageFlags.Ephemeral,
-      content: `Deleted **\`${ranking.data.name}\`** and all of its players and matches`,
-    })
-  })
-
-  return {
-    type: InteractionResponseType.ChannelMessageWithSource,
-    data: {
-      flags: MessageFlags.Ephemeral,
-      content: `Deleting **${ranking.data.name}**...`,
-      components: [],
+  return ctx.defer(
+    {
+      type: InteractionResponseType.DeferredMessageUpdate,
     },
-  }
+    async (ctx) => {
+      const ranking = await app.db.rankings.get(
+        nonNullable(ctx.state.data.selected_ranking_id, 'selected_ranking_id'),
+      )
+
+      if (input?.toLowerCase() !== 'delete') {
+        await ctx.followup({
+          flags: MessageFlags.Ephemeral,
+          content: `Didn't delete ${ranking.data.name}`,
+        })
+      }
+
+      await ensureAdminPerms(app, ctx)
+      await deleteRanking(app, ranking)
+      return await ctx.editOriginal({
+        flags: MessageFlags.Ephemeral,
+        content: `Deleted **\`${ranking.data.name}\`** and all of its players and matches`,
+        embeds: [],
+        components: [],
+      })
+    },
+  )
 }

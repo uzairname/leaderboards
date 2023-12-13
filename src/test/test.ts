@@ -18,11 +18,12 @@ import { DbClient } from '../database/client'
 import { App } from '../main/app/app'
 import { getOrAddGuild } from '../main/modules/guilds'
 import { sentry } from '../request/sentry'
-import { assertValue } from '../utils/utils'
+import { nonNullable } from '../utils/utils'
 import { sql } from 'drizzle-orm'
 
 export async function runTests(app: App): Promise<Response> {
-  await testDatabase(app)
+  await resetDatabase(app.db)
+  // await testDatabase(app)
   sentry.debug(`Tested Leaderboards app (${app.config.env.ENVIRONMENT})`)
   return new Response('Successfully tested Leaderboards app', { status: 200 })
 }
@@ -82,18 +83,12 @@ async function testQueueTeams(app: App) {
   const ranking = (await getRankingByName(app, '98623457887', 'ranking 1')).ranking
   const ranking2 = (await getRankingByName(app, '98623457887', 'ranking 2')).ranking
 
-  const player100 = await app.db.players.get('100', ranking.data.id)
-  assertValue(player100, 'player 100')
-  const player200 = await app.db.players.get('200', ranking.data.id)
-  assertValue(player200, 'player 200')
-  const player300 = await app.db.players.get('300', ranking.data.id)
-  assertValue(player300, 'player 300')
-  const player400 = await app.db.players.get('400', ranking.data.id)
-  assertValue(player400, 'player 400')
-  const player100_2 = await app.db.players.get('100', ranking2.data.id)
-  assertValue(player100_2, 'player 100 in ranking 2')
-  const player400_2 = await app.db.players.get('400', ranking2.data.id)
-  assertValue(player400_2, 'player 400 in ranking 2')
+  const player100 = nonNullable(await app.db.players.get('100', ranking.data.id), 'player 100')
+  const player200 = nonNullable(await app.db.players.get('200', ranking.data.id), 'player 200')
+  const player300 = nonNullable(await app.db.players.get('300', ranking.data.id), 'player 300')
+  const player400 = nonNullable(await app.db.players.get('400', ranking.data.id), 'player 400')
+  const player100_2 = nonNullable(await app.db.players.get('100', ranking2.data.id), 'player 100')
+  const player400_2 = nonNullable(await app.db.players.get('400', ranking2.data.id), 'player 400')
 
   const team_1 = await app.db.teams.create(ranking, {}, [player100, player400])
   await team_1.addToQueue()

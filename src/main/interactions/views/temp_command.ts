@@ -18,12 +18,13 @@ import {
   ListField,
   NumberField,
   CommandView,
-  BaseContext,
+  Context,
 } from '../../../discord-framework'
-import { assertValue } from '../../../utils/utils'
+import { nonNullable } from '../../../utils/utils'
 import { sentry } from '../../../request/sentry'
 
 import { App } from '../../../main/app/app'
+import { AppErrors } from '../../app/errors'
 
 const temp_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -65,10 +66,9 @@ export default (app: App) =>
         let current_players =
           ctx.state.data.players?.slice() ?? new Array(players_per_team * num_teams).fill('0')
 
-        assertValue(ctx.state.data.selected_team)
+        const selected_team = nonNullable(ctx.state.data.selected_team)
         for (let i = 0; i < players_per_team; i++) {
-          current_players[ctx.state.data.selected_team * players_per_team + i] =
-            selected_player_ids[i]
+          current_players[selected_team * players_per_team + i] = selected_player_ids[i]
         }
 
         ctx.state.save.players(current_players)
@@ -104,12 +104,14 @@ export default (app: App) =>
             flags: MessageFlags.Ephemeral,
           },
         }
+      } else {
+        throw new AppErrors.UnknownState(ctx.state.data.clicked_component)
       }
     })
 
 async function selectTeamComponents(
   app: App,
-  ctx: BaseContext<typeof temp_command>,
+  ctx: Context<typeof temp_command>,
 ): Promise<APIActionRowComponent<APIMessageActionRowComponent>[]> {
   const components: APIActionRowComponent<APIMessageActionRowComponent>[] = [
     {

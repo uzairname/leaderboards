@@ -10,10 +10,11 @@ import {
   APIInteractionResponse,
   InteractionResponseType,
   APIInteraction,
+  APIModalInteractionResponse,
 } from 'discord-api-types/v10'
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
 
-import { StringData, StringDataSchema } from './utils/string_data'
+import { StringData, StringDataSchema } from '../../utils/string_data'
 
 import { sentry } from '../../request/sentry'
 
@@ -33,10 +34,11 @@ import {
   AnyMessageView,
 } from './types'
 import { ViewErrors } from './utils/errors'
-import { RespondWithCommand, ViewOffloadCallback } from './views'
+import { DeferResponseConfirmation, ViewDeferCallback } from './views'
 import { FindViewCallback } from './types'
 import { ViewErrorCallback } from './types'
-import { replaceMessageComponentsCustomIds } from './utils/interaction_utils'
+import { replaceMessageComponentsCustomIdsInPlace } from './utils/interaction_utils'
+import { assert, cloneSimpleObj, nonNullable } from '../../utils/utils'
 
 export async function respondToUserInteraction(
   interaction: APIInteraction,
@@ -108,6 +110,8 @@ export async function respondToUserInteraction(
       return response
     } else if (response) {
       await bot.createInteractionResponse(interaction.id, interaction.token, response)
+    } else {
+      throw new Error('No response to interaction')
     }
   } catch (e) {
     await bot.createInteractionResponse(interaction.id, interaction.token, onError(e))
@@ -154,7 +158,7 @@ export async function respondToViewCommandInteraction(
 
   var result = await view._commandCallback({
     interaction: interaction as any,
-    offload: (callback) => {
+    defer: (response, callback) => {
       sentry.waitUntil(
         executeViewOffloadCallback({
           callback,
@@ -165,6 +169,7 @@ export async function respondToViewCommandInteraction(
           state,
         }),
       )
+      return response
     },
     _ctx: {
       bot,
@@ -173,16 +178,8 @@ export async function respondToViewCommandInteraction(
     state,
   })
 
-  let response: CommandInteractionResponse
-  if (result instanceof RespondWithCommand) {
-    response = result.response
-    replaceResponseCustomIds(response, compressCustomIdUTF16(result.command))
-  } else {
-    response = result
-    replaceResponseCustomIds(response, compressCustomIdUTF16(view))
-  }
-
-  return response
+  result = replaceResponseCustomIds(result, compressCustomIdUTF16(view))
+  return result
 }
 
 type DecodedCustomId = {
@@ -198,14 +195,14 @@ export async function respondToViewComponentInteraction(
   custom_id_state: EncodedCustomIdState,
   bot: DiscordRESTClient,
   onError: (e: unknown) => APIInteractionResponseChannelMessageWithSource,
-): Promise<ChatInteractionResponse | undefined> {
+): Promise<ChatInteractionResponse> {
   if (!view._componentCallback) throw new ViewErrors.NoComponentCallback()
 
   const state = decodeViewCustomIdState(view, custom_id_state)
 
   var result = await view._componentCallback({
     interaction,
-    offload: (callback) => {
+    defer: (initial_response, callback) => {
       sentry.waitUntil(
         executeViewOffloadCallback({
           view,
@@ -216,6 +213,7 @@ export async function respondToViewComponentInteraction(
           onError,
         }),
       )
+      return initial_response
     },
     _ctx: {
       bot,
@@ -224,14 +222,13 @@ export async function respondToViewComponentInteraction(
     state,
   })
 
-  if (!result) return
-  replaceResponseCustomIds(result, compressCustomIdUTF16(view))
+  result = replaceResponseCustomIds(result, compressCustomIdUTF16(view))
   return result
 }
 
 export async function executeViewOffloadCallback(args: {
   view: AnyView
-  callback: ViewOffloadCallback<any>
+  callback: ViewDeferCallback<any>
   interaction: ChatInteraction
   state: StringData<any>
   bot: DiscordRESTClient
@@ -240,19 +237,22 @@ export async function executeViewOffloadCallback(args: {
   sentry.debug(`executing offload callback for ${args.view.options.custom_id_prefix}`)
 
   try {
-    await args.callback({
+    const confirmation = await args.callback({
       interaction: args.interaction,
       followup: async (response_data: APIInteractionResponseCallbackData) => {
-        replaceMessageComponentsCustomIds(
+        replaceMessageComponentsCustomIdsInPlace(
           response_data.components,
           compressCustomIdUTF16(args.view),
         )
         await args.bot.followupInteractionResponse(args.interaction.token, response_data)
+        return new DeferResponseConfirmation()
       },
       editOriginal: async (data: RESTPatchAPIWebhookWithTokenMessageJSONBody) => {
-        replaceMessageComponentsCustomIds(data.components, compressCustomIdUTF16(args.view))
+        replaceMessageComponentsCustomIdsInPlace(data.components, compressCustomIdUTF16(args.view))
         await args.bot.editOriginalInteractionResponse(args.interaction.token, data)
+        return new DeferResponseConfirmation()
       },
+      ignore: () => new DeferResponseConfirmation(),
       state: args.state,
       _ctx: {
         bot: args.bot,
@@ -260,10 +260,13 @@ export async function executeViewOffloadCallback(args: {
       },
     })
   } catch (e) {
-    let response_data = args.onError(e).data
-    if (!response_data) return
-    replaceMessageComponentsCustomIds(response_data.components, compressCustomIdUTF16(args.view))
-    await args.bot.followupInteractionResponse(args.interaction.token, response_data)
+    let error_response = args.onError(e).data
+    if (!error_response) {return} 
+    replaceMessageComponentsCustomIdsInPlace(
+      error_response.components,
+      compressCustomIdUTF16(args.view),
+    )
+    return void (await args.bot.followupInteractionResponse(args.interaction.token, error_response))
   }
 }
 
@@ -279,7 +282,7 @@ export async function getMessageViewMessageData<Param>(
   )
 
   let message_json = message.patchdata
-  replaceMessageComponentsCustomIds(message_json.components, compressCustomIdUTF16(view))
+  replaceMessageComponentsCustomIdsInPlace(message_json.components, compressCustomIdUTF16(view))
   return new MessageData(message_json)
 }
 
@@ -333,20 +336,23 @@ export function decompressCustomIdUTF16(custom_id: string): DecodedCustomId {
   }
 }
 
-export function replaceResponseCustomIds(
-  response: APIInteractionResponse,
+export function replaceResponseCustomIds<T extends ChatInteractionResponse>(
+  response: T,
   replace: (data?: string) => string,
-): void {
+): typeof response {
   // replaces all instances of a custom_id in a discord interaction response with replace(custom_id)
+  const new_response = cloneSimpleObj(response)
+
   if (
-    response.type === InteractionResponseType.ChannelMessageWithSource ||
-    response.type === InteractionResponseType.UpdateMessage ||
-    response.type === InteractionResponseType.Modal
+    new_response.type === InteractionResponseType.ChannelMessageWithSource ||
+    new_response.type === InteractionResponseType.UpdateMessage ||
+    new_response.type === InteractionResponseType.Modal
   ) {
-    replaceMessageComponentsCustomIds(response.data?.components, replace)
+    replaceMessageComponentsCustomIdsInPlace(new_response.data?.components, replace)
   }
 
-  if (response.type === InteractionResponseType.Modal) {
-    response.data.custom_id = replace(response.data.custom_id)
+  if (new_response.type === InteractionResponseType.Modal) {
+    new_response.data.custom_id = replace(new_response.data.custom_id)
   }
+  return new_response
 }

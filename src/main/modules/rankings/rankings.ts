@@ -1,23 +1,23 @@
 import { GuildFeature } from 'discord-api-types/v10'
 import { eq, and } from 'drizzle-orm'
 
-import { DiscordRESTClient } from '../../discord-framework'
+import { DiscordRESTClient } from '../../../discord-framework'
 
-import { GuildRankings, Rankings } from '../../database/schema'
-import { Guild, GuildRanking, Ranking } from '../../database/models'
+import { GuildRankings, Rankings } from '../../../database/schema'
+import { Guild, GuildRanking, Ranking } from '../../../database/models'
 
-import { App } from '../app/app'
-import { UserError } from '../app/errors'
+import { App } from '../../app/app'
+import { UserError } from '../../app/errors'
 
-import { RankingUpdate } from '../../database/models/types'
-import { syncRankingChannelsMessages } from './channels/ranking_channels'
-import { removeRankingChannelsMessages } from './channels/ranking_channels'
+import { RankingUpdate } from '../../../database/models/types'
+import { syncRankingChannelsMessages } from './ranking_channels'
+import { removeRankingChannelsMessages } from './ranking_channels'
 import {
   default_elo_settings,
   default_players_per_team,
-} from '../../database/models/models/rankings'
-import { default_num_teams } from '../../database/models/models/rankings'
-import { events } from '../app/events'
+} from '../../../database/models/models/rankings'
+import { default_num_teams } from '../../../database/models/models/rankings'
+import { events } from '../../app/events'
 
 /**
  *

@@ -9,6 +9,7 @@ import {
   Users,
   GuildRankings,
   Teams,
+  MatchPlayers,
 } from '../schema'
 
 // Types for each model, for each type of query.
@@ -48,3 +49,5 @@ export type TeamUpdate = Partial<Omit<TeamInsert, 'ranking_id'>>
 export type MatchSelect = InferSelectModel<typeof Matches>
 export type MatchInsert = Omit<InferInsertModel<typeof Matches>, 'id'>
 export type MatchUpdate = Partial<MatchInsert>
+
+export type MatchPlayerSelect = InferSelectModel<typeof MatchPlayers>

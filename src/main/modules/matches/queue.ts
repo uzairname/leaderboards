@@ -1,9 +1,9 @@
 import { APIUser } from 'discord-api-types/v10'
 
-import { App } from '../app/app'
+import { App } from '../../app/app'
 
-import { getRegisterPlayer } from './players'
-import { type Team } from '../../database/models'
+import { getRegisterPlayer } from '../players'
+import { type Team } from '../../../database/models'
 
 /**
  * When a user uses a command or button to join queue.
@@ -49,5 +49,5 @@ export async function onJoinQueue(
  * When a user uses a command or button to leave queue.
  */
 export async function onLeaveQueue(app: App, ranking_id: number, user: APIUser) {
-  ;(await app.db.players.get(user.id, ranking_id))?.removeTeamsFromQueue()
+  (await app.db.players.get(user.id, ranking_id))?.removeTeamsFromQueue()
 }

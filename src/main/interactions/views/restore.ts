@@ -8,11 +8,12 @@ import { CommandView } from '../../../discord-framework'
 
 import { App } from '../../../main/app/app'
 
-import { syncRankingChannelsMessages } from '../../../main/modules/channels/ranking_channels'
+import { syncRankingChannelsMessages } from '../../modules/rankings/ranking_channels'
 import { getOrAddGuild } from '../../../main/modules/guilds'
 
-import { checkInteractionMemberPerms } from '../utils/checks'
+import { ensureAdminPerms } from '../utils/checks'
 import { checkGuildInteraction } from '../utils/checks'
+import { events } from '../../app/events'
 
 export const restore_cmd_def = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -26,26 +27,28 @@ export const restore_cmd_def = new CommandView({
 
 export default (app: App) =>
   restore_cmd_def.onCommand(async (ctx) => {
-    ctx.offload(async (ctx) => {
-      const interaction = checkGuildInteraction(ctx.interaction)
-      const guild = await getOrAddGuild(app, interaction.guild_id)
-      await checkInteractionMemberPerms(app, ctx, guild)
-
-      for (const result of await guild.guildRankings()) {
-        await syncRankingChannelsMessages(app, result.guild_ranking)
-      }
-
-      await ctx.editOriginal({
-        content: `done`,
-        flags: MessageFlags.Ephemeral,
-      })
-    })
-
-    return {
-      type: InteractionResponseType.ChannelMessageWithSource,
-      data: {
-        content: `Please wait...`,
-        flags: MessageFlags.Ephemeral,
+    return ctx.defer(
+      {
+        type: InteractionResponseType.DeferredChannelMessageWithSource,
+        data: {
+          flags: MessageFlags.Ephemeral,
+        },
       },
-    }
+      async (ctx) => {
+        const interaction = checkGuildInteraction(ctx.interaction)
+        const guild = await getOrAddGuild(app, interaction.guild_id)
+        await ensureAdminPerms(app, ctx, guild)
+
+        await Promise.all(
+          (await guild.guildRankings()).map(async (item) => {
+            await app.emitEvent(events.GuildRankingUpdated, item.guild_ranking)
+          }),
+        )
+
+        return await ctx.editOriginal({
+          content: `done`,
+          flags: MessageFlags.Ephemeral,
+        })
+      },
+    )
   })

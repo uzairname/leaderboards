@@ -32,10 +32,10 @@ export const onViewError = (app: App) =>
       e instanceof DiscordErrors.ForumInNonCommunityServer
     ) {
       description = e.message ? e.message : e.constructor.name
-      title = 'Something went wrong'
+      title = 'Error'
     } else {
       sentry.catchAfterResponding(e)
-      title = 'Something went wrong'
+      title = 'Error'
 
       if (app.config.features.DETAILED_ERROR_MESSAGES) {
         description = `Unexpected error

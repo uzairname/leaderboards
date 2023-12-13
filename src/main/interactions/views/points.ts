@@ -9,14 +9,14 @@ import {
 } from 'discord-api-types/v10'
 
 import { CommandView } from '../../../discord-framework'
-import { assertValue } from '../../../utils/utils'
+import { nonNullable } from '../../../utils/utils'
 
 import { checkGuildInteraction } from '../utils/checks'
-import { checkInteractionMemberPerms } from '../utils/checks'
+import { ensureAdminPerms } from '../utils/checks'
 import { getOrAddGuild } from '../../../main/modules/guilds'
-import { syncRankingLbMessage } from '../../../main/modules/channels/ranking_channels'
+import { syncRankingLbMessage } from '../../modules/rankings/ranking_channels'
 import { UserError } from '../../../main/app/errors'
-import { getRegisterPlayer } from '../../../main/modules/players'
+import { getRegisterPlayer } from '../../modules/players'
 import { App } from '../../../main/app/app'
 import { rankingsAutocomplete } from '../utils/common'
 import { sentry } from '../../../request/sentry'
@@ -59,7 +59,7 @@ export default (app: App) =>
       // Check if the user has bot admin perms in the guild.
       const interaction = checkGuildInteraction(ctx.interaction)
       const guild = await getOrAddGuild(app, interaction.guild_id)
-      await checkInteractionMemberPerms(app, ctx, guild)
+      await ensureAdminPerms(app, ctx, guild)
 
       // get the points to add
       const options: {
@@ -82,8 +82,10 @@ export default (app: App) =>
       let ranking = await app.db.rankings.get(parseInt(options['ranking']))
 
       // Get the selected player in the ranking
-      const user = interaction.data.resolved?.users?.[options.user]
-      assertValue(user)
+      const user = nonNullable(
+        interaction.data.resolved?.users?.[options.user],
+        'interaction data user',
+      )
       let player = await getRegisterPlayer(app, user, ranking)
 
       // add points to player
@@ -92,8 +94,10 @@ export default (app: App) =>
       })
 
       // update the leaderboard display
-      const guild_ranking = await app.db.guild_rankings.get(guild.data.id, ranking.data.id)
-      assertValue(guild_ranking)
+      const guild_ranking = nonNullable(
+        await app.db.guild_rankings.get(guild.data.id, ranking.data.id),
+        'guild ranking',
+      )
 
       await syncRankingLbMessage(app, guild_ranking)
 
