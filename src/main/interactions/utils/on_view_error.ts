@@ -8,7 +8,7 @@ import {
 import { sentry } from '../../../request/sentry'
 import { Messages } from '../../messages/messages'
 import { App } from '../../app/app'
-import { Colors, toMarkdown } from '../../messages/message_pieces'
+import { Colors } from '../../messages/message_pieces'
 
 import { DiscordErrors } from '../../../discord-framework'
 import { AppError, UserError } from '../../app/errors'
@@ -18,7 +18,6 @@ export const onViewError = (app: App) =>
   function (e: unknown): APIInteractionResponseChannelMessageWithSource {
     let description: string
     let title: string
-
     if (e instanceof DiscordErrors.BotPermissions) {
       description = Messages.botPermisssionsError(app.bot, e)
       title = 'Missing permissions'
@@ -34,32 +33,33 @@ export const onViewError = (app: App) =>
       description = e.message ? e.message : e.constructor.name
       title = 'Error'
     } else {
-      sentry.catchAfterResponding(e)
-      title = 'Error'
+      title = 'Unexpected Error'
 
+      description = e instanceof Error ? `${e.name}: ${e.message}` : 'An error occurred'
       if (app.config.features.DETAILED_ERROR_MESSAGES) {
-        description = `Unexpected error
-            \n\`\`\`Details:
+        description =
+          description +
+          `\n\`\`\`Details:
             \n${
               e instanceof Error
-                ? toMarkdown(
-                    JSON.stringify(
-                      {
-                        name: e.name,
-                        message: e.message,
-                        stack: e.stack?.split('\n') ?? undefined,
-                        error: e,
-                      },
-                      null,
-                      2,
-                    ),
+                ? JSON.stringify(
+                    {
+                      name: e.name,
+                      message: e.message,
+                      stack: e.stack?.split('\n') ?? undefined,
+                      error: e,
+                    },
+                    null,
+                    2,
                   )
                 : e
             }
             \n\`\`\``
-      } else {
-        description = 'An unexpected error occurred'
       }
+    }
+
+    if (!(e instanceof UserError)) {
+      sentry.catchAfterResponding(e)
     }
 
     return errorResponse(title, description)

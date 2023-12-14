@@ -5,7 +5,7 @@ import {
   PermissionFlagsBits,
 } from 'discord-api-types/v10'
 
-import type { Guild, GuildRanking, Match, Player, Ranking } from '../../../database/models'
+import type { Guild, GuildRanking, Ranking } from '../../../database/models'
 import { type DiscordRESTClient, GuildChannelData, MessageData } from '../../../discord-framework'
 
 import { type App } from '../../app/app'
@@ -13,43 +13,39 @@ import queue_message from '../../interactions/views/queue'
 import { Colors } from '../../messages/message_pieces'
 
 import { syncRankedCategory } from '../guilds'
-import { events } from '../../app/events'
 import { sentry } from '../../../request/sentry'
-import { syncMatchSummaryChannel } from '../matches/match_summary'
 
 export function addRankingChannelsListeners(app: App) {
-  app.on(events.RankingUpdated, async (ranking: Ranking) => {
+  app.events.RankingUpdated.on(async (ranking) => {
     const guild_rankings = await ranking.guildRankings()
     await Promise.all(
       guild_rankings.map(async (guild_ranking) => {
-        await syncRankingChannelsMessages(app, guild_ranking)
+        await syncGuildRankingChannelsMessages(app, guild_ranking)
       }),
     )
   })
 
-  app.on(events.MatchScored, async (match: Match, players: Player[][]) => {
+  app.events.MatchScored.on(async (match) => {
     const guild_rankings = await app.db.guild_rankings.getByRanking(match.data.ranking_id)
     await Promise.all(
       guild_rankings.map(async (guild_ranking) => {
-        await syncRankingChannelsMessages(app, guild_ranking)
+        await syncGuildRankingLbMessage(app, guild_ranking)
       }),
     )
   })
 
-  app.on(events.GuildRankingUpdated, async (guild_ranking: GuildRanking) => {
-    await syncRankingChannelsMessages(app, guild_ranking)
-    await syncMatchSummaryChannel(app, guild_ranking)
+  app.events.GuildRankingUpdated.on(async (guild_ranking) => {
+    await syncGuildRankingChannelsMessages(app, guild_ranking)
   })
 }
 
-export async function syncRankingChannelsMessages(
+export async function syncGuildRankingChannelsMessages(
   app: App,
   guild_ranking: GuildRanking,
 ): Promise<void> {
   sentry.debug('syncing ranking channels messages')
-
-  await syncRankingLbChannel(app, guild_ranking)
-  await syncRankingLbMessage(app, guild_ranking)
+  await syncGuildRankingLbChannel(app, guild_ranking)
+  await syncGuildRankingLbMessage(app, guild_ranking)
 
   if (app.config.features.QUEUE_MESSAGE) {
     await haveRankingQueueMessage(app, guild_ranking)
@@ -80,7 +76,10 @@ export async function lbChannelData(
   }
 }
 
-export async function syncRankingLbChannel(app: App, guild_ranking: GuildRanking): Promise<void> {
+export async function syncGuildRankingLbChannel(
+  app: App,
+  guild_ranking: GuildRanking,
+): Promise<void> {
   const guild = await guild_ranking.guild()
   const ranking = await guild_ranking.ranking()
 
@@ -98,7 +97,10 @@ export async function syncRankingLbChannel(app: App, guild_ranking: GuildRanking
   }
 }
 
-export async function syncRankingLbMessage(app: App, guild_ranking: GuildRanking): Promise<void> {
+export async function syncGuildRankingLbMessage(
+  app: App,
+  guild_ranking: GuildRanking,
+): Promise<void> {
   // update all the messages and channels associated with this guild leaderboard
   const ranking = await guild_ranking.ranking()
   const guild = await guild_ranking.guild()

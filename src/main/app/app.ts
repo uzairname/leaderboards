@@ -3,16 +3,16 @@ import { DiscordRESTClient } from '../../discord-framework'
 import { DbClient } from '../../database/client'
 import { type RequestArgs } from '../../request/request'
 import { Config } from './config'
-import { addRankingChannelsListeners } from '../modules/rankings/ranking_channels'
-import { addMatchSummaryMessagesListeners } from '../modules/matches/match_summary'
+import { addAllEventListeners, events } from './events'
 
 export class App {
   public db: DbClient
   public bot: DiscordRESTClient
   public config: Config
+  public events = events()
 
-  constructor(ctx: RequestArgs) {
-    this.config = new Config(ctx)
+  constructor(req: RequestArgs) {
+    this.config = new Config(req)
     this.db = new DbClient(this.config.env.POSTGRES_URL, sentry)
     this.bot = new DiscordRESTClient({
       token: this.config.env.DISCORD_TOKEN,
@@ -21,32 +21,6 @@ export class App {
       client_secret: this.config.env.CLIENT_SECRET,
       public_key: this.config.env.PUBLIC_KEY,
     })
-
-    addRankingChannelsListeners(this)
-    addMatchSummaryMessagesListeners(this)
+    addAllEventListeners(this)
   }
-
-  private event_callbacks: { [event: string]: ((...args: any[]) => Promise<void>)[] } = {}
-
-  on(event: string, callback: (...args: any[]) => Promise<void>) {
-    if (this.event_callbacks[event]) {
-      return void this.event_callbacks[event].push(callback)
-    }
-    this.event_callbacks[event] = [callback]
-  }
-
-  removeEventListener(event: string) {
-    delete this.event_callbacks[event]
-  }
-
-  async emitEvent(event: string, ...args: any[]) {
-    sentry.debug(`Emitting event ${event}`)
-    if (this.event_callbacks[event]) {
-      sentry.debug(`Calling event callbacks for ${event}`)
-      await Promise.all(this.event_callbacks[event].map((callback) => callback(...args)))
-    }
-  }
-
 }
-
-

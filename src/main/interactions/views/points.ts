@@ -14,7 +14,7 @@ import { nonNullable } from '../../../utils/utils'
 import { checkGuildInteraction } from '../utils/checks'
 import { ensureAdminPerms } from '../utils/checks'
 import { getOrAddGuild } from '../../../main/modules/guilds'
-import { syncRankingLbMessage } from '../../modules/rankings/ranking_channels'
+import { syncGuildRankingLbMessage } from '../../modules/rankings/ranking_channels'
 import { UserError } from '../../../main/app/errors'
 import { getRegisterPlayer } from '../../modules/players'
 import { App } from '../../../main/app/app'
@@ -99,7 +99,7 @@ export default (app: App) =>
         'guild ranking',
       )
 
-      await syncRankingLbMessage(app, guild_ranking)
+      await app.events.RankingUpdated.emit(ranking)
 
       return {
         type: InteractionResponseType.ChannelMessageWithSource,

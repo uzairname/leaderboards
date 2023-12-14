@@ -13,6 +13,7 @@ import { checkGuildInteraction } from './checks'
 export function rankingsAutocomplete(
   app: App,
   create_new_choice?: boolean,
+  choice_name: string = 'ranking',
 ): ViewAutocompleteCallback<ApplicationCommandType.ChatInput> {
   return async (ctx: AutocompleteContext) => {
     const interaction = checkGuildInteraction(ctx.interaction)
@@ -20,7 +21,7 @@ export function rankingsAutocomplete(
     // Get the ranking name typed so far.
     const input_value =
       (
-        interaction.data.options?.find((o) => o.name === 'ranking') as
+        interaction.data.options?.find((o) => o.name === choice_name) as
           | APIApplicationCommandInteractionDataStringOption
           | undefined
       )?.value ?? ''

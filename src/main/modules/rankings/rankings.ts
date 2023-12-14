@@ -1,23 +1,20 @@
-import { GuildFeature } from 'discord-api-types/v10'
 import { eq, and } from 'drizzle-orm'
-
-import { DiscordRESTClient } from '../../../discord-framework'
 
 import { GuildRankings, Rankings } from '../../../database/schema'
 import { Guild, GuildRanking, Ranking } from '../../../database/models'
-
-import { App } from '../../app/app'
-import { UserError } from '../../app/errors'
-
 import { RankingUpdate } from '../../../database/models/types'
-import { syncRankingChannelsMessages } from './ranking_channels'
-import { removeRankingChannelsMessages } from './ranking_channels'
 import {
   default_elo_settings,
   default_players_per_team,
+  default_num_teams,
 } from '../../../database/models/models/rankings'
-import { default_num_teams } from '../../../database/models/models/rankings'
+
+import { App } from '../../app/app'
+import { UserError } from '../../app/errors'
 import { events } from '../../app/events'
+
+import { syncGuildRankingChannelsMessages } from './ranking_channels'
+import { removeRankingChannelsMessages } from './ranking_channels'
 
 /**
  *
@@ -61,7 +58,7 @@ export async function createNewRankingInGuild(
     is_admin: true,
   })
 
-  await syncRankingChannelsMessages(app, new_guild_ranking)
+  await app.events.GuildRankingCreated.emit(new_guild_ranking)
 
   return {
     new_guild_ranking: new_guild_ranking,
@@ -71,15 +68,10 @@ export async function createNewRankingInGuild(
 
 export async function updateRanking(app: App, ranking: Ranking, options: RankingUpdate) {
   await ranking.update(options)
-  await app.emitEvent(events.RankingUpdated, ranking)
+  await app.events.RankingUpdated.emit(ranking)
 }
 
 export async function deleteRanking(app: App, ranking: Ranking): Promise<void> {
   await removeRankingChannelsMessages(app.bot, ranking)
   await ranking.delete()
-}
-
-export async function forumOrText(app: App, guild: Guild): Promise<'text' | 'forum'> {
-  const discord_guild = await app.bot.getGuild(guild.data.id)
-  return discord_guild.features.includes(GuildFeature.Community) ? 'forum' : 'text'
 }

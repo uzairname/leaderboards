@@ -8,11 +8,10 @@ export function getNewRatings(
     rd: number
   }[][],
   elo_settings: {
-    initial_rating?: number,
-    initial_rd?: number,
-  }
+    initial_rating?: number
+    initial_rd?: number
+  },
 ): Rating[][] {
-
   const team_ranks = outcome.map((score) => 1 - score)
 
   const env = new TrueSkill(elo_settings.initial_rating, elo_settings.initial_rd)
@@ -21,6 +20,7 @@ export function getNewRatings(
 
   let player_ratings = players.map((team) => {
     return team.map((player) => {
+      sentry.debug(`player ${JSON.stringify(player)}`)
       return env.createRating(player.rating ?? undefined, player.rd ?? undefined)
     })
   })

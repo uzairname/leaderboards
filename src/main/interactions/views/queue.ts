@@ -15,7 +15,6 @@ import {
   NumberField,
 } from '../../../discord-framework'
 
-
 import { App } from '../../../main/app/app'
 import { AppErrors } from '../../../main/app/errors'
 

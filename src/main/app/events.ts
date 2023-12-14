@@ -1,15 +1,23 @@
-import type { GuildRanking, Player, Ranking, Match } from "../../database/models";
+import type { GuildRanking, Match, Ranking } from '../../database/models'
+import { Event } from '../../utils/events'
+import { addMatchSummaryMessagesListeners } from '../modules/matches/match_summary'
+import { addRankingChannelsListeners } from '../modules/rankings/ranking_channels'
+import type { App } from './app'
 
-export enum events {
-  MatchUpdated = 'match updated', // Match's name, outcome, or metadata modified.
-  MatchScored = 'match scored', // A match's players' ratings were updated
-  RankingUpdated = 'ranking updated', // Ranking was renamed or modified
-  GuildRankingUpdated = 'guild ranking updated', // Guild
-}
+export const events = () => ({
+  // Match's name, outcome, or metadata modified.
+  MatchUpdated: new Event<Match>(),
+  // A match's players' ratings were updated
+  MatchScored: new Event<Match>(),
+  // Ranking was renamed or modified
+  RankingUpdated: new Event<Ranking>(),
+  // Guild ranking was created
+  GuildRankingCreated: new Event<GuildRanking>(),
+  // Guild ranking was renamed or modified
+  GuildRankingUpdated: new Event<GuildRanking>(),
+})
 
-
-export const eventArgs = {
-  MatchUpdated: (match: Match) => ({
-    match,
-  }),
+export function addAllEventListeners(app: App) {
+  addRankingChannelsListeners(app)
+  addMatchSummaryMessagesListeners(app)
 }

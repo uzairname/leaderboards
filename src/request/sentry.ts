@@ -97,6 +97,8 @@ export class Sentry extends Toucan {
 
   logResult(res?: Response, followup: boolean = false) {
     if (this.caught_exception) {
+      this.setExtra('body', res?.body)
+      this.setExtra('time taken', `${Date.now() - this.time_received} ms`)
       this.captureException(this.caught_exception)
       this.caught_exception = undefined // for waitUntil
     } else {

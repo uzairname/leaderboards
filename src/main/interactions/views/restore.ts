@@ -8,12 +8,12 @@ import { CommandView } from '../../../discord-framework'
 
 import { App } from '../../../main/app/app'
 
-import { syncRankingChannelsMessages } from '../../modules/rankings/ranking_channels'
+import { syncGuildRankingChannelsMessages } from '../../modules/rankings/ranking_channels'
 import { getOrAddGuild } from '../../../main/modules/guilds'
 
 import { ensureAdminPerms } from '../utils/checks'
 import { checkGuildInteraction } from '../utils/checks'
-import { events } from '../../app/events'
+import { syncMatchSummaryChannel } from '../../modules/matches/match_summary'
 
 export const restore_cmd_def = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -39,11 +39,19 @@ export default (app: App) =>
         const guild = await getOrAddGuild(app, interaction.guild_id)
         await ensureAdminPerms(app, ctx, guild)
 
-        await Promise.all(
-          (await guild.guildRankings()).map(async (item) => {
-            await app.emitEvent(events.GuildRankingUpdated, item.guild_ranking)
-          }),
-        )
+        const guild_rankings = await guild.guildRankings()
+
+        // guild_rankings.forEach(async (guild_ranking) => {
+        //   await syncMatchSummaryChannel(app, guild_ranking.guild_ranking)
+        //   await syncGuildRankingChannelsMessages(app, guild_ranking.guild_ranking)
+        // }),
+
+        for (const item of guild_rankings) {
+          await Promise.all([
+            syncGuildRankingChannelsMessages(app, item.guild_ranking),
+            syncMatchSummaryChannel(app, item.guild_ranking),
+          ])
+        }
 
         return await ctx.editOriginal({
           content: `done`,

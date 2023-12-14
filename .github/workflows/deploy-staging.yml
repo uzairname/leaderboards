@@ -47,8 +47,8 @@ jobs:
           APP_KEY: ${{ secrets.APP_KEY }}
           POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
 
-      - name: Wait 5 seconds
-        run: sleep 5
+      - name: Wait for deployment
+        run: sleep 3
 
       - name: Initialize app
         uses: fjogeleit/http-request-action@v1

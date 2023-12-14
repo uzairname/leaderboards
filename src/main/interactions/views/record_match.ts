@@ -105,7 +105,7 @@ const record_match_command_def = new CommandView({
 
 export default (app: App) =>
   record_match_command_def
-    .onAutocomplete(rankingsAutocomplete(app))
+    .onAutocomplete(rankingsAutocomplete(app, false, options.ranking))
 
     .onCommand(async (ctx) => {
       return initCommand(app, ctx)

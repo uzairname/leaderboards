@@ -1,8 +1,7 @@
 import { type InferInsertModel, eq } from 'drizzle-orm'
-import { Guild, GuildRanking, Match, Player, Ranking } from '../../../database/models'
+import { Guild, GuildRanking, Match, Ranking } from '../../../database/models'
 import { MatchSummaryMessages } from '../../../database/schema'
 import { App } from '../../app/app'
-import { events } from '../../app/events'
 import { GuildChannelData, MessageData } from '../../../discord-framework'
 import { communityEnabled, syncRankedCategory } from '../guilds'
 import {
@@ -15,17 +14,21 @@ import {
 } from 'discord-api-types/v10'
 import { sentry } from '../../../request/sentry'
 import { nonNullable } from '../../../utils/utils'
-import { default_elo_settings } from '../../../database/models/models/rankings'
 import { getNewRatings } from './scoring'
-import { MatchPlayerSelect } from '../../../database/models/types'
 
 export function addMatchSummaryMessagesListeners(app: App): void {
-  app.on(
-    events.MatchScored,
-    async (match: Match, players: { player: Player; match_player: MatchPlayerSelect }[][]) => {
-      await syncMatchSummaryMessages(app, match, players)
-    },
-  )
+  app.events.MatchScored.on(async (data) => {
+    sentry.debug('executing match scored event')
+    await syncMatchSummaryMessages(app, data)
+  })
+
+  app.events.GuildRankingUpdated.on(async (guild_ranking) => {
+    await syncMatchSummaryChannel(app, guild_ranking)
+  })
+
+  app.events.GuildRankingCreated.on(async (guild_ranking) => {
+    await syncMatchSummaryChannel(app, guild_ranking)
+  })
 }
 
 /**
@@ -34,12 +37,7 @@ export function addMatchSummaryMessagesListeners(app: App): void {
  * @param match
  * @param players
  */
-async function syncMatchSummaryMessages(
-  app: App,
-  match: Match,
-  players?: { player: Player; match_player: MatchPlayerSelect }[][],
-): Promise<void> {
-  sentry.debug('syncing match summary messages')
+async function syncMatchSummaryMessages(app: App, match: Match): Promise<void> {
   const ranking = await app.db.rankings.get(match.data.ranking_id)
 
   const guild_rankings = await ranking.guildRankings()
@@ -53,7 +51,6 @@ async function syncMatchSummaryMessages(
       await syncMatchSummaryMessage(
         app,
         match,
-        players ?? (await match.players()),
         ranking,
         guild_ranking,
         match_summary_messaeges.find((m) => m.guild_id === guild_ranking.data.guild_id),
@@ -65,7 +62,6 @@ async function syncMatchSummaryMessages(
 async function syncMatchSummaryMessage(
   app: App,
   match: Match,
-  players: { player: Player; match_player: MatchPlayerSelect }[][],
   ranking: Ranking,
   guild_ranking: GuildRanking,
   match_summary_message:
@@ -77,8 +73,8 @@ async function syncMatchSummaryMessage(
 ): Promise<void> {
   // update the match summary message on Discord
 
+  sentry.debug(`syncing match summary message for guild ranking`)
   const community_enabled = await communityEnabled(app, guild_ranking.data.guild_id)
-
   const guild = await guild_ranking.guild()
 
   if (community_enabled) {
@@ -92,11 +88,11 @@ async function syncMatchSummaryMessage(
             guild_ranking.data.match_results_forum_id ?? guild.data.match_results_forum_id,
           body: {
             name: `Match #${match.data.number} in ${ranking.data.name}`,
-            message: matchSummaryMessageData(match, ranking, players).postdata,
+            message: (await matchSummaryMessageData(match, ranking)).postdata,
           },
         }
       },
-      update_message: async () => matchSummaryMessageData(match, ranking, players).patchdata,
+      update_message: async () => (await matchSummaryMessageData(match, ranking)).patchdata,
       new_forum: async () =>
         matchSummaryChannelData(app, await guild_ranking.guild(), ranking, true),
     })
@@ -105,9 +101,10 @@ async function syncMatchSummaryMessage(
     let update: Partial<InferInsertModel<typeof MatchSummaryMessages>> = {}
     if (result.new_post) {
       // there is never a new message without a new post
-      update.message_id = result.message.id
-      update.forum_thread_id = result.thread_id
-      await app.db.db.update(MatchSummaryMessages).set(update)
+      // TODO update or insert match summary messae
+      // update.message_id = result.message.id
+      // update.forum_thread_id = result.thread_id
+      // await app.db.db.update(MatchSummaryMessages).set(update)
     }
 
     // If a new forum was created, set it to the guild's default match results forum
@@ -118,7 +115,7 @@ async function syncMatchSummaryMessage(
       target_channel_id:
         guild_ranking.data.match_results_textchannel_id ?? guild.data.match_results_textchannel_id,
       target_message_id: match_summary_message?.message_id,
-      messageData: async () => matchSummaryMessageData(match, ranking, players),
+      messageData: async () => matchSummaryMessageData(match, ranking),
       channelData: async () => matchSummaryChannelData(app, guild, ranking, false),
     })
 
@@ -127,7 +124,8 @@ async function syncMatchSummaryMessage(
     result.is_new_message && (update.message_id = result.message.id)
     if (Object.keys(update).length > 0) {
       // unset the forum thread id
-      await app.db.db.update(MatchSummaryMessages).set({ ...update, forum_thread_id: null })
+      // TODO update or insert match summary messae
+      // await app.db.db.update(MatchSummaryMessages).set({ ...update, forum_thread_id: null })
     }
     result.new_channel &&
       (await guild.update({
@@ -136,7 +134,10 @@ async function syncMatchSummaryMessage(
   }
 }
 
-export async function syncMatchSummaryChannel(app: App, guild_ranking: GuildRanking) {
+export async function syncMatchSummaryChannel(
+  app: App,
+  guild_ranking: GuildRanking,
+): Promise<void> {
   const community_enabled = await communityEnabled(app, guild_ranking.data.guild_id)
   const ranking = await guild_ranking.ranking()
   const guild = await guild_ranking.guild()
@@ -150,14 +151,9 @@ export async function syncMatchSummaryChannel(app: App, guild_ranking: GuildRank
       ? guild_ranking.data.match_results_forum_id ?? guild.data.match_results_forum_id
       : guild_ranking.data.match_results_textchannel_id ?? guild.data.match_results_textchannel_id,
     channelData: async () =>
-      await matchSummaryChannelData(
-        app,
-        await guild_ranking.guild(),
-        ranking,
-        community_enabled,
-        for_guild_ranking,
-      ),
+      await matchSummaryChannelData(app, guild, ranking, community_enabled, for_guild_ranking),
   })
+
   if (result.is_new_channel) {
     if (community_enabled) {
       if (for_guild_ranking) {
@@ -175,26 +171,28 @@ export async function syncMatchSummaryChannel(app: App, guild_ranking: GuildRank
   }
 }
 
-export function matchSummaryMessageData(
+export async function matchSummaryMessageData(
   match: Match,
   ranking: Ranking,
-  players: { player: Player; match_player: MatchPlayerSelect }[][],
-): MessageData {
-  const players_per_team = nonNullable(ranking.data.players_per_team)
+): Promise<MessageData> {
   const num_teams = nonNullable(ranking.data.num_teams)
-  const outcome = match.data.outcome
+  const players = await match.players()
+
+  const player_ratings = players.map((t) =>
+    t.map((p) => {
+      return {
+        rating: nonNullable(p.match_player.rating_before, 'rating before'),
+        rd: nonNullable(p.match_player.rd_before, 'rd before'),
+      }
+    }),
+  )
+
+  sentry.debug(`player ratings for mmatch: ${JSON.stringify(player_ratings)}`)
 
   // calculate new player ratings
   const new_player_ratings = getNewRatings(
     nonNullable(match.data.outcome, 'match outcome'),
-    players.map((t) =>
-      t.map((p) => {
-        return {
-          rating: p.match_player.rating_before || default_elo_settings.initial_rating,
-          rd: p.match_player.rd_before || default_elo_settings.initial_rd,
-        }
-      }),
-    ),
+    player_ratings,
     nonNullable(ranking.data.elo_settings),
   )
 
@@ -204,8 +202,10 @@ export function matchSummaryMessageData(
       return {
         name: `Team ${i + 1}`,
         value: players[i]
-          .map((p) => {
-            return `<@${p.player.data.user_id}> (${p.player.data.rating})`
+          .map((p, j) => {
+            return `<@${p.player.data.user_id}> (${
+              p.match_player.rating_before
+            } -> ${new_player_ratings[i][j].mu.toFixed(2)})`
           })
           .join('\n'),
       }
@@ -216,6 +216,7 @@ export function matchSummaryMessageData(
     content: `Match finished: ${players
       .map((team) => team.map((p) => p.player.data.name).join(', '))
       .join(' vs. ')}`,
+    embeds: [embed],
   })
 }
 

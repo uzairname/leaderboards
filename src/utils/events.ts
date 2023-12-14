@@ -1,13 +1,11 @@
-class Event_<EventData> {
-    constructor(public args: (eventData: EventData) => void) { }
+export class Event<EventData> {
+  callbacks: ((data: EventData) => Promise<void>)[] = []
 
-    callbacks: ((data: EventData) => void)[] = []
+  on(callback: (data: EventData) => Promise<void>) {
+    this.callbacks.push(callback)
+  }
 
-    on(callback: (data: EventData) => void) {
-        this.callbacks.push(callback)
-    }
-
-    emit(data: EventData) {
-        this.callbacks.forEach(c=>c(data))
-    }
+  async emit(data: EventData): Promise<void> {
+    await Promise.all(this.callbacks.map(async (c) => c(data)))
+  }
 }

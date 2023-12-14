@@ -14,9 +14,7 @@ import type {
 } from './types'
 import type { DiscordRESTClient } from '../rest/client'
 import type { APIInteractionResponseChannelMessageWithSource } from 'discord-api-types/v10'
-import {
-  getMessageViewMessageData,
-} from './view_helpers'
+import { getMessageViewMessageData } from './view_helpers'
 import {
   isChatInputApplicationCommandInteraction,
   isContextMenuApplicationCommandInteraction,

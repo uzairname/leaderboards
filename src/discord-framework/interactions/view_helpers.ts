@@ -261,7 +261,9 @@ export async function executeViewOffloadCallback(args: {
     })
   } catch (e) {
     let error_response = args.onError(e).data
-    if (!error_response) {return} 
+    if (!error_response) {
+      return
+    }
     replaceMessageComponentsCustomIdsInPlace(
       error_response.components,
       compressCustomIdUTF16(args.view),

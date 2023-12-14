@@ -9,8 +9,6 @@ export class Setting extends DbObject<SettingSelect> {}
 
 export class SettingsManager extends DbObjectManager {
   async getOrUpdate(update?: SettingUpdate): Promise<Setting> {
-    await this.db.db.delete(Settings).where(not(eq(Settings.id, 1)))
-
     let data = (await this.db.db.select().from(Settings).where(eq(Settings.id, 1)))[0]
 
     if (data) {
@@ -33,5 +31,9 @@ export class SettingsManager extends DbObjectManager {
     }
 
     return new Setting(data, this.db)
+  }
+
+  async clear(): Promise<void> {
+    await this.db.db.delete(Settings).where(not(eq(Settings.id, 1)))
   }
 }

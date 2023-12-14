@@ -1,6 +1,7 @@
 import { Player, Ranking } from '../../../database/models'
 import { default_elo_settings } from '../../../database/models/models/rankings'
 import { MatchPlayers } from '../../../database/schema'
+import { sentry } from '../../../request/sentry'
 import { nonNullable } from '../../../utils/utils'
 import { App } from '../../app/app'
 import { AppError } from '../../app/errors'
@@ -47,8 +48,8 @@ export async function recordAndScoreNewMatch(
   await Promise.all(
     team_players.map(async (team, team_num) => {
       await Promise.all(
-        team.map((player) => {
-          app.db.db.insert(MatchPlayers).values({
+        team.map(async (player) => {
+          await app.db.db.insert(MatchPlayers).values({
             match_id: match.data.id,
             player_id: player.data.id,
             team_num,
@@ -66,8 +67,8 @@ export async function recordAndScoreNewMatch(
     team_players.map((t) =>
       t.map((p) => {
         return {
-          rating: p.data.rating || default_elo_settings.initial_rating,
-          rd: p.data.rd || default_elo_settings.initial_rd,
+          rating: nonNullable(p.data.rating, 'rating'),
+          rd: nonNullable(p.data.rd, 'rd'),
         }
       }),
     ),
@@ -89,5 +90,6 @@ export async function recordAndScoreNewMatch(
   )
 
   // update any other channels
-  await app.emitEvent(events.MatchScored, match, team_players)
+  sentry.debug('emitting MatchScored event')
+  await app.events.MatchScored.emit(match)
 }
