@@ -22,7 +22,7 @@ export class DbClient {
 
   constructor(postgres_url: string, sentry?: Sentry) {
     this.db = connect(postgres_url, sentry)
-    if (cache.get('db') === undefined) {
+    if (!cache.get('db')) {
       cache.set('db', new DbCache())
     }
   }

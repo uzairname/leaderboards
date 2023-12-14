@@ -9,29 +9,33 @@ import type { Guild, GuildRanking, Ranking } from '../../../database/models'
 import { type DiscordRESTClient, GuildChannelData, MessageData } from '../../../discord-framework'
 
 import { type App } from '../../app/app'
-import queue_message from '../../interactions/views/queue'
 import { Colors } from '../../messages/message_pieces'
 
 import { syncRankedCategory } from '../guilds'
 import { sentry } from '../../../request/sentry'
+import { haveRankingQueueMessage } from '../matches/queue_messages'
 
 export function addRankingChannelsListeners(app: App) {
   app.events.RankingUpdated.on(async (ranking) => {
-    const guild_rankings = await ranking.guildRankings()
+    const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
     await Promise.all(
-      guild_rankings.map(async (guild_ranking) => {
-        await syncGuildRankingChannelsMessages(app, guild_ranking)
+      guild_rankings.map(async (item) => {
+        await syncGuildRankingChannelsMessages(app, item.guild_ranking)
       }),
     )
   })
 
   app.events.MatchScored.on(async (match) => {
-    const guild_rankings = await app.db.guild_rankings.getByRanking(match.data.ranking_id)
+    const guild_rankings = await app.db.guild_rankings.get({ ranking_id: match.data.ranking_id })
     await Promise.all(
       guild_rankings.map(async (guild_ranking) => {
-        await syncGuildRankingLbMessage(app, guild_ranking)
+        await syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)
       }),
     )
+  })
+
+  app.events.GuildRankingCreated.on(async (guild_ranking) => {
+    await syncGuildRankingChannelsMessages(app, guild_ranking)
   })
 
   app.events.GuildRankingUpdated.on(async (guild_ranking) => {
@@ -131,7 +135,7 @@ export async function syncGuildRankingLbMessage(
 
 export async function generateLeaderboardMessage(app: App, ranking: Ranking): Promise<MessageData> {
   const players = await ranking.getOrderedTopPlayers()
-  const lb_name = (await app.db.rankings.get(ranking.data.id)).data.name
+  const lb_name = ranking.data.name
 
   const displayed_players: Map<string, number> = new Map()
 
@@ -194,36 +198,11 @@ export function leaderboardChannelPermissionOverwrites(
   ]
 }
 
-export async function haveRankingQueueMessage(
-  app: App,
-  guild_ranking: GuildRanking,
-): Promise<void> {
-  const result = await app.bot.utils.syncChannelMessage({
-    target_channel_id: guild_ranking.data.leaderboard_channel_id,
-    target_message_id: guild_ranking.data.queue_message_id,
-    messageData: async () => {
-      return await queue_message(app).send({ ranking_id: guild_ranking.data.ranking_id })
-    },
-    channelData: async () => {
-      throw new Error('No channel to post queue message in. Need to make ranking message first')
-    },
-  })
-
-  if (result.is_new_message) {
-    await guild_ranking.update({
-      queue_message_id: result.message.id,
-    })
-  }
-}
-
-export async function removeRankingChannelsMessages(
-  bot: DiscordRESTClient,
-  ranking: Ranking,
-): Promise<void> {
-  const guild_rankings = await ranking.guildRankings()
+export async function removeRankingLbChannels(app: App, ranking: Ranking): Promise<void> {
+  const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
   await Promise.all(
-    guild_rankings.map(async (guild_ranking) => {
-      await bot.utils.deleteChannelIfExists(guild_ranking.data.leaderboard_channel_id)
+    guild_rankings.map(async (item) => {
+      await app.bot.utils.deleteChannelIfExists(item.guild_ranking.data.leaderboard_channel_id)
     }),
   )
 }

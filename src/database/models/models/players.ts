@@ -5,7 +5,7 @@ import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
 import { DbObject, DbObjectManager } from '../managers'
 import { PlayerSelect, PlayerUpdate, PlayerInsert } from '../types'
 import { User, Ranking, Team } from '..'
-import { DatabaseErrors } from '../../utils/errors'
+import { DbErrors } from '../../utils/errors'
 
 export class Player extends DbObject<PlayerSelect> {
   async update(data: PlayerUpdate): Promise<this> {
@@ -88,7 +88,7 @@ export class PlayersManager extends DbObjectManager {
 
   async getById(id: number): Promise<Player> {
     let data = (await this.db.db.select().from(Players).where(eq(Players.id, id)))[0]
-    if (!data) throw new DatabaseErrors.NotFoundError(`Player ${id} doesn't exist`)
+    if (!data) throw new DbErrors.NotFoundError(`Player ${id} doesn't exist`)
     return new Player(data, this.db)
   }
 }

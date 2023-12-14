@@ -1,4 +1,3 @@
-import { RateLimitError } from '@discordjs/rest'
 import {
   APIInteractionResponseChannelMessageWithSource,
   InteractionResponseType,
@@ -10,6 +9,7 @@ import { Messages } from '../../messages/messages'
 import { App } from '../../app/app'
 import { Colors } from '../../messages/message_pieces'
 
+import { RateLimitError } from '@discordjs/rest'
 import { DiscordErrors } from '../../../discord-framework'
 import { AppError, UserError } from '../../app/errors'
 import { DatabaseError } from '../../../database/utils/errors'
@@ -19,11 +19,11 @@ export const onViewError = (app: App) =>
     let description: string
     let title: string
     if (e instanceof DiscordErrors.BotPermissions) {
-      description = Messages.botPermisssionsError(app.bot, e)
       title = 'Missing permissions'
+      description = Messages.botPermisssionsError(app.bot, e)
     } else if (e instanceof RateLimitError) {
-      description = `Try again in ${e.timeToReset / 1000} seconds`
       title = 'Being Rate limited'
+      description = `Try again in ${e.timeToReset / 1000} seconds`
     } else if (
       e instanceof UserError ||
       e instanceof DatabaseError ||
@@ -35,7 +35,7 @@ export const onViewError = (app: App) =>
     } else {
       title = 'Unexpected Error'
 
-      description = e instanceof Error ? `${e.name}: ${e.message}` : 'An error occurred'
+      description = 'An error occurred'
       if (app.config.features.DETAILED_ERROR_MESSAGES) {
         description =
           description +
@@ -60,6 +60,15 @@ export const onViewError = (app: App) =>
 
     if (!(e instanceof UserError)) {
       sentry.catchAfterResponding(e)
+    } else {
+      sentry.addBreadcrumb({
+        message: 'UserError',
+        level: 'info',
+        data: {
+          message: e.message,
+          stack: e.stack,
+        },
+      })
     }
 
     return errorResponse(title, description)

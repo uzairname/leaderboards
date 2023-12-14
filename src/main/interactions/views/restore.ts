@@ -14,6 +14,7 @@ import { getOrAddGuild } from '../../../main/modules/guilds'
 import { ensureAdminPerms } from '../utils/checks'
 import { checkGuildInteraction } from '../utils/checks'
 import { syncMatchSummaryChannel } from '../../modules/matches/match_summary'
+import { time } from 'drizzle-orm/mysql-core'
 
 export const restore_cmd_def = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -29,8 +30,9 @@ export default (app: App) =>
   restore_cmd_def.onCommand(async (ctx) => {
     return ctx.defer(
       {
-        type: InteractionResponseType.DeferredChannelMessageWithSource,
+        type: InteractionResponseType.ChannelMessageWithSource,
         data: {
+          content: `Restoring channels and messages...`,
           flags: MessageFlags.Ephemeral,
         },
       },
@@ -38,20 +40,23 @@ export default (app: App) =>
         const interaction = checkGuildInteraction(ctx.interaction)
         const guild = await getOrAddGuild(app, interaction.guild_id)
         await ensureAdminPerms(app, ctx, guild)
-
         const guild_rankings = await guild.guildRankings()
 
-        // guild_rankings.forEach(async (guild_ranking) => {
-        //   await syncMatchSummaryChannel(app, guild_ranking.guild_ranking)
-        //   await syncGuildRankingChannelsMessages(app, guild_ranking.guild_ranking)
-        // }),
-
-        for (const item of guild_rankings) {
-          await Promise.all([
-            syncGuildRankingChannelsMessages(app, item.guild_ranking),
-            syncMatchSummaryChannel(app, item.guild_ranking),
-          ])
-        }
+        await Promise.race([
+          new Promise(async () => {
+            for (const item of guild_rankings) {
+              await Promise.all([syncGuildRankingChannelsMessages(app, item.guild_ranking)])
+            }
+          }),
+          new Promise((resolve) =>
+            setTimeout(async () => {
+              await ctx.editOriginal({
+                content: `Timed out. Please try one at a time.`,
+                flags: MessageFlags.Ephemeral,
+              })
+            }, 8000),
+          ),
+        ])
 
         return await ctx.editOriginal({
           content: `done`,

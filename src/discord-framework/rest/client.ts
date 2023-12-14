@@ -265,11 +265,22 @@ export class DiscordRESTClient extends REST {
 
   // INTERACTIONS
 
+  /**
+   * After calling this endpoint, the entire request will be canceled from Discord's side.
+   */
   async createInteractionResponse(
     interaction_id: string,
     interaction_token: string,
     body: D.RESTPostAPIInteractionCallbackJSONBody,
   ) {
+    sentry.addBreadcrumb({
+      category: 'interaction',
+      message: 'Creating interaction response',
+      level: 'info',
+      data: {
+        response: JSON.stringify(body),
+      },
+    })
     return await this.fetch(
       RequestMethod.Post,
       D.Routes.interactionCallback(interaction_id, interaction_token),
@@ -406,6 +417,9 @@ export class DiscordRESTClient extends REST {
         },
         bearer_token,
       )
+
+      sentry.request_data['discord_request_time'] =
+        ((sentry.request_data['discord_request_time'] as number) || 0) + (Date.now() - start_time)
       sentry.addBreadcrumb({
         category: 'Fetched Discord',
         type: 'http',
@@ -418,6 +432,8 @@ export class DiscordRESTClient extends REST {
       })
       return response
     } catch (e) {
+      sentry.request_data['discord_request_time'] =
+        ((sentry.request_data['discord_request_time'] as number) || 0) + (Date.now() - start_time)
       sentry.addBreadcrumb({
         category: 'Error Fetching Discord',
         type: 'http',

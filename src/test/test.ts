@@ -37,11 +37,18 @@ async function testMatches(app: App) {
   await resetDatabase(app.db)
   await addData(app.db)
 
+  const ranking = (await getRankingByName(app, '98623457887', 'ranking 1')).ranking
+
+  const player100 = nonNullable(await app.db.players.get('100', ranking.data.id), 'player 100')
+  const player200 = nonNullable(await app.db.players.get('200', ranking.data.id), 'player 200')
+  const player300 = nonNullable(await app.db.players.get('300', ranking.data.id), 'player 300')
+  const player400 = nonNullable(await app.db.players.get('400', ranking.data.id), 'player 400')
+
   const match_1_1 = await app.db.matches.create({
     ranking_id: 1,
     team_players: [
-      [1, 2],
-      [3, 4],
+      [player100, player200],
+      [player300, player400],
     ],
     outcome: [0, 1],
     metadata: {},
@@ -52,8 +59,8 @@ async function testMatches(app: App) {
   const match_1_2 = await app.db.matches.create({
     ranking_id: 2,
     team_players: [
-      [1, 2],
-      [3, 4],
+      [player100, player200],
+      [player300, player400],
     ],
     outcome: [0, 1],
     metadata: {},
@@ -64,8 +71,8 @@ async function testMatches(app: App) {
   const match_2_1 = await app.db.matches.create({
     ranking_id: 1,
     team_players: [
-      [1, 2],
-      [3, 4],
+      [player100, player200],
+      [player300, player400],
     ],
     outcome: [0, 1],
     metadata: {},

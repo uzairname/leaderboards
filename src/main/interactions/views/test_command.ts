@@ -60,10 +60,7 @@ export default (app: App) =>
       const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
       ctx.state.save.original_user(user_id)
       ctx.state.save.counter(0)
-
       ctx.state.save.value(new Array(2).fill('0'))
-
-      const last_deployed = (await app.db.settings.getOrUpdate()).data.last_deployed
 
       const ephemeral =
         (

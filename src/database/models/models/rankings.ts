@@ -4,7 +4,7 @@ import { assert } from '../../../utils/utils'
 
 import { Rankings, Players, Matches } from '../../schema'
 
-import { DatabaseErrors } from '../../utils/errors'
+import { DbErrors } from '../../utils/errors'
 
 import { DbObject, DbObjectManager } from '../managers'
 import { RankingSelect, RankingUpdate, RankingInsert } from '../types'
@@ -28,10 +28,6 @@ export class Ranking extends DbObject<RankingSelect> {
     !data.players_per_team && (data.players_per_team = default_players_per_team)
     super(data, db)
     this.partial = partial ?? false
-  }
-
-  async guildRankings(): Promise<GuildRanking[]> {
-    return this.db.guild_rankings.getByRanking(this.data.id)
   }
 
   /**
@@ -80,12 +76,6 @@ export class Ranking extends DbObject<RankingSelect> {
 
 export class RankingsManager extends DbObjectManager {
   async create(data: RankingInsert): Promise<Ranking> {
-    assert(data.num_teams ? data.num_teams <= 4 : true, 'num_teams must be <= 4')
-    assert(
-      data.players_per_team ? data.players_per_team <= 25 : true,
-      'players_per_team must be <= 25',
-    )
-
     let new_ranking_data = (
       await this.db.db
         .insert(Rankings)
@@ -98,7 +88,7 @@ export class RankingsManager extends DbObjectManager {
   async get(ranking_id: number): Promise<Ranking> {
     let data = (await this.db.db.select().from(Rankings).where(eq(Rankings.id, ranking_id)))[0]
     if (!data) {
-      throw new DatabaseErrors.NotFoundError(`Ranking doesn't exist`)
+      throw new DbErrors.NotFoundError(`Ranking doesn't exist`)
     }
     return new Ranking(data, this.db)
   }

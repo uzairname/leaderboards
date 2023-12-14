@@ -71,10 +71,11 @@ export class DiscordRESTUtils {
     try {
       if (params.channelData && params.target_channel_id) {
         // try to edit the channel
-        const { guild_id, data: body } = await params.channelData()
+        const { data } = await params.channelData()
+
         const channel = (await this.bot.editChannel(
           params.target_channel_id,
-          body.patchdata,
+          data.patchdata,
         )) as D.APIChannel
         return {
           channel,
@@ -98,9 +99,9 @@ export class DiscordRESTUtils {
       }
     }
 
-    const { guild_id, data: body } = await params.channelData()
+    const { guild_id, data } = await params.channelData()
     return {
-      channel: await this.bot.makeGuildChannel(guild_id, body.postdata),
+      channel: await this.bot.makeGuildChannel(guild_id, data.postdata),
       is_new_channel: true,
     }
   }

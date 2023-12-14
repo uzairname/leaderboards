@@ -13,6 +13,7 @@ export class Sentry extends Toucan {
   request_name: string
   time_received = Date.now()
   private caught_exception: unknown
+  request_data: Record<string, unknown> = {}
 
   private request: Request
 
@@ -56,8 +57,10 @@ export class Sentry extends Toucan {
   public waitUntil(callback: Promise<void>): void {
     this.ctx.execution_context.waitUntil(
       new Promise<void>((resolve) => {
+        this.captureMessage('A')
         callback
           .then(() => {
+            this.captureMessage('B')
             this.logResult(undefined, true)
           })
           .catch((e) => {
@@ -97,18 +100,17 @@ export class Sentry extends Toucan {
 
   logResult(res?: Response, followup: boolean = false) {
     if (this.caught_exception) {
-      this.setExtra('body', res?.body)
       this.setExtra('time taken', `${Date.now() - this.time_received} ms`)
       this.captureException(this.caught_exception)
       this.caught_exception = undefined // for waitUntil
     } else {
+      this.captureMessage('C')
       this.captureEvent({
         message: `${this.request_name}` + (followup ? ' followup' : ''),
         level: 'info',
         extra: {
-          status: res?.status,
-          body: res?.body,
           'time taken': `${Date.now() - this.time_received} ms`,
+          data: JSON.stringify(this.request_data),
         },
       })
     }

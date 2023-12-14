@@ -26,3 +26,8 @@ export type ModifyType<T, K extends keyof T, U> = Omit<T, K> & {
 export function cloneSimpleObj<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj))
 }
+export function unflatten<T>(arr: T[], dim_2_size: number): T[][] {
+  return Array.from({ length: arr.length / dim_2_size }, (_, i) =>
+    arr.slice(i * dim_2_size, (i + 1) * dim_2_size),
+  )
+}

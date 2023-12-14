@@ -15,10 +15,13 @@ export function connect(connection_string: string, sentry?: Sentry): NeonDatabas
 }
 
 class DrizzleLogger implements Logger {
-  constructor(private sentry?: Sentry) {}
+  constructor(private sentry?: Sentry) {
+    sentry && (sentry.request_data['queries'] = 0)
+  }
 
   logQuery(query: string, params?: unknown[]): void {
     if (this.sentry) {
+      ;(this.sentry.request_data['queries'] as number)++
       this.sentry.addBreadcrumb({
         data: {
           query: query,

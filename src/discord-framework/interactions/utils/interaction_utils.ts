@@ -44,7 +44,9 @@ export function getModalSubmitEntries(
   interaction.data.components.forEach((row) => {
     row.components.forEach((component) => {
       let component_copy = cloneSimpleObj(component)
-      component_copy.custom_id = decompressCustomIdUTF16(component.custom_id).content.toString()
+      component_copy.custom_id = decompressCustomIdUTF16(
+        component.custom_id,
+      ).encoded_data.toString()
       modal_submit_components.push(component_copy)
     })
   })

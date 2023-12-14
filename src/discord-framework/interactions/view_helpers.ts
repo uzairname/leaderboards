@@ -2,7 +2,6 @@ import {
   APIApplicationCommandAutocompleteInteraction,
   APIApplicationCommandAutocompleteResponse,
   APIApplicationCommandInteraction,
-  ModalSubmitComponent,
   APIInteractionResponseCallbackData,
   RESTPatchAPIWebhookWithTokenMessageJSONBody,
   InteractionType,
@@ -10,7 +9,7 @@ import {
   APIInteractionResponse,
   InteractionResponseType,
   APIInteraction,
-  APIModalInteractionResponse,
+  ComponentType,
 } from 'discord-api-types/v10'
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
 
@@ -50,13 +49,15 @@ export async function respondToUserInteraction(
   /*
   Handle any non-ping interaction. Might return a Response
   */
+
+  let response: APIInteractionResponse | undefined
+
   sentry.setExtra(
-    'username',
+    'interaction user',
     interaction.user?.username ?? interaction.member?.user.username ?? undefined,
   )
 
   try {
-    let response: APIInteractionResponse | undefined
     if (
       interaction.type === InteractionType.ApplicationCommand ||
       interaction.type === InteractionType.ApplicationCommandAutocomplete
@@ -82,14 +83,23 @@ export async function respondToUserInteraction(
     ) {
       // view can be any view if it's a component interaction
       let parsed_custom_id = decompressCustomIdUTF16(interaction.data.custom_id)
-      let view = await findView(find_view_callback, undefined, parsed_custom_id.prefix)
+      sentry.addBreadcrumb({
+        category: 'interaction',
+        level: 'info',
+        data: {
+          'received custom_id': interaction.data.custom_id,
+          view_id: parsed_custom_id.view_id,
+          encoded_data: parsed_custom_id.encoded_data,
+        },
+      })
+      let view = await findView(find_view_callback, undefined, parsed_custom_id.view_id)
       sentry.request_name = `${
         isCommandView(view) ? view.options.command.name : view.options.custom_id_prefix
       } Component`
       response = await respondToViewComponentInteraction(
         view,
         interaction,
-        parsed_custom_id.content,
+        parsed_custom_id.encoded_data,
         bot,
         onError,
       )
@@ -97,25 +107,23 @@ export async function respondToUserInteraction(
       throw new Error(`Unknown interaction type ${interaction.type}`)
     }
 
-    sentry.addBreadcrumb({
-      category: 'interaction',
-      message: 'Responding to interaction',
-      level: 'info',
-      data: {
-        response: JSON.stringify(response),
-      },
-    })
-
-    if (direct_response) {
-      return response
-    } else if (response) {
-      await bot.createInteractionResponse(interaction.id, interaction.token, response)
-    } else {
-      throw new Error('No response to interaction')
+    if (!direct_response && response) {
+      return void (await bot.createInteractionResponse(interaction.id, interaction.token, response))
     }
   } catch (e) {
-    await bot.createInteractionResponse(interaction.id, interaction.token, onError(e))
+    response = onError(e)
   }
+
+  sentry.addBreadcrumb({
+    category: 'interaction',
+    level: 'info',
+    message: 'Responding to interaction request',
+    data: {
+      response,
+    },
+  })
+
+  return response
 }
 
 async function findView(
@@ -182,17 +190,12 @@ export async function respondToViewCommandInteraction(
   return result
 }
 
-type DecodedCustomId = {
-  prefix: string
-  content: EncodedCustomIdState
-}
-
-class EncodedCustomIdState extends String {}
+type EncodedCustomIdData = string
 
 export async function respondToViewComponentInteraction(
   view: AnyView,
   interaction: ComponentInteraction,
-  custom_id_state: EncodedCustomIdState,
+  custom_id_state: EncodedCustomIdData,
   bot: DiscordRESTClient,
   onError: (e: unknown) => APIInteractionResponseChannelMessageWithSource,
 ): Promise<ChatInteractionResponse> {
@@ -237,7 +240,7 @@ export async function executeViewOffloadCallback(args: {
   sentry.debug(`executing offload callback for ${args.view.options.custom_id_prefix}`)
 
   try {
-    const confirmation = await args.callback({
+    await args.callback({
       interaction: args.interaction,
       followup: async (response_data: APIInteractionResponseCallbackData) => {
         replaceMessageComponentsCustomIdsInPlace(
@@ -290,17 +293,15 @@ export async function getMessageViewMessageData<Param>(
 
 function decodeViewCustomIdState<Schema extends StringDataSchema>(
   view: AnyView,
-  data?: EncodedCustomIdState,
+  data?: EncodedCustomIdData,
 ): StringData<Schema> {
   let state = new StringData(view.options.state_schema).decode(data?.valueOf() || '')
-  let data_temp = state.data.valueOf()
+  let state_copy = new StringData(view.options.state_schema).decode(data?.valueOf() || '')
   sentry.addBreadcrumb({
     category: 'interaction',
-    message: 'Decoded custom id state',
-    level: 'debug',
+    level: 'info',
     data: {
-      'custom id': data?.valueOf(),
-      'decoded state': data_temp,
+      'decoded state': state_copy.data,
     },
   })
   return state
@@ -308,8 +309,8 @@ function decodeViewCustomIdState<Schema extends StringDataSchema>(
 
 const CUSTOM_ID_PREFIX = '0'
 
-export function compressCustomIdUTF16(view: AnyView): (str?: EncodedCustomIdState) => string {
-  return (str?: EncodedCustomIdState) => {
+export function compressCustomIdUTF16(view: AnyView): (str?: EncodedCustomIdData) => string {
+  return (str?: EncodedCustomIdData) => {
     let custom_id: string
     custom_id = `${view.options.custom_id_prefix}.${str || ''}`
     custom_id = CUSTOM_ID_PREFIX + custom_id
@@ -319,7 +320,10 @@ export function compressCustomIdUTF16(view: AnyView): (str?: EncodedCustomIdStat
   }
 }
 
-export function decompressCustomIdUTF16(custom_id: string): DecodedCustomId {
+export function decompressCustomIdUTF16(custom_id: string): {
+  view_id: string
+  encoded_data: EncodedCustomIdData
+} {
   let decompressed_custom_id = decompressFromUTF16(custom_id)
 
   if (!decompressed_custom_id)
@@ -331,10 +335,10 @@ export function decompressCustomIdUTF16(custom_id: string): DecodedCustomId {
     )
   }
 
-  let [view_class, ...extra] = decompressed_custom_id.slice(1).split('.')
+  let [view_id, ...extra] = decompressed_custom_id.slice(1).split('.')
   return {
-    prefix: view_class,
-    content: new EncodedCustomIdState(extra.join('.')),
+    view_id,
+    encoded_data: extra.join('.') as EncodedCustomIdData,
   }
 }
 

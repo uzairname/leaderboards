@@ -15,6 +15,7 @@ import {
 import { sentry } from '../../../request/sentry'
 import { nonNullable } from '../../../utils/utils'
 import { getNewRatings } from './scoring'
+import { Colors } from '../../messages/message_pieces'
 
 export function addMatchSummaryMessagesListeners(app: App): void {
   app.events.MatchScored.on(async (data) => {
@@ -27,6 +28,7 @@ export function addMatchSummaryMessagesListeners(app: App): void {
   })
 
   app.events.GuildRankingCreated.on(async (guild_ranking) => {
+    sentry.debug('executing guild ranking created event')
     await syncMatchSummaryChannel(app, guild_ranking)
   })
 }
@@ -38,9 +40,7 @@ export function addMatchSummaryMessagesListeners(app: App): void {
  * @param players
  */
 async function syncMatchSummaryMessages(app: App, match: Match): Promise<void> {
-  const ranking = await app.db.rankings.get(match.data.ranking_id)
-
-  const guild_rankings = await ranking.guildRankings()
+  const guild_rankings = await app.db.guild_rankings.get({ ranking_id: match.data.ranking_id })
   const match_summary_messaeges = await app.db.db
     .select()
     .from(MatchSummaryMessages)
@@ -48,21 +48,21 @@ async function syncMatchSummaryMessages(app: App, match: Match): Promise<void> {
 
   await Promise.all(
     guild_rankings.map(async (guild_ranking) => {
-      await syncMatchSummaryMessage(
+      await syncMatchSummaryMessageInGuild(
         app,
         match,
-        ranking,
-        guild_ranking,
-        match_summary_messaeges.find((m) => m.guild_id === guild_ranking.data.guild_id),
+        guild_ranking.guild_ranking,
+        match_summary_messaeges.find(
+          (m) => m.guild_id === guild_ranking.guild_ranking.data.guild_id,
+        ),
       )
     }),
   )
 }
 
-async function syncMatchSummaryMessage(
+async function syncMatchSummaryMessageInGuild(
   app: App,
   match: Match,
-  ranking: Ranking,
   guild_ranking: GuildRanking,
   match_summary_message:
     | {
@@ -76,6 +76,7 @@ async function syncMatchSummaryMessage(
   sentry.debug(`syncing match summary message for guild ranking`)
   const community_enabled = await communityEnabled(app, guild_ranking.data.guild_id)
   const guild = await guild_ranking.guild()
+  const ranking = await guild_ranking.ranking()
 
   if (community_enabled) {
     const result = await app.bot.utils.syncForumPost({
@@ -205,11 +206,13 @@ export async function matchSummaryMessageData(
           .map((p, j) => {
             return `<@${p.player.data.user_id}> (${
               p.match_player.rating_before
-            } -> ${new_player_ratings[i][j].mu.toFixed(2)})`
+            } -> ${new_player_ratings[i][j].mu.toFixed(1)})`
           })
           .join('\n'),
+        inline: true,
       }
     }),
+    color: Colors.EmbedBackground,
   }
 
   return new MessageData({

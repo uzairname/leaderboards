@@ -5,9 +5,8 @@ import {
   ApplicationCommandType,
   InteractionResponseType,
 } from 'discord-api-types/v10'
-import { AutocompleteContext, ViewAutocompleteCallback } from '../../../discord-framework'
-import { App } from '../../app/app'
-import { getOrAddGuild } from '../../modules/guilds'
+import type { AutocompleteContext, ViewAutocompleteCallback } from '../../../discord-framework'
+import type { App } from '../../app/app'
 import { checkGuildInteraction } from './checks'
 
 export function rankingsAutocomplete(
@@ -15,7 +14,7 @@ export function rankingsAutocomplete(
   create_new_choice?: boolean,
   choice_name: string = 'ranking',
 ): ViewAutocompleteCallback<ApplicationCommandType.ChatInput> {
-  return async (ctx: AutocompleteContext) => {
+  return autocompleteTimeout(async (ctx: AutocompleteContext) => {
     const interaction = checkGuildInteraction(ctx.interaction)
 
     // Get the ranking name typed so far.
@@ -27,15 +26,14 @@ export function rankingsAutocomplete(
       )?.value ?? ''
 
     // Get rankings in this guild
-    const guild = await getOrAddGuild(app, interaction.guild_id)
-    const guild_lbs = await guild.guildRankings()
+    const guild_rankings = await app.db.guild_rankings.get({ guild_id: interaction.guild_id })
 
     // Filter the rankings by name and map them to an array of choices.
-    const choices: APIApplicationCommandOptionChoice[] = guild_lbs
+    const choices: APIApplicationCommandOptionChoice[] = guild_rankings
       .filter(
-        (lb) =>
+        (item) =>
           // if no input so far, include all rankings
-          !input_value || lb.ranking.data.name?.toLowerCase().includes(input_value.toLowerCase()),
+          !input_value || item.ranking.data.name?.toLowerCase().includes(input_value.toLowerCase()),
       )
       .map((lb) => ({
         name: lb.ranking.data.name || 'Unnamed ranking',
@@ -58,5 +56,31 @@ export function rankingsAutocomplete(
     }
 
     return response
+  })
+}
+
+function autocompleteTimeout(
+  callback: ViewAutocompleteCallback<ApplicationCommandType.ChatInput>,
+  message?: string,
+): ViewAutocompleteCallback<ApplicationCommandType.ChatInput> {
+  return async function (ctx: AutocompleteContext) {
+    return Promise.race([
+      callback(ctx),
+      new Promise<APIApplicationCommandAutocompleteResponse>((resolve) =>
+        setTimeout(() => {
+          resolve({
+            type: InteractionResponseType.ApplicationCommandAutocompleteResult,
+            data: {
+              choices: [
+                {
+                  name: message || 'Loading options timed out... type something to refresh',
+                  value: '',
+                },
+              ],
+            },
+          })
+        }, 2750),
+      ),
+    ])
   }
 }

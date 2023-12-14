@@ -94,11 +94,6 @@ export default (app: App) =>
       })
 
       // update the leaderboard display
-      const guild_ranking = nonNullable(
-        await app.db.guild_rankings.get(guild.data.id, ranking.data.id),
-        'guild ranking',
-      )
-
       await app.events.RankingUpdated.emit(ranking)
 
       return {

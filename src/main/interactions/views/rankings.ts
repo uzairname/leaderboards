@@ -134,7 +134,7 @@ export default (app: App) =>
         ctx.state.save.page('overview')
         return {
           type: InteractionResponseType.ChannelMessageWithSource,
-          data: await allGuildRankingsPage(ctx, app),
+          data: await allGuildRankingsPage(app, ctx),
         }
       }
     })
@@ -159,14 +159,14 @@ export default (app: App) =>
           )?.value,
         )
         if (ctx.state.is.page('ranking settings')) {
-          return onRenameModalSubmit(ctx, app)
+          return onRenameModalSubmit(app, ctx)
         }
       } else if (ctx.state.is.component('btn:create confirm')) {
-        return await onCreateConfirm(ctx, app, interaction.guild_id)
+        return await onCreateConfirm(app, ctx, interaction.guild_id)
       } else if (ctx.state.is.component('btn:delete')) {
-        return await onBtnDelete(ctx, app)
+        return await onBtnDelete(app, ctx)
       } else if (ctx.state.is.component('modal:delete confirm')) {
-        return await onDeleteCorfirm(ctx, app)
+        return await onDeleteCorfirm(app, ctx)
       }
 
       // Page
@@ -183,8 +183,8 @@ export default (app: App) =>
     })
 
 export async function allGuildRankingsPage(
-  ctx: CommandContext<typeof rankings_command_def>,
   app: App,
+  ctx: CommandContext<typeof rankings_command_def>,
 ): Promise<APIInteractionResponseCallbackData> {
   const interaction = checkGuildInteraction(ctx.interaction)
   const guild = await getOrAddGuild(app, interaction.guild_id)
@@ -301,20 +301,16 @@ export function rankingNameModal(
   return response
 }
 
-export async function rankingSettingsPage<Edit extends boolean>(
+export async function rankingSettingsPage(
   app: App,
   ctx: Context<typeof rankings_command_def>,
-  edit: Edit = false as Edit,
 ): Promise<APIInteractionResponseCallbackData> {
   const interaction = checkGuildInteraction(ctx.interaction)
 
-  const guild_ranking = nonNullable(
-    await app.db.guild_rankings.get(
-      interaction.guild_id,
-      nonNullable(ctx.state.data.selected_ranking_id, 'selected_ranking_id'),
-    ),
-    'guild_ranking',
-  )
+  const guild_ranking = await app.db.guild_rankings.get({
+    guild_id: interaction.guild_id,
+    ranking_id: nonNullable(ctx.state.data.selected_ranking_id, 'selected_ranking_id'),
+  })
   const ranking = await nonNullable(guild_ranking).ranking()
 
   const embed: APIEmbed = {
@@ -350,8 +346,8 @@ export async function rankingSettingsPage<Edit extends boolean>(
 }
 
 export async function onRenameModalSubmit(
-  ctx: ComponentContext<typeof rankings_command_def>,
   app: App,
+  ctx: ComponentContext<typeof rankings_command_def>,
 ): Promise<ChatInteractionResponse> {
   const ranking = await app.db.rankings.get(
     nonNullable(ctx.state.data.selected_ranking_id, 'selected_ranking_id'),
@@ -420,8 +416,8 @@ export function creatingNewRankingPage(
 }
 
 export async function onCreateConfirm(
-  ctx: ComponentContext<typeof rankings_command_def>,
   app: App,
+  ctx: ComponentContext<typeof rankings_command_def>,
   guild_id: string,
 ): Promise<ChatInteractionResponse> {
   return ctx.defer(
@@ -447,7 +443,7 @@ export async function onCreateConfirm(
   )
 }
 
-export async function onBtnDelete(ctx: ComponentContext<typeof rankings_command_def>, app: App) {
+export async function onBtnDelete(app: App, ctx: ComponentContext<typeof rankings_command_def>) {
   const ranking = await app.db.rankings.get(
     nonNullable(ctx.state.data.selected_ranking_id, 'selected_ranking_id'),
   )
@@ -456,14 +452,14 @@ export async function onBtnDelete(ctx: ComponentContext<typeof rankings_command_
     type: InteractionResponseType.Modal,
     data: {
       custom_id: ctx.state.set.component('modal:delete confirm').encode(),
-      title: `Delete ranking?`,
+      title: `Delete ${ranking.data.name}?`,
       components: [
         {
           type: ComponentType.ActionRow,
           components: [
             {
               type: ComponentType.TextInput,
-              label: `Type "delete" to delete ${ranking.data.name}`.substring(0, 45),
+              label: `Type "delete" to delete`.substring(0, 45),
               placeholder: `delete`,
               custom_id: 'name',
               style: TextInputStyle.Short,
@@ -477,8 +473,8 @@ export async function onBtnDelete(ctx: ComponentContext<typeof rankings_command_
 }
 
 export async function onDeleteCorfirm(
-  ctx: ComponentContext<typeof rankings_command_def>,
   app: App,
+  ctx: ComponentContext<typeof rankings_command_def>,
 ): Promise<ChatInteractionResponse> {
   let input = getModalSubmitEntries(ctx.interaction as APIModalSubmitInteraction).find(
     (c) => c.custom_id === 'name',

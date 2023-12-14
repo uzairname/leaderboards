@@ -51,3 +51,4 @@ export type MatchInsert = Omit<InferInsertModel<typeof Matches>, 'id'>
 export type MatchUpdate = Partial<MatchInsert>
 
 export type MatchPlayerSelect = InferSelectModel<typeof MatchPlayers>
+export type MatchPlayerInsert = InferInsertModel<typeof MatchPlayers>

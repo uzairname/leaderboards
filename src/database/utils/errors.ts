@@ -5,8 +5,12 @@ export abstract class DatabaseError extends Error {
   }
 }
 
-export namespace DatabaseErrors {
+export namespace DbErrors {
   export class ReferenceError extends DatabaseError {}
 
   export class NotFoundError extends DatabaseError {}
+
+  export class ArgumentError extends DatabaseError {}
+
+  export class ValidationError extends DatabaseError {}
 }

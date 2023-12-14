@@ -166,11 +166,11 @@ export class NumberField extends Field<number | undefined> {
   }
 
   compress(value: number) {
-    return [value.toString()]
+    return [value.toString(36)]
   }
 
   decompress(value: string[]) {
-    return parseInt(value[0])
+    return parseInt(value[0], 36)
   }
 }
 
