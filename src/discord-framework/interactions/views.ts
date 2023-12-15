@@ -14,7 +14,7 @@ import type {
 } from './types'
 import type { DiscordRESTClient } from '../rest/client'
 import type { APIInteractionResponseChannelMessageWithSource } from 'discord-api-types/v10'
-import { getMessageViewMessageData } from './view_helpers'
+import { ViewState, getMessageViewMessageData } from './view_helpers'
 import {
   isChatInputApplicationCommandInteraction,
   isContextMenuApplicationCommandInteraction,
@@ -37,10 +37,13 @@ export interface AutocompleteContext {
   interaction: D.APIApplicationCommandAutocompleteInteraction
 }
 
+export interface BaseContext<View extends BaseView<any>> {
+  state: ViewState<View['options']['state_schema']>
+}
+
 // CommandContext, ComponentContext, or OffloadContext
-export interface Context<View extends BaseView<any>> {
+export interface InteractionContext<View extends BaseView<any>> extends BaseContext<View> {
   interaction: ChatInteraction
-  state: StringData<View['options']['state_schema']>
   // _ctx: {
   //   bot: DiscordRESTClient
   //   onError: (e: unknown) => APIInteractionResponseChannelMessageWithSource
@@ -48,7 +51,7 @@ export interface Context<View extends BaseView<any>> {
 }
 
 // Command
-export interface CommandContext<View extends AnyCommandView> extends Context<View> {
+export interface CommandContext<View extends AnyCommandView> extends InteractionContext<View> {
   interaction: CommandInteraction<View['options']['type']>
   defer: (
     initial_response: CommandInteractionResponse,
@@ -57,7 +60,7 @@ export interface CommandContext<View extends AnyCommandView> extends Context<Vie
 }
 
 // Component
-export interface ComponentContext<View extends BaseView<any>> extends Context<View> {
+export interface ComponentContext<View extends BaseView<any>> extends InteractionContext<View> {
   interaction: ComponentInteraction
   defer: (
     initial_response: ChatInteractionResponse,
@@ -65,13 +68,13 @@ export interface ComponentContext<View extends BaseView<any>> extends Context<Vi
   ) => ChatInteractionResponse
 }
 
-export type InitialChatContext<View extends AnyView> =
+export type NewInteractionContext<View extends AnyView> =
   | CommandContext<CommandView<View['options']['state_schema'], any>>
   | ComponentContext<View>
 
 // Defer
-export interface DeferContext<Schema extends StringDataSchema> extends Context<BaseView<Schema>> {
-  interaction: ChatInteraction
+export interface DeferContext<Schema extends StringDataSchema>
+  extends InteractionContext<BaseView<Schema>> {
   followup: (data: D.APIInteractionResponseCallbackData) => Promise<DeferResponseConfirmation>
   editOriginal: (data: D.APIInteractionResponseCallbackData) => Promise<DeferResponseConfirmation>
   // delete: () => Promise<DeferResponseConfirmation>
@@ -79,9 +82,8 @@ export interface DeferContext<Schema extends StringDataSchema> extends Context<B
 }
 
 // Message
-export interface MessageCreateContext<View extends MessageView<any, any>> {
-  state: StringData<View['options']['state_schema']>
-}
+export interface MessageCreateContext<View extends MessageView<any, any>>
+  extends BaseContext<View> {}
 
 // CALLBACKS
 
@@ -218,8 +220,8 @@ interface MessageViewOptions<Schema extends StringDataSchema, Param> {
   param?: (_: Param) => void
 }
 
-export class MessageView<Schema extends StringDataSchema, Param> extends BaseView<Schema> {
-  public _initCallback: ViewCreateMessageCallback<MessageView<Schema, Param>, Param> = async () => {
+export class MessageView<Schema extends StringDataSchema, Params extends object> extends BaseView<Schema> {
+  public _initCallback: ViewCreateMessageCallback<MessageView<Schema, Params>, Params> = async () => {
     throw new Error('This view has no send callback')
   }
 
@@ -230,11 +232,11 @@ export class MessageView<Schema extends StringDataSchema, Param> extends BaseVie
    * state_schema: Schema,
    * args: (arg: Param) => void
    */
-  constructor(public readonly options: MessageViewOptions<Schema, Param>) {
+  constructor(public readonly options: MessageViewOptions<Schema, Params>) {
     super(options)
   }
 
-  public async send(params: Param): Promise<MessageData> {
+  public async send(params: Params): Promise<MessageData> {
     return await getMessageViewMessageData(this, params)
   }
 
@@ -243,7 +245,7 @@ export class MessageView<Schema extends StringDataSchema, Param> extends BaseVie
    * @param callback
    * @returns
    */
-  public onInit(callback: ViewCreateMessageCallback<MessageView<Schema, Param>, Param>) {
+  public onInit(callback: ViewCreateMessageCallback<MessageView<Schema, Params>, Params>) {
     this._initCallback = callback
     return this
   }

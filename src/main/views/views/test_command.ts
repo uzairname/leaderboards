@@ -1,6 +1,5 @@
 import {
   APIApplicationCommandInteractionDataBooleanOption,
-  APIInteractionResponse,
   APIInteractionResponseCallbackData,
   ApplicationCommandOptionType,
   ApplicationCommandType,
@@ -27,6 +26,12 @@ import { App } from '../../../main/app/app'
 import help from './help'
 import { nonNullable } from '../../../utils/utils'
 import { AppErrors, UserErrors } from '../../../main/app/errors'
+import {
+  ViewState,
+  getMessageViewMessageData,
+} from '../../../discord-framework/interactions/view_helpers'
+import { rankings_command_def } from './rankings'
+import { sentry } from '../../../request/sentry'
 
 const test_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -135,6 +140,8 @@ function testMessageData(
   ctx: CommandContext<typeof test_command> | ComponentContext<typeof test_command>,
   ephemeral = false,
 ): APIInteractionResponseCallbackData {
+  sentry.debug(`encoded ${ViewState.create(rankings_command_def).encode()}`)
+
   return {
     content: `Value: ${ctx.state.data.value?.join(', ')}\nCounter: ${ctx.state.data.counter}`,
     components: [
@@ -155,8 +162,14 @@ function testMessageData(
           },
           {
             type: ComponentType.Button,
-            label: 'One',
-            custom_id: ctx.state.set.clicked_btn('one').encode(),
+            label: 'rankings',
+            custom_id: ViewState.create(rankings_command_def)
+              .cId({
+                component: 'btn:rename',
+                owner_id: ctx.state.data.original_user,
+                page: 'ranking settings',
+                selected_ranking_id: 5,
+              }),
             style: ButtonStyle.Primary,
           },
           {

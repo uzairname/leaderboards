@@ -8,9 +8,7 @@ import {
   ModalSubmitComponent,
 } from 'discord-api-types/v10'
 
-import { cloneSimpleObj } from '../../../utils/utils'
-
-import { parseCustomId } from '../view_helpers'
+// import { cloneSimpleObj } from '../../../utils/utils'
 
 export function replaceMessageComponentsCustomIdsInPlace(
   components:
@@ -40,13 +38,16 @@ export function replaceMessageComponentsCustomIdsInPlace(
 export function getModalSubmitEntries(
   interaction: APIModalSubmitInteraction,
 ): ModalSubmitComponent[] {
-  let modal_submit_components: ModalSubmitComponent[] = []
-  interaction.data.components.forEach((row) => {
-    row.components.forEach((component) => {
-      let component_copy = cloneSimpleObj(component)
-      component_copy.custom_id = parseCustomId(component.custom_id).encoded_data.toString()
-      modal_submit_components.push(component_copy)
-    })
-  })
+  // let modal_submit_components: ModalSubmitComponent[] = []
+  // interaction.data.components.forEach((row) => {
+  //   row.components.forEach((component) => {
+  //     modal_submit_components.push(component)
+  //   })
+  // })
+
+  const modal_submit_components = interaction.data.components.map((row) => {
+    return row.components
+  }).flat()
+
   return modal_submit_components
 }

@@ -19,7 +19,7 @@ import { App } from '../../../main/app/app'
 import { Messages } from '../../../main/messages/messages'
 import { Colors, dateTimestamp, inviteUrl } from '../../../main/messages/message_pieces'
 import {
-  Context,
+  InteractionContext,
   ChatInteractionResponse,
   ChoiceField,
   CommandInteractionResponse,
@@ -63,7 +63,7 @@ export default (app: App) =>
 
 async function helpComponents(
   app: App,
-  ctx: Context<typeof help_command_def>,
+  ctx: InteractionContext<typeof help_command_def>,
 ): Promise<APIActionRowComponent<APIMessageActionRowComponent>[]> {
   let components: APIButtonComponent[] = []
   let action_rows: APIActionRowComponent<APIMessageActionRowComponent>[] = [
@@ -112,7 +112,7 @@ async function helpComponents(
 
 async function mainPage<Send extends boolean>(
   app: App,
-  ctx: Context<typeof help_command_def>,
+  ctx: InteractionContext<typeof help_command_def>,
   send: boolean = false as Send,
 ): Promise<APIInteractionResponseCallbackData> {
   const last_deployed = (await app.db.settings.getOrUpdate()).data.last_deployed
@@ -144,7 +144,7 @@ async function mainPage<Send extends boolean>(
 
 async function referencePage(
   app: App,
-  ctx: Context<typeof help_command_def>,
+  ctx: InteractionContext<typeof help_command_def>,
 ): Promise<APIInteractionResponseCallbackData> {
   const embed: APIEmbed = {
     title: 'Help',

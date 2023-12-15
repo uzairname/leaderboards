@@ -30,26 +30,37 @@ export class StringDataError extends Error {
 }
 
 export class StringData<T extends StringDataSchema> {
+  // returns this with the new value, saving new value.
   save = {} as {
     [K in keyof T]: (value: T[K]['default_value']) => this
   }
-  // returns this with the new value, saving new value.
+  // returns a new StringData with the new value, without modifying the original.
   set = {} as {
     [K in keyof T]: (value: T[K]['default_value']) => StringData<T>
   }
-  // returns a new StringData with the new value, without modifying the original.
+  // the value of the field.
   data = {} as Partial<{
     [K in keyof T]: T[K]['default_value']
   }>
-  // the value of the field.
+  // returns true if the field's value is equal to the given value.
   is = {} as {
     [K in keyof T]: T[K] extends BooleanField
       ? () => boolean
       : (value: T[K]['default_value']) => boolean
   }
-  // returns true if the field's value is equal to the given value.
 
-  private schema: T
+  setData(data: Partial<{ [K in keyof T]: T[K]['default_value'] }>): StringData<T> {
+    let temp = new StringData(this.schema)
+    temp.data = Object.entries(data).reduce((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = this.validateAndCompress(key, value)
+      }
+      return acc
+    }, {} as any)
+    return temp
+  }
+
+  protected schema: T
 
   private key_to_keyid = {} as {
     [K in Extract<keyof T, string>]: string
@@ -99,7 +110,7 @@ export class StringData<T extends StringDataSchema> {
     }
   }
 
-  private validateAndCompress(key: string, value: unknown): unknown {
+  protected validateAndCompress(key: string, value: unknown): unknown {
     if (!this.schema.hasOwnProperty(key)) throw new StringDataError('Key does not exist')
     const field = this.schema[key]
     field.compress(value)

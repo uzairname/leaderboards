@@ -26,7 +26,7 @@ import {
   ChoiceField,
   IntField,
   StringField,
-  Context,
+  InteractionContext,
 } from '../../../discord-framework'
 
 import { nonNullable } from '../../../utils/utils'
@@ -277,7 +277,7 @@ async function guildRankingDetails(
 }
 
 export function rankingNameModal(
-  ctx: Context<typeof rankings_command_def>,
+  ctx: InteractionContext<typeof rankings_command_def>,
 ): CommandInteractionResponse {
   const example_names = [`Smash 1v1`, `Starcraft 2v2`, `Valorant 5s`, `Chess`, `Ping Pong 1v1`]
 
@@ -309,7 +309,7 @@ export function rankingNameModal(
 
 export async function rankingSettingsPage(
   app: App,
-  ctx: Context<typeof rankings_command_def>,
+  ctx: InteractionContext<typeof rankings_command_def>,
 ): Promise<APIInteractionResponseCallbackData> {
   const interaction = checkGuildInteraction(ctx.interaction)
 

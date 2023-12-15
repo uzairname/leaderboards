@@ -13,7 +13,7 @@ import {
   MessageFlags,
 } from 'discord-api-types/v10'
 
-import { ChoiceField, ListField, IntField, CommandView, Context } from '../../../discord-framework'
+import { ChoiceField, ListField, IntField, CommandView, InteractionContext } from '../../../discord-framework'
 import { nonNullable } from '../../../utils/utils'
 import { sentry } from '../../../request/sentry'
 
@@ -105,7 +105,7 @@ export default (app: App) =>
 
 async function selectTeamComponents(
   app: App,
-  ctx: Context<typeof temp_command>,
+  ctx: InteractionContext<typeof temp_command>,
 ): Promise<APIActionRowComponent<APIMessageActionRowComponent>[]> {
   const components: APIActionRowComponent<APIMessageActionRowComponent>[] = [
     {

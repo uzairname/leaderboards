@@ -23,7 +23,7 @@ import {
   CommandView,
   CommandContext,
   ComponentContext,
-  Context,
+  InteractionContext,
   ChatInteractionResponse,
   CommandInteractionResponse,
   StringField,
@@ -293,7 +293,7 @@ async function onSelectTeam(
 
 async function selectTeamPage(
   app: App,
-  ctx: Context<typeof record_match_command_def>,
+  ctx: InteractionContext<typeof record_match_command_def>,
   all_teams_selected: boolean,
 ): Promise<APIInteractionResponseCallbackData> {
   let components: APIActionRowComponent<APIMessageActionRowComponent>[] = []
@@ -307,7 +307,10 @@ async function selectTeamPage(
           {
             type: ComponentType.UserSelect,
             placeholder: `Players`,
-            custom_id: ctx.state.set.selected_team(0).set.clicked_component('select team').encode(),
+            custom_id: ctx.state.setData({
+              selected_team: 0,
+              clicked_component: 'select team',
+            }).encode(),
             min_values: num_teams,
             max_values: num_teams,
           },
@@ -453,7 +456,7 @@ async function onPlayerConfirmOutcome(
 
 async function playersConfirmingMatchPage(
   app: App,
-  ctx: Context<typeof record_match_command_def>,
+  ctx: InteractionContext<typeof record_match_command_def>,
 ): Promise<APIInteractionResponseCallbackData> {
   const requested_at = nonNullable(ctx.state.data.match_requested_at, 'requested_at')
   const expires_at = new Date(requested_at.getTime() + match_confirm_timeout_ms)
@@ -610,7 +613,7 @@ async function onPlayerConfirmOrCancelBtn(
 
 async function recordMatch(
   app: App,
-  ctx: Context<typeof record_match_command_def>,
+  ctx: InteractionContext<typeof record_match_command_def>,
 ): Promise<APIInteractionResponseCallbackData> {
   const players_per_team = nonNullable(ctx.state.data.players_per_team, 'players_per_team')
   const num_teams = nonNullable(ctx.state.data.num_teams, 'num_teams')
