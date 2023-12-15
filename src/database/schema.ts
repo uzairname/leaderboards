@@ -128,10 +128,10 @@ export const ActiveMatches = pgTable('ActiveMatches', {
 export const Matches = pgTable('Matches', {
   id: serial('id').primaryKey(),
   ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, {onDelete: 'cascade'}),
-  time_started: timestamp('time_started'),
-  time_finished: timestamp('time_finished'),
   number: integer('number'),
   team_players: jsonb('team_players').$type<number[][]>(),
+  time_started: timestamp('time_started'),
+  time_finished: timestamp('time_finished'),
   outcome: jsonb('outcome').$type<number[]>(),
   metadata: jsonb('metadata'),
 }, (table) => { return {

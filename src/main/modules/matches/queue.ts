@@ -4,6 +4,7 @@ import { App } from '../../app/app'
 
 import { getRegisterPlayer } from '../players'
 import { type Team } from '../../../database/models'
+import { nonNullable } from '../../../utils/utils'
 
 /**
  * When a user uses a command or button to join queue.
@@ -49,5 +50,5 @@ export async function onJoinQueue(
  * When a user uses a command or button to leave queue.
  */
 export async function onLeaveQueue(app: App, ranking_id: number, user: APIUser) {
-  ;(await app.db.players.get(user.id, ranking_id))?.removeTeamsFromQueue()
+  nonNullable(await app.db.players.get(user.id, ranking_id), 'player').removeTeamsFromQueue()
 }

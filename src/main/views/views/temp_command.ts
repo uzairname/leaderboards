@@ -13,13 +13,7 @@ import {
   MessageFlags,
 } from 'discord-api-types/v10'
 
-import {
-  ChoiceField,
-  ListField,
-  NumberField,
-  CommandView,
-  Context,
-} from '../../../discord-framework'
+import { ChoiceField, ListField, IntField, CommandView, Context } from '../../../discord-framework'
 import { nonNullable } from '../../../utils/utils'
 import { sentry } from '../../../request/sentry'
 
@@ -38,7 +32,7 @@ const temp_command = new CommandView({
       'select team': null,
       'confirm match': null,
     }),
-    selected_team: new NumberField(),
+    selected_team: new IntField(),
     players: new ListField(),
   },
 })

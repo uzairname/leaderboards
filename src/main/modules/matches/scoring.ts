@@ -33,19 +33,3 @@ export function getNewRatings(
 
   return player_ratings
 }
-
-// export async function scoreRankingHistory(ranking: Ranking) {
-//   /*
-//     update all players' score based on match history
-//     */
-
-//   const matches = await ranking.latestMatches()
-
-//   const team_history = matches.map((match) => {
-//     return match.data.team_players
-//   })
-
-//   const outcome_history = matches.map((match) => {
-//     return match.data.outcome
-//   })
-// }

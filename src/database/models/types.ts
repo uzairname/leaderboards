@@ -48,7 +48,7 @@ export type TeamUpdate = Partial<Omit<TeamInsert, 'ranking_id'>>
 
 export type MatchSelect = InferSelectModel<typeof Matches>
 export type MatchInsert = Omit<InferInsertModel<typeof Matches>, 'id'>
-export type MatchUpdate = Partial<MatchInsert>
+export type MatchUpdate = Partial<Omit<MatchInsert, 'ranking_id'>>
 
 export type MatchPlayerSelect = InferSelectModel<typeof MatchPlayers>
 export type MatchPlayerInsert = InferInsertModel<typeof MatchPlayers>

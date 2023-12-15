@@ -19,7 +19,7 @@ import {
 import {
   ChoiceField,
   ListField,
-  NumberField,
+  IntField,
   CommandView,
   CommandContext,
   ComponentContext,
@@ -27,6 +27,12 @@ import {
   ChatInteractionResponse,
   CommandInteractionResponse,
   StringField,
+  BooleanField,
+  TimestampField,
+  DeferContext,
+  DeferResponseConfirmation,
+  StringDataSchema,
+  StringData,
 } from '../../../discord-framework'
 import { assert, nonNullable, unflatten } from '../../../utils/utils'
 import { sentry } from '../../../request/sentry'
@@ -39,8 +45,10 @@ import { checkGuildInteraction, hasAdminPerms } from '../utils/checks'
 import { rankingsAutocomplete } from '../utils/common'
 import { getRegisterPlayer } from '../../modules/players'
 import { rankings_command_def } from './rankings'
-import { recordAndScoreNewMatch } from '../../modules/matches/score_match'
-import { Colors, commandMention } from '../../../main/messages/message_pieces'
+import { recordAndScoreNewMatch } from '../../modules/matches/score_matches'
+import { Colors, commandMention, relativeTimestamp } from '../../../main/messages/message_pieces'
+import { Ranking } from '../../../database/models'
+import { QueuesBatchRequestSchema } from 'miniflare'
 
 const options = {
   ranking: 'for',
@@ -78,7 +86,7 @@ const record_match_command_def = new CommandView({
   custom_id_prefix: 'rm',
   state_schema: {
     // whether the user can record a match on their own
-    is_admin: new NumberField(),
+    admin: new BooleanField(),
     clicked_component: new ChoiceField({
       'select team': null,
       'confirm teams': null,
@@ -87,17 +95,18 @@ const record_match_command_def = new CommandView({
       'match user confirm': null, // someone in the match has confirmed the pending match
       'match user cancel': null, // someone in the match has cancelled the pending match
     }),
-    num_teams: new NumberField(),
-    players_per_team: new NumberField(),
+    num_teams: new IntField(),
+    players_per_team: new IntField(),
     // index of the team being selected (0-indexed)
-    selected_team: new NumberField(),
+    selected_team: new IntField(),
     // index of the chosen winning team (0-indexed)
-    selected_winning_team_index: new NumberField(),
+    selected_winning_team_index: new IntField(),
     flattened_team_user_ids: new ListField(),
-    ranking_id: new NumberField(),
+    ranking_id: new IntField(),
 
+    match_requested_at: new TimestampField(),
     // user who originally requested the match
-    original_user: new StringField(),
+    requesting_player_id: new StringField(),
     // list of user ids who have confirmed the match, corresponding to flattened_team_users
     users_confirmed: new ListField(),
   },
@@ -135,10 +144,10 @@ export default (app: App) =>
         return onConfirmOutcomeBtn(app, ctx)
       } //
       else if (ctx.state.is.clicked_component('match user confirm')) {
-        return await onUserConfirmOrCancelBtn(app, ctx)
+        return await onPlayerConfirmOrCancelBtn(app, ctx)
       } //
       else if (ctx.state.is.clicked_component('match user cancel')) {
-        return await onUserConfirmOrCancelBtn(app, ctx)
+        return await onPlayerConfirmOrCancelBtn(app, ctx)
       } //
       else {
         throw new AppErrors.UnknownState(ctx.state.data.clicked_component)
@@ -176,7 +185,7 @@ function initCommand(
       }
 
       if (await hasAdminPerms(app, ctx)) {
-        ctx.state.save.is_admin(1)
+        ctx.state.save.admin(true)
       }
 
       if (selected_ranking_id) {
@@ -217,7 +226,7 @@ function initCommand(
         )?.value
 
         if (winner_id && loser_id) {
-          if (ctx.state.is.is_admin(1)) {
+          if (ctx.state.is.admin()) {
             // record the match
             const winner = await getRegisterPlayer(app, winner_id, ranking)
             const loser = await getRegisterPlayer(app, loser_id, ranking)
@@ -232,11 +241,10 @@ function initCommand(
             // store the selected users to state
             ctx.state.save.flattened_team_user_ids([winner_id, loser_id].map((id) => id.toString()))
             ctx.state.save.selected_winning_team_index(0)
-            ctx.state.save.original_user(interaction.member.user.id)
-            await ctx.followup({
-              content: `Waiting for all players involved in this match to agree to the results`,
+            await ctx.editOriginal({
+              content: `All players involved in this match must agree to the results`,
             })
-            return await ctx.followup(await usersConfirmingMatchPage(app, ctx))
+            return await onPlayerConfirmOutcome(app, ctx)
           }
         }
       }
@@ -420,62 +428,36 @@ function onConfirmOutcomeBtn(
       type: InteractionResponseType.DeferredMessageUpdate,
     },
     async (ctx) => {
-      if (ctx.state.is.is_admin(1)) {
+      if (ctx.state.is.admin()) {
         await ctx.followup({
           content: `Please wait...`,
         })
         return await ctx.followup(await recordMatch(app, ctx))
       } else {
         // prompt all users involved to confirm the match
-        // store the selected users to state
-        return await ctx.followup(await usersConfirmingMatchPage(app, ctx))
+        return await onPlayerConfirmOutcome(app, ctx)
       }
     },
   )
 }
 
-async function onUserConfirmOrCancelBtn(
+async function onPlayerConfirmOutcome(
   app: App,
-  ctx: ComponentContext<typeof record_match_command_def>,
-): Promise<ChatInteractionResponse> {
+  ctx: DeferContext<typeof record_match_command_def.options.state_schema>,
+): Promise<DeferResponseConfirmation> {
   const interaction = checkGuildInteraction(ctx.interaction)
-  const user_id = interaction.member.user.id
-
-  // find which user is confirming/cancelling
-  const flattened_user_ids = nonNullable(
-    ctx.state.data.flattened_team_user_ids,
-    'flattened_team_users',
-  )
-
-  sentry.debug('flattened_user_ids', flattened_user_ids)
-
-  const user_index = flattened_user_ids.indexOf(user_id)
-  if (user_index == -1) {
-    throw new UserError(`Players involved in this match should confirm/cancel`)
-  }
-
-  const users_confirmed =
-    ctx.state.data.users_confirmed?.slice() || new Array(flattened_user_ids.length).fill('0')
-  if (ctx.state.is.clicked_component('match user confirm')) {
-    // add the user to the list of confirmed users
-    users_confirmed[user_index] = 'y'
-  } else if (ctx.state.is.clicked_component('match user cancel')) {
-    // remove the user from the list of confirmed users
-    users_confirmed[user_index] = 'n'
-  }
-  ctx.state.save.users_confirmed(users_confirmed)
-
-  return {
-    type: InteractionResponseType.UpdateMessage,
-    data: await usersConfirmingMatchPage(app, ctx),
-  }
+  ctx.state.save.requesting_player_id(interaction.member.user.id)
+  ctx.state.save.match_requested_at(new Date())
+  return await ctx.followup(await playersConfirmingMatchPage(app, ctx))
 }
 
-async function usersConfirmingMatchPage(
+async function playersConfirmingMatchPage(
   app: App,
   ctx: Context<typeof record_match_command_def>,
 ): Promise<APIInteractionResponseCallbackData> {
-  const interaction = checkGuildInteraction(ctx.interaction)
+  const requested_at = nonNullable(ctx.state.data.match_requested_at, 'requested_at')
+  const expires_at = new Date(requested_at.getTime() + match_confirm_timeout_ms)
+
   const flattened_user_ids = nonNullable(
     ctx.state.data.flattened_team_user_ids,
     'flattened_team_users',
@@ -489,12 +471,15 @@ async function usersConfirmingMatchPage(
     'winner_index',
   )
 
-  const original_user = nonNullable(ctx.state.data.original_user, 'original_user')
+  const original_user_id = nonNullable(ctx.state.data.requesting_player_id, 'original_user')
 
   const ranking = await app.db.rankings.get(nonNullable(ctx.state.data.ranking_id, 'ranking'))
+
   const embed: APIEmbed = {
     title: `New Match`,
-    description: `<@${interaction.member.user.id}> wants to record a match in **${ranking.data.name}**. The match will be recorded once all players have agreed to the results`,
+    description:
+      `<@${original_user_id}> wants to record a match in **${ranking.data.name}**. The match will be recorded once all players have agreed to the results` +
+      `\nExpires ${relativeTimestamp(expires_at)}`,
     fields: new Array(num_teams)
       .fill(0)
       .map((_, i) => {
@@ -515,6 +500,7 @@ async function usersConfirmingMatchPage(
             .join('\n'),
         },
       ]),
+    color: Colors.EmbedBackground,
   }
 
   const components: APIActionRowComponent<APIMessageActionRowComponent>[] = [
@@ -544,6 +530,82 @@ async function usersConfirmingMatchPage(
   }
 
   return data
+}
+
+async function onPlayerConfirmOrCancelBtn(
+  app: App,
+  ctx: ComponentContext<typeof record_match_command_def>,
+): Promise<ChatInteractionResponse> {
+  const time_since_match_requested =
+    new Date().getTime() -
+    nonNullable(ctx.state.data.match_requested_at, 'match_requested_at').getTime()
+
+  if (time_since_match_requested > match_confirm_timeout_ms) {
+    ctx.interaction.channel?.id &&
+      ctx.interaction.message?.id &&
+      (await app.bot.deleteMessage(ctx.interaction.channel.id, ctx.interaction.message.id))
+    return {
+      type: InteractionResponseType.ChannelMessageWithSource,
+      data: {
+        content: `This match has expired`,
+        flags: MessageFlags.Ephemeral,
+      },
+    }
+  }
+
+  const interaction = checkGuildInteraction(ctx.interaction)
+  const user_id = interaction.member.user.id
+
+  // find which user is confirming/cancelling
+  const flattened_user_ids = nonNullable(
+    ctx.state.data.flattened_team_user_ids,
+    'flattened_team_users',
+  )
+
+  sentry.debug('flattened_user_ids', flattened_user_ids)
+
+  const user_index = flattened_user_ids.indexOf(user_id)
+  if (user_index == -1) {
+    throw new UserError(`Players involved in this match should confirm/cancel`)
+  }
+
+  const users_confirmed =
+    ctx.state.data.users_confirmed?.slice() || new Array(flattened_user_ids.length).fill('0')
+  if (ctx.state.is.clicked_component('match user confirm')) {
+    // add the user to the list of confirmed users
+    users_confirmed[user_index] = 'y'
+  } else if (ctx.state.is.clicked_component('match user cancel')) {
+    // remove the user from the list of confirmed users
+    users_confirmed[user_index] = 'n'
+  }
+  ctx.state.save.users_confirmed(users_confirmed)
+
+  // check if all users have confirmed or canceled
+  if (users_confirmed.every((c) => c == 'n')) {
+    // all users have canceled
+    return {
+      type: InteractionResponseType.UpdateMessage,
+      data: {
+        content: `Match canceled`,
+        embeds: [],
+        components: [],
+        flags: MessageFlags.Ephemeral,
+      },
+    }
+  }
+
+  if (users_confirmed.every((c) => c == 'y')) {
+    // all users have confirmed
+    return {
+      type: InteractionResponseType.UpdateMessage,
+      data: await recordMatch(app, ctx),
+    }
+  }
+
+  return {
+    type: InteractionResponseType.UpdateMessage,
+    data: await playersConfirmingMatchPage(app, ctx),
+  }
 }
 
 async function recordMatch(
@@ -604,7 +666,7 @@ async function recordMatch(
           .join('\n'),
       },
     ],
-    color: Colors.Primary,
+    color: Colors.EmbedBackground,
   }
 
   return {
@@ -614,6 +676,8 @@ async function recordMatch(
     flags: MessageFlags.Ephemeral,
   }
 }
+
+const match_confirm_timeout_ms = 1000 * 60 * 1 // 10 minutes
 
 const placeholder_user_id = '0'
 

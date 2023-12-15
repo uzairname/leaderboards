@@ -5,7 +5,7 @@ import { sentry } from '../../request/sentry'
 import { DiscordRESTClient } from '../rest/client'
 
 import { respondToUserInteraction } from './view_helpers'
-import { ViewErrorCallback } from './types'
+import { InteractionErrorCallback } from './types'
 import { FindViewCallback } from './types'
 import { verify } from './utils/verify'
 import { json } from 'itty-router'
@@ -14,7 +14,7 @@ export async function respondToDiscordInteraction(
   bot: DiscordRESTClient,
   request: Request,
   getView: FindViewCallback,
-  onError: ViewErrorCallback,
+  onError: InteractionErrorCallback,
   direct_response: boolean = true,
 ): Promise<Response> {
   if (await verify(request, bot.public_key)) {

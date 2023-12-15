@@ -106,8 +106,8 @@ export async function syncGuildRankingLbMessage(
   guild_ranking: GuildRanking,
 ): Promise<void> {
   // update all the messages and channels associated with this guild leaderboard
-  const ranking = await guild_ranking.ranking()
   const guild = await guild_ranking.guild()
+  const ranking = await guild_ranking.ranking()
 
   // a channel for the leaderboard and queue
   const update_display_message_result = await app.bot.utils.syncChannelMessage({
@@ -149,7 +149,7 @@ export async function generateLeaderboardMessage(app: App, ranking: Ranking): Pr
   const players_text = [...displayed_players.entries()]
     .map(([player_id, points]) => {
       place++
-      return `### ${place}. <@${player_id}> ${(points * 10).toFixed(0)}`
+      return `### ${place}. <@${player_id}> ${points.toFixed(0)}`
     })
     .join('\n\n')
 

@@ -24,7 +24,7 @@ import {
   CommandView,
   ComponentContext,
   ChoiceField,
-  NumberField,
+  IntField,
   StringField,
   Context,
 } from '../../../discord-framework'
@@ -42,7 +42,7 @@ import {
   createNewRankingInGuild,
   updateRanking,
 } from '../../modules/rankings/rankings'
-import { default_num_teams } from '../../../database/models/models/rankings'
+import { Ranking, default_num_teams } from '../../../database/models/models/rankings'
 import { default_players_per_team } from '../../../database/models/models/rankings'
 
 import { GuildRanking } from '../../../database/models'
@@ -62,6 +62,8 @@ import { rankingsAutocomplete } from '../utils/common'
 import { getModalSubmitEntries } from '../../../discord-framework'
 import { help_command_def } from './help'
 import { Messages } from '../../messages/messages'
+import { ViewState } from '../../../discord-framework/interactions/view_helpers'
+import { findView } from '../../app/find_view'
 
 export const rankings_command_def = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -97,10 +99,10 @@ export const rankings_command_def = new CommandView({
       'btn:delete': null,
       'modal:delete confirm': null,
     }),
-    selected_ranking_id: new NumberField(),
+    selected_ranking_id: new IntField(),
     input_name: new StringField(),
-    input_players_per_team: new NumberField(),
-    input_num_teams: new NumberField(),
+    input_players_per_team: new IntField(),
+    input_num_teams: new IntField(),
   },
 })
 
@@ -219,7 +221,7 @@ export async function allGuildRankingsPage(
     guild_rankings.map(async (item) => {
       fields.push({
         name: toMarkdown(item.ranking.data.name),
-        value: await guildRankingDetails(app, item.guild_ranking),
+        value: await guildRankingDetails(app, item.guild_ranking, item.ranking),
         inline: true,
       })
     }),
@@ -248,9 +250,13 @@ export async function allGuildRankingsPage(
   }
 }
 
-async function guildRankingDetails(app: App, guild_ranking: GuildRanking): Promise<string> {
+async function guildRankingDetails(
+  app: App,
+  guild_ranking: GuildRanking,
+  ranking: Ranking,
+): Promise<string> {
   // created time
-  const created_time = (await guild_ranking.ranking()).data.time_created
+  const created_time = ranking.data.time_created
   const created_time_msg = created_time ? `Created on ${dateTimestamp(created_time)}` : ``
 
   // display link
@@ -311,11 +317,11 @@ export async function rankingSettingsPage(
     guild_id: interaction.guild_id,
     ranking_id: nonNullable(ctx.state.data.selected_ranking_id, 'selected_ranking_id'),
   })
-  const ranking = await nonNullable(guild_ranking).ranking()
+  const ranking = await guild_ranking.ranking()
 
   const embed: APIEmbed = {
     title: ranking.data.name || 'Unnamed Ranking',
-    description: await guildRankingDetails(app, guild_ranking),
+    description: await guildRankingDetails(app, guild_ranking, ranking),
     color: Colors.EmbedBackground,
   }
 

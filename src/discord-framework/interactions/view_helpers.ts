@@ -13,7 +13,7 @@ import {
 } from 'discord-api-types/v10'
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
 
-import { StringData, StringDataSchema } from '../../utils/string_data'
+import { StringData, StringDataSchema, StringField } from '../../utils/string_data'
 
 import { sentry } from '../../request/sentry'
 
@@ -35,15 +35,51 @@ import {
 import { ViewErrors } from './utils/errors'
 import { DeferResponseConfirmation, ViewDeferCallback } from './views'
 import { FindViewCallback } from './types'
-import { ViewErrorCallback } from './types'
+import { InteractionErrorCallback } from './types'
 import { replaceMessageComponentsCustomIdsInPlace } from './utils/interaction_utils'
-import { assert, cloneSimpleObj, nonNullable } from '../../utils/utils'
+import { cloneSimpleObj } from '../../utils/utils'
+
+export class ViewState<T extends StringDataSchema> extends StringData<T> {
+  static create<View extends AnyView>(view: View): ViewState<View['options']['state_schema']> {
+    return new ViewState(view)
+  }
+
+  static async getFromCustomId(
+    custom_id: string,
+    findViewCallback: FindViewCallback,
+  ): Promise<ViewState<StringDataSchema>> {
+    let decompressed_custom_id = decompressFromUTF16(custom_id)
+
+    if (!decompressed_custom_id)
+      throw new ViewErrors.InvalidEncodedCustomId(`Unable to decode custom id ${custom_id}`)
+
+    let { view_id: prefix, encoded_data } = parseCustomId(custom_id || '')
+
+    let view = await findView(findViewCallback, undefined, prefix)
+
+    let state = new ViewState(view).decode(encoded_data || '')
+
+    return state
+  }
+
+  private constructor(private view: AnyView) {
+    super(view.options.state_schema)
+  }
+
+  encode(): string {
+    let encoded = super.encode()
+    encoded = `${this.view.options.custom_id_prefix}.${encoded}`
+    encoded = compressToUTF16(encoded)
+    if (encoded.length > 100) throw new ViewErrors.CustomIdTooLong(encoded)
+    return encoded
+  }
+}
 
 export async function respondToUserInteraction(
   interaction: APIInteraction,
   bot: DiscordRESTClient,
   find_view_callback: FindViewCallback,
-  onError: ViewErrorCallback,
+  onError: InteractionErrorCallback,
   direct_response: boolean = true,
 ): Promise<APIInteractionResponse | undefined> {
   /*
@@ -63,10 +99,8 @@ export async function respondToUserInteraction(
       interaction.type === InteractionType.ApplicationCommandAutocomplete
     ) {
       let view = await findView(find_view_callback, interaction)
-
       if (interaction.type === InteractionType.ApplicationCommand && isCommandView(view)) {
         // view must be a command view if it's an application command interaction
-
         sentry.request_name = `${interaction.data.name} Command`
         response = await respondToViewCommandInteraction(view, interaction, bot, onError)
       } else if (
@@ -82,16 +116,7 @@ export async function respondToUserInteraction(
       interaction.type === InteractionType.ModalSubmit
     ) {
       // view can be any view if it's a component interaction
-      let parsed_custom_id = decompressCustomIdUTF16(interaction.data.custom_id)
-      sentry.addBreadcrumb({
-        category: 'interaction',
-        level: 'info',
-        data: {
-          'received custom_id': interaction.data.custom_id,
-          view_id: parsed_custom_id.view_id,
-          encoded_data: parsed_custom_id.encoded_data,
-        },
-      })
+      let parsed_custom_id = parseCustomId(interaction.data.custom_id)
       let view = await findView(find_view_callback, undefined, parsed_custom_id.view_id)
       sentry.request_name = `${
         isCommandView(view) ? view.options.command.name : view.options.custom_id_prefix
@@ -103,12 +128,6 @@ export async function respondToUserInteraction(
         bot,
         onError,
       )
-    } else {
-      throw new Error(`Unknown interaction type ${interaction.type}`)
-    }
-
-    if (!direct_response && response) {
-      return void (await bot.createInteractionResponse(interaction.id, interaction.token, response))
     }
   } catch (e) {
     response = onError(e)
@@ -123,6 +142,9 @@ export async function respondToUserInteraction(
     },
   })
 
+  if (!direct_response && response) {
+    return void (await bot.createInteractionResponse(interaction.id, interaction.token, response))
+  }
   return response
 }
 
@@ -168,22 +190,19 @@ export async function respondToViewCommandInteraction(
     interaction: interaction as any,
     defer: (response, callback) => {
       sentry.waitUntil(
-        executeViewOffloadCallback({
-          callback,
-          onError,
+        executeViewDeferCallback({
           view,
-          bot,
+          callback,
           interaction,
           state,
+          bot,
+          onError,
         }),
       )
       return response
     },
-    _ctx: {
-      bot,
-      onError,
-    },
     state,
+    // _ctx: { bot, onError },
   })
 
   result = replaceResponseCustomIds(result, compressCustomIdUTF16(view))
@@ -199,7 +218,7 @@ export async function respondToViewComponentInteraction(
   bot: DiscordRESTClient,
   onError: (e: unknown) => APIInteractionResponseChannelMessageWithSource,
 ): Promise<ChatInteractionResponse> {
-  if (!view._componentCallback) throw new ViewErrors.NoComponentCallback()
+  if (!view._componentCallback) throw new ViewErrors.ComponentCallbackNotImplemented()
 
   const state = decodeViewCustomIdState(view, custom_id_state)
 
@@ -207,29 +226,26 @@ export async function respondToViewComponentInteraction(
     interaction,
     defer: (initial_response, callback) => {
       sentry.waitUntil(
-        executeViewOffloadCallback({
+        executeViewDeferCallback({
           view,
           callback,
-          bot,
           interaction,
           state,
+          bot,
           onError,
         }),
       )
       return initial_response
     },
-    _ctx: {
-      bot,
-      onError,
-    },
     state,
+    // _ctx: { bot, onError },
   })
 
   result = replaceResponseCustomIds(result, compressCustomIdUTF16(view))
   return result
 }
 
-export async function executeViewOffloadCallback(args: {
+export async function executeViewDeferCallback(args: {
   view: AnyView
   callback: ViewDeferCallback<any>
   interaction: ChatInteraction
@@ -255,12 +271,13 @@ export async function executeViewOffloadCallback(args: {
         await args.bot.editOriginalInteractionResponse(args.interaction.token, data)
         return new DeferResponseConfirmation()
       },
+      // delete: async () => {
+      //   await args.bot.deleteOriginalInteractionResponse(args.interaction.token)
+      //   return new DeferResponseConfirmation()
+      // },
       ignore: () => new DeferResponseConfirmation(),
       state: args.state,
-      _ctx: {
-        bot: args.bot,
-        onError: args.onError,
-      },
+      // _ctx: { bot: args.bot, onError: args.onError },
     })
   } catch (e) {
     let error_response = args.onError(e).data
@@ -279,22 +296,23 @@ export async function getMessageViewMessageData<Param>(
   view: AnyMessageView,
   params: Param,
 ): Promise<MessageData> {
-  let message = await view._initCallback(
-    {
-      state: decodeViewCustomIdState(view),
-    },
-    params,
-  )
+  const state = decodeViewCustomIdState(view)
+
+  let message = await view._initCallback({
+    state,
+    ...params,
+  })
 
   let message_json = message.patchdata
   replaceMessageComponentsCustomIdsInPlace(message_json.components, compressCustomIdUTF16(view))
   return new MessageData(message_json)
 }
 
-function decodeViewCustomIdState<Schema extends StringDataSchema>(
-  view: AnyView,
-  data?: EncodedCustomIdData,
-): StringData<Schema> {
+// function decodeViewCustomIdState<Schema extends StringDataSchema>(
+//   view: AnyView,
+//   data?: EncodedCustomIdData,
+// ): StringData<Schema> {
+function decodeViewCustomIdState(view: AnyView, data?: EncodedCustomIdData): StringData<any> {
   let state = new StringData(view.options.state_schema).decode(data?.valueOf() || '')
   let state_copy = new StringData(view.options.state_schema).decode(data?.valueOf() || '')
   sentry.addBreadcrumb({
@@ -307,20 +325,17 @@ function decodeViewCustomIdState<Schema extends StringDataSchema>(
   return state
 }
 
-const CUSTOM_ID_PREFIX = '0'
-
 export function compressCustomIdUTF16(view: AnyView): (str?: EncodedCustomIdData) => string {
   return (str?: EncodedCustomIdData) => {
     let custom_id: string
     custom_id = `${view.options.custom_id_prefix}.${str || ''}`
-    custom_id = CUSTOM_ID_PREFIX + custom_id
     custom_id = compressToUTF16(custom_id)
     if (custom_id.length > 100) throw new ViewErrors.CustomIdTooLong(custom_id)
     return custom_id
   }
 }
 
-export function decompressCustomIdUTF16(custom_id: string): {
+export function parseCustomId(custom_id: string): {
   view_id: string
   encoded_data: EncodedCustomIdData
 } {
@@ -329,16 +344,18 @@ export function decompressCustomIdUTF16(custom_id: string): {
   if (!decompressed_custom_id)
     throw new ViewErrors.InvalidEncodedCustomId(`Unable to decode custom id ${custom_id}`)
 
-  if (!decompressed_custom_id.startsWith(CUSTOM_ID_PREFIX)) {
-    throw new ViewErrors.InvalidEncodedCustomId(
-      `${decompressed_custom_id} doesn't start with ${CUSTOM_ID_PREFIX}`,
-    )
-  }
+  const [view_id, ...extra] = decompressed_custom_id.split('.')
+  const encoded_data = extra.join('.') as EncodedCustomIdData
 
-  let [view_id, ...extra] = decompressed_custom_id.slice(1).split('.')
+  sentry.addBreadcrumb({
+    category: 'custom_id',
+    level: 'info',
+    data: { custom_id, view_id, encoded_data },
+  })
+
   return {
     view_id,
-    encoded_data: extra.join('.') as EncodedCustomIdData,
+    encoded_data,
   }
 }
 

@@ -10,7 +10,7 @@ import {
 } from 'discord-api-types/v10'
 
 import { nonNullable } from '../../../utils/utils'
-import { ChoiceField, NumberField, ListField, CommandView } from '../../../discord-framework'
+import { ChoiceField, IntField, ListField, CommandView } from '../../../discord-framework'
 
 import { App } from '../../../main/app/app'
 import { AppErrors } from '../../../main/app/errors'
@@ -27,9 +27,9 @@ const start_match_command = new CommandView({
       'confirm players': null,
       'select team': null,
     }),
-    selected_team: new NumberField(),
+    selected_team: new IntField(),
     players: new ListField(),
-    ranking_id: new NumberField(),
+    ranking_id: new IntField(),
   },
 })
 

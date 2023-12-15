@@ -19,6 +19,7 @@ import {
   isChatInputApplicationCommandInteraction,
   isContextMenuApplicationCommandInteraction,
 } from 'discord-api-types/utils/v10'
+import { ViewErrors } from './utils/errors'
 
 declare type CommandInteraction<CommandType> =
   CommandType extends D.ApplicationCommandType.ChatInput
@@ -40,10 +41,10 @@ export interface AutocompleteContext {
 export interface Context<View extends BaseView<any>> {
   interaction: ChatInteraction
   state: StringData<View['options']['state_schema']>
-  _ctx: {
-    bot: DiscordRESTClient
-    onError: (e: unknown) => APIInteractionResponseChannelMessageWithSource
-  }
+  // _ctx: {
+  //   bot: DiscordRESTClient
+  //   onError: (e: unknown) => APIInteractionResponseChannelMessageWithSource
+  // }
 }
 
 // Command
@@ -73,6 +74,7 @@ export interface DeferContext<Schema extends StringDataSchema> extends Context<B
   interaction: ChatInteraction
   followup: (data: D.APIInteractionResponseCallbackData) => Promise<DeferResponseConfirmation>
   editOriginal: (data: D.APIInteractionResponseCallbackData) => Promise<DeferResponseConfirmation>
+  // delete: () => Promise<DeferResponseConfirmation>
   ignore: () => DeferResponseConfirmation
 }
 
@@ -116,8 +118,8 @@ export type ViewDeferCallback<View extends BaseView<any>> = (
 
 // Message Create
 export type ViewCreateMessageCallback<View extends MessageView<any, any>, Params> = (
-  ctx: MessageCreateContext<View>,
-  params: Params,
+  ctx: MessageCreateContext<View> & Params,
+  // params: Params,
 ) => Promise<MessageData>
 
 type ApplicationCommandDefinitionArg<Type extends D.ApplicationCommandType> = Omit<
@@ -148,7 +150,13 @@ export abstract class BaseView<Schema extends StringDataSchema> {
       state_schema: Schema
       custom_id_prefix?: string
     },
-  ) {}
+  ) {
+    if (options.custom_id_prefix && options.custom_id_prefix.includes('.')) {
+      throw new ViewErrors.InvalidCustomId(
+        `Custom id prefix contains delimiter: ${options.custom_id_prefix}`,
+      )
+    }
+  }
 
   public onComponent(callback: ViewComponentCallback<BaseView<Schema>>) {
     this._componentCallback = callback

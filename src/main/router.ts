@@ -13,7 +13,7 @@ import { deployApp } from './app/deploy_app'
 import { oauthRedirect, oauthCallback } from './modules/oauth'
 import { runTests } from '../test/test'
 import { findView } from './app/find_view'
-import { onViewError } from './interactions/utils/on_view_error'
+import { onViewError } from './views/utils/on_view_error'
 
 export function respond(req: RequestArgs): Promise<Response> {
   initSentry(req)

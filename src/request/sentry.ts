@@ -57,10 +57,8 @@ export class Sentry extends Toucan {
   public waitUntil(callback: Promise<void>): void {
     this.ctx.execution_context.waitUntil(
       new Promise<void>((resolve) => {
-        this.captureMessage('A')
         callback
           .then(() => {
-            this.captureMessage('B')
             this.logResult(undefined, true)
           })
           .catch((e) => {
@@ -104,7 +102,6 @@ export class Sentry extends Toucan {
       this.captureException(this.caught_exception)
       this.caught_exception = undefined // for waitUntil
     } else {
-      this.captureMessage('C')
       this.captureEvent({
         message: `${this.request_name}` + (followup ? ' followup' : ''),
         level: 'info',

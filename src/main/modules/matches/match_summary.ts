@@ -16,6 +16,7 @@ import { sentry } from '../../../request/sentry'
 import { nonNullable } from '../../../utils/utils'
 import { getNewRatings } from './scoring'
 import { Colors } from '../../messages/message_pieces'
+import { calculateMatchNewRatings, getAndCalculateMatchNewRatings } from './score_matches'
 
 export function addMatchSummaryMessagesListeners(app: App): void {
   app.events.MatchScored.on(async (data) => {
@@ -140,8 +141,8 @@ export async function syncMatchSummaryChannel(
   guild_ranking: GuildRanking,
 ): Promise<void> {
   const community_enabled = await communityEnabled(app, guild_ranking.data.guild_id)
-  const ranking = await guild_ranking.ranking()
   const guild = await guild_ranking.guild()
+  const ranking = await guild_ranking.ranking()
 
   // Whether the match summary channel is specific for the ranking, not global to all rankings in the guild
   const for_guild_ranking =
@@ -178,24 +179,7 @@ export async function matchSummaryMessageData(
 ): Promise<MessageData> {
   const num_teams = nonNullable(ranking.data.num_teams)
   const players = await match.players()
-
-  const player_ratings = players.map((t) =>
-    t.map((p) => {
-      return {
-        rating: nonNullable(p.match_player.rating_before, 'rating before'),
-        rd: nonNullable(p.match_player.rd_before, 'rd before'),
-      }
-    }),
-  )
-
-  sentry.debug(`player ratings for mmatch: ${JSON.stringify(player_ratings)}`)
-
-  // calculate new player ratings
-  const new_player_ratings = getNewRatings(
-    nonNullable(match.data.outcome, 'match outcome'),
-    player_ratings,
-    nonNullable(ranking.data.elo_settings),
-  )
+  const player_ratings = await getAndCalculateMatchNewRatings(match, ranking)
 
   const embed: APIEmbed = {
     title: `Match #${match.data.number} in ${ranking.data.name}`,
@@ -204,9 +188,9 @@ export async function matchSummaryMessageData(
         name: `Team ${i + 1}`,
         value: players[i]
           .map((p, j) => {
-            return `<@${p.player.data.user_id}> (${
-              p.match_player.rating_before
-            } -> ${new_player_ratings[i][j].mu.toFixed(1)})`
+            return `<@${p.player.data.user_id}> (${player_ratings[i][j].rating_before.toFixed(
+              0,
+            )} → **${player_ratings[i][j].rating_after.toFixed(0)}**)`
           })
           .join('\n'),
         inline: true,
@@ -231,7 +215,7 @@ export async function matchSummaryChannelData(
   guild: Guild,
   ranking: Ranking,
   forum?: boolean,
-  for_guild_ranking?: boolean,
+  is_ranking_specific?: boolean,
 ): Promise<{
   guild_id: string
   data: GuildChannelData
@@ -242,11 +226,11 @@ export async function matchSummaryChannelData(
     data: new GuildChannelData({
       type: forum ? ChannelType.GuildForum : ChannelType.GuildText,
       parent_id: category.id,
-      name: for_guild_ranking ? `${ranking.data.name} Match Log` : `Match Log`,
+      name: (is_ranking_specific ? `${ranking.data.name}` : ``) + ` Match Log`,
       topic:
-        `Ranked matches` + for_guild_ranking
-          ? ` from ${ranking.data.name}`
-          : ` in this server` + ` are recorded here`,
+        `Ranked matches` +
+        (is_ranking_specific ? ` in ${ranking.data.name}` : ` in this server`) +
+        ` are recorded here`,
       permission_overwrites: matchSummaryChannelPermissionOverwrites(
         guild.data.id,
         app.bot.application_id,

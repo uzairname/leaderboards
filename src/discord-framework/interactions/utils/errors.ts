@@ -6,15 +6,11 @@ export abstract class ViewError extends Error {
 }
 
 export namespace ViewErrors {
-  export class UnexpectedViewType extends ViewError {}
-
-  export class UnknownType extends ViewError {}
-
   export class UnknownView extends ViewError {}
 
   export class AutocompleteNotImplemented extends ViewError {}
 
-  export class NoComponentCallback extends ViewError {}
+  export class ComponentCallbackNotImplemented extends ViewError {}
 
   export class DeferNotImplemented extends ViewError {}
 
@@ -22,7 +18,9 @@ export namespace ViewErrors {
 
   export class CustomIdTooLong extends ViewError {
     constructor(custom_id: string) {
-      super(`Custom id ${custom_id.length} characters long: ${custom_id}`)
+      super(`Custom id is ${custom_id.length} characters long: ${custom_id}`)
     }
   }
+
+  export class InvalidCustomId extends ViewError {}
 }

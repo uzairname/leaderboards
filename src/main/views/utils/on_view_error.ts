@@ -13,6 +13,7 @@ import { RateLimitError } from '@discordjs/rest'
 import { DiscordErrors } from '../../../discord-framework'
 import { AppError, UserError } from '../../app/errors'
 import { DatabaseError } from '../../../database/utils/errors'
+import { ViewErrors } from '../../../discord-framework/interactions/utils/errors'
 
 export const onViewError = (app: App) =>
   function (e: unknown): APIInteractionResponseChannelMessageWithSource {
@@ -32,6 +33,12 @@ export const onViewError = (app: App) =>
     ) {
       description = e.message ? e.message : e.constructor.name
       title = 'Error'
+    } else if (
+      e instanceof ViewErrors.UnknownView ||
+      e instanceof ViewErrors.InvalidEncodedCustomId
+    ) {
+      title = 'Unknown Message'
+      description = 'This component is outdated or unavailable. Please delete it.'
     } else {
       title = 'Unexpected Error'
 

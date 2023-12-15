@@ -90,7 +90,7 @@ export default (app: App) =>
 
       // add points to player
       await player.update({
-        rating: (player.data.rating || 0) + points,
+        rating: nonNullable(player.data.rating, 'player rating') + points,
       })
 
       // update the leaderboard display

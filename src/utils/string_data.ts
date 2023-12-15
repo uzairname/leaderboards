@@ -43,7 +43,9 @@ export class StringData<T extends StringDataSchema> {
   }>
   // the value of the field.
   is = {} as {
-    [K in keyof T]: (value: T[K]['default_value']) => boolean
+    [K in keyof T]: T[K] extends BooleanField
+      ? () => boolean
+      : (value: T[K]['default_value']) => boolean
   }
   // returns true if the field's value is equal to the given value.
 
@@ -57,7 +59,7 @@ export class StringData<T extends StringDataSchema> {
     [id: string]: string
   }
 
-  constructor(structure: T) {
+  constructor(structure: T, encoded_str?: string) {
     this.schema = structure
     for (const key in this.schema) {
       this.data[key] = this.schema[key].default_value
@@ -76,9 +78,12 @@ export class StringData<T extends StringDataSchema> {
         return temp
       }
 
-      this.is[key] = (value: T[typeof key]['default_value']) => {
+      this.is[key] = ((value: T[typeof key]['default_value']) => {
+        if (this.schema[key] instanceof BooleanField) {
+          return this.data[key] === true
+        }
         return this.data[key] === this.validateAndCompress(key, value)
-      }
+      }) as any
     }
 
     let i = 0
@@ -87,6 +92,10 @@ export class StringData<T extends StringDataSchema> {
       this.key_to_keyid[key] = keyid
       this.keyid_to_key[keyid] = key
       i++
+    }
+
+    if (encoded_str) {
+      this.decode(encoded_str)
     }
   }
 
@@ -147,38 +156,7 @@ export class StringData<T extends StringDataSchema> {
   }
 }
 
-export class StringField extends Field<string | undefined> {
-  constructor(default_value?: string) {
-    super(default_value)
-  }
-  compress(value: string) {
-    return [value]
-  }
-
-  decompress(value: string[]) {
-    return value[0]
-  }
-}
-
-export class NumberField extends Field<number | undefined> {
-  constructor(default_value?: number) {
-    super(default_value)
-  }
-
-  compress(value: number) {
-    return [value.toString(36)]
-  }
-
-  decompress(value: string[]) {
-    return parseInt(value[0], 36)
-  }
-}
-
-export class ChoiceField<
-  T extends {
-    [key: string]: unknown
-  },
-> extends Field<keyof T | undefined> {
+export class ChoiceField<T extends { [key: string]: unknown }> extends Field<keyof T | undefined> {
   options: T
 
   option_id_to_option = {} as {
@@ -214,6 +192,33 @@ export class ChoiceField<
   }
 }
 
+export class StringField extends Field<string | undefined> {
+  constructor(default_value?: string) {
+    super(default_value)
+  }
+  compress(value: string) {
+    return [value]
+  }
+
+  decompress(value: string[]) {
+    return value[0]
+  }
+}
+
+export class IntField extends Field<number | undefined> {
+  constructor(default_value?: number) {
+    super(default_value)
+  }
+
+  compress(value: number) {
+    return [value.toString(36)]
+  }
+
+  decompress(value: string[]) {
+    return parseInt(value[0], 36)
+  }
+}
+
 export class ListField extends Field<string[] | undefined> {
   constructor(default_value?: string[]) {
     super(default_value)
@@ -225,5 +230,34 @@ export class ListField extends Field<string[] | undefined> {
 
   decompress(value: string[]) {
     return value
+  }
+}
+
+export class BooleanField extends Field<boolean | undefined> {
+  constructor(default_value?: boolean) {
+    super(default_value)
+  }
+
+  compress(value: boolean) {
+    return [value ? 'a' : '']
+  }
+
+  decompress(value: string[]) {
+    return value[0] === 'a'
+  }
+}
+
+export class TimestampField extends Field<Date | undefined> {
+  constructor(default_value?: Date) {
+    super(default_value)
+  }
+
+  compress(value: Date) {
+    return [(Math.floor(value.getTime() / 1000) - 1735707600).toString(36)]
+    // 1735707600 is the unix timestamp of 2025-01-01. This saves like 4 bits.
+  }
+
+  decompress(value: string[]) {
+    return new Date((parseInt(value[0], 36) + 1735707600) * 1000)
   }
 }

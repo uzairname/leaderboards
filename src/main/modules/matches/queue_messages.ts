@@ -1,6 +1,6 @@
 import type { GuildRanking } from '../../../database/models'
 import type { App } from '../../app/app'
-import queue_message from '../../interactions/views/queue'
+import queue_message from '../../views/views/queue'
 
 export async function haveRankingQueueMessage(
   app: App,

@@ -1,5 +1,6 @@
 import {
   APIApplicationCommandInteractionDataBooleanOption,
+  APIInteractionResponse,
   APIInteractionResponseCallbackData,
   ApplicationCommandOptionType,
   ApplicationCommandType,
@@ -11,12 +12,15 @@ import {
 
 import {
   ChoiceField,
-  NumberField,
+  IntField,
   StringField,
   CommandContext,
   CommandView,
   ComponentContext,
   ListField,
+  StringData,
+  TimestampField,
+  BooleanField,
 } from '../../../discord-framework'
 import { App } from '../../../main/app/app'
 
@@ -48,7 +52,7 @@ const test_command = new CommandView({
 
   state_schema: {
     clicked_btn: new ChoiceField({ wait: null, increment: null, one: null, two: null }),
-    counter: new NumberField(),
+    counter: new IntField(),
     original_user: new StringField(),
     value: new ListField(),
   },
@@ -167,3 +171,70 @@ function testMessageData(
     flags: ephemeral ? MessageFlags.Ephemeral : undefined,
   }
 }
+
+const schema = {
+  originalUserId: new StringField(),
+  createdAt: new TimestampField(),
+  current_page: new ChoiceField({
+    settings: null,
+    main: null,
+    chat: null,
+  }),
+  clickedComponent: new ChoiceField({
+    'button: add user': null,
+    'button: delete': null,
+    'modal: rename': null,
+    'button: rename confirm': null,
+  }),
+  messages: new ListField(),
+  isAdmin: new BooleanField(),
+  counter: new IntField(0),
+}
+
+// encode data
+
+const data1 = new StringData(schema)
+
+// Everything is type-safe
+
+// Save data, IN place with .save
+data1.save.originalUserId('883497737537265')
+data1.save
+  .createdAt(new Date())
+  .save.isAdmin(false)
+  .save.messages(['883497737537265', 'Hey I need help with uber!', '934879683479879', 'how so?'])
+
+// Set data OUT OF place with .set(). This is useful for setting different states for each component.
+const data2 = data1.set
+  .clickedComponent('button: rename confirm')
+  .set.current_page('settings')
+  .set.isAdmin(true)
+
+data1.data.isAdmin // false
+
+// compress it with .encode()
+const customId1 = data1.encode()
+const customId2 = data2.encode()
+
+console.log(customId2) // a string
+
+// decode received data
+
+const receivedState = new StringData(schema, customId2)
+console.log(receivedState.data)
+/*
+{
+  "originalUserId": "883497737537265",
+  "createdAt": "2023-12-15T03:45:13.000Z",
+  "current_page": "settings",
+  "clickedComponent": "button: rename confirm",
+  "messages": [
+    "883497737537265",
+    "Hey I need help with uber!",
+    "934879683479879",
+    "how so?"
+  ],
+  "isAdmin": true,
+  "counter": 0
+} 
+*/

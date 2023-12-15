@@ -12,7 +12,7 @@ import {
   MessageCreateContext,
   MessageData,
   MessageView,
-  NumberField,
+  IntField,
 } from '../../../discord-framework'
 
 import { App } from '../../../main/app/app'
@@ -26,15 +26,15 @@ const queue_message_def = new MessageView({
   custom_id_prefix: 'q',
   state_schema: {
     component: new ChoiceField({ join: null, leave: null }),
-    ranking_id: new NumberField(),
+    ranking_id: new IntField(),
   },
   param: (_: { ranking_id: number }) => void 0,
 })
 
 export default (app: App) =>
   queue_message_def
-    .onInit(async (ctx, args) => {
-      ctx.state.save.ranking_id(args.ranking_id)
+    .onInit(async (ctx) => {
+      ctx.state.save.ranking_id(ctx.ranking_id)
       return queueMessage(ctx)
     })
     .onComponent(async (ctx) => {

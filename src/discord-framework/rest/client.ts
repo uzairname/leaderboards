@@ -310,6 +310,14 @@ export class DiscordRESTClient extends REST {
     )
   }
 
+  async deleteOriginalInteractionResponse(interaction_token: string) {
+    // get all messages
+    return await this.fetch(
+      RequestMethod.Delete,
+      D.Routes.webhookMessage(this.application_id, interaction_token, '@original'),
+    )
+  }
+
   // LINKED ROLES
 
   async updateRoleConnectionsMetadata(body: D.RESTPutAPIApplicationRoleConnectionMetadataJSONBody) {
