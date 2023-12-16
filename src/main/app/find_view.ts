@@ -2,16 +2,16 @@ import { AnyView, isCommandView, FindViewCallback } from '../../discord-framewor
 
 import { App } from './app'
 
-import help from '../views/views/help'
-import rankings from '../views/views/rankings'
-import points from '../views/views/points'
-import restore from '../views/views/restore'
-import settings from '../views/views/settings'
-import record_match from '../views/views/record_match'
-import start_match from '../views/views/start_match'
-import queue from '../views/views/queue'
-import test from '../views/views/test_command'
-import temp from '../views/views/temp_command'
+import help from '../views/commands/help'
+import rankings from '../views/commands/rankings'
+import settings from '../views/commands/settings'
+import points from '../views/commands/points'
+import restore from '../views/commands/restore'
+import record_match from '../views/commands/record_match'
+import start_match from '../views/commands/start_match'
+import queue from '../views/messages/queue'
+import test from '../views/commands/test_command'
+import temp from '../views/commands/temp_command'
 
 export function getAllViews(app: App): AnyView[] {
   let enabled_views: AnyView[] = [

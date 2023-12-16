@@ -25,7 +25,7 @@ import {
 import { nonNullable } from '../../../utils/utils'
 import { sentry } from '../../../request/sentry'
 
-import { App } from '../../../main/app/app'
+import { App } from '../../app/app'
 import { AppErrors } from '../../app/errors'
 
 const temp_command = new CommandView({

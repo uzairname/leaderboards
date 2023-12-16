@@ -32,10 +32,10 @@ import { nonNullable } from '../../../utils/utils'
 
 import { sentry } from '../../../request/sentry'
 
-import type { App } from '../../../main/app/app'
-import { AppErrors, UserErrors } from '../../../main/app/errors'
+import type { App } from '../../app/app'
+import { AppErrors, UserErrors } from '../../app/errors'
 
-import { getOrAddGuild } from '../../../main/modules/guilds'
+import { getOrAddGuild } from '../../modules/guilds'
 import {
   deleteRanking,
   createNewRankingInGuild,
@@ -51,7 +51,7 @@ import {
   dateTimestamp,
   messageLink,
   toMarkdown,
-} from '../../../main/messages/message_pieces'
+} from '../../messages/message_pieces'
 import { ensureAdminPerms } from '../utils/checks'
 import { checkGuildInteraction } from '../utils/checks'
 
@@ -82,10 +82,10 @@ export const rankings_command_def = new CommandView({
   state_schema: {
     owner_id: new StringField(),
     page: new ChoiceField({
-      main: _,
+      'main ': _,
       'ranking settings': _,
       'creating new': _,
-      overview: _,
+      'overview ': _,
     }),
     component: new ChoiceField({
       'btn:rename': _,
@@ -129,7 +129,7 @@ export default (app: App) =>
           data: await rankingSettingsPage(app, ctx),
         }
       } else {
-        ctx.state.save.page('overview')
+        ctx.state.save.page('overview ')
         return {
           type: InteractionResponseType.ChannelMessageWithSource,
           data: await allGuildRankingsPage(app, ctx),
@@ -185,8 +185,7 @@ export async function allGuildRankingsPage(
   ctx: ChatInteractionContext<typeof rankings_command_def>,
 ): Promise<APIInteractionResponseCallbackData> {
   const interaction = checkGuildInteraction(ctx.interaction)
-  const guild = await getOrAddGuild(app, interaction.guild_id)
-  const guild_rankings = await guild.guildRankings()
+  const guild_rankings = await app.db.guild_rankings.get({ guild_id: interaction.guild_id })
 
   let embeds: APIEmbed[] = [
     {

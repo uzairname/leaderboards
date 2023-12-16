@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, bigint } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, bigint, uniqueIndex } from 'drizzle-orm/pg-core'
 
 
 export const Settings = pgTable('Settings', {
@@ -11,6 +11,7 @@ export const Users = pgTable('Users', {
   id: text('id').primaryKey(),
   name: text('name'),
   time_created: timestamp('time_created').defaultNow(),
+  linked_roles_ranking_id: integer('linked_roles_ranking_id')
 })
 
 export type AccessTokenData = Partial<{
@@ -22,11 +23,13 @@ export type AccessTokenData = Partial<{
 }>
 
 export const AccessTokens = pgTable('AccessTokens', {
-  id: text('id').primaryKey(),
+  id: serial('id').primaryKey(),
   user_id: text('user_id').notNull().references(() => Users.id, {onDelete: 'cascade'}),
   data: jsonb('data').$type<AccessTokenData>(),
   purpose: text('purpose'),
-})
+}, (table) => { return {
+  user_id_purpose_unique: uniqueIndex('access_token_user_id_purpose_unique').on(table.user_id, table.purpose),
+}})
 
 
 export const Guilds = pgTable('Guilds', {
@@ -52,10 +55,8 @@ export const Rankings = pgTable('Rankings', {
   players_per_team: integer('players_per_team'),
   num_teams: integer('num_teams'),
   elo_settings: jsonb('elo_settings').$type<EloSettings>(),
-  // ranks: jsonb('ranks'),
   // match_settings: jsonb('match_settings'),
 })
-
 
 export const GuildRankings = pgTable('GuildRankings', {
   guild_id: text('guild_id').notNull().references(() => Guilds.id, {onDelete: 'cascade'}),

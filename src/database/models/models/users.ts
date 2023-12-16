@@ -2,19 +2,30 @@ import { eq } from 'drizzle-orm'
 
 import { Users } from '../../schema'
 
-import { DbObject, DbObjectManager } from '../managers'
+import { DbObject, DbObjectManager } from '../../managers'
 import { UserInsert, UserSelect } from '../../types'
+import { DbClient } from '../../client'
 
-export class User extends DbObject<UserSelect> {}
+export class User extends DbObject<UserSelect> {
+  constructor(data: UserSelect, db: DbClient) {
+    super(data, db)
+    db.cache.users[data.id] = this
+  }
+}
 
 export class UsersManager extends DbObjectManager {
   async getOrCreate(data: UserInsert): Promise<User> {
-    let result = (await this.db.db.select().from(Users).where(eq(Users.id, data.id)))[0]
+    const cached_user = this.db.cache.users[data.id]
+    if (cached_user) {
+      return cached_user
+    }
+
+    const result = (await this.db.db.select().from(Users).where(eq(Users.id, data.id)))[0]
 
     if (result) {
       return new User(result, this.db)
     } else {
-      let new_data = (
+      const new_data = (
         await this.db.db
           .insert(Users)
           .values({ ...data })

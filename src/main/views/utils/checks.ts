@@ -35,7 +35,7 @@ export async function ensureAdminPerms(
 ): Promise<void> {
   const { has_perms, admin_role_id } = await determineAdminPerms(app, ctx, guild)
 
-  if (!(await hasAdminPerms(app, ctx, guild))) {
+  if (!has_perms) {
     throw new UserErrors.UserMissingPermissions(
       `You need${admin_role_id ? ` the <@&${admin_role_id}> role or` : ``} admin perms to do this`,
     )

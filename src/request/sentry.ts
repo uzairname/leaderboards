@@ -27,19 +27,19 @@ export class Sentry extends Toucan {
     })
 
     this.request_name = 'Request'
-    cache.set('request_num', (cache.get('request_num') as number | undefined) || 1)
+    cache.request_num = (typeof cache.request_num == 'number' ? cache.request_num : 0) + 1
     this.request = ctx.request
     console.log('d')
   }
 
   async handlerWrapper(handler: (request: Request) => Promise<Response>): Promise<Response> {
-    this.setTag('cold-start', `${cache.get('request_num') == 1}`)
+    this.setTag('cold-start', `${cache.request_num == 1}`)
     this.request_name = `${this.request.method} ${new URL(this.request.url).pathname}`
     this.addBreadcrumb({
       message: `Received request`,
       category: 'request',
       data: {
-        number: cache.get('request_num'),
+        number: cache.request_num,
       },
     })
 

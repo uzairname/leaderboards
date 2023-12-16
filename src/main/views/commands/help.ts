@@ -14,10 +14,10 @@ import {
   MessageFlags,
 } from 'discord-api-types/v10'
 
-import { App } from '../../../main/app/app'
+import { App } from '../../app/app'
 
-import { Messages } from '../../../main/messages/messages'
-import { Colors, dateTimestamp, inviteUrl } from '../../../main/messages/message_pieces'
+import { Messages } from '../../messages/messages'
+import { Colors, dateTimestamp, inviteUrl } from '../../messages/message_pieces'
 import {
   ChatInteractionContext,
   ChatInteractionResponse,
@@ -26,7 +26,7 @@ import {
   CommandView,
   _,
 } from '../../../discord-framework'
-import { AppError, AppErrors } from '../../../main/app/errors'
+import { AppError, AppErrors } from '../../app/errors'
 
 export const help_command_def = new CommandView({
   type: ApplicationCommandType.ChatInput,

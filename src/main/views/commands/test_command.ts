@@ -22,10 +22,10 @@ import {
   BooleanField,
   _,
 } from '../../../discord-framework'
-import { App } from '../../../main/app/app'
+import { App } from '../../app/app'
 
 import { nonNullable } from '../../../utils/utils'
-import { AppErrors, UserErrors } from '../../../main/app/errors'
+import { AppErrors, UserErrors } from '../../app/errors'
 import { ViewState } from '../../../discord-framework/interactions/view_state'
 import { rankings_command_def } from './rankings'
 import { sentry } from '../../../request/sentry'

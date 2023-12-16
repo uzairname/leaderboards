@@ -46,7 +46,7 @@ async function testMatches(app: App) {
   await resetDatabase(app.db)
   await addData(app.db)
 
-  const ranking = (await getRankingByName(app, '98623457887', 'ranking 1')).ranking
+  const ranking = (await getRankingInGuildByName(app, '98623457887', 'ranking 1')).ranking
 
   const player100 = nonNullable(await app.db.players.get('100', ranking.data.id), 'player 100')
   const player200 = nonNullable(await app.db.players.get('200', ranking.data.id), 'player 200')
@@ -96,8 +96,8 @@ async function testQueueTeams(app: App) {
   sentry.debug('adding data')
   await addData(app.db)
 
-  const ranking = (await getRankingByName(app, '98623457887', 'ranking 1')).ranking
-  const ranking2 = (await getRankingByName(app, '98623457887', 'ranking 2')).ranking
+  const ranking = (await getRankingInGuildByName(app, '98623457887', 'ranking 1')).ranking
+  const ranking2 = (await getRankingInGuildByName(app, '98623457887', 'ranking 2')).ranking
 
   const player100 = nonNullable(await app.db.players.get('100', ranking.data.id), 'player 100')
   const player200 = nonNullable(await app.db.players.get('200', ranking.data.id), 'player 200')
@@ -158,9 +158,8 @@ async function testQueueTeams(app: App) {
   )
 }
 
-async function getRankingByName(app: App, guild_id: string, name: string) {
-  const guild = await getOrAddGuild(app, guild_id)
-  const rankings = await guild?.guildRankings()
+async function getRankingInGuildByName(app: App, guild_id: string, name: string) {
+  const rankings = await app.db.guild_rankings.get({ guild_id: guild_id })
   const ranking = rankings.find((r) => r.ranking.data.name === name)
   assert(ranking !== undefined, `ranking ${name} should exist`)
   return ranking

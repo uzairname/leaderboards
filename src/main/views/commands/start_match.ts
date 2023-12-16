@@ -12,8 +12,8 @@ import {
 import { nonNullable } from '../../../utils/utils'
 import { ChoiceField, IntField, ListField, CommandView, _ } from '../../../discord-framework'
 
-import { App } from '../../../main/app/app'
-import { AppErrors } from '../../../main/app/errors'
+import { App } from '../../app/app'
+import { AppErrors } from '../../app/errors'
 
 const start_match_command = new CommandView({
   type: ApplicationCommandType.ChatInput,

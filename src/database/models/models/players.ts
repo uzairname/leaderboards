@@ -2,12 +2,20 @@ import { and, eq, sql } from 'drizzle-orm'
 
 import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
 
-import { DbObject, DbObjectManager } from '../managers'
+import { DbClient } from '../../client'
+import { DbObject, DbObjectManager } from '../../managers'
 import { PlayerSelect, PlayerUpdate, PlayerInsert } from '../../types'
 import { User, Ranking, Team } from '..'
 import { DbErrors } from '../../errors'
 
 export class Player extends DbObject<PlayerSelect> {
+  constructor(data: PlayerSelect, db: DbClient) {
+    super(data, db)
+    db.cache.players_by_id[data.id] = this
+    db.cache.players[data.ranking_id] ??= {}
+    db.cache.players[data.ranking_id][data.user_id] = this
+  }
+
   async update(data: PlayerUpdate): Promise<this> {
     const new_data = (
       await this.db.db
@@ -66,7 +74,7 @@ export class PlayersManager extends DbObjectManager {
     ranking: Ranking,
     data?: Omit<PlayerInsert, 'user_id' | 'ranking_id'>,
   ): Promise<Player> {
-    let new_data = (
+    const new_data = (
       await this.db.db
         .insert(Players)
         .values({ user_id: user.data.id, ranking_id: ranking.data.id, ...data })
@@ -76,7 +84,10 @@ export class PlayersManager extends DbObjectManager {
   }
 
   async get(user_id: string, ranking: number): Promise<Player | undefined> {
-    let data = (
+    const cached_player = this.db.cache.players[ranking]?.[user_id]
+    if (cached_player) return cached_player
+
+    const data = (
       await this.db.db
         .select()
         .from(Players)
@@ -87,7 +98,10 @@ export class PlayersManager extends DbObjectManager {
   }
 
   async getById(id: number): Promise<Player> {
-    let data = (await this.db.db.select().from(Players).where(eq(Players.id, id)))[0]
+    const cached_player = this.db.cache.players_by_id[id]
+    if (cached_player) return cached_player
+
+    const data = (await this.db.db.select().from(Players).where(eq(Players.id, id)))[0]
     if (!data) throw new DbErrors.NotFoundError(`Player ${id} doesn't exist`)
     return new Player(data, this.db)
   }

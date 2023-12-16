@@ -10,9 +10,9 @@ import { CommandView, ChoiceField, _ } from '../../../discord-framework'
 
 import { checkGuildInteraction } from '../utils/checks'
 import { ensureAdminPerms } from '../utils/checks'
-import { getOrAddGuild, syncGuildAdminRole } from '../../../main/modules/guilds'
-import { AppErrors, UserErrors } from '../../../main/app/errors'
-import { App } from '../../../main/app/app'
+import { getOrAddGuild, syncGuildAdminRole } from '../../modules/guilds'
+import { AppErrors, UserErrors } from '../../app/errors'
+import { App } from '../../app/app'
 
 const settings_command = new CommandView({
   type: ApplicationCommandType.ChatInput,

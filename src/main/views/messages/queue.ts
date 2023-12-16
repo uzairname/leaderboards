@@ -17,8 +17,8 @@ import {
   _,
 } from '../../../discord-framework'
 
-import { App } from '../../../main/app/app'
-import { AppErrors } from '../../../main/app/errors'
+import { App } from '../../app/app'
+import { AppErrors } from '../../app/errors'
 
 import { onJoinQueue, onLeaveQueue } from '../../modules/matches/queue'
 

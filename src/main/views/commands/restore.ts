@@ -6,10 +6,10 @@ import {
 
 import { CommandView } from '../../../discord-framework'
 
-import { App } from '../../../main/app/app'
+import { App } from '../../app/app'
 
 import { syncGuildRankingChannelsMessages } from '../../modules/rankings/ranking_channels'
-import { getOrAddGuild } from '../../../main/modules/guilds'
+import { getOrAddGuild } from '../../modules/guilds'
 
 import { ensureAdminPerms } from '../utils/checks'
 import { checkGuildInteraction } from '../utils/checks'
@@ -40,7 +40,7 @@ export default (app: App) =>
         const interaction = checkGuildInteraction(ctx.interaction)
         const guild = await getOrAddGuild(app, interaction.guild_id)
         await ensureAdminPerms(app, ctx, guild)
-        const guild_rankings = await guild.guildRankings()
+        const guild_rankings = await app.db.guild_rankings.get({ guild_id: guild.data.id })
 
         await Promise.race([
           new Promise(async () => {

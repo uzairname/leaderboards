@@ -36,16 +36,16 @@ import {
 import { assert, nonNullable, unflatten } from '../../../utils/utils'
 import { sentry } from '../../../request/sentry'
 
-import { App } from '../../../main/app/app'
-import { getOrAddGuild } from '../../../main/modules/guilds'
+import { App } from '../../app/app'
+import { getOrAddGuild } from '../../modules/guilds'
 
-import { AppErrors, UserError } from '../../../main/app/errors'
+import { AppErrors, UserError } from '../../app/errors'
 import { checkGuildInteraction, hasAdminPerms } from '../utils/checks'
 import { rankingsAutocomplete } from '../utils/common'
 import { getRegisterPlayer } from '../../modules/players'
 import { rankingSettingsPage, rankings_command_def } from './rankings'
 import { recordAndScoreNewMatch } from '../../modules/matches/score_matches'
-import { Colors, commandMention, relativeTimestamp } from '../../../main/messages/message_pieces'
+import { Colors, commandMention, relativeTimestamp } from '../../messages/message_pieces'
 import { ViewState } from '../../../discord-framework/interactions/view_state'
 
 const options = {
@@ -193,8 +193,7 @@ function initCommand(
       if (selected_ranking_id) {
         var ranking = await app.db.rankings.get(parseInt(selected_ranking_id))
       } else {
-        const guild = await getOrAddGuild(app, interaction.guild_id)
-        const rankings = await guild.guildRankings()
+        const rankings = await app.db.guild_rankings.get({ guild_id: interaction.guild_id })
         if (rankings.length == 1) {
           ranking = rankings[0].ranking
         } else if (rankings.length == 0) {
@@ -439,7 +438,7 @@ function onConfirmOutcomeBtn(
         await ctx.followup({
           content: `Please wait...`,
         })
-        return await ctx.followup(await recordMatch(app, ctx))
+        return await ctx.followup(await recordMatchFromSelectedTeams(app, ctx))
       } else {
         // prompt all users involved to confirm the match
         return await onPlayerConfirmOutcome(app, ctx)
@@ -605,7 +604,7 @@ async function onPlayerConfirmOrCancelBtn(
     // all users have confirmed
     return {
       type: InteractionResponseType.UpdateMessage,
-      data: await recordMatch(app, ctx),
+      data: await recordMatchFromSelectedTeams(app, ctx),
     }
   }
 
@@ -615,7 +614,7 @@ async function onPlayerConfirmOrCancelBtn(
   }
 }
 
-async function recordMatch(
+async function recordMatchFromSelectedTeams(
   app: App,
   ctx: Context<typeof record_match_command_def>,
 ): Promise<APIInteractionResponseCallbackData> {

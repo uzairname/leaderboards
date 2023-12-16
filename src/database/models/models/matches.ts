@@ -4,12 +4,18 @@ import { nonNullable } from '../../../utils/utils'
 import { MatchPlayers, Matches, Players } from '../../schema'
 import { DbErrors } from '../../errors'
 
-import { DbObject, DbObjectManager } from '../managers'
+import { DbClient } from '../../client'
+import { DbObject, DbObjectManager } from '../../managers'
 import { Player } from '..'
 import { MatchInsert, MatchPlayerSelect, MatchSelect, MatchUpdate } from '../../types'
 import { unflatten } from '../../../utils/utils'
 
 export class Match extends DbObject<MatchSelect> {
+  constructor(data: MatchSelect, db: DbClient) {
+    super(data, db)
+    db.cache.matches[data.id] = this
+  }
+
   async players(): Promise<{ player: Player; match_player: MatchPlayerSelect }[][]> {
     const players = await this.db.db
       .select({ player: Players, match_player: MatchPlayers })
@@ -37,7 +43,7 @@ export class Match extends DbObject<MatchSelect> {
       MatchUpdate,
       'team_players' | 'number'
     >,
-  ) {
+  ): Promise<this> {
     await this.db.db
       .update(Matches)
       .set({
@@ -72,6 +78,8 @@ export class Match extends DbObject<MatchSelect> {
           )
       }),
     )
+
+    return this
   }
 }
 
@@ -81,7 +89,7 @@ export class MatchesManager extends DbObjectManager {
   ): Promise<Match> {
     this.validateNewMatch(data)
 
-    let new_match_data = (
+    const new_match_data = (
       await this.db.db
         .insert(Matches)
         .values({
@@ -91,7 +99,9 @@ export class MatchesManager extends DbObjectManager {
         .returning()
     )[0]
 
-    let match_players = data.team_players
+    const new_match = new Match(new_match_data, this.db)
+
+    const match_players_data = data.team_players
       .map((team, team_num) => {
         return team.map((player) => {
           return {
@@ -105,20 +115,8 @@ export class MatchesManager extends DbObjectManager {
       })
       .flat()
 
-    const new_match_players = await this.db.db
-      .insert(MatchPlayers)
-      .values(match_players)
-      .returning()
-
-    // TODO: cache this
-    const new_match_team_players_ordered = unflatten(
-      new_match_players.sort(
-        (a, b) => nonNullable(a.team_num, 'team_num') - nonNullable(b.team_num, 'team_num'),
-      ),
-      data.team_players[0].length,
-    )
-
-    const new_match = new Match(new_match_data, this.db)
+    // insert new MatchPlayers
+    await this.db.db.insert(MatchPlayers).values(match_players_data).returning()
 
     return new_match
   }

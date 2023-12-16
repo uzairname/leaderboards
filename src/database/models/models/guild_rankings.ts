@@ -4,11 +4,18 @@ import { GuildRankings, Guilds, Rankings } from '../../schema'
 
 import { DbErrors } from '../../errors'
 
-import { DbObject, DbObjectManager } from '../managers'
+import { DbClient } from '../../client'
+import { DbObject, DbObjectManager } from '../../managers'
 import { GuildRankingSelect, GuildRankingUpdate, GuildRankingInsert } from '../../types'
 import { Guild, Ranking } from '..'
 
 export class GuildRanking extends DbObject<GuildRankingSelect> {
+  constructor(data: GuildRankingSelect, db: DbClient) {
+    super(data, db)
+    db.cache.guild_rankings[data.guild_id] ??= {}
+    db.cache.guild_rankings[data.guild_id][data.ranking_id] = this
+  }
+
   async update(data: GuildRankingUpdate) {
     this.data = (
       await this.db.db
@@ -44,7 +51,7 @@ export class GuildRankingsManager extends DbObjectManager {
     ranking: Ranking,
     data: Omit<GuildRankingInsert, 'guild_id' | 'ranking_id'>,
   ): Promise<GuildRanking> {
-    let new_data = (
+    const new_data = (
       await this.db.db
         .insert(GuildRankings)
         .values({
@@ -70,7 +77,9 @@ export class GuildRankingsManager extends DbObjectManager {
       : never
   > {
     if (by.guild_id && by.ranking_id) {
-      let data = await this.db.db
+      const cached_guild_ranking = this.db.cache.guild_rankings[by.guild_id]?.[by.ranking_id]
+      if (cached_guild_ranking) return cached_guild_ranking as any
+      const data = await this.db.db
         .select()
         .from(GuildRankings)
         .where(
@@ -82,7 +91,7 @@ export class GuildRankingsManager extends DbObjectManager {
         )
       return new GuildRanking(data[0], this.db) as any
     } else if (by.guild_id) {
-      let data = await this.db.db
+      const data = await this.db.db
         .select()
         .from(GuildRankings)
         .innerJoin(
@@ -94,7 +103,7 @@ export class GuildRankingsManager extends DbObjectManager {
         ranking: new Ranking(d.Rankings, this.db),
       })) as any
     } else if (by.ranking_id) {
-      let data = await this.db.db
+      const data = await this.db.db
         .select()
         .from(GuildRankings)
         .innerJoin(

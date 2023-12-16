@@ -7,6 +7,7 @@ import { updateUserRoleConnectionData } from './linked_roles'
 import { sentry } from '../../request/sentry'
 import { AppErrors, UserErrors } from '../app/errors'
 import { App } from '../app/app'
+import { AccessTokens } from '../../database/schema'
 
 export function oauthRedirect(app: App, scopes: OAuth2Scopes[]): Response {
   const state = crypto.randomUUID()
@@ -51,12 +52,13 @@ export async function saveUserAccessToken(app: App, token: RESTPostOAuth2AccessT
 
   if (me.user) {
     // save token
+    await app.db.db.insert(AccessTokens).values({
+      user_id: me.user.id,
+      data: token,
+      purpose: 'user',
+    })
   } else {
     throw new AppErrors.MissingIdentifyScope()
-  }
-
-  if (me.scopes.includes(OAuth2Scopes.RoleConnectionsWrite)) {
-    sentry.waitUntil(updateUserRoleConnectionData(app, token.access_token, 10, 'test'))
   }
 }
 

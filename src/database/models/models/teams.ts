@@ -4,11 +4,17 @@ import { nonNullable } from '../../../utils/utils'
 
 import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
 
-import { DbObject, DbObjectManager } from '../managers'
+import { DbClient } from '../../client'
+import { DbObject, DbObjectManager } from '../../managers'
 import { TeamInsert, TeamSelect, TeamUpdate } from '../../types'
 import { Player, Ranking } from '..'
 
 export class Team extends DbObject<TeamSelect> {
+  constructor(data: TeamSelect, db: DbClient) {
+    super(data, db)
+    db.cache.teams[data.id] = this
+  }
+
   async players(): Promise<Player[]> {
     const data = await this.db.db
       .select({ player: Players })
@@ -78,7 +84,7 @@ export class TeamsManager extends DbObjectManager {
   ): Promise<Team> {
     data.rating = calculateTeamRating(players, ranking)
 
-    let new_data = (
+    const new_data = (
       await this.db.db
         .insert(Teams)
         .values({ ranking_id: ranking.data.id, ...data })
@@ -95,7 +101,9 @@ export class TeamsManager extends DbObjectManager {
   }
 
   async get(id: number): Promise<Team | undefined> {
-    let data = (await this.db.db.select().from(Teams).where(eq(Teams.id, id)))[0]
+    const cached_team = this.db.cache.teams[id]
+    if (cached_team) return cached_team
+    const data = (await this.db.db.select().from(Teams).where(eq(Teams.id, id)))[0]
     if (data) {
       return new Team(data, this.db)
     }
@@ -106,7 +114,7 @@ function calculateTeamRating(players: Player[], ranking: Ranking): number {
   const initial_rating = nonNullable(ranking.data.elo_settings?.initial_rating, 'initial_rating')
   return players.length > 0
     ? players.reduce((acc, player) => {
-        let rating = player.data.rating ?? initial_rating
+        const rating = player.data.rating ?? initial_rating
         return acc + rating
       }, 0) / players.length
     : initial_rating
