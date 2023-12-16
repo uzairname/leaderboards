@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { Guilds, GuildRankings, Rankings } from '../../schema'
 
 import { DbObject, DbObjectManager } from '../managers'
-import { GuildSelect, GuildUpdate, GuildInsert } from '../types'
+import { GuildSelect, GuildUpdate, GuildInsert } from '../../types'
 import { GuildRanking, Ranking } from '..'
 
 export class Guild extends DbObject<GuildSelect> {

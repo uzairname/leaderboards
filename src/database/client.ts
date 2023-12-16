@@ -4,7 +4,7 @@ import * as schema from './schema'
 import { Sentry } from '../request/sentry'
 
 import { connect } from './connect'
-import DbCache from './utils/cache'
+import DbCache from './cache'
 import {
   SettingsManager,
   UsersManager,

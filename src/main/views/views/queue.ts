@@ -13,6 +13,8 @@ import {
   MessageData,
   MessageView,
   IntField,
+  $type,
+  _,
 } from '../../../discord-framework'
 
 import { App } from '../../../main/app/app'
@@ -25,10 +27,10 @@ import { checkGuildInteraction } from '../utils/checks'
 const queue_message_def = new MessageView({
   custom_id_prefix: 'q',
   state_schema: {
-    component: new ChoiceField({ join: null, leave: null }),
+    component: new ChoiceField({ join: _, leave: _ }),
     ranking_id: new IntField(),
   },
-  param: (_: { ranking_id: number }) => void 0,
+  param: $type<{ ranking_id: number }>,
 })
 
 export default (app: App) =>
@@ -52,7 +54,6 @@ export default (app: App) =>
           },
           async (ctx) => {
             await onJoinQueue(app, ranking_id, interaction.member.user)
-            return ctx.ignore()
           },
         )
       } else if (ctx.state.is.component('leave')) {
@@ -66,7 +67,6 @@ export default (app: App) =>
           },
           async (ctx) => {
             await onLeaveQueue(app, ranking_id, interaction.member.user)
-            return ctx.ignore()
           },
         )
       } else {

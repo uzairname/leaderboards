@@ -1,5 +1,5 @@
 import { Match, Player, Ranking } from '../../../database/models'
-import { MatchPlayerSelect } from '../../../database/models/types'
+import { MatchPlayerSelect } from '../../../database/types'
 import { nonNullable } from '../../../utils/utils'
 import { App } from '../../app/app'
 import { getNewRatings } from './scoring'

@@ -6,7 +6,7 @@ import {
   MessageFlags,
 } from 'discord-api-types/v10'
 
-import { CommandView, ChoiceField } from '../../../discord-framework'
+import { CommandView, ChoiceField, _ } from '../../../discord-framework'
 
 import { checkGuildInteraction } from '../utils/checks'
 import { ensureAdminPerms } from '../utils/checks'
@@ -26,7 +26,7 @@ const settings_command = new CommandView({
 
   state_schema: {
     page: new ChoiceField({
-      'admin role': null,
+      'admin role': _,
     }),
   },
 })

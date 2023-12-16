@@ -45,11 +45,11 @@ export class Sentry extends Toucan {
 
     return handler(this.request)
       .then((res) => {
-        this.logResult(res, false)
+        this.logResult(false)
         return res
       })
       .catch((e) => {
-        this.logException(e)
+        this.captureException(e)
         return new Response('Internal Server Error', { status: 500 })
       })
   }
@@ -59,10 +59,10 @@ export class Sentry extends Toucan {
       new Promise<void>((resolve) => {
         callback
           .then(() => {
-            this.logResult(undefined, true)
+            this.logResult(true)
           })
           .catch((e) => {
-            this.logException(e)
+            this.captureException(e)
           })
           .finally(() => {
             resolve()
@@ -79,10 +79,6 @@ export class Sentry extends Toucan {
     })
   }
 
-  async logException(e: unknown) {
-    this.captureException(e)
-  }
-
   catchAfterResponding(e: unknown) {
     this.addBreadcrumb({
       message: `Caught exception`,
@@ -96,7 +92,7 @@ export class Sentry extends Toucan {
     this.caught_exception = e
   }
 
-  logResult(res?: Response, followup: boolean = false) {
+  logResult(followup: boolean = false) {
     if (this.caught_exception) {
       this.setExtra('time taken', `${Date.now() - this.time_received} ms`)
       this.captureException(this.caught_exception)

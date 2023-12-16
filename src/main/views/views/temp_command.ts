@@ -13,7 +13,15 @@ import {
   MessageFlags,
 } from 'discord-api-types/v10'
 
-import { ChoiceField, ListField, IntField, CommandView, InteractionContext } from '../../../discord-framework'
+import {
+  ChoiceField,
+  ListField,
+  IntField,
+  CommandView,
+  ChatInteractionContext,
+  Context,
+  _,
+} from '../../../discord-framework'
 import { nonNullable } from '../../../utils/utils'
 import { sentry } from '../../../request/sentry'
 
@@ -29,8 +37,8 @@ const temp_command = new CommandView({
   custom_id_prefix: 'tmp',
   state_schema: {
     clicked_component: new ChoiceField({
-      'select team': null,
-      'confirm match': null,
+      'select team': _,
+      'confirm match': _,
     }),
     selected_team: new IntField(),
     players: new ListField(),
@@ -105,7 +113,7 @@ export default (app: App) =>
 
 async function selectTeamComponents(
   app: App,
-  ctx: InteractionContext<typeof temp_command>,
+  ctx: Context<typeof temp_command>,
 ): Promise<APIActionRowComponent<APIMessageActionRowComponent>[]> {
   const components: APIActionRowComponent<APIMessageActionRowComponent>[] = [
     {

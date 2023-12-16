@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { AccessTokens } from '../../schema'
 
 import { DbObject, DbObjectManager } from '../managers'
-import { AccessTokenSelect, AccessTokenUpdate } from '../types'
+import { AccessTokenSelect, AccessTokenUpdate } from '../../types'
 import { User } from '..'
 
 export class AccessToken extends DbObject<AccessTokenSelect> {

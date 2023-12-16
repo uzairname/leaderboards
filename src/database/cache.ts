@@ -1,7 +1,7 @@
-import { SettingsManager, User, Guild, Ranking, GuildRanking, Player, Match } from '../models'
+import { User, Guild, Ranking, GuildRanking, Player, Match, Setting } from './models'
 
 export default class DbCache {
-  settings: { [id: number]: SettingsManager } = {}
+  settings: Setting | undefined
   users: { [user_id: string]: User } = {}
   guilds: { [guild_id: string]: Guild } = {}
   rankings: { [ranking_id: number]: Ranking } = {}

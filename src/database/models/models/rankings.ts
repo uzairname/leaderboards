@@ -4,10 +4,10 @@ import { assert } from '../../../utils/utils'
 
 import { Rankings, Players, Matches } from '../../schema'
 
-import { DbErrors } from '../../utils/errors'
+import { DbErrors } from '../../errors'
 
 import { DbObject, DbObjectManager } from '../managers'
-import { RankingSelect, RankingUpdate, RankingInsert } from '../types'
+import { RankingSelect, RankingUpdate, RankingInsert } from '../../types'
 import { GuildRanking, Match, Player } from '..'
 import { DbClient } from '../../client'
 

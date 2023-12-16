@@ -20,18 +20,35 @@ import {
   StringData,
   TimestampField,
   BooleanField,
+  _,
 } from '../../../discord-framework'
 import { App } from '../../../main/app/app'
 
-import help from './help'
 import { nonNullable } from '../../../utils/utils'
 import { AppErrors, UserErrors } from '../../../main/app/errors'
-import {
-  ViewState,
-  getMessageViewMessageData,
-} from '../../../discord-framework/interactions/view_helpers'
+import { ViewState } from '../../../discord-framework/interactions/view_state'
 import { rankings_command_def } from './rankings'
 import { sentry } from '../../../request/sentry'
+
+// const user_command = new CommandView({
+//   type: ApplicationCommandType.Message,
+//   custom_id_prefix: 'user',
+
+//   command: {
+//     name: 'user',
+//   },
+
+//   state_schema: {}
+// }).onCommand(async (ctx) => {
+
+//   ctx.defer({
+//     type: InteractionResponseType.DeferredChannelMessageWithSource
+//   }, async (ctx) => {
+//     ctx.interaction.data.resolved.messages
+//   })
+
+//   throw new Error('not implemented')
+// })
 
 const test_command = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -56,7 +73,7 @@ const test_command = new CommandView({
   },
 
   state_schema: {
-    clicked_btn: new ChoiceField({ wait: null, increment: null, one: null, two: null }),
+    clicked_btn: new ChoiceField({ wait: _, increment: _, one: _, two: _ }),
     counter: new IntField(),
     original_user: new StringField(),
     value: new ListField(),
@@ -164,12 +181,13 @@ function testMessageData(
             type: ComponentType.Button,
             label: 'rankings',
             custom_id: ViewState.create(rankings_command_def)
-              .cId({
+              .setData({
                 component: 'btn:rename',
                 owner_id: ctx.state.data.original_user,
                 page: 'ranking settings',
                 selected_ranking_id: 5,
-              }),
+              })
+              .encode(),
             style: ButtonStyle.Primary,
           },
           {

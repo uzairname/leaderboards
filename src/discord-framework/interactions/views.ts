@@ -1,152 +1,31 @@
 import * as D from 'discord-api-types/v10'
 
-import type { StringData, StringDataSchema } from '../../utils/string_data'
+import type { StringDataSchema } from '../../utils/string_data'
 
-import type { MessageData } from '../rest/objects'
+import { MessageData } from '../rest/objects'
 
-import type {
-  ChatInteraction,
-  CommandInteractionResponse,
-  ComponentInteraction,
-  ChatInteractionResponse,
-  AnyCommandView,
-  AnyView,
-} from './types'
-import type { DiscordRESTClient } from '../rest/client'
-import type { APIInteractionResponseChannelMessageWithSource } from 'discord-api-types/v10'
-import { ViewState, getMessageViewMessageData } from './view_helpers'
 import {
-  isChatInputApplicationCommandInteraction,
-  isContextMenuApplicationCommandInteraction,
-} from 'discord-api-types/utils/v10'
+  type ChatInteraction,
+  type CommandInteractionResponse,
+  type ComponentInteraction,
+  type ChatInteractionResponse,
+  isCommandView,
+} from './types'
+import { ViewState } from './view_state'
 import { ViewErrors } from './utils/errors'
-
-declare type CommandInteraction<CommandType> =
-  CommandType extends D.ApplicationCommandType.ChatInput
-    ? D.APIChatInputApplicationCommandInteraction
-    : CommandType extends D.ApplicationCommandType.User
-    ? D.APIUserApplicationCommandInteraction
-    : CommandType extends D.ApplicationCommandType.Message
-    ? D.APIMessageApplicationCommandInteraction
-    : never
-
-// CALLBACK CONTEXTS
-
-// Autocomplete
-export interface AutocompleteContext {
-  interaction: D.APIApplicationCommandAutocompleteInteraction
-}
-
-export interface BaseContext<View extends BaseView<any>> {
-  state: ViewState<View['options']['state_schema']>
-}
-
-// CommandContext, ComponentContext, or OffloadContext
-export interface InteractionContext<View extends BaseView<any>> extends BaseContext<View> {
-  interaction: ChatInteraction
-  // _ctx: {
-  //   bot: DiscordRESTClient
-  //   onError: (e: unknown) => APIInteractionResponseChannelMessageWithSource
-  // }
-}
-
-// Command
-export interface CommandContext<View extends AnyCommandView> extends InteractionContext<View> {
-  interaction: CommandInteraction<View['options']['type']>
-  defer: (
-    initial_response: CommandInteractionResponse,
-    callback: ViewDeferCallback<View>,
-  ) => CommandInteractionResponse
-}
-
-// Component
-export interface ComponentContext<View extends BaseView<any>> extends InteractionContext<View> {
-  interaction: ComponentInteraction
-  defer: (
-    initial_response: ChatInteractionResponse,
-    callback: ViewDeferCallback<View>,
-  ) => ChatInteractionResponse
-}
-
-export type NewInteractionContext<View extends AnyView> =
-  | CommandContext<CommandView<View['options']['state_schema'], any>>
-  | ComponentContext<View>
-
-// Defer
-export interface DeferContext<Schema extends StringDataSchema>
-  extends InteractionContext<BaseView<Schema>> {
-  followup: (data: D.APIInteractionResponseCallbackData) => Promise<DeferResponseConfirmation>
-  editOriginal: (data: D.APIInteractionResponseCallbackData) => Promise<DeferResponseConfirmation>
-  // delete: () => Promise<DeferResponseConfirmation>
-  ignore: () => DeferResponseConfirmation
-}
-
-// Message
-export interface MessageCreateContext<View extends MessageView<any, any>>
-  extends BaseContext<View> {}
-
-// CALLBACKS
-
-// Autocomplete
-export type ViewAutocompleteCallback<Type extends D.ApplicationCommandType> = (
-  ctx: AutocompleteContext,
-) => Promise<
-  Type extends D.ApplicationCommandType.ChatInput
-    ? D.APIApplicationCommandAutocompleteResponse
-    : never
->
-
-// Command
-
-export type ViewCommandCallback<View extends AnyCommandView> = (
-  ctx: CommandContext<View>,
-) => Promise<CommandInteractionResponse>
-
-// Component
-export type ViewComponentCallback<View extends BaseView<any>> = (
-  ctx: ComponentContext<View>,
-) => Promise<ChatInteractionResponse>
-
-// Defer
-
-export class DeferResponseConfirmation {
-  // signifies that a deferred response has been followed up with/edited
-  private a = null
-}
-
-export type ViewDeferCallback<View extends BaseView<any>> = (
-  ctx: DeferContext<View['options']['state_schema']>,
-) => Promise<DeferResponseConfirmation>
-
-// Message Create
-export type ViewCreateMessageCallback<View extends MessageView<any, any>, Params> = (
-  ctx: MessageCreateContext<View> & Params,
-  // params: Params,
-) => Promise<MessageData>
-
-type ApplicationCommandDefinitionArg<Type extends D.ApplicationCommandType> = Omit<
-  Type extends D.ApplicationCommandType.ChatInput
-    ? D.RESTPostAPIChatInputApplicationCommandsJSONBody
-    : Type extends D.ApplicationCommandType.User | D.ApplicationCommandType.Message
-    ? D.RESTPostAPIContextMenuApplicationCommandsJSONBody
-    : never,
-  'type'
->
-
-type CommandViewOptions<Schema extends StringDataSchema, Type extends D.ApplicationCommandType> = {
-  type: Type
-  command: ApplicationCommandDefinitionArg<Type>
-  state_schema: Schema
-  guild_id?: string
-  custom_id_prefix?: string
-  experimental?: boolean
-}
+import { sentry } from '../../request/sentry'
+import { DiscordRESTClient } from '../rest/client'
+import {
+  ApplicationCommandDefinitionArg,
+  ComponentCallback,
+  DeferCallback,
+  CommandCallback,
+  AppCommandInteraction,
+  ViewAutocompleteCallback,
+  SendMessageCallback,
+} from './types'
 
 export abstract class BaseView<Schema extends StringDataSchema> {
-  public _componentCallback: ViewComponentCallback<BaseView<Schema>> = async () => {
-    throw new Error('This view has no component callback')
-  }
-
   constructor(
     public options: {
       state_schema: Schema
@@ -160,9 +39,68 @@ export abstract class BaseView<Schema extends StringDataSchema> {
     }
   }
 
-  public onComponent(callback: ViewComponentCallback<BaseView<Schema>>) {
-    this._componentCallback = callback
+  public onComponent(callback: ComponentCallback<BaseView<Schema>>) {
+    this.componentCallback = callback
     return this
+  }
+
+  private componentCallback: ComponentCallback<BaseView<Schema>> = async () => {
+    throw new Error('This view has no component callback')
+  }
+
+  public async respondToComponentInteraction(
+    interaction: ComponentInteraction,
+    state: ViewState<Schema>,
+    bot: DiscordRESTClient,
+    onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource,
+  ): Promise<ChatInteractionResponse> {
+    sentry.request_name = `${
+      isCommandView(this) ? this.options.command.name : this.options.custom_id_prefix
+    } Component`
+
+    return await this.componentCallback({
+      interaction,
+      defer: (initial_response, callback) => {
+        sentry.waitUntil(
+          this.deferResponse({
+            callback,
+            interaction,
+            state,
+            bot,
+            onError,
+          }),
+        )
+        return initial_response
+      },
+      state,
+    })
+  }
+
+  protected async deferResponse(args: {
+    callback: DeferCallback<any, any>
+    interaction: ChatInteraction
+    state: ViewState<StringDataSchema>
+    bot: DiscordRESTClient
+    onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource
+  }): Promise<void> {
+    sentry.debug(`executing offload callback for ${this.options.custom_id_prefix}`)
+    try {
+      await args.callback({
+        interaction: args.interaction,
+        followup: async (response_data: D.APIInteractionResponseCallbackData) => {
+          await args.bot.followupInteractionResponse(args.interaction.token, response_data)
+        },
+        editOriginal: async (data: D.RESTPatchAPIWebhookWithTokenMessageJSONBody) => {
+          await args.bot.editOriginalInteractionResponse(args.interaction.token, data)
+        },
+        state: args.state,
+      })
+    } catch (e) {
+      let error_response = args.onError(e).data
+      if (error_response) {
+        await args.bot.followupInteractionResponse(args.interaction.token, error_response)
+      }
+    }
   }
 }
 
@@ -170,58 +108,75 @@ export class CommandView<
   Schema extends StringDataSchema,
   Type extends D.ApplicationCommandType,
 > extends BaseView<Schema> {
-  public _commandCallback: ViewCommandCallback<CommandView<Schema, Type>> = async () => {
+  constructor(
+    public options: {
+      type: Type
+      command: ApplicationCommandDefinitionArg<Type>
+      state_schema: Schema
+      guild_id?: string
+      custom_id_prefix?: string
+      experimental?: boolean
+    },
+  ) {
+    super(options)
+  }
+  public onCommand(callback: CommandCallback<CommandView<Schema, Type>>) {
+    this.commandCallback = callback
+    return this
+  }
+
+  private commandCallback: CommandCallback<CommandView<Schema, Type>> = () => {
     throw new Error('This view has no command callback')
   }
 
-  public _autocompleteCallback: ViewAutocompleteCallback<Type> = (async () => {
-    throw new Error('This view has no autocomplete callback')
-  }) as unknown as ViewAutocompleteCallback<Type>
+  public async receiveCommand(
+    interaction: AppCommandInteraction<Type>,
+    bot: DiscordRESTClient,
+    onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource,
+  ): Promise<CommandInteractionResponse> {
+    sentry.request_name = `${this.options.command.name} Command`
 
-  constructor(public options: CommandViewOptions<Schema, Type>) {
-    super(options)
-  }
+    const state = ViewState.create(this)
 
-  public onCommand(callback: ViewCommandCallback<CommandView<Schema, Type>>) {
-    this._commandCallback = callback
-    return this
+    var response = await this.commandCallback({
+      interaction,
+      state,
+      defer: (response, callback) => {
+        sentry.waitUntil(
+          this.deferResponse({
+            callback,
+            interaction,
+            state,
+            bot,
+            onError,
+          }),
+        )
+        return response
+      },
+    })
+
+    return response
   }
 
   public onAutocomplete(callback: ViewAutocompleteCallback<Type>) {
-    this._autocompleteCallback = callback
+    this.autocompleteCallback = callback
     return this
   }
 
-  validateInteraction(
-    interaction: D.APIApplicationCommandInteraction,
-  ): asserts interaction is CommandInteraction<Type> {
-    if (isChatInputApplicationCommandInteraction(interaction)) {
-      if (this.options.type !== D.ApplicationCommandType.ChatInput) {
-        throw new Error(
-          `Expected a chat input command interaction, but got a ${interaction.type} command interaction`,
-        )
-      }
-    } else if (isContextMenuApplicationCommandInteraction(interaction)) {
-      if (
-        this.options.type !== D.ApplicationCommandType.User &&
-        this.options.type !== D.ApplicationCommandType.Message
-      ) {
-        throw new Error(
-          `Expected a user or message command interaction, but got a ${interaction.type} command interaction`,
-        )
-      }
-    }
+  private autocompleteCallback: ViewAutocompleteCallback<Type> = () => {
+    throw new Error('This view has no autocomplete callback')
+  }
+
+  public async receiveAutocompleteInteraction(
+    interaction: D.APIApplicationCommandAutocompleteInteraction,
+  ): Promise<D.APIApplicationCommandAutocompleteResponse> {
+    sentry.request_name = `${interaction.data.name} Autocomplete`
+    return await this.autocompleteCallback({ interaction })
   }
 }
 
-interface MessageViewOptions<Schema extends StringDataSchema, Param> {
-  custom_id_prefix?: string
-  state_schema: Schema
-  param?: (_: Param) => void
-}
-
-export class MessageView<Schema extends StringDataSchema, Params extends object> extends BaseView<Schema> {
-  public _initCallback: ViewCreateMessageCallback<MessageView<Schema, Params>, Params> = async () => {
+export class MessageView<Schema extends StringDataSchema, Params> extends BaseView<Schema> {
+  private sendCallback: SendMessageCallback<MessageView<Schema, Params>, Params> = async () => {
     throw new Error('This view has no send callback')
   }
 
@@ -232,12 +187,21 @@ export class MessageView<Schema extends StringDataSchema, Params extends object>
    * state_schema: Schema,
    * args: (arg: Param) => void
    */
-  constructor(public readonly options: MessageViewOptions<Schema, Params>) {
+  constructor(
+    public readonly options: {
+      custom_id_prefix?: string
+      state_schema: Schema
+      param?: () => Params
+    },
+  ) {
     super(options)
   }
 
   public async send(params: Params): Promise<MessageData> {
-    return await getMessageViewMessageData(this, params)
+    return await this.sendCallback({
+      state: ViewState.create(this),
+      ...params,
+    })
   }
 
   /**
@@ -245,8 +209,8 @@ export class MessageView<Schema extends StringDataSchema, Params extends object>
    * @param callback
    * @returns
    */
-  public onInit(callback: ViewCreateMessageCallback<MessageView<Schema, Params>, Params>) {
-    this._initCallback = callback
+  public onInit(callback: SendMessageCallback<MessageView<Schema, Params>, Params>) {
+    this.sendCallback = callback
     return this
   }
 }

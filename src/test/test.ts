@@ -31,6 +31,15 @@ export async function runTests(app: App): Promise<Response> {
 async function testDatabase(app: App) {
   await testMatches(app)
   // await testQueueTeams(app)
+
+  await Promise.all([
+    app.db.db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT 1`)
+    }),
+    app.db.db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT 1`)
+    }),
+  ])
 }
 
 async function testMatches(app: App) {

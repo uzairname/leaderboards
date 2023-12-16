@@ -12,7 +12,7 @@ import { Colors } from '../../messages/message_pieces'
 import { RateLimitError } from '@discordjs/rest'
 import { DiscordErrors } from '../../../discord-framework'
 import { AppError, UserError } from '../../app/errors'
-import { DatabaseError } from '../../../database/utils/errors'
+import { DatabaseError } from '../../../database/errors'
 import { ViewErrors } from '../../../discord-framework/interactions/utils/errors'
 
 export const onViewError = (app: App) =>

@@ -10,7 +10,7 @@ import {
 } from 'discord-api-types/v10'
 
 import { nonNullable } from '../../../utils/utils'
-import { ChoiceField, IntField, ListField, CommandView } from '../../../discord-framework'
+import { ChoiceField, IntField, ListField, CommandView, _ } from '../../../discord-framework'
 
 import { App } from '../../../main/app/app'
 import { AppErrors } from '../../../main/app/errors'
@@ -24,8 +24,8 @@ const start_match_command = new CommandView({
   custom_id_prefix: 'sm',
   state_schema: {
     component: new ChoiceField({
-      'confirm players': null,
-      'select team': null,
+      'confirm players': _,
+      'select team': _,
     }),
     selected_team: new IntField(),
     players: new ListField(),

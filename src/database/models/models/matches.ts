@@ -2,11 +2,11 @@ import { and, eq } from 'drizzle-orm'
 import { nonNullable } from '../../../utils/utils'
 
 import { MatchPlayers, Matches, Players } from '../../schema'
-import { DbErrors } from '../../utils/errors'
+import { DbErrors } from '../../errors'
 
 import { DbObject, DbObjectManager } from '../managers'
 import { Player } from '..'
-import { MatchInsert, MatchPlayerSelect, MatchSelect, MatchUpdate } from '../types'
+import { MatchInsert, MatchPlayerSelect, MatchSelect, MatchUpdate } from '../../types'
 import { unflatten } from '../../../utils/utils'
 
 export class Match extends DbObject<MatchSelect> {

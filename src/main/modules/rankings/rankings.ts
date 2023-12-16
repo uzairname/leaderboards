@@ -2,7 +2,7 @@ import { eq, and } from 'drizzle-orm'
 
 import { GuildRankings, Rankings } from '../../../database/schema'
 import { Guild, GuildRanking, Ranking } from '../../../database/models'
-import { RankingInsert, RankingUpdate } from '../../../database/models/types'
+import { RankingInsert, RankingUpdate } from '../../../database/types'
 import {
   default_elo_settings,
   default_players_per_team,

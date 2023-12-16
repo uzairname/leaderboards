@@ -48,12 +48,13 @@ export default (app: App) =>
               await Promise.all([syncGuildRankingChannelsMessages(app, item.guild_ranking)])
             }
           }),
-          new Promise((resolve) =>
+          new Promise<void>((resolve) =>
             setTimeout(async () => {
               await ctx.editOriginal({
                 content: `Timed out. Please try one at a time.`,
                 flags: MessageFlags.Ephemeral,
               })
+              resolve()
             }, 8000),
           ),
         ])

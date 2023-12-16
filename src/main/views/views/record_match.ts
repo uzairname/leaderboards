@@ -1,5 +1,6 @@
 import {
   APIActionRowComponent,
+  APIApplicationCommandInteraction,
   APIApplicationCommandInteractionDataStringOption,
   APIApplicationCommandInteractionDataUserOption,
   APIEmbed,
@@ -23,16 +24,14 @@ import {
   CommandView,
   CommandContext,
   ComponentContext,
-  InteractionContext,
   ChatInteractionResponse,
   CommandInteractionResponse,
   StringField,
   BooleanField,
   TimestampField,
   DeferContext,
-  DeferResponseConfirmation,
-  StringDataSchema,
-  StringData,
+  Context,
+  _,
 } from '../../../discord-framework'
 import { assert, nonNullable, unflatten } from '../../../utils/utils'
 import { sentry } from '../../../request/sentry'
@@ -44,11 +43,10 @@ import { AppErrors, UserError } from '../../../main/app/errors'
 import { checkGuildInteraction, hasAdminPerms } from '../utils/checks'
 import { rankingsAutocomplete } from '../utils/common'
 import { getRegisterPlayer } from '../../modules/players'
-import { rankings_command_def } from './rankings'
+import { rankingSettingsPage, rankings_command_def } from './rankings'
 import { recordAndScoreNewMatch } from '../../modules/matches/score_matches'
 import { Colors, commandMention, relativeTimestamp } from '../../../main/messages/message_pieces'
-import { Ranking } from '../../../database/models'
-import { QueuesBatchRequestSchema } from 'miniflare'
+import { ViewState } from '../../../discord-framework/interactions/view_state'
 
 const options = {
   ranking: 'for',
@@ -88,12 +86,12 @@ const record_match_command_def = new CommandView({
     // whether the user can record a match on their own
     admin: new BooleanField(),
     clicked_component: new ChoiceField({
-      'select team': null,
-      'confirm teams': null,
-      'select winner': null,
-      'confirm outcome': null,
-      'match user confirm': null, // someone in the match has confirmed the pending match
-      'match user cancel': null, // someone in the match has cancelled the pending match
+      'select team': _,
+      'confirm teams': _,
+      'select winner': _,
+      'confirm outcome': _,
+      'match user confirm': _, // someone in the match has confirmed the pending match
+      'match user cancel': _, // someone in the match has cancelled the pending match
     }),
     num_teams: new IntField(),
     players_per_team: new IntField(),
@@ -178,6 +176,10 @@ function initCommand(
 
       if (selected_ranking_id == 'create') {
         // TODO
+        rankingSettingsPage(app, {
+          interaction: ctx.interaction,
+          state: ViewState.create(rankings_command_def),
+        })
         return ctx.editOriginal({
           content: `Create a ranking with ${await commandMention(app, rankings_command_def)}`,
           flags: MessageFlags.Ephemeral,
@@ -293,7 +295,7 @@ async function onSelectTeam(
 
 async function selectTeamPage(
   app: App,
-  ctx: InteractionContext<typeof record_match_command_def>,
+  ctx: Context<typeof record_match_command_def>,
   all_teams_selected: boolean,
 ): Promise<APIInteractionResponseCallbackData> {
   let components: APIActionRowComponent<APIMessageActionRowComponent>[] = []
@@ -307,10 +309,12 @@ async function selectTeamPage(
           {
             type: ComponentType.UserSelect,
             placeholder: `Players`,
-            custom_id: ctx.state.setData({
-              selected_team: 0,
-              clicked_component: 'select team',
-            }).encode(),
+            custom_id: ctx.state
+              .setData({
+                selected_team: 0,
+                clicked_component: 'select team',
+              })
+              .encode(),
             min_values: num_teams,
             max_values: num_teams,
           },
@@ -447,16 +451,16 @@ function onConfirmOutcomeBtn(
 async function onPlayerConfirmOutcome(
   app: App,
   ctx: DeferContext<typeof record_match_command_def.options.state_schema>,
-): Promise<DeferResponseConfirmation> {
+): Promise<void> {
   const interaction = checkGuildInteraction(ctx.interaction)
   ctx.state.save.requesting_player_id(interaction.member.user.id)
   ctx.state.save.match_requested_at(new Date())
-  return await ctx.followup(await playersConfirmingMatchPage(app, ctx))
+  await ctx.followup(await playersConfirmingMatchPage(app, ctx))
 }
 
 async function playersConfirmingMatchPage(
   app: App,
-  ctx: InteractionContext<typeof record_match_command_def>,
+  ctx: Context<typeof record_match_command_def>,
 ): Promise<APIInteractionResponseCallbackData> {
   const requested_at = nonNullable(ctx.state.data.match_requested_at, 'requested_at')
   const expires_at = new Date(requested_at.getTime() + match_confirm_timeout_ms)
@@ -613,7 +617,7 @@ async function onPlayerConfirmOrCancelBtn(
 
 async function recordMatch(
   app: App,
-  ctx: InteractionContext<typeof record_match_command_def>,
+  ctx: Context<typeof record_match_command_def>,
 ): Promise<APIInteractionResponseCallbackData> {
   const players_per_team = nonNullable(ctx.state.data.players_per_team, 'players_per_team')
   const num_teams = nonNullable(ctx.state.data.num_teams, 'num_teams')

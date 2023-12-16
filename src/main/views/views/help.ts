@@ -19,11 +19,12 @@ import { App } from '../../../main/app/app'
 import { Messages } from '../../../main/messages/messages'
 import { Colors, dateTimestamp, inviteUrl } from '../../../main/messages/message_pieces'
 import {
-  InteractionContext,
+  ChatInteractionContext,
   ChatInteractionResponse,
   ChoiceField,
   CommandInteractionResponse,
   CommandView,
+  _,
 } from '../../../discord-framework'
 import { AppError, AppErrors } from '../../../main/app/errors'
 
@@ -37,7 +38,7 @@ export const help_command_def = new CommandView({
     description: 'All about this bot',
   },
   state_schema: {
-    page: new ChoiceField({ main: null, reference: null }),
+    page: new ChoiceField({ main: _, reference: _ }),
   },
 })
 
@@ -63,7 +64,7 @@ export default (app: App) =>
 
 async function helpComponents(
   app: App,
-  ctx: InteractionContext<typeof help_command_def>,
+  ctx: ChatInteractionContext<typeof help_command_def>,
 ): Promise<APIActionRowComponent<APIMessageActionRowComponent>[]> {
   let components: APIButtonComponent[] = []
   let action_rows: APIActionRowComponent<APIMessageActionRowComponent>[] = [
@@ -112,7 +113,7 @@ async function helpComponents(
 
 async function mainPage<Send extends boolean>(
   app: App,
-  ctx: InteractionContext<typeof help_command_def>,
+  ctx: ChatInteractionContext<typeof help_command_def>,
   send: boolean = false as Send,
 ): Promise<APIInteractionResponseCallbackData> {
   const last_deployed = (await app.db.settings.getOrUpdate()).data.last_deployed
@@ -144,7 +145,7 @@ async function mainPage<Send extends boolean>(
 
 async function referencePage(
   app: App,
-  ctx: InteractionContext<typeof help_command_def>,
+  ctx: ChatInteractionContext<typeof help_command_def>,
 ): Promise<APIInteractionResponseCallbackData> {
   const embed: APIEmbed = {
     title: 'Help',

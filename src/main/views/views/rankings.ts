@@ -7,7 +7,6 @@ import {
   TextInputStyle,
   APIActionRowComponent,
   APIMessageActionRowComponent,
-  ModalSubmitComponent,
   InteractionResponseType,
   APIApplicationCommandInteractionDataStringOption,
   ApplicationCommandOptionType,
@@ -16,24 +15,24 @@ import {
   APIEmbedField,
   APIModalSubmitInteraction,
 } from 'discord-api-types/v10'
-
 import {
   CommandInteractionResponse,
   ChatInteractionResponse,
-  CommandContext,
   CommandView,
   ComponentContext,
   ChoiceField,
   IntField,
   StringField,
-  InteractionContext,
+  ChatInteractionContext,
+  InitialChatInteractionContext,
+  _,
 } from '../../../discord-framework'
 
 import { nonNullable } from '../../../utils/utils'
 
 import { sentry } from '../../../request/sentry'
 
-import { App } from '../../../main/app/app'
+import type { App } from '../../../main/app/app'
 import { AppErrors, UserErrors } from '../../../main/app/errors'
 
 import { getOrAddGuild } from '../../../main/modules/guilds'
@@ -42,16 +41,15 @@ import {
   createNewRankingInGuild,
   updateRanking,
 } from '../../modules/rankings/rankings'
-import { Ranking, default_num_teams } from '../../../database/models/models/rankings'
+import { default_num_teams } from '../../../database/models/models/rankings'
 import { default_players_per_team } from '../../../database/models/models/rankings'
+import type { GuildRanking, Ranking } from '../../../database/models'
 
-import { GuildRanking } from '../../../database/models'
 import {
   Colors,
   commandMention,
   dateTimestamp,
   messageLink,
-  relativeTimestamp,
   toMarkdown,
 } from '../../../main/messages/message_pieces'
 import { ensureAdminPerms } from '../utils/checks'
@@ -62,8 +60,6 @@ import { rankingsAutocomplete } from '../utils/common'
 import { getModalSubmitEntries } from '../../../discord-framework'
 import { help_command_def } from './help'
 import { Messages } from '../../messages/messages'
-import { ViewState } from '../../../discord-framework/interactions/view_helpers'
-import { findView } from '../../app/find_view'
 
 export const rankings_command_def = new CommandView({
   type: ApplicationCommandType.ChatInput,
@@ -86,18 +82,18 @@ export const rankings_command_def = new CommandView({
   state_schema: {
     owner_id: new StringField(),
     page: new ChoiceField({
-      main: null,
-      'ranking settings': null,
-      'creating new': null,
-      overview: null,
+      main: _,
+      'ranking settings': _,
+      'creating new': _,
+      overview: _,
     }),
     component: new ChoiceField({
-      'btn:rename': null,
-      'btn:create': null,
-      'modal:name': null,
-      'btn:create confirm': null,
-      'btn:delete': null,
-      'modal:delete confirm': null,
+      'btn:rename': _,
+      'btn:create': _,
+      'modal:name': _,
+      'btn:create confirm': _,
+      'btn:delete': _,
+      'modal:delete confirm': _,
     }),
     selected_ranking_id: new IntField(),
     input_name: new StringField(),
@@ -168,7 +164,7 @@ export default (app: App) =>
       } else if (ctx.state.is.component('btn:delete')) {
         return await onBtnDelete(app, ctx)
       } else if (ctx.state.is.component('modal:delete confirm')) {
-        return await onDeleteCorfirm(app, ctx)
+        return await onDeleteModal(app, ctx)
       }
 
       // Page
@@ -186,7 +182,7 @@ export default (app: App) =>
 
 export async function allGuildRankingsPage(
   app: App,
-  ctx: CommandContext<typeof rankings_command_def>,
+  ctx: ChatInteractionContext<typeof rankings_command_def>,
 ): Promise<APIInteractionResponseCallbackData> {
   const interaction = checkGuildInteraction(ctx.interaction)
   const guild = await getOrAddGuild(app, interaction.guild_id)
@@ -277,7 +273,7 @@ async function guildRankingDetails(
 }
 
 export function rankingNameModal(
-  ctx: InteractionContext<typeof rankings_command_def>,
+  ctx: ChatInteractionContext<typeof rankings_command_def>,
 ): CommandInteractionResponse {
   const example_names = [`Smash 1v1`, `Starcraft 2v2`, `Valorant 5s`, `Chess`, `Ping Pong 1v1`]
 
@@ -309,9 +305,11 @@ export function rankingNameModal(
 
 export async function rankingSettingsPage(
   app: App,
-  ctx: InteractionContext<typeof rankings_command_def>,
+  ctx: ChatInteractionContext<typeof rankings_command_def, any>,
 ): Promise<APIInteractionResponseCallbackData> {
   const interaction = checkGuildInteraction(ctx.interaction)
+
+  let x = ctx.interaction
 
   const guild_ranking = await app.db.guild_rankings.get({
     guild_id: interaction.guild_id,
@@ -375,7 +373,7 @@ export async function onRenameModalSubmit(
 }
 
 export function creatingNewRankingPage(
-  ctx: ComponentContext<typeof rankings_command_def>,
+  ctx: ChatInteractionContext<typeof rankings_command_def>,
 ): ChatInteractionResponse {
   ctx.state.save.page('creating new')
 
@@ -423,7 +421,7 @@ export function creatingNewRankingPage(
 
 export async function onCreateConfirm(
   app: App,
-  ctx: ComponentContext<typeof rankings_command_def>,
+  ctx: InitialChatInteractionContext<typeof rankings_command_def>,
   guild_id: string,
 ): Promise<ChatInteractionResponse> {
   return ctx.defer(
@@ -449,7 +447,10 @@ export async function onCreateConfirm(
   )
 }
 
-export async function onBtnDelete(app: App, ctx: ComponentContext<typeof rankings_command_def>) {
+export async function onBtnDelete(
+  app: App,
+  ctx: ChatInteractionContext<typeof rankings_command_def>,
+): Promise<APIModalInteractionResponse> {
   const ranking = await app.db.rankings.get(
     nonNullable(ctx.state.data.selected_ranking_id, 'selected_ranking_id'),
   )
@@ -478,7 +479,7 @@ export async function onBtnDelete(app: App, ctx: ComponentContext<typeof ranking
   return response
 }
 
-export async function onDeleteCorfirm(
+export async function onDeleteModal(
   app: App,
   ctx: ComponentContext<typeof rankings_command_def>,
 ): Promise<ChatInteractionResponse> {

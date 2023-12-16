@@ -3,9 +3,9 @@ import { and, eq, sql } from 'drizzle-orm'
 import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
 
 import { DbObject, DbObjectManager } from '../managers'
-import { PlayerSelect, PlayerUpdate, PlayerInsert } from '../types'
+import { PlayerSelect, PlayerUpdate, PlayerInsert } from '../../types'
 import { User, Ranking, Team } from '..'
-import { DbErrors } from '../../utils/errors'
+import { DbErrors } from '../../errors'
 
 export class Player extends DbObject<PlayerSelect> {
   async update(data: PlayerUpdate): Promise<this> {

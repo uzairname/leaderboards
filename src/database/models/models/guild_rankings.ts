@@ -2,10 +2,10 @@ import { and, eq } from 'drizzle-orm'
 
 import { GuildRankings, Guilds, Rankings } from '../../schema'
 
-import { DbErrors } from '../../utils/errors'
+import { DbErrors } from '../../errors'
 
 import { DbObject, DbObjectManager } from '../managers'
-import { GuildRankingSelect, GuildRankingUpdate, GuildRankingInsert } from '../types'
+import { GuildRankingSelect, GuildRankingUpdate, GuildRankingInsert } from '../../types'
 import { Guild, Ranking } from '..'
 
 export class GuildRanking extends DbObject<GuildRankingSelect> {

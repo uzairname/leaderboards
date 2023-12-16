@@ -5,6 +5,7 @@ import {
   IntField,
   ListField,
   StringField,
+  _,
 } from '../../../discord-framework'
 
 const experimental_command = new CommandView({
@@ -37,7 +38,7 @@ const experimental_command = new CommandView({
   },
 
   state_schema: {
-    clicked_btn: new ChoiceField({ wait: null, increment: null, one: null, two: null }),
+    clicked_btn: new ChoiceField({ wait: _, increment: _, one: _, two: _ }),
     counter: new IntField(),
     original_user: new StringField(),
     value: new ListField(),

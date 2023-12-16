@@ -10,7 +10,7 @@ import {
   GuildRankings,
   Teams,
   MatchPlayers,
-} from '../schema'
+} from './schema'
 
 // Types for each model, for each type of query.
 // The "Update" type of each model is the insert type without primary/foreign keys.
