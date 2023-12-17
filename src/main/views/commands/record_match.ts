@@ -1,61 +1,40 @@
+import * as D from 'discord-api-types/v10'
 import {
-  APIActionRowComponent,
-  APIApplicationCommandInteraction,
-  APIApplicationCommandInteractionDataStringOption,
-  APIApplicationCommandInteractionDataUserOption,
-  APIEmbed,
-  APIEmbedField,
-  APIInteractionResponseCallbackData,
-  APIMessageActionRowComponent,
-  APIMessageStringSelectInteractionData,
-  APIMessageUserSelectInteractionData,
-  ApplicationCommandOptionType,
-  ApplicationCommandType,
-  ButtonStyle,
-  ComponentType,
-  InteractionResponseType,
-  MessageFlags,
-} from 'discord-api-types/v10'
-
-import {
-  ChoiceField,
-  ListField,
-  IntField,
-  CommandView,
-  CommandContext,
-  ComponentContext,
-  ChatInteractionResponse,
-  CommandInteractionResponse,
-  StringField,
   BooleanField,
-  TimestampField,
-  DeferContext,
+  ChatInteractionResponse,
+  ChoiceField,
+  CommandContext,
+  CommandInteractionResponse,
+  CommandView,
+  ComponentContext,
   Context,
-  _,
+  DeferContext,
+  IntField,
+  ListField,
+  StringField,
+  TimestampField,
+  _
 } from '../../../discord-framework'
-import { assert, nonNullable, unflatten } from '../../../utils/utils'
 import { sentry } from '../../../request/sentry'
-
+import { assert, nonNullable, unflatten } from '../../../utils/utils'
 import { App } from '../../app/app'
-import { getOrAddGuild } from '../../modules/guilds'
-
 import { AppErrors, UserError } from '../../app/errors'
+import { Colors, commandMention, relativeTimestamp } from '../../messages/message_pieces'
+import { recordAndScoreNewMatch } from '../../modules/matches/score_matches'
+import { getRegisterPlayer } from '../../modules/players'
 import { checkGuildInteraction, hasAdminPerms } from '../utils/checks'
 import { rankingsAutocomplete } from '../utils/common'
-import { getRegisterPlayer } from '../../modules/players'
-import { rankingSettingsPage, rankings_command_def } from './rankings'
-import { recordAndScoreNewMatch } from '../../modules/matches/score_matches'
-import { Colors, commandMention, relativeTimestamp } from '../../messages/message_pieces'
-import { ViewState } from '../../../discord-framework/interactions/view_state'
+import { rankingSettingsPage } from './rankings/ranking_settings'
+import { rankings_cmd_def } from './rankings/rankings'
 
 const options = {
   ranking: 'for',
   winner: 'winner',
-  loser: 'loser',
+  loser: 'loser'
 }
 
 const record_match_command_def = new CommandView({
-  type: ApplicationCommandType.ChatInput,
+  type: D.ApplicationCommandType.ChatInput,
   command: {
     name: 'record-match',
     description: 'record a match',
@@ -63,23 +42,23 @@ const record_match_command_def = new CommandView({
       {
         name: options.winner,
         description: 'Winner of the match. (Optional if more than 2 players)',
-        type: ApplicationCommandOptionType.User,
-        required: false,
+        type: D.ApplicationCommandOptionType.User,
+        required: false
       },
       {
         name: options.loser,
         description: 'Loser of the match. (Optional if more than 2 players)',
-        type: ApplicationCommandOptionType.User,
-        required: false,
+        type: D.ApplicationCommandOptionType.User,
+        required: false
       },
       {
         name: options.ranking,
         description: `Ranking to record the match for (Optional if there's one ranking)`,
-        type: ApplicationCommandOptionType.String,
+        type: D.ApplicationCommandOptionType.String,
         required: false,
-        autocomplete: true,
-      },
-    ],
+        autocomplete: true
+      }
+    ]
   },
   custom_id_prefix: 'rm',
   state_schema: {
@@ -91,7 +70,7 @@ const record_match_command_def = new CommandView({
       'select winner': _,
       'confirm outcome': _,
       'match user confirm': _, // someone in the match has confirmed the pending match
-      'match user cancel': _, // someone in the match has cancelled the pending match
+      'match user cancel': _ // someone in the match has cancelled the pending match
     }),
     num_teams: new IntField(),
     players_per_team: new IntField(),
@@ -106,36 +85,36 @@ const record_match_command_def = new CommandView({
     // user who originally requested the match
     requesting_player_id: new StringField(),
     // list of user ids who have confirmed the match, corresponding to flattened_team_users
-    users_confirmed: new ListField(),
-  },
+    users_confirmed: new ListField()
+  }
 })
 
-export default (app: App) =>
+export const record_match_cmd = (app: App) =>
   record_match_command_def
     .onAutocomplete(rankingsAutocomplete(app, false, options.ranking))
 
-    .onCommand(async (ctx) => {
+    .onCommand(async ctx => {
       return initCommand(app, ctx)
     })
 
-    .onComponent(async (ctx) => {
+    .onComponent(async ctx => {
       if (ctx.state.is.clicked_component('select team')) {
-        const data = ctx.interaction.data as unknown as APIMessageUserSelectInteractionData
+        const data = ctx.interaction.data as unknown as D.APIMessageUserSelectInteractionData
         const selected_user_ids = data.values
         return await onSelectTeam(app, ctx, selected_user_ids)
       } //
       else if (ctx.state.is.clicked_component('confirm teams')) {
         return {
-          type: InteractionResponseType.ChannelMessageWithSource,
-          data: await selectOutcomeAndConfirmPage(app, ctx),
+          type: D.InteractionResponseType.ChannelMessageWithSource,
+          data: await selectOutcomeAndConfirmPage(app, ctx)
         }
       } //
       else if (ctx.state.is.clicked_component('select winner')) {
-        const data = ctx.interaction.data as unknown as APIMessageStringSelectInteractionData
+        const data = ctx.interaction.data as unknown as D.APIMessageStringSelectInteractionData
         ctx.state.save.selected_winning_team_index(parseInt(data.values[0]))
         return {
-          type: InteractionResponseType.UpdateMessage,
-          data: await selectOutcomeAndConfirmPage(app, ctx),
+          type: D.InteractionResponseType.UpdateMessage,
+          data: await selectOutcomeAndConfirmPage(app, ctx)
         }
       } //
       else if (ctx.state.is.clicked_component('confirm outcome')) {
@@ -154,21 +133,21 @@ export default (app: App) =>
 
 function initCommand(
   app: App,
-  ctx: CommandContext<typeof record_match_command_def>,
+  ctx: CommandContext<typeof record_match_command_def>
 ): CommandInteractionResponse {
   const interaction = checkGuildInteraction(ctx.interaction)
   const selected_ranking_id = (
-    interaction.data.options?.find((o) => o.name === options.ranking) as
-      | APIApplicationCommandInteractionDataStringOption
+    interaction.data.options?.find(o => o.name === options.ranking) as
+      | D.APIApplicationCommandInteractionDataStringOption
       | undefined
   )?.value
 
   return ctx.defer(
     {
-      type: InteractionResponseType.DeferredChannelMessageWithSource,
-      data: { flags: MessageFlags.Ephemeral },
+      type: D.InteractionResponseType.DeferredChannelMessageWithSource,
+      data: { flags: D.MessageFlags.Ephemeral }
     },
-    async (ctx) => {
+    async ctx => {
       /*Save the selected ranking id to the state. 
     If the ranking was not specified, try to use the only ranking in the guild. 
     If not and there is more than one ranking, throw an error
@@ -176,13 +155,13 @@ function initCommand(
 
       if (selected_ranking_id == 'create') {
         // TODO
-        rankingSettingsPage(app, {
+        const res = rankingSettingsPage(app, {
           interaction: ctx.interaction,
-          state: ViewState.create(rankings_command_def),
+          state: rankings_cmd_def.getState()
         })
-        return ctx.editOriginal({
-          content: `Create a ranking with ${await commandMention(app, rankings_command_def)}`,
-          flags: MessageFlags.Ephemeral,
+        return ctx.edit({
+          content: `Create a ranking with ${await commandMention(app, rankings_cmd_def)}`,
+          flags: D.MessageFlags.Ephemeral
         })
       }
 
@@ -199,7 +178,7 @@ function initCommand(
         } else if (rankings.length == 0) {
           throw new UserError(
             `Please specify a ranking to record the match for. ` +
-              `Create a ranking with ${await commandMention(app, rankings_command_def)}`,
+              `Create a ranking with ${await commandMention(app, rankings_cmd_def)}`
           )
         } else {
           throw new UserError('Please specify a ranking to record the match for')
@@ -208,7 +187,7 @@ function initCommand(
 
       ctx.state.save.ranking_id(ranking.data.id)
       ctx.state.save.players_per_team(
-        nonNullable(ranking.data.players_per_team, 'players_per_team'),
+        nonNullable(ranking.data.players_per_team, 'players_per_team')
       )
       ctx.state.save.num_teams(nonNullable(ranking.data.num_teams, 'num_teams'))
 
@@ -216,13 +195,13 @@ function initCommand(
         // If this is a 1v1 ranking, check if the winner and loser were specified
 
         const winner_id = (
-          interaction.data.options?.find((o) => o.name === options.winner) as
-            | APIApplicationCommandInteractionDataUserOption
+          interaction.data.options?.find(o => o.name === options.winner) as
+            | D.APIApplicationCommandInteractionDataUserOption
             | undefined
         )?.value
         const loser_id = (
-          interaction.data.options?.find((o) => o.name === options.loser) as
-            | APIApplicationCommandInteractionDataUserOption
+          interaction.data.options?.find(o => o.name === options.loser) as
+            | D.APIApplicationCommandInteractionDataUserOption
             | undefined
         )?.value
 
@@ -232,18 +211,18 @@ function initCommand(
             const winner = await getRegisterPlayer(app, winner_id, ranking)
             const loser = await getRegisterPlayer(app, loser_id, ranking)
             await recordAndScoreNewMatch(app, ranking, [[winner], [loser]], [1, 0])
-            return await ctx.editOriginal({
+            return await ctx.edit({
               content: `Recorded match`,
-              flags: MessageFlags.Ephemeral,
+              flags: D.MessageFlags.Ephemeral
             })
           } else {
             // prompt all users involved to confirm the match
             validateSelectedTeams([[winner_id], [loser_id]])
             // store the selected users to state
-            ctx.state.save.flattened_team_user_ids([winner_id, loser_id].map((id) => id.toString()))
+            ctx.state.save.flattened_team_user_ids([winner_id, loser_id].map(id => id.toString()))
             ctx.state.save.selected_winning_team_index(0)
-            await ctx.editOriginal({
-              content: `All players involved in this match must agree to the results`,
+            await ctx.edit({
+              content: `All players involved in this match must agree to the results`
             })
             return await onPlayerConfirmOutcome(app, ctx)
           }
@@ -252,31 +231,31 @@ function initCommand(
 
       // Otherwise, select teams
 
-      return await ctx.editOriginal(await selectTeamPage(app, ctx, false))
-    },
+      return await ctx.edit(await selectTeamPage(app, ctx, false))
+    }
   )
 }
 
 async function onSelectTeam(
   app: App,
   ctx: ComponentContext<typeof record_match_command_def>,
-  selected_user_ids: string[],
+  selected_user_ids: string[]
 ): Promise<ChatInteractionResponse> {
-  const players_per_team = nonNullable(ctx.state.data.players_per_team, 'players_per_team')
-  const num_teams = nonNullable(ctx.state.data.num_teams, 'num_teams')
+  const players_per_team = ctx.state.get('players_per_team')
+  const num_teams = ctx.state.get('num_teams')
 
   // make a copy of players so we don't mutate the state
   const current_user_ids =
     ctx.state.data.flattened_team_user_ids?.slice() ||
     new Array(num_teams * players_per_team).fill(placeholder_user_id)
 
-  const selected_team = nonNullable(ctx.state.data.selected_team, 'selected_team')
+  const selected_team = ctx.state.get('selected_team')
   const new_flat_team_user_ids = update_team_flat(
     current_user_ids,
     selected_team,
     selected_user_ids,
     players_per_team,
-    num_teams,
+    num_teams
   )
 
   validateSelectedTeams(unflatten(new_flat_team_user_ids, players_per_team))
@@ -284,97 +263,97 @@ async function onSelectTeam(
   ctx.state.save.flattened_team_user_ids(new_flat_team_user_ids)
 
   const all_teams_selected =
-    ctx.state.data.flattened_team_user_ids?.every((p) => p != placeholder_user_id) || false
+    ctx.state.data.flattened_team_user_ids?.every(p => p != placeholder_user_id) || false
 
   return {
-    type: InteractionResponseType.UpdateMessage,
-    data: await selectTeamPage(app, ctx, all_teams_selected),
+    type: D.InteractionResponseType.UpdateMessage,
+    data: await selectTeamPage(app, ctx, all_teams_selected)
   }
 }
 
 async function selectTeamPage(
   app: App,
   ctx: Context<typeof record_match_command_def>,
-  all_teams_selected: boolean,
-): Promise<APIInteractionResponseCallbackData> {
-  let components: APIActionRowComponent<APIMessageActionRowComponent>[] = []
-  const players_per_team = nonNullable(ctx.state.data.players_per_team, 'players_per_team')
-  const num_teams = nonNullable(ctx.state.data.num_teams, 'num_teams')
+  all_teams_selected: boolean
+): Promise<D.APIInteractionResponseCallbackData> {
+  let components: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = []
+  const players_per_team = ctx.state.get('players_per_team')
+  const num_teams = ctx.state.get('num_teams')
   if (players_per_team == 1) {
     components = [
       {
-        type: ComponentType.ActionRow,
+        type: D.ComponentType.ActionRow,
         components: [
           {
-            type: ComponentType.UserSelect,
+            type: D.ComponentType.UserSelect,
             placeholder: `Players`,
             custom_id: ctx.state
-              .setData({
+              .setAll({
                 selected_team: 0,
-                clicked_component: 'select team',
+                clicked_component: 'select team'
               })
               .encode(),
             min_values: num_teams,
-            max_values: num_teams,
-          },
-        ],
-      },
+            max_values: num_teams
+          }
+        ]
+      }
     ]
   } else {
     components = new Array(num_teams).fill(0).map((_, i) => {
       return {
-        type: ComponentType.ActionRow,
+        type: D.ComponentType.ActionRow,
         components: [
           {
-            type: ComponentType.UserSelect,
+            type: D.ComponentType.UserSelect,
             placeholder: `Team ${i + 1}`,
             custom_id: ctx.state.set.selected_team(i).set.clicked_component('select team').encode(),
             min_values: players_per_team,
-            max_values: players_per_team,
-          },
-        ],
+            max_values: players_per_team
+          }
+        ]
       }
     })
   }
 
   components.push({
-    type: ComponentType.ActionRow,
+    type: D.ComponentType.ActionRow,
     components: [
       {
-        type: ComponentType.Button,
+        type: D.ComponentType.Button,
         label: 'Confirm',
-        style: ButtonStyle.Success,
+        style: D.ButtonStyle.Success,
         custom_id: ctx.state.set.clicked_component('confirm teams').encode(),
-        disabled: !all_teams_selected,
-      },
-    ],
+        disabled: !all_teams_selected
+      }
+    ]
   })
 
   return {
     content: '',
     components,
-    flags: MessageFlags.Ephemeral,
+    flags: D.MessageFlags.Ephemeral
   }
 }
 
 async function selectOutcomeAndConfirmPage(
   app: App,
-  ctx: ComponentContext<typeof record_match_command_def>,
-): Promise<APIInteractionResponseCallbackData> {
-  const players_per_team = nonNullable(ctx.state.data.players_per_team, 'players_per_team')
-  const num_teams = nonNullable(ctx.state.data.num_teams, 'num_teams')
+  ctx: ComponentContext<typeof record_match_command_def>
+): Promise<D.APIInteractionResponseCallbackData> {
+  const players_per_team = ctx.state.get('players_per_team')
+  const num_teams = ctx.state.get('num_teams')
   const flattened_user_ids = nonNullable(
     ctx.state.data.flattened_team_user_ids,
-    'flattened_user_ids',
+    'flattened_user_ids'
   )
   const interaction = checkGuildInteraction(ctx.interaction)
 
   // find the name of the users in the match
   const all_player_names = await Promise.all(
-    flattened_user_ids.map(async (user_id) => {
+    flattened_user_ids.map(async user_id => {
       const member = await app.bot.getGuildMember(interaction.guild_id, user_id)
       return member.nick || member.user!.username // "The field user won't be included in the member object attached to MESSAGE_CREATE and MESSAGE_UPDATE gateway events."
-    }),
+    })
   )
 
   // take the first user name from each team as the team name
@@ -383,43 +362,43 @@ async function selectOutcomeAndConfirmPage(
   sentry.debug(
     'selected winning team index',
     ctx.state.data.selected_winning_team_index,
-    !ctx.state.data.selected_winning_team_index,
+    !ctx.state.data.selected_winning_team_index
   )
 
-  const data: APIInteractionResponseCallbackData = {
+  const data: D.APIInteractionResponseCallbackData = {
     content: ``,
     components: [
       {
-        type: ComponentType.ActionRow,
+        type: D.ComponentType.ActionRow,
         components: [
           {
-            type: ComponentType.StringSelect,
+            type: D.ComponentType.StringSelect,
             placeholder: 'Select Winning Team',
             custom_id: ctx.state.set.clicked_component('select winner').encode(),
             options: new Array(num_teams).fill(0).map((_, i) => {
               return {
                 label: team_names ? team_names[i] : `Team ${i + 1}`,
                 value: i.toString(),
-                default: ctx.state.is.selected_winning_team_index(i),
+                default: ctx.state.is.selected_winning_team_index(i)
               }
-            }),
-          },
-        ],
+            })
+          }
+        ]
       },
       {
-        type: ComponentType.ActionRow,
+        type: D.ComponentType.ActionRow,
         components: [
           {
-            type: ComponentType.Button,
+            type: D.ComponentType.Button,
             label: 'Confirm',
-            style: ButtonStyle.Success,
+            style: D.ButtonStyle.Success,
             custom_id: ctx.state.set.clicked_component('confirm outcome').encode(),
-            disabled: ctx.state.data.selected_winning_team_index === undefined,
-          },
-        ],
-      },
+            disabled: ctx.state.data.selected_winning_team_index === undefined
+          }
+        ]
+      }
     ],
-    flags: MessageFlags.Ephemeral,
+    flags: D.MessageFlags.Ephemeral
   }
 
   return data
@@ -427,29 +406,29 @@ async function selectOutcomeAndConfirmPage(
 
 function onConfirmOutcomeBtn(
   app: App,
-  ctx: ComponentContext<typeof record_match_command_def>,
+  ctx: ComponentContext<typeof record_match_command_def>
 ): ChatInteractionResponse {
   return ctx.defer(
     {
-      type: InteractionResponseType.DeferredMessageUpdate,
+      type: D.InteractionResponseType.DeferredMessageUpdate
     },
-    async (ctx) => {
+    async ctx => {
       if (ctx.state.is.admin()) {
         await ctx.followup({
-          content: `Please wait...`,
+          content: `Please wait...`
         })
         return await ctx.followup(await recordMatchFromSelectedTeams(app, ctx))
       } else {
         // prompt all users involved to confirm the match
         return await onPlayerConfirmOutcome(app, ctx)
       }
-    },
+    }
   )
 }
 
 async function onPlayerConfirmOutcome(
   app: App,
-  ctx: DeferContext<typeof record_match_command_def.options.state_schema>,
+  ctx: DeferContext<typeof record_match_command_def.options.state_schema>
 ): Promise<void> {
   const interaction = checkGuildInteraction(ctx.interaction)
   ctx.state.save.requesting_player_id(interaction.member.user.id)
@@ -459,29 +438,29 @@ async function onPlayerConfirmOutcome(
 
 async function playersConfirmingMatchPage(
   app: App,
-  ctx: Context<typeof record_match_command_def>,
-): Promise<APIInteractionResponseCallbackData> {
-  const requested_at = nonNullable(ctx.state.data.match_requested_at, 'requested_at')
+  ctx: Context<typeof record_match_command_def>
+): Promise<D.APIInteractionResponseCallbackData> {
+  const requested_at = ctx.state.get('match_requested_at')
   const expires_at = new Date(requested_at.getTime() + match_confirm_timeout_ms)
 
   const flattened_user_ids = nonNullable(
     ctx.state.data.flattened_team_user_ids,
-    'flattened_team_users',
+    'flattened_team_users'
   )
-  const players_per_team = nonNullable(ctx.state.data.players_per_team, 'players_per_team')
-  const num_teams = nonNullable(ctx.state.data.num_teams, 'num_teams')
+  const players_per_team = ctx.state.get('players_per_team')
+  const num_teams = ctx.state.get('num_teams')
 
   // take the first user name from each team as the team name
   const selected_winner_index = nonNullable(
     ctx.state.data.selected_winning_team_index,
-    'winner_index',
+    'winner_index'
   )
 
-  const original_user_id = nonNullable(ctx.state.data.requesting_player_id, 'original_user')
+  const original_user_id = ctx.state.get('requesting_player_id')
 
-  const ranking = await app.db.rankings.get(nonNullable(ctx.state.data.ranking_id, 'ranking'))
+  const ranking = await app.db.rankings.get(ctx.state.get('ranking_id'))
 
-  const embed: APIEmbed = {
+  const embed: D.APIEmbed = {
     title: `New Match`,
     description:
       `<@${original_user_id}> wants to record a match in **${ranking.data.name}**. The match will be recorded once all players have agreed to the results` +
@@ -492,9 +471,9 @@ async function playersConfirmingMatchPage(
         return {
           name: `Team ${i + 1}` + (i == selected_winner_index ? ' (WINNER)' : ''),
           value: unflatten(flattened_user_ids, players_per_team)
-            [i].map((user_id) => `<@${user_id}>`)
-            .join(players_per_team == 1 ? ', ' : '\n'),
-        } as APIEmbedField
+            [i].map(user_id => `<@${user_id}>`)
+            .join(players_per_team == 1 ? ', ' : '\n')
+        } as D.APIEmbedField
       })
       .concat([
         {
@@ -503,36 +482,36 @@ async function playersConfirmingMatchPage(
             .map((c, i) => {
               return c == 'y' ? `<@${flattened_user_ids[i]}>` : ''
             })
-            .join('\n'),
-        },
+            .join('\n')
+        }
       ]),
-    color: Colors.EmbedBackground,
+    color: Colors.EmbedBackground
   }
 
-  const components: APIActionRowComponent<APIMessageActionRowComponent>[] = [
+  const components: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = [
     {
-      type: ComponentType.ActionRow,
+      type: D.ComponentType.ActionRow,
       components: [
         {
-          type: ComponentType.Button,
+          type: D.ComponentType.Button,
           label: 'Confirm',
-          style: ButtonStyle.Success,
-          custom_id: ctx.state.set.clicked_component('match user confirm').encode(),
+          style: D.ButtonStyle.Success,
+          custom_id: ctx.state.set.clicked_component('match user confirm').encode()
         },
         {
-          type: ComponentType.Button,
+          type: D.ComponentType.Button,
           label: 'Cancel',
-          style: ButtonStyle.Danger,
-          custom_id: ctx.state.set.clicked_component('match user cancel').encode(),
-        },
-      ],
-    },
+          style: D.ButtonStyle.Danger,
+          custom_id: ctx.state.set.clicked_component('match user cancel').encode()
+        }
+      ]
+    }
   ]
 
-  const data: APIInteractionResponseCallbackData = {
+  const data: D.APIInteractionResponseCallbackData = {
     embeds: [embed],
     components,
-    allowed_mentions: { users: flattened_user_ids },
+    allowed_mentions: { users: flattened_user_ids }
   }
 
   return data
@@ -540,22 +519,21 @@ async function playersConfirmingMatchPage(
 
 async function onPlayerConfirmOrCancelBtn(
   app: App,
-  ctx: ComponentContext<typeof record_match_command_def>,
+  ctx: ComponentContext<typeof record_match_command_def>
 ): Promise<ChatInteractionResponse> {
   const time_since_match_requested =
-    new Date().getTime() -
-    nonNullable(ctx.state.data.match_requested_at, 'match_requested_at').getTime()
+    new Date().getTime() - ctx.state.get('match_requested_at').getTime()
 
   if (time_since_match_requested > match_confirm_timeout_ms) {
     ctx.interaction.channel?.id &&
       ctx.interaction.message?.id &&
       (await app.bot.deleteMessage(ctx.interaction.channel.id, ctx.interaction.message.id))
     return {
-      type: InteractionResponseType.ChannelMessageWithSource,
+      type: D.InteractionResponseType.ChannelMessageWithSource,
       data: {
         content: `This match has expired`,
-        flags: MessageFlags.Ephemeral,
-      },
+        flags: D.MessageFlags.Ephemeral
+      }
     }
   }
 
@@ -565,7 +543,7 @@ async function onPlayerConfirmOrCancelBtn(
   // find which user is confirming/cancelling
   const flattened_user_ids = nonNullable(
     ctx.state.data.flattened_team_user_ids,
-    'flattened_team_users',
+    'flattened_team_users'
   )
 
   sentry.debug('flattened_user_ids', flattened_user_ids)
@@ -587,81 +565,77 @@ async function onPlayerConfirmOrCancelBtn(
   ctx.state.save.users_confirmed(users_confirmed)
 
   // check if all users have confirmed or canceled
-  if (users_confirmed.every((c) => c == 'n')) {
+  if (users_confirmed.every(c => c == 'n')) {
     // all users have canceled
     return {
-      type: InteractionResponseType.UpdateMessage,
+      type: D.InteractionResponseType.UpdateMessage,
       data: {
         content: `Match canceled`,
         embeds: [],
         components: [],
-        flags: MessageFlags.Ephemeral,
-      },
+        flags: D.MessageFlags.Ephemeral
+      }
     }
   }
 
-  if (users_confirmed.every((c) => c == 'y')) {
+  if (users_confirmed.every(c => c == 'y')) {
     // all users have confirmed
     return {
-      type: InteractionResponseType.UpdateMessage,
-      data: await recordMatchFromSelectedTeams(app, ctx),
+      type: D.InteractionResponseType.UpdateMessage,
+      data: await recordMatchFromSelectedTeams(app, ctx)
     }
   }
 
   return {
-    type: InteractionResponseType.UpdateMessage,
-    data: await playersConfirmingMatchPage(app, ctx),
+    type: D.InteractionResponseType.UpdateMessage,
+    data: await playersConfirmingMatchPage(app, ctx)
   }
 }
 
 async function recordMatchFromSelectedTeams(
   app: App,
-  ctx: Context<typeof record_match_command_def>,
-): Promise<APIInteractionResponseCallbackData> {
-  const players_per_team = nonNullable(ctx.state.data.players_per_team, 'players_per_team')
-  const num_teams = nonNullable(ctx.state.data.num_teams, 'num_teams')
+  ctx: Context<typeof record_match_command_def>
+): Promise<D.APIInteractionResponseCallbackData> {
+  const players_per_team = ctx.state.get('players_per_team')
+  const num_teams = ctx.state.get('num_teams')
 
   const current_user_ids = nonNullable(
     ctx.state.data.flattened_team_user_ids,
-    'flattened_team_users',
+    'flattened_team_users'
   )
 
   assert(
-    current_user_ids.every((p) => p != placeholder_user_id),
-    'not all teams have been selected',
+    current_user_ids.every(p => p != placeholder_user_id),
+    'not all teams have been selected'
   )
 
   const relative_scores = new Array(num_teams)
     .fill(0)
-    .map((_, i) =>
-      i == nonNullable(ctx.state.data.selected_winning_team_index, 'selected_winning_team_index')
-        ? 1
-        : 0,
-    )
+    .map((_, i) => (i == ctx.state.get('selected_winning_team_index') ? 1 : 0))
 
-  const ranking = await app.db.rankings.get(nonNullable(ctx.state.data.ranking_id, 'ranking_id'))
+  const ranking = await app.db.rankings.get(ctx.state.get('ranking_id'))
   // register all the players
   const team_players = await Promise.all(
-    unflatten(current_user_ids, players_per_team).map(async (user_ids) => {
-      return await Promise.all(user_ids.map((user_id) => getRegisterPlayer(app, user_id, ranking)))
-    }),
+    unflatten(current_user_ids, players_per_team).map(async user_ids => {
+      return await Promise.all(user_ids.map(user_id => getRegisterPlayer(app, user_id, ranking)))
+    })
   )
 
   await recordAndScoreNewMatch(app, ranking, team_players, relative_scores)
 
-  const embed: APIEmbed = {
+  const embed: D.APIEmbed = {
     title: `Match recorded`,
     description: `**${ranking.data.name}**`,
     fields: [
       {
         name: 'Teams',
         value: team_players
-          .map((team) => {
+          .map(team => {
             return team
-              .map((player) => `<@${player.data.user_id}>`)
+              .map(player => `<@${player.data.user_id}>`)
               .join(players_per_team == 1 ? ', ' : '\n')
           })
-          .join('\n\n'),
+          .join('\n\n')
       },
       {
         name: 'Outcome',
@@ -669,17 +643,17 @@ async function recordMatchFromSelectedTeams(
           .map((score, i) => {
             return `${i}: ${score}`
           })
-          .join('\n'),
-      },
+          .join('\n')
+      }
     ],
-    color: Colors.EmbedBackground,
+    color: Colors.EmbedBackground
   }
 
   return {
     content: `Recorded match`,
     components: [],
     embeds: [embed],
-    flags: MessageFlags.Ephemeral,
+    flags: D.MessageFlags.Ephemeral
   }
 }
 
@@ -692,7 +666,7 @@ function update_team_flat(
   team_index: number,
   selected_user_ids: string[],
   players_per_team: number,
-  num_teams: number,
+  num_teams: number
 ): string[] {
   const new_flattened_team_user_ids = flattened_team_user_ids.slice()
   if (players_per_team == 1) {
@@ -703,12 +677,12 @@ function update_team_flat(
     // selected_user_ids contains all the players for the selected team
     assert(
       selected_user_ids.length == players_per_team,
-      'number of players should match players per team',
+      'number of players should match players per team'
     )
     new_flattened_team_user_ids.splice(
       team_index * players_per_team,
       players_per_team,
-      ...selected_user_ids,
+      ...selected_user_ids
     )
   }
   return new_flattened_team_user_ids

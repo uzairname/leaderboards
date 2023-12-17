@@ -1,3 +1,5 @@
+import { sentry } from '../request/sentry'
+
 export class Event<EventData> {
   callbacks: ((data: EventData) => Promise<void>)[] = []
 
@@ -6,6 +8,14 @@ export class Event<EventData> {
   }
 
   async emit(data: EventData): Promise<void> {
-    await Promise.all(this.callbacks.map(async (c) => c(data)))
+    sentry.debug(`emitting event`)
+    await Promise.all(
+      this.callbacks.map(
+        c =>
+          new Promise<void>(resolve => {
+            c(data).then(() => resolve())
+          })
+      )
+    )
   }
 }

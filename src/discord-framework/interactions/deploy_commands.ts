@@ -1,18 +1,18 @@
-import { RESTPostAPIApplicationCommandsJSONBody } from 'discord-api-types/v10'
+import * as D from 'discord-api-types/v10'
+import { sentry } from '../../request/sentry'
 import { DiscordRESTClient } from '../rest/client'
 import { AnyCommandView, isChatInputCommandView } from './types'
-import { sentry } from '../../request/sentry'
 
 export async function overwriteDiscordCommandsWithViews(
   bot: DiscordRESTClient,
-  views: AnyCommandView[],
+  views: AnyCommandView[]
 ) {
   let guild_commands: {
-    [guild_id: string]: RESTPostAPIApplicationCommandsJSONBody[]
+    [guild_id: string]: D.RESTPostAPIApplicationCommandsJSONBody[]
   } = {}
-  let global_commands: RESTPostAPIApplicationCommandsJSONBody[] = []
+  let global_commands: D.RESTPostAPIApplicationCommandsJSONBody[] = []
 
-  views.map((view) => {
+  views.map(view => {
     if (view.options.guild_id) {
       if (!guild_commands[view.options.guild_id]) {
         guild_commands[view.options.guild_id] = []
@@ -26,7 +26,7 @@ export async function overwriteDiscordCommandsWithViews(
   await Promise.all(
     Object.entries(guild_commands)
       .map(([guild_id, commands]) => bot.overwriteGuildCommands(guild_id, commands))
-      .concat(bot.overwriteGlobalCommands(global_commands)),
+      .concat(bot.overwriteGlobalCommands(global_commands))
   )
 
   sentry.addBreadcrumb({
@@ -35,8 +35,8 @@ export async function overwriteDiscordCommandsWithViews(
     level: 'info',
     data: {
       guild_commands,
-      global_commands,
-    },
+      global_commands
+    }
   })
 }
 
@@ -46,7 +46,7 @@ function validateAndGetPostJSONBody(view: AnyCommandView) {
   }
   const body = {
     type: view.options.type,
-    ...view.options.command,
-  } as RESTPostAPIApplicationCommandsJSONBody
+    ...view.options.command
+  } as D.RESTPostAPIApplicationCommandsJSONBody
   return body
 }

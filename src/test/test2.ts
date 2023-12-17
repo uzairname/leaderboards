@@ -7,9 +7,9 @@ const mf = new Miniflare({
     {
       name: 'worker1',
       modules: true,
-      scriptPath: 'test/test3.js',
-    },
-  ],
+      scriptPath: 'test/test3.js'
+    }
+  ]
 })
 
 async function main() {

@@ -1,4 +1,4 @@
-export abstract class ViewError extends Error {
+export class ViewError extends Error {
   constructor(message?: string) {
     super(message)
     this.name = `ViewError.${this.constructor.name}`

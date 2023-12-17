@@ -12,7 +12,7 @@ export async function verify(request: Request, public_key: string) {
     hex2bin(public_key),
     { name: 'NODE-ED25519', namedCurve: 'NODE-ED25519' },
     true,
-    ['verify'],
+    ['verify']
   )
 
   const encoder = new TextEncoder()
@@ -25,6 +25,6 @@ export async function verify(request: Request, public_key: string) {
     'NODE-ED25519',
     await PUBLIC_KEY,
     signature,
-    encoder.encode(timestamp + unknown),
+    encoder.encode(timestamp + unknown)
   )
 }

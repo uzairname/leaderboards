@@ -1,34 +1,20 @@
+import * as D from 'discord-api-types/v10'
 import {
-  APIApplicationCommandInteractionDataBooleanOption,
-  APIInteractionResponseCallbackData,
-  ApplicationCommandOptionType,
-  ApplicationCommandType,
-  ButtonStyle,
-  ComponentType,
-  InteractionResponseType,
-  MessageFlags,
-} from 'discord-api-types/v10'
-
-import {
+  BooleanField,
   ChoiceField,
-  IntField,
-  StringField,
   CommandContext,
   CommandView,
   ComponentContext,
+  IntField,
   ListField,
   StringData,
+  StringField,
   TimestampField,
-  BooleanField,
-  _,
+  _
 } from '../../../discord-framework'
 import { App } from '../../app/app'
-
-import { nonNullable } from '../../../utils/utils'
 import { AppErrors, UserErrors } from '../../app/errors'
-import { ViewState } from '../../../discord-framework/interactions/view_state'
-import { rankings_command_def } from './rankings'
-import { sentry } from '../../../request/sentry'
+import { rankings_cmd_def } from './rankings/rankings'
 
 // const user_command = new CommandView({
 //   type: ApplicationCommandType.Message,
@@ -51,7 +37,7 @@ import { sentry } from '../../../request/sentry'
 // })
 
 const test_command = new CommandView({
-  type: ApplicationCommandType.ChatInput,
+  type: D.ApplicationCommandType.ChatInput,
 
   custom_id_prefix: 'test',
 
@@ -60,29 +46,29 @@ const test_command = new CommandView({
     description: 'Test command',
     options: [
       {
-        type: ApplicationCommandOptionType.Boolean,
+        type: D.ApplicationCommandOptionType.Boolean,
         name: 'ephemeral',
-        description: 'Whether the message is ephemeral',
+        description: 'Whether the message is ephemeral'
       },
       {
-        type: ApplicationCommandOptionType.User,
+        type: D.ApplicationCommandOptionType.User,
         name: 'user',
-        description: 'The user to test',
-      },
-    ],
+        description: 'The user to test'
+      }
+    ]
   },
 
   state_schema: {
     clicked_btn: new ChoiceField({ wait: _, increment: _, one: _, two: _ }),
     counter: new IntField(),
     original_user: new StringField(),
-    value: new ListField(),
-  },
+    value: new ListField()
+  }
 })
 
 export default (app: App) =>
   test_command
-    .onCommand(async (ctx) => {
+    .onCommand(async ctx => {
       const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
       ctx.state.save.original_user(user_id)
       ctx.state.save.counter(0)
@@ -90,17 +76,17 @@ export default (app: App) =>
 
       const ephemeral =
         (
-          ctx.interaction.data.options?.find((o) => o.name === 'ephemeral') as
-            | APIApplicationCommandInteractionDataBooleanOption
+          ctx.interaction.data.options?.find(o => o.name === 'ephemeral') as
+            | D.APIApplicationCommandInteractionDataBooleanOption
             | undefined
         )?.value ?? true
 
       return {
-        type: InteractionResponseType.ChannelMessageWithSource,
-        data: testMessageData(ctx, ephemeral),
+        type: D.InteractionResponseType.ChannelMessageWithSource,
+        data: testMessageData(ctx, ephemeral)
       }
     })
-    .onComponent(async (ctx) => {
+    .onComponent(async ctx => {
       const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
 
       if (ctx.state.data.original_user !== user_id) {
@@ -112,41 +98,41 @@ export default (app: App) =>
           {
             data: {
               content: `waiting`,
-              flags: MessageFlags.Ephemeral,
+              flags: D.MessageFlags.Ephemeral
             },
-            type: InteractionResponseType.ChannelMessageWithSource,
+            type: D.InteractionResponseType.ChannelMessageWithSource
           },
-          async (ctx) => {
+          async ctx => {
             const seconds = ctx.state.data.counter ?? 0
 
-            await new Promise((resolve) => setTimeout(resolve, seconds * 1000))
+            await new Promise(resolve => setTimeout(resolve, seconds * 1000))
             return ctx.followup({
-              content: `waited ${seconds} seconds`,
-              flags: MessageFlags.Ephemeral,
+              content: `waited ${seconds} seconds.`,
+              flags: D.MessageFlags.Ephemeral
             })
-          },
+          }
         )
       } else if (ctx.state.is.clicked_btn('increment')) {
         ctx.state.save.counter((ctx.state.data.counter ?? 0) + 1)
 
-        return { type: InteractionResponseType.UpdateMessage, data: testMessageData(ctx) }
+        return { type: D.InteractionResponseType.UpdateMessage, data: testMessageData(ctx) }
       } else if (ctx.state.is.clicked_btn('one')) {
-        const current_value = nonNullable(ctx.state.data.value, 'value')
+        const current_value = ctx.state.get('value')
 
         current_value[0] += '1'
         ctx.state.save.value(current_value)
         return {
-          type: InteractionResponseType.UpdateMessage,
-          data: testMessageData(ctx),
+          type: D.InteractionResponseType.UpdateMessage,
+          data: testMessageData(ctx)
         }
       } else if (ctx.state.is.clicked_btn('two')) {
-        const current_value = nonNullable(ctx.state.data.value, 'value')
+        const current_value = ctx.state.get('value')
 
         current_value[1] += '2'
         ctx.state.save.value(current_value)
         return {
-          type: InteractionResponseType.UpdateMessage,
-          data: testMessageData(ctx),
+          type: D.InteractionResponseType.UpdateMessage,
+          data: testMessageData(ctx)
         }
       } else {
         throw new AppErrors.UnknownState(ctx.state.data.clicked_btn)
@@ -155,51 +141,53 @@ export default (app: App) =>
 
 function testMessageData(
   ctx: CommandContext<typeof test_command> | ComponentContext<typeof test_command>,
-  ephemeral = false,
-): APIInteractionResponseCallbackData {
-  sentry.debug(`encoded ${ViewState.create(rankings_command_def).encode()}`)
+  ephemeral = false
+): D.APIInteractionResponseCallbackData {
+  // `\ncommand context ${test_command.isCommandContext(ctx)}. component context: ${test_command.isComponentContext(ctx)}. ${test_command.isContextForView(ctx)}. ${test_command.isChatInteractionContext(ctx)}`
 
   return {
-    content: `Value: ${ctx.state.data.value?.join(', ')}\nCounter: ${ctx.state.data.counter}`,
+    content:
+      `Value: ${ctx.state.data.value?.join(', ')}\nCounter: ${ctx.state.data.counter}` +
+      `\n${ctx.state.get('original_user')}`,
     components: [
       {
-        type: ComponentType.ActionRow,
+        type: D.ComponentType.ActionRow,
         components: [
           {
-            type: ComponentType.Button,
+            type: D.ComponentType.Button,
             label: `Wait ${ctx.state.data.counter} seconds`,
             custom_id: ctx.state.set.clicked_btn('wait').encode(),
-            style: ButtonStyle.Primary,
+            style: D.ButtonStyle.Primary
           },
           {
-            type: ComponentType.Button,
+            type: D.ComponentType.Button,
             label: 'Increment',
             custom_id: ctx.state.set.clicked_btn('increment').encode(),
-            style: ButtonStyle.Primary,
+            style: D.ButtonStyle.Primary
           },
           {
-            type: ComponentType.Button,
+            type: D.ComponentType.Button,
             label: 'rankings',
-            custom_id: ViewState.create(rankings_command_def)
-              .setData({
-                component: 'btn:rename',
-                owner_id: ctx.state.data.original_user,
+            custom_id: rankings_cmd_def
+              .getState({
                 page: 'ranking settings',
-                selected_ranking_id: 5,
+                component: 'modal:name',
+                user_id: ctx.state.data.original_user,
+                selected_ranking_id: 5
               })
               .encode(),
-            style: ButtonStyle.Primary,
+            style: D.ButtonStyle.Primary
           },
           {
-            type: ComponentType.Button,
+            type: D.ComponentType.Button,
             label: 'Two',
             custom_id: ctx.state.set.clicked_btn('two').encode(),
-            style: ButtonStyle.Primary,
-          },
-        ],
-      },
+            style: D.ButtonStyle.Primary
+          }
+        ]
+      }
     ],
-    flags: ephemeral ? MessageFlags.Ephemeral : undefined,
+    flags: ephemeral ? D.MessageFlags.Ephemeral : undefined
   }
 }
 
@@ -209,17 +197,17 @@ const schema = {
   current_page: new ChoiceField({
     settings: null,
     main: null,
-    chat: null,
+    chat: null
   }),
   clickedComponent: new ChoiceField({
     'button: add user': null,
     'button: delete': null,
     'modal: rename': null,
-    'button: rename confirm': null,
+    'button: rename confirm': null
   }),
   messages: new ListField(),
   isAdmin: new BooleanField(),
-  counter: new IntField(0),
+  counter: new IntField(0)
 }
 
 // encode data

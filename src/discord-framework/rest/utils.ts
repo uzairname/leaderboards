@@ -1,6 +1,6 @@
-import * as D from 'discord-api-types/v10'
 import { DiscordAPIError } from '@discordjs/rest'
-
+import * as D from 'discord-api-types/v10'
+import { sentry } from '../../request/sentry'
 import { DiscordRESTClient } from './client'
 import { DiscordErrors } from './errors'
 import { GuildChannelData, MessageData, RoleData } from './objects'
@@ -26,11 +26,11 @@ export class DiscordRESTUtils {
         const edited_role = await this.bot.editRole(
           params.guild_id,
           params.target_role_id,
-          (await params.roleData()).patchdata,
+          (await params.roleData()).patchdata
         )
         return {
           role: edited_role,
-          is_new_role: false,
+          is_new_role: false
         }
       }
     } catch (e) {
@@ -40,7 +40,7 @@ export class DiscordRESTUtils {
     const new_role = await this.bot.makeRole(params.guild_id, (await params.roleData()).postdata)
     return {
       role: new_role,
-      is_new_role: true,
+      is_new_role: true
     }
   }
 
@@ -75,18 +75,18 @@ export class DiscordRESTUtils {
 
         const channel = (await this.bot.editChannel(
           params.target_channel_id,
-          data.patchdata,
+          data.patchdata
         )) as D.APIChannel
         return {
           channel,
-          is_new_channel: false,
+          is_new_channel: false
         }
       } else if (params.target_channel_id) {
         // don't edit the channel. Return if it exists.
         const channel = (await this.bot.getChannel(params.target_channel_id)) as D.APIChannel
         return {
           channel,
-          is_new_channel: false,
+          is_new_channel: false
         }
       } else {
         // existing channel unspecified
@@ -102,7 +102,7 @@ export class DiscordRESTUtils {
     const { guild_id, data } = await params.channelData()
     return {
       channel: await this.bot.makeGuildChannel(guild_id, data.postdata),
-      is_new_channel: true,
+      is_new_channel: true
     }
   }
 
@@ -134,20 +134,23 @@ export class DiscordRESTUtils {
     try {
       if (params.target_channel_id && params.target_message_id) {
         // Try to edit the message
+        sentry.debug(`getting message`)
         const msg = await params.messageData()
+        sentry.debug(`editing message`)
         let existing_message = await this.bot.editMessage(
           params.target_channel_id,
           params.target_message_id,
-          msg.patchdata,
+          msg.patchdata
         ) // if this fails, either the channel or the message was not found.
+        sentry.debug(`edited message`)
         return {
           message: existing_message,
-          is_new_message: false,
+          is_new_message: false
         }
       } else if (!params.target_channel_id) {
         new_channel = (
           await this.syncGuildChannel({
-            channelData: params.channelData,
+            channelData: params.channelData
           })
         ).channel
       }
@@ -156,7 +159,7 @@ export class DiscordRESTUtils {
         // channel doesn't exist
         new_channel = (
           await this.syncGuildChannel({
-            channelData: params.channelData,
+            channelData: params.channelData
           })
         ).channel
       } else if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.UnknownMessage) {
@@ -165,16 +168,15 @@ export class DiscordRESTUtils {
         throw e
       }
     }
-
     const msg = await params.messageData()
     let new_message = await this.bot.createMessage(
       new_channel?.id || params.target_channel_id!,
-      msg.postdata,
+      msg.postdata
     )
     return {
       message: new_message,
       is_new_message: true,
-      new_channel,
+      new_channel
     }
   }
 
@@ -196,7 +198,7 @@ export class DiscordRESTUtils {
         let thread = await this.bot.getChannel(params.target_thread_id)
         return {
           thread,
-          is_new_thread: false,
+          is_new_thread: false
         }
       }
     } catch (e) {
@@ -210,12 +212,12 @@ export class DiscordRESTUtils {
     let new_thread = await this.bot.makePublicThread(
       new_thread_data.body,
       new_thread_data.channel.id,
-      params.message.id,
+      params.message.id
     )
 
     return {
       thread: new_thread,
-      is_new_thread: true,
+      is_new_thread: true
     }
   }
 
@@ -251,21 +253,21 @@ export class DiscordRESTUtils {
         let message = await this.bot.editMessage(
           params.target_thread_id,
           params.target_message_id,
-          body,
+          body
         )
         return {
           message,
-          thread_id: params.target_thread_id,
+          thread_id: params.target_thread_id
         }
       } else if (params.target_thread_id) {
         // Don't edit. Return if it exists.
         let message = await this.bot.getMessage(
           params.target_thread_id,
-          params.target_message_id || '0',
+          params.target_message_id || '0'
         )
         return {
           message,
-          thread_id: params.target_thread_id,
+          thread_id: params.target_thread_id
         }
       } else {
         // thread and message unspecified
@@ -294,7 +296,7 @@ export class DiscordRESTUtils {
         return {
           message: new_post.message,
           new_post,
-          thread_id: new_post.id,
+          thread_id: new_post.id
         }
       }
       // forum unspecified
@@ -307,7 +309,7 @@ export class DiscordRESTUtils {
 
     var new_forum = (
       await this.syncGuildChannel({
-        channelData: params.new_forum,
+        channelData: params.new_forum
       })
     ).channel
 
@@ -316,7 +318,7 @@ export class DiscordRESTUtils {
       message: new_post.message,
       new_post: new_post,
       new_forum,
-      thread_id: new_post.id,
+      thread_id: new_post.id
     }
   }
 }

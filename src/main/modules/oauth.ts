@@ -1,15 +1,13 @@
-import { OAuth2Scopes, RESTPostOAuth2AccessTokenResult } from 'discord-api-types/v10'
-
-import { DiscordRESTClient } from '../../discord-framework'
-import { nonNullable } from '../../utils/utils'
-
-import { updateUserRoleConnectionData } from './linked_roles'
-import { sentry } from '../../request/sentry'
-import { AppErrors, UserErrors } from '../app/errors'
-import { App } from '../app/app'
+import * as D from 'discord-api-types/v10'
 import { AccessTokens } from '../../database/schema'
+import { DiscordRESTClient } from '../../discord-framework'
+import { sentry } from '../../request/sentry'
+import { nonNullable } from '../../utils/utils'
+import { App } from '../app/app'
+import { AppErrors, UserErrors } from '../app/errors'
+import { updateUserRoleConnectionData } from './linked_roles'
 
-export function oauthRedirect(app: App, scopes: OAuth2Scopes[]): Response {
+export function oauthRedirect(app: App, scopes: D.OAuth2Scopes[]): Response {
   const state = crypto.randomUUID()
   const url = app.bot.oauthRedirectURL(app.config.OAUTH_REDIRECT_URI, scopes, state)
 
@@ -17,8 +15,8 @@ export function oauthRedirect(app: App, scopes: OAuth2Scopes[]): Response {
     status: 302,
     headers: {
       Location: url,
-      'Set-Cookie': `state=${state}; HttpOnly; Secure; Max-Age=300; path=/`,
-    },
+      'Set-Cookie': `state=${state}; HttpOnly; Secure; Max-Age=300; path=/`
+    }
   })
 }
 
@@ -42,11 +40,11 @@ export async function oauthCallback(app: App, request: Request): Promise<Respons
   await saveUserAccessToken(app, tokendata)
 
   return new Response(`Authorized. You may return to Discord`, {
-    status: 200,
+    status: 200
   })
 }
 
-export async function saveUserAccessToken(app: App, token: RESTPostOAuth2AccessTokenResult) {
+export async function saveUserAccessToken(app: App, token: D.RESTPostOAuth2AccessTokenResult) {
   const me = await app.bot.getOauthUser(token.access_token)
   const expires_at = Date.now() + token.expires_in * 1000
 
@@ -55,7 +53,7 @@ export async function saveUserAccessToken(app: App, token: RESTPostOAuth2AccessT
     await app.db.db.insert(AccessTokens).values({
       user_id: me.user.id,
       data: token,
-      purpose: 'user',
+      purpose: 'user'
     })
   } else {
     throw new AppErrors.MissingIdentifyScope()
@@ -70,7 +68,7 @@ type StoredToken = {
 
 export async function refreshAccessToken(
   bot: DiscordRESTClient,
-  tokens: StoredToken,
+  tokens: StoredToken
 ): Promise<string> {
   if (Date.now() < tokens.expires_at) {
     return tokens.access_token

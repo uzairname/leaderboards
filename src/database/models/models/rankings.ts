@@ -1,23 +1,19 @@
-import { eq, desc } from 'drizzle-orm'
-
-import { assert } from '../../../utils/utils'
-
-import { Rankings, Players, Matches } from '../../schema'
-
-import { DbErrors } from '../../errors'
-
-import { DbObject, DbObjectManager } from '../../managers'
-import { RankingSelect, RankingUpdate, RankingInsert } from '../../types'
-import { GuildRanking, Match, Player } from '..'
+import { desc, eq } from 'drizzle-orm'
+import { Match, Player } from '..'
 import { DbClient } from '../../client'
+import { DbErrors } from '../../errors'
+import { DbObject, DbObjectManager } from '../../managers'
+import { Matches, Players, Rankings } from '../../schema'
+import { RankingInsert, RankingSelect } from '../../types'
 
 export const default_players_per_team = 1
 export const default_num_teams = 2
 
 export const default_elo_settings = {
-  initial_rating: 25,
-  initial_rd: 25 / 3,
+  initial_rating: 50,
+  initial_rd: 50 / 3
 }
+// displayed_rating = rating - 0.6 * rd
 
 export class Ranking extends DbObject<RankingSelect> {
   constructor(data: RankingSelect, db: DbClient) {
@@ -38,7 +34,7 @@ export class Ranking extends DbObject<RankingSelect> {
       .from(Players)
       .where(eq(Players.ranking_id, this.data.id))
       .orderBy(desc(Players.rating))
-    return players.map((item) => {
+    return players.map(item => {
       return new Player(item, this.db)
     })
   }
@@ -55,16 +51,16 @@ export class Ranking extends DbObject<RankingSelect> {
       .orderBy(desc(Matches.time_finished))
     if (n) query = query.limit(n)
     const matches = await query
-    return matches.map((item) => {
+    return matches.map(item => {
       return new Match(item, this.db)
     })
   }
 
-  async update(data: RankingUpdate) {
-    const new_data = (
+  async update(data: RankingInsert): Promise<this> {
+    this.data = (
       await this.db.db.update(Rankings).set(data).where(eq(Rankings.id, this.data.id)).returning()
     )[0]
-    this.data = new_data
+    return this
   }
 
   async delete() {
@@ -75,13 +71,8 @@ export class Ranking extends DbObject<RankingSelect> {
 
 export class RankingsManager extends DbObjectManager {
   async create(data: RankingInsert): Promise<Ranking> {
-    const new_ranking_data = (
-      await this.db.db
-        .insert(Rankings)
-        .values({ ...data })
-        .returning()
-    )[0]
-    return new Ranking(new_ranking_data, this.db)
+    const new_data = (await this.db.db.insert(Rankings).values(data).returning())[0]
+    return new Ranking(new_data, this.db)
   }
 
   async get(ranking_id: number): Promise<Ranking> {

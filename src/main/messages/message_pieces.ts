@@ -1,11 +1,5 @@
-import {
-  APIApplicationCommand,
-  ApplicationCommandType,
-  PermissionFlagsBits,
-} from 'discord-api-types/v10'
-
+import * as D from 'discord-api-types/v10'
 import { AnyCommandView, DiscordRESTClient } from '../../discord-framework'
-
 import { App } from '../app/app'
 
 export class Colors {
@@ -27,7 +21,8 @@ export function dateTimestamp(time: Date): string {
  */
 export function toMarkdown(str: string | undefined | null): string {
   if (!str) return ''
-  return str.replace(/_/g, '\\_').replace(/\*/g, '\\*').replace(/~/g, '\\~').replace(/`/g, '\\`')
+  return str
+  // return str.replace(/_/g, '\\_').replace(/\*/g, '\\*').replace(/~/g, '\\~').replace(/`/g, '\\`')
 }
 
 export function messageLink(guild_id: string, channel_id: string, message_id: string): string {
@@ -43,33 +38,33 @@ export async function commandMention(app: App, command: AnyCommandView) {
     app,
     command.options.command.name,
     command.options.type,
-    command.options.guild_id,
+    command.options.guild_id
   )
 }
 
 export async function _commandMention(
   app: App,
   name: string,
-  type: ApplicationCommandType = ApplicationCommandType.ChatInput,
-  guild_id?: string,
+  type: D.ApplicationCommandType = D.ApplicationCommandType.ChatInput,
+  guild_id?: string
 ): Promise<string> {
-  let commands = (await app.bot.getAppCommands(guild_id)) as APIApplicationCommand[]
-  let command = commands.find((command) => command.name === name && command.type === type)
+  let commands = (await app.bot.getAppCommands(guild_id)) as D.APIApplicationCommand[]
+  let command = commands.find(command => command.name === name && command.type === type)
   return `</${name}:${command?.id || '0'}>`
 }
 
 export function inviteUrl(bot: DiscordRESTClient): string {
   const REQUIRED_BOT_PERMISSIONS =
-    PermissionFlagsBits.ManageChannels |
-    PermissionFlagsBits.ManageThreads |
-    PermissionFlagsBits.ManageRoles
+    D.PermissionFlagsBits.ManageChannels |
+    D.PermissionFlagsBits.ManageThreads |
+    D.PermissionFlagsBits.ManageRoles
 
   return (
     'https://discord.com/api/oauth2/authorize?' +
     new URLSearchParams({
       client_id: bot.application_id,
       scope: 'bot',
-      permissions: REQUIRED_BOT_PERMISSIONS.toString(),
+      permissions: REQUIRED_BOT_PERMISSIONS.toString()
     }).toString()
   )
 }

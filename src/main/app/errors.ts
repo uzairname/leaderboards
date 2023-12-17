@@ -18,9 +18,7 @@ export namespace UserErrors {
   export class NotComponentOwner extends UserError {
     constructor(owner_id?: string) {
       super(
-        owner_id
-          ? `This message belongs to <@${owner_id}>`
-          : `This message belongs to someone else`,
+        owner_id ? `This message belongs to <@${owner_id}>` : `This message belongs to someone else`
       )
     }
   }

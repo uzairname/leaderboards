@@ -4,7 +4,7 @@ import queue_message from '../../views/messages/queue'
 
 export async function haveRankingQueueMessage(
   app: App,
-  guild_ranking: GuildRanking,
+  guild_ranking: GuildRanking
 ): Promise<void> {
   const result = await app.bot.utils.syncChannelMessage({
     target_channel_id: guild_ranking.data.leaderboard_channel_id,
@@ -14,12 +14,12 @@ export async function haveRankingQueueMessage(
     },
     channelData: async () => {
       throw new Error('No channel to post queue message in. Need to make ranking message first')
-    },
+    }
   })
 
   if (result.is_new_message) {
     await guild_ranking.update({
-      queue_message_id: result.message.id,
+      queue_message_id: result.message.id
     })
   }
 }

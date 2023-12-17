@@ -1,22 +1,16 @@
-import {
-  APIInteractionResponseChannelMessageWithSource,
-  InteractionResponseType,
-  MessageFlags,
-} from 'discord-api-types/v10'
-
-import { sentry } from '../../../request/sentry'
-import { Messages } from '../../messages/messages'
-import { App } from '../../app/app'
-import { Colors } from '../../messages/message_pieces'
-
 import { RateLimitError } from '@discordjs/rest'
-import { DiscordErrors } from '../../../discord-framework'
-import { AppError, UserError } from '../../app/errors'
+import * as D from 'discord-api-types/v10'
 import { DatabaseError } from '../../../database/errors'
+import { DiscordErrors } from '../../../discord-framework'
 import { ViewErrors } from '../../../discord-framework/interactions/utils/errors'
+import { sentry } from '../../../request/sentry'
+import { App } from '../../app/app'
+import { AppError, UserError } from '../../app/errors'
+import { Colors } from '../../messages/message_pieces'
+import { Messages } from '../../messages/messages'
 
 export const onViewError = (app: App) =>
-  function (e: unknown): APIInteractionResponseChannelMessageWithSource {
+  function (e: unknown): D.APIInteractionResponseChannelMessageWithSource {
     let description: string
     let title: string
     if (e instanceof DiscordErrors.BotPermissions) {
@@ -54,10 +48,10 @@ export const onViewError = (app: App) =>
                       name: e.name,
                       message: e.message,
                       stack: e.stack?.split('\n') ?? undefined,
-                      error: e,
+                      error: e
                     },
                     null,
-                    2,
+                    2
                   )
                 : e
             }
@@ -73,8 +67,8 @@ export const onViewError = (app: App) =>
         level: 'info',
         data: {
           message: e.message,
-          stack: e.stack,
-        },
+          stack: e.stack
+        }
       })
     }
 
@@ -83,19 +77,19 @@ export const onViewError = (app: App) =>
 
 function errorResponse(
   title: string,
-  description: string,
-): APIInteractionResponseChannelMessageWithSource {
+  description: string
+): D.APIInteractionResponseChannelMessageWithSource {
   return {
-    type: InteractionResponseType.ChannelMessageWithSource,
+    type: D.InteractionResponseType.ChannelMessageWithSource,
     data: {
       embeds: [
         {
           title,
           description,
-          color: Colors.EmbedBackground,
-        },
+          color: Colors.EmbedBackground
+        }
       ],
-      flags: MessageFlags.Ephemeral,
-    },
+      flags: D.MessageFlags.Ephemeral
+    }
   }
 }

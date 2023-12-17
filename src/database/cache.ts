@@ -1,4 +1,4 @@
-import { User, Guild, Ranking, GuildRanking, Player, Match, Setting, Team } from './models'
+import { Guild, GuildRanking, Match, Player, Ranking, Setting, Team, User } from './models'
 
 export default class DbCache {
   setting: Setting | undefined

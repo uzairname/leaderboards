@@ -6,6 +6,6 @@ export const apiRouter = (app: App) =>
     .get('/', () => {
       return new Response('API')
     })
-    .all('*', (request) => {
+    .all('*', request => {
       return new Response('Not found', { status: 404 })
     })

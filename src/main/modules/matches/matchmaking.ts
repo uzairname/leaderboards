@@ -1,4 +1,4 @@
-import { Ranking, Player } from '../../../database/models'
+import { Player, Ranking } from '../../../database/models'
 import { AppErrors, UserErrors } from '../../app/errors'
 
 /**
@@ -18,9 +18,9 @@ export async function createMatchWithTeams(params: {
   ranking: Ranking
   teams: Array<Array<Player>>
 }): Promise<void> {
-  const match_teams = params.teams.map((team) => {
+  const match_teams = params.teams.map(team => {
     if (!team.length)
-      return team.map((player) => {
+      return team.map(player => {
         return player.data.user_id
       })
   })

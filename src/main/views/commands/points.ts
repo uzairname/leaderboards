@@ -1,28 +1,15 @@
-import {
-  APIApplicationCommandAutocompleteResponse,
-  APIApplicationCommandInteractionDataStringOption,
-  APIApplicationCommandOptionChoice,
-  ApplicationCommandOptionType,
-  ApplicationCommandType,
-  InteractionResponseType,
-  MessageFlags,
-} from 'discord-api-types/v10'
-
+import * as D from 'discord-api-types/v10'
 import { CommandView } from '../../../discord-framework'
+import { sentry } from '../../../request/sentry'
 import { nonNullable } from '../../../utils/utils'
-
-import { checkGuildInteraction } from '../utils/checks'
-import { ensureAdminPerms } from '../utils/checks'
-import { getOrAddGuild } from '../../modules/guilds'
-import { syncGuildRankingLbMessage } from '../../modules/rankings/ranking_channels'
+import { App } from '../../app/app'
 import { UserError } from '../../app/errors'
 import { getRegisterPlayer } from '../../modules/players'
-import { App } from '../../app/app'
+import { ensureAdminPerms } from '../utils/checks'
 import { rankingsAutocomplete } from '../utils/common'
-import { sentry } from '../../../request/sentry'
 
 const points_command = new CommandView({
-  type: ApplicationCommandType.ChatInput,
+  type: D.ApplicationCommandType.ChatInput,
   command: {
     name: 'points',
     description: 'Add or remove points from a user',
@@ -30,80 +17,80 @@ const points_command = new CommandView({
       {
         name: 'user',
         description: 'User to add/remove points from',
-        type: ApplicationCommandOptionType.User,
-        required: true,
+        type: D.ApplicationCommandOptionType.User,
+        required: true
       },
       {
         name: 'points',
         description: 'Points to add/remove. A negative number removes points',
-        type: ApplicationCommandOptionType.String,
-        required: true,
+        type: D.ApplicationCommandOptionType.String,
+        required: true
       },
       {
         name: 'ranking',
         description: 'The ranking to apply points in',
-        type: ApplicationCommandOptionType.String,
+        type: D.ApplicationCommandOptionType.String,
         autocomplete: true,
-        required: true,
-      },
-    ],
+        required: true
+      }
+    ]
   },
-  state_schema: {},
+  state_schema: {}
 })
 
 export default (app: App) =>
   points_command
     .onAutocomplete(rankingsAutocomplete(app))
 
-    .onCommand(async (ctx) => {
+    .onCommand(async ctx => {
       // Check if the user has bot admin perms in the guild.
-      const interaction = checkGuildInteraction(ctx.interaction)
-      const guild = await getOrAddGuild(app, interaction.guild_id)
-      await ensureAdminPerms(app, ctx, guild)
 
-      // get the points to add
-      const options: {
-        [key: string]: string
-      } = {}
-      ;(interaction.data.options as APIApplicationCommandInteractionDataStringOption[])?.forEach(
-        (o) => {
-          options[o.name] = o.value
+      return ctx.defer(
+        {
+          type: D.InteractionResponseType.DeferredChannelMessageWithSource,
+          data: { flags: D.MessageFlags.Ephemeral }
         },
+        async ctx => {
+          await ensureAdminPerms(app, ctx)
+
+          // get the points to add
+          const options: { [key: string]: string } = {}
+          ;(
+            ctx.interaction.data.options as D.APIApplicationCommandInteractionDataStringOption[]
+          )?.forEach(o => {
+            options[o.name] = o.value
+          })
+
+          const points = parseInt(options.points)
+          if (isNaN(points)) {
+            throw new UserError('Points must be a number')
+          }
+
+          // Get the selected ranking
+          let ranking = await app.db.rankings.get(parseInt(options['ranking']))
+
+          // Get the selected player in the ranking
+          const user = nonNullable(
+            ctx.interaction.data.resolved?.users?.[options.user],
+            'interaction data user'
+          )
+          let player = await getRegisterPlayer(app, user, ranking)
+
+          // add points to player
+          await player.update({
+            rating: nonNullable(player.data.rating, 'player rating') + points
+          })
+
+          // update the leaderboard display
+          await app.events.PlayerUpdated.emit(player)
+
+          return await ctx.edit({
+            content: `Added ${points} points to <@${user.id}> in ${ranking.data.name}`,
+            flags: D.MessageFlags.Ephemeral,
+            allowed_mentions: {
+              parse: []
+            }
+          })
+        }
       )
-
-      const points = parseInt(options.points)
-      if (isNaN(points)) {
-        throw new UserError('Points must be a number')
-      }
-
-      // Get the selected ranking
-      const ranking_id = parseInt(options['ranking'])
-      sentry.debug(`ranking_id: ${ranking_id}`)
-      let ranking = await app.db.rankings.get(parseInt(options['ranking']))
-
-      // Get the selected player in the ranking
-      const user = nonNullable(
-        interaction.data.resolved?.users?.[options.user],
-        'interaction data user',
-      )
-      let player = await getRegisterPlayer(app, user, ranking)
-
-      // add points to player
-      await player.update({
-        rating: nonNullable(player.data.rating, 'player rating') + points,
-      })
-
-      // update the leaderboard display
-      await app.events.RankingUpdated.emit(ranking)
-
-      return {
-        type: InteractionResponseType.ChannelMessageWithSource,
-        data: {
-          content: `Added ${points} points to <@${user.id}> in ${ranking.data.name}`,
-          flags: MessageFlags.Ephemeral,
-          allowed_mentions: {
-            parse: [],
-          },
-        },
-      }
     })

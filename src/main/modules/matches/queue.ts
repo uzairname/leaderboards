@@ -1,10 +1,8 @@
-import { APIUser } from 'discord-api-types/v10'
-
-import { App } from '../../app/app'
-
-import { getRegisterPlayer } from '../players'
+import * as D from 'discord-api-types/v10'
 import { type Team } from '../../../database/models'
 import { nonNullable } from '../../../utils/utils'
+import { App } from '../../app/app'
+import { getRegisterPlayer } from '../players'
 
 /**
  * When a user uses a command or button to join queue.
@@ -13,7 +11,7 @@ import { nonNullable } from '../../../utils/utils'
 export async function onJoinQueue(
   app: App,
   ranking_id: number,
-  user: APIUser,
+  user: D.APIUser
 ): Promise<{
   rejoined: boolean
 }> {
@@ -26,7 +24,7 @@ export async function onJoinQueue(
     const team = await app.db.teams.create(ranking, {}, [player])
     await team.addToQueue()
     return { rejoined: false }
-  } else if (player_queue_teams.every((team) => !team.in_queue)) {
+  } else if (player_queue_teams.every(team => !team.in_queue)) {
     // the player is in at least one team, but none are in the queue.
     if (player_queue_teams.length == 1) {
       // the player is in a team. add the team to the queue
@@ -49,6 +47,6 @@ export async function onJoinQueue(
 /**
  * When a user uses a command or button to leave queue.
  */
-export async function onLeaveQueue(app: App, ranking_id: number, user: APIUser) {
-  nonNullable(await app.db.players.get(user.id, ranking_id), 'player').removeTeamsFromQueue()
+export async function onLeaveQueue(app: App, ranking_id: number, user: D.APIUser) {
+  ;(await app.db.players.get(user.id, ranking_id))?.removeTeamsFromQueue()
 }

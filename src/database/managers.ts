@@ -1,6 +1,5 @@
-import { DbClient } from './client'
-
 import DbCache from './cache'
+import { DbClient } from './client'
 
 export abstract class DbObjectManager {
   public cache: any = {}
@@ -12,6 +11,6 @@ export abstract class DbObjectManager {
 export abstract class DbObject<SelectType> {
   constructor(
     public data: SelectType,
-    protected db: DbClient,
+    protected db: DbClient
   ) {}
 }

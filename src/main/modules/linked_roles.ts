@@ -1,13 +1,9 @@
-import {
-  ApplicationRoleConnectionMetadataType,
-  RESTPutAPIApplicationRoleConnectionMetadataJSONBody,
-  RESTPutAPICurrentUserApplicationRoleConnectionJSONBody,
-} from 'discord-api-types/v10'
+import * as D from 'discord-api-types/v10'
 import { App } from '../app/app'
 
 export function getAppRoleConnectionsMetadata(
-  app: App,
-): RESTPutAPIApplicationRoleConnectionMetadataJSONBody {
+  app: App
+): D.RESTPutAPIApplicationRoleConnectionMetadataJSONBody {
   return []
 }
 
@@ -22,13 +18,13 @@ export async function updateUserRoleConnectionData(
   app: App,
   access_token: string,
   score: number,
-  platform_name: string,
+  platform_name: string
 ): Promise<void> {
-  const body: RESTPutAPICurrentUserApplicationRoleConnectionJSONBody = {
+  const body: D.RESTPutAPICurrentUserApplicationRoleConnectionJSONBody = {
     platform_name,
     metadata: {
-      score: score,
-    },
+      score: score
+    }
   }
 
   if (app.config.features.ROLE_CONNECTIONS_METADATA) {

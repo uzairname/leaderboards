@@ -1,76 +1,65 @@
-import {
-  APIActionRowComponent,
-  APIMessageActionRowComponent,
-  APIMessageUserSelectInteractionData,
-  ApplicationCommandType,
-  ButtonStyle,
-  ComponentType,
-  InteractionResponseType,
-  MessageFlags,
-} from 'discord-api-types/v10'
-
+import * as D from 'discord-api-types/v10'
+import { ChoiceField, CommandView, IntField, ListField, _ } from '../../../discord-framework'
 import { nonNullable } from '../../../utils/utils'
-import { ChoiceField, IntField, ListField, CommandView, _ } from '../../../discord-framework'
-
 import { App } from '../../app/app'
 import { AppErrors } from '../../app/errors'
 
 const start_match_command = new CommandView({
-  type: ApplicationCommandType.ChatInput,
+  type: D.ApplicationCommandType.ChatInput,
   command: {
     name: 'start-match',
-    description: 'description',
+    description: 'description'
   },
   custom_id_prefix: 'sm',
   state_schema: {
     component: new ChoiceField({
       'confirm players': _,
-      'select team': _,
+      'select team': _
     }),
     selected_team: new IntField(),
     players: new ListField(),
-    ranking_id: new IntField(),
-  },
+    ranking_id: new IntField()
+  }
 })
 
-export default (app: App) =>
+export const startMatch = (app: App) =>
   start_match_command
-    .onCommand(async (ctx) => {
+    .onCommand(async ctx => {
       return {
-        type: InteractionResponseType.ChannelMessageWithSource,
+        type: D.InteractionResponseType.ChannelMessageWithSource,
         data: {
           content: 'test',
           components: [
             {
-              type: ComponentType.ActionRow,
+              type: D.ComponentType.ActionRow,
               components: [
                 {
-                  type: ComponentType.UserSelect,
+                  type: D.ComponentType.UserSelect,
                   placeholder: 'Team 1',
                   custom_id: ctx.state.set.component('select team').set.selected_team(0).encode(),
                   min_values: 1,
-                  max_values: 1,
-                },
-              ],
+                  max_values: 1
+                }
+              ]
             },
             {
-              type: ComponentType.ActionRow,
+              type: D.ComponentType.ActionRow,
               components: [
                 {
-                  type: ComponentType.UserSelect,
+                  type: D.ComponentType.UserSelect,
                   placeholder: 'Team 2',
                   custom_id: ctx.state.set.component('select team').set.selected_team(1).encode(),
                   min_values: 1,
-                  max_values: 1,
-                },
-              ],
-            },
+                  max_values: 1
+                }
+              ]
+            }
           ],
-          flags: MessageFlags.Ephemeral,
-        },
+          flags: D.MessageFlags.Ephemeral
+        }
       }
     })
-    .onComponent(async (ctx) => {
+    .onComponent(async ctx => {
       let data = ctx.state.data
 
       let num_teams = 2
@@ -80,69 +69,69 @@ export default (app: App) =>
       if (ctx.state.is.component('select team')) {
         let selected_team_num = nonNullable(data.selected_team, 'selected_team')
 
-        let interaction = ctx.interaction.data as unknown as APIMessageUserSelectInteractionData
+        let interaction = ctx.interaction.data as unknown as D.APIMessageUserSelectInteractionData
 
         for (let i = 0; i < players_per_team; i++) {
           selected_players[selected_team_num * players_per_team + i] = interaction.values[i]
         }
         ctx.state.save.players(selected_players)
 
-        let components: APIActionRowComponent<APIMessageActionRowComponent>[] = [
+        let components: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = [
           {
-            type: ComponentType.ActionRow,
+            type: D.ComponentType.ActionRow,
             components: [
               {
-                type: ComponentType.UserSelect,
+                type: D.ComponentType.UserSelect,
                 placeholder: 'Team 1',
                 custom_id: ctx.state.set.component('select team').set.selected_team(0).encode(),
                 min_values: players_per_team,
-                max_values: players_per_team,
-              },
-            ],
+                max_values: players_per_team
+              }
+            ]
           },
           {
-            type: ComponentType.ActionRow,
+            type: D.ComponentType.ActionRow,
             components: [
               {
-                type: ComponentType.UserSelect,
+                type: D.ComponentType.UserSelect,
                 placeholder: 'Team 2',
                 custom_id: ctx.state.set.component('select team').set.selected_team(1).encode(),
                 min_values: players_per_team,
-                max_values: players_per_team,
-              },
-            ],
-          },
+                max_values: players_per_team
+              }
+            ]
+          }
         ]
 
-        if (selected_players.filter((p) => p).length == selected_players.length) {
+        if (selected_players.filter(p => p).length == selected_players.length) {
           components.push({
-            type: ComponentType.ActionRow,
+            type: D.ComponentType.ActionRow,
             components: [
               {
-                type: ComponentType.Button,
+                type: D.ComponentType.Button,
                 label: 'Confirm',
                 custom_id: ctx.state.set.component('confirm players').encode(),
-                style: ButtonStyle.Success,
-              },
-            ],
+                style: D.ButtonStyle.Success
+              }
+            ]
           })
         }
 
         return {
-          type: InteractionResponseType.UpdateMessage,
+          type: D.InteractionResponseType.UpdateMessage,
           data: {
             components,
-            flags: MessageFlags.Ephemeral,
-          },
+            flags: D.MessageFlags.Ephemeral
+          }
         }
       } else if (ctx.state.is.component('confirm players')) {
         return {
-          type: InteractionResponseType.UpdateMessage,
+          type: D.InteractionResponseType.UpdateMessage,
           data: {
             content:
-              'Starting match between ' + selected_players.map((p) => '<@' + p + '>').join(' '),
-            flags: MessageFlags.Ephemeral,
-          },
+              'Starting match between ' + selected_players.map(p => '<@' + p + '>').join(' '),
+            flags: D.MessageFlags.Ephemeral
+          }
         }
       } else {
         throw new AppErrors.UnknownState(ctx.state.data.component)

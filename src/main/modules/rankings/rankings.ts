@@ -1,18 +1,16 @@
-import { eq, and } from 'drizzle-orm'
-
-import { GuildRankings, Rankings } from '../../../database/schema'
+import { and, eq } from 'drizzle-orm'
 import { Guild, GuildRanking, Ranking } from '../../../database/models'
-import { RankingInsert, RankingUpdate } from '../../../database/types'
 import {
   default_elo_settings,
-  default_players_per_team,
   default_num_teams,
+  default_players_per_team
 } from '../../../database/models/models/rankings'
-
+import { GuildRankings, Rankings } from '../../../database/schema'
+import { RankingInsert } from '../../../database/types'
+import { sentry } from '../../../request/sentry'
 import { App } from '../../app/app'
 import { UserError } from '../../app/errors'
 import { removeRankingLbChannels } from './ranking_channels'
-import { sentry } from '../../../request/sentry'
 
 /**
  *
@@ -29,7 +27,7 @@ export async function createNewRankingInGuild(
     num_teams?: number
     players_per_team?: number
     elo_settings?: RankingInsert['elo_settings']
-  },
+  }
 ): Promise<{
   new_guild_ranking: GuildRanking
   new_ranking: Ranking
@@ -53,26 +51,26 @@ export async function createNewRankingInGuild(
     time_created: new Date(),
     players_per_team: options.players_per_team || default_players_per_team,
     num_teams: options.num_teams || default_num_teams,
-    elo_settings: options.elo_settings || default_elo_settings,
+    elo_settings: options.elo_settings || default_elo_settings
     // TODO: specify players per team and num teams
   })
 
   const new_guild_ranking = await app.db.guild_rankings.create(guild, new_ranking, {
-    is_admin: true,
+    is_admin: true
   })
 
   await app.events.GuildRankingCreated.emit(new_guild_ranking)
 
   return {
     new_guild_ranking: new_guild_ranking,
-    new_ranking: new_ranking,
+    new_ranking: new_ranking
   }
 }
 
 export async function updateRanking(
   app: App,
   ranking: Ranking,
-  options: Pick<RankingUpdate, 'name' | 'elo_settings'>,
+  options: Pick<RankingInsert, 'name' | 'elo_settings'>
 ) {
   validateRanking(options)
   await ranking.update(options)

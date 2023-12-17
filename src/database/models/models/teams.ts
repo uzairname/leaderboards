@@ -1,13 +1,10 @@
 import { and, eq } from 'drizzle-orm'
-
+import { Player, Ranking } from '..'
 import { nonNullable } from '../../../utils/utils'
-
-import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
-
 import { DbClient } from '../../client'
 import { DbObject, DbObjectManager } from '../../managers'
+import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
 import { TeamInsert, TeamSelect, TeamUpdate } from '../../types'
-import { Player, Ranking } from '..'
 
 export class Team extends DbObject<TeamSelect> {
   constructor(data: TeamSelect, db: DbClient) {
@@ -22,7 +19,7 @@ export class Team extends DbObject<TeamSelect> {
       .where(eq(TeamPlayers.team_id, this.data.id))
       .innerJoin(Players, eq(Players.id, TeamPlayers.player_id))
 
-    return data.map((data) => new Player(data.player, this.db))
+    return data.map(data => new Player(data.player, this.db))
   }
 
   async update(data: TeamUpdate): Promise<this> {
@@ -38,14 +35,14 @@ export class Team extends DbObject<TeamSelect> {
       .insert(TeamPlayers)
       .values({
         team_id: this.data.id,
-        player_id: player.data.id,
+        player_id: player.data.id
       })
       .onConflictDoNothing()
     return this
   }
 
   async addPlayers(players: Player[]): Promise<this> {
-    await Promise.all(players.map((player) => this.addPlayer(player)))
+    await Promise.all(players.map(player => this.addPlayer(player)))
     return this
   }
 
@@ -80,7 +77,7 @@ export class TeamsManager extends DbObjectManager {
   async create(
     ranking: Ranking,
     data: Omit<TeamInsert, 'ranking_id'>,
-    players: Player[] = [],
+    players: Player[] = []
   ): Promise<Team> {
     data.rating = calculateTeamRating(players, ranking)
 

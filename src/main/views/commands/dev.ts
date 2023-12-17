@@ -1,15 +1,15 @@
-import { ApplicationCommandOptionType, ApplicationCommandType } from 'discord-api-types/v10'
+import * as D from 'discord-api-types/v10'
 import {
   ChoiceField,
   CommandView,
   IntField,
   ListField,
   StringField,
-  _,
+  _
 } from '../../../discord-framework'
 
 const experimental_command = new CommandView({
-  type: ApplicationCommandType.ChatInput,
+  type: D.ApplicationCommandType.ChatInput,
 
   custom_id_prefix: 'exp',
 
@@ -18,29 +18,29 @@ const experimental_command = new CommandView({
     description: 'experiments',
     options: [
       {
-        type: ApplicationCommandOptionType.Subcommand,
+        type: D.ApplicationCommandOptionType.Subcommand,
         name: '',
         description: 'Refreshes something',
         options: [
           {
-            type: ApplicationCommandOptionType.String,
+            type: D.ApplicationCommandOptionType.String,
             name: 'type',
-            description: 'The type of refresh',
-          },
-        ],
+            description: 'The type of refresh'
+          }
+        ]
       },
       {
-        type: ApplicationCommandOptionType.User,
+        type: D.ApplicationCommandOptionType.User,
         name: 'user',
-        description: 'The user to test',
-      },
-    ],
+        description: 'The user to test'
+      }
+    ]
   },
 
   state_schema: {
     clicked_btn: new ChoiceField({ wait: _, increment: _, one: _, two: _ }),
     counter: new IntField(),
     original_user: new StringField(),
-    value: new ListField(),
-  },
+    value: new ListField()
+  }
 })

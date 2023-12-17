@@ -1,4 +1,4 @@
-import { PermissionFlagsBits } from 'discord-api-types/v10'
+import * as D from 'discord-api-types/v10'
 
 export abstract class DiscordError extends Error {
   constructor(message?: string) {
@@ -11,7 +11,7 @@ export namespace DiscordErrors {
   export class BotPermissions extends DiscordError {
     getMissingPermissionsNames() {
       const missing_permissions_names: string[] = []
-      for (const [key, value] of Object.entries(PermissionFlagsBits)) {
+      for (const [key, value] of Object.entries(D.PermissionFlagsBits)) {
         if ((BigInt(value) & this.missing_permissions) === BigInt(value)) {
           missing_permissions_names.push(key)
         }

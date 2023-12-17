@@ -1,12 +1,9 @@
 import { eq } from 'drizzle-orm'
-
-import { Guilds, GuildRankings, Rankings } from '../../schema'
-
+import { GuildRanking, Ranking } from '..'
 import { DbClient } from '../../client'
 import { DbObject, DbObjectManager } from '../../managers'
-
-import type { GuildSelect, GuildUpdate, GuildInsert } from '../../types'
-import { GuildRanking, Ranking } from '..'
+import { GuildRankings, Guilds, Rankings } from '../../schema'
+import type { GuildInsert, GuildSelect } from '../../types'
 
 export class Guild extends DbObject<GuildSelect> {
   constructor(data: GuildSelect, db: DbClient) {
@@ -14,11 +11,11 @@ export class Guild extends DbObject<GuildSelect> {
     db.cache.guilds[data.id] = this
   }
 
-  async update(data: GuildUpdate) {
-    const db_data = (
+  async update(data: Partial<Omit<GuildInsert, 'id'>>): Promise<this> {
+    this.data = (
       await this.db.db.update(Guilds).set(data).where(eq(Guilds.id, this.data.id)).returning()
     )[0]
-    this.data = db_data
+    return this
   }
 }
 

@@ -1,10 +1,12 @@
-import { APIModalSubmitInteraction, ModalSubmitComponent } from 'discord-api-types/v10'
+import * as D from 'discord-api-types/v10'
+import { nonNullable } from '../../../utils/utils'
+import { ComponentInteraction } from '../types'
 
 export function getModalSubmitEntries(
-  interaction: APIModalSubmitInteraction,
-): ModalSubmitComponent[] {
+  interaction: D.APIModalSubmitInteraction
+): D.ModalSubmitComponent[] {
   return interaction.data.components
-    .map((row) => {
+    .map(row => {
       return row.components
     })
     .flat()

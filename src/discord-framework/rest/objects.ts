@@ -1,13 +1,4 @@
-import {
-  APIEmbed,
-  ChannelType,
-  RESTPatchAPIChannelJSONBody,
-  RESTPatchAPIChannelMessageJSONBody,
-  RESTPatchAPIGuildRoleJSONBody,
-  RESTPostAPIChannelMessageJSONBody,
-  RESTPostAPIGuildChannelJSONBody,
-  RESTPostAPIGuildRoleJSONBody,
-} from 'discord-api-types/v10'
+import * as D from 'discord-api-types/v10'
 
 export class MessageData {
   /**
@@ -15,23 +6,23 @@ export class MessageData {
    * All properties are editable in discord.
    * @param body
    */
-  constructor(body: RESTPatchAPIChannelMessageJSONBody) {
+  constructor(body: D.RESTPatchAPIChannelMessageJSONBody) {
     this.patchdata = body
-    this.postdata = body as RESTPostAPIChannelMessageJSONBody
+    this.postdata = body as D.RESTPostAPIChannelMessageJSONBody
   }
 
-  patchdata: RESTPatchAPIChannelMessageJSONBody
-  postdata: RESTPostAPIChannelMessageJSONBody
+  patchdata: D.RESTPatchAPIChannelMessageJSONBody
+  postdata: D.RESTPostAPIChannelMessageJSONBody
 }
 
 export class RoleData {
-  constructor(body: RESTPatchAPIGuildRoleJSONBody) {
+  constructor(body: D.RESTPatchAPIGuildRoleJSONBody) {
     this.patchdata = body
-    this.postdata = body as RESTPostAPIGuildRoleJSONBody
+    this.postdata = body as D.RESTPostAPIGuildRoleJSONBody
   }
 
-  patchdata: RESTPatchAPIGuildRoleJSONBody
-  postdata: RESTPostAPIGuildRoleJSONBody
+  patchdata: D.RESTPatchAPIGuildRoleJSONBody
+  postdata: D.RESTPostAPIGuildRoleJSONBody
 }
 
 export class GuildChannelData {
@@ -42,25 +33,25 @@ export class GuildChannelData {
    * This class omits type from patch data.
    * @param body
    */
-  constructor(body: Omit<RESTPatchAPIChannelJSONBody, 'type'> & { type: ChannelType }) {
-    this.postdata = body as RESTPostAPIGuildChannelJSONBody
+  constructor(body: Omit<D.RESTPatchAPIChannelJSONBody, 'type'> & { type: D.ChannelType }) {
+    this.postdata = body as D.RESTPostAPIGuildChannelJSONBody
     this.patchdata = {
       ...body,
-      type: undefined,
+      type: undefined
     }
     this.patchdata.type
   }
 
-  patchdata: RESTPatchAPIChannelJSONBody
-  postdata: RESTPostAPIGuildChannelJSONBody
+  patchdata: D.RESTPatchAPIChannelJSONBody
+  postdata: D.RESTPostAPIGuildChannelJSONBody
 }
 
 export class MessageBuilder {
   content?: string
-  embeds?: APIEmbed[]
+  embeds?: D.APIEmbed[]
   components?: []
 
-  constructor(params?: { content: string; embeds: APIEmbed[]; component: [] }) {
+  constructor(params?: { content: string; embeds: D.APIEmbed[]; component: [] }) {
     this.content = params?.content
     this.embeds = params?.embeds
     this.components = params?.component
@@ -70,7 +61,7 @@ export class MessageBuilder {
     return new MessageData({
       content: this.content,
       embeds: this.embeds,
-      components: this.components,
+      components: this.components
     })
   }
 }

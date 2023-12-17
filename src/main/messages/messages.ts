@@ -1,5 +1,4 @@
 import { DiscordErrors, DiscordRESTClient } from '../../discord-framework'
-
 import { inviteUrl } from './message_pieces'
 
 export namespace Messages {
@@ -10,7 +9,7 @@ export namespace Messages {
 
   export function botPermisssionsError(
     bot: DiscordRESTClient,
-    e: DiscordErrors.BotPermissions,
+    e: DiscordErrors.BotPermissions
   ): string {
     let msg = "I'm missing some permissions"
 
@@ -27,12 +26,12 @@ export namespace Messages {
 
 function permsToString(perms: string[]) {
   return perms
-    .map((e) =>
+    .map(e =>
       e
         .toLowerCase()
         .split('_')
-        .map((e) => e.charAt(0).toUpperCase() + e.slice(1))
-        .join(' '),
+        .map(e => e.charAt(0).toUpperCase() + e.slice(1))
+        .join(' ')
     )
     .join(', ')
 }

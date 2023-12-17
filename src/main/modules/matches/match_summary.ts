@@ -1,35 +1,22 @@
+import * as D from 'discord-api-types/v10'
 import { type InferInsertModel, eq } from 'drizzle-orm'
 import { Guild, GuildRanking, Match, Ranking } from '../../../database/models'
 import { MatchSummaryMessages } from '../../../database/schema'
-import { App } from '../../app/app'
 import { GuildChannelData, MessageData } from '../../../discord-framework'
-import { communityEnabled, syncRankedCategory } from '../guilds'
-import {
-  APIChannelPatchOverwrite,
-  APIEmbed,
-  ChannelType,
-  ForumLayoutType,
-  PermissionFlagsBits,
-  SortOrderType,
-} from 'discord-api-types/v10'
 import { sentry } from '../../../request/sentry'
 import { nonNullable } from '../../../utils/utils'
-import { getNewRatings } from './scoring'
+import { App } from '../../app/app'
 import { Colors } from '../../messages/message_pieces'
+import { communityEnabled, syncRankedCategory } from '../guilds'
 import { calculateMatchNewRatings, getAndCalculateMatchNewRatings } from './score_matches'
+import { getNewRatings } from './scoring'
 
 export function addMatchSummaryMessagesListeners(app: App): void {
-  app.events.MatchScored.on(async (data) => {
-    sentry.debug('executing match scored event')
+  app.events.MatchScored.on(async data => {
     await syncMatchSummaryMessages(app, data)
   })
 
-  app.events.GuildRankingUpdated.on(async (guild_ranking) => {
-    await syncMatchSummaryChannel(app, guild_ranking)
-  })
-
-  app.events.GuildRankingCreated.on(async (guild_ranking) => {
-    sentry.debug('executing guild ranking created event')
+  app.events.GuildRankingCreated.on(async guild_ranking => {
     await syncMatchSummaryChannel(app, guild_ranking)
   })
 }
@@ -48,16 +35,14 @@ async function syncMatchSummaryMessages(app: App, match: Match): Promise<void> {
     .where(eq(MatchSummaryMessages.match_id, match.data.id))
 
   await Promise.all(
-    guild_rankings.map(async (guild_ranking) => {
+    guild_rankings.map(async guild_ranking => {
       await syncMatchSummaryMessageInGuild(
         app,
         match,
         guild_ranking.guild_ranking,
-        match_summary_messaeges.find(
-          (m) => m.guild_id === guild_ranking.guild_ranking.data.guild_id,
-        ),
+        match_summary_messaeges.find(m => m.guild_id === guild_ranking.guild_ranking.data.guild_id)
       )
-    }),
+    })
   )
 }
 
@@ -70,7 +55,7 @@ async function syncMatchSummaryMessageInGuild(
         forum_thread_id: string | null
         message_id: string | null
       }
-    | undefined,
+    | undefined
 ): Promise<void> {
   // update the match summary message on Discord
 
@@ -90,13 +75,13 @@ async function syncMatchSummaryMessageInGuild(
             guild_ranking.data.match_results_forum_id ?? guild.data.match_results_forum_id,
           body: {
             name: `Match #${match.data.number} in ${ranking.data.name}`,
-            message: (await matchSummaryMessageData(match, ranking)).postdata,
-          },
+            message: (await matchSummaryMessageData(match, ranking)).postdata
+          }
         }
       },
       update_message: async () => (await matchSummaryMessageData(match, ranking)).patchdata,
       new_forum: async () =>
-        matchSummaryChannelData(app, await guild_ranking.guild(), ranking, true),
+        matchSummaryChannelData(app, await guild_ranking.guild(), ranking, true)
     })
 
     // update the match summary message in database
@@ -118,7 +103,7 @@ async function syncMatchSummaryMessageInGuild(
         guild_ranking.data.match_results_textchannel_id ?? guild.data.match_results_textchannel_id,
       target_message_id: match_summary_message?.message_id,
       messageData: async () => matchSummaryMessageData(match, ranking),
-      channelData: async () => matchSummaryChannelData(app, guild, ranking, false),
+      channelData: async () => matchSummaryChannelData(app, guild, ranking, false)
     })
 
     // update the match summary message in database
@@ -131,14 +116,14 @@ async function syncMatchSummaryMessageInGuild(
     }
     result.new_channel &&
       (await guild.update({
-        match_results_textchannel_id: result.new_channel.id,
+        match_results_textchannel_id: result.new_channel.id
       }))
   }
 }
 
 export async function syncMatchSummaryChannel(
   app: App,
-  guild_ranking: GuildRanking,
+  guild_ranking: GuildRanking
 ): Promise<void> {
   const community_enabled = await communityEnabled(app, guild_ranking.data.guild_id)
   const guild = await guild_ranking.guild()
@@ -153,7 +138,7 @@ export async function syncMatchSummaryChannel(
       ? guild_ranking.data.match_results_forum_id ?? guild.data.match_results_forum_id
       : guild_ranking.data.match_results_textchannel_id ?? guild.data.match_results_textchannel_id,
     channelData: async () =>
-      await matchSummaryChannelData(app, guild, ranking, community_enabled, for_guild_ranking),
+      await matchSummaryChannelData(app, guild, ranking, community_enabled, for_guild_ranking)
   })
 
   if (result.is_new_channel) {
@@ -175,13 +160,13 @@ export async function syncMatchSummaryChannel(
 
 export async function matchSummaryMessageData(
   match: Match,
-  ranking: Ranking,
+  ranking: Ranking
 ): Promise<MessageData> {
   const num_teams = nonNullable(ranking.data.num_teams)
   const players = await match.players()
   const player_ratings = await getAndCalculateMatchNewRatings(match, ranking)
 
-  const embed: APIEmbed = {
+  const embed: D.APIEmbed = {
     title: `Match #${match.data.number} in ${ranking.data.name}`,
     fields: new Array(num_teams).fill(0).map((_, i) => {
       return {
@@ -189,21 +174,21 @@ export async function matchSummaryMessageData(
         value: players[i]
           .map((p, j) => {
             return `<@${p.player.data.user_id}> (${player_ratings[i][j].rating_before.toFixed(
-              0,
+              0
             )} → **${player_ratings[i][j].rating_after.toFixed(0)}**)`
           })
           .join('\n'),
-        inline: true,
+        inline: true
       }
     }),
-    color: Colors.EmbedBackground,
+    color: Colors.EmbedBackground
   }
 
   return new MessageData({
     content: `Match finished: ${players
-      .map((team) => team.map((p) => p.player.data.name).join(', '))
+      .map(team => team.map(p => p.player.data.name).join(', '))
       .join(' vs. ')}`,
-    embeds: [embed],
+    embeds: [embed]
   })
 }
 
@@ -215,7 +200,7 @@ export async function matchSummaryChannelData(
   guild: Guild,
   ranking: Ranking,
   forum?: boolean,
-  is_ranking_specific?: boolean,
+  is_ranking_specific?: boolean
 ): Promise<{
   guild_id: string
   data: GuildChannelData
@@ -224,7 +209,7 @@ export async function matchSummaryChannelData(
   return {
     guild_id: guild.data.id,
     data: new GuildChannelData({
-      type: forum ? ChannelType.GuildForum : ChannelType.GuildText,
+      type: forum ? D.ChannelType.GuildForum : D.ChannelType.GuildText,
       parent_id: category.id,
       name: (is_ranking_specific ? `${ranking.data.name}` : ``) + ` Match Log`,
       topic:
@@ -233,42 +218,42 @@ export async function matchSummaryChannelData(
         ` are recorded here`,
       permission_overwrites: matchSummaryChannelPermissionOverwrites(
         guild.data.id,
-        app.bot.application_id,
+        app.bot.application_id
       ),
-      default_sort_order: SortOrderType.CreationDate,
+      default_sort_order: D.SortOrderType.CreationDate,
       default_reaction_emoji: { emoji_name: '👍', emoji_id: null },
       available_tags: [{ name: 'match', emoji_name: '⭐' }],
-      default_forum_layout: ForumLayoutType.ListView,
-    }),
+      default_forum_layout: D.ForumLayoutType.ListView
+    })
   }
 }
 
 export function matchSummaryChannelPermissionOverwrites(
   guild_id: string,
-  application_id: string,
-): APIChannelPatchOverwrite[] {
+  application_id: string
+): D.APIChannelPatchOverwrite[] {
   return [
     {
       // @everyone can't send messages or make threads
       id: guild_id,
       type: 0, // role
       deny: (
-        PermissionFlagsBits.SendMessages |
-        PermissionFlagsBits.SendMessagesInThreads |
-        PermissionFlagsBits.CreatePublicThreads |
-        PermissionFlagsBits.CreatePrivateThreads
-      ).toString(),
+        D.PermissionFlagsBits.SendMessages |
+        D.PermissionFlagsBits.SendMessagesInThreads |
+        D.PermissionFlagsBits.CreatePublicThreads |
+        D.PermissionFlagsBits.CreatePrivateThreads
+      ).toString()
     },
     {
       // the bot can send messages and make public threads
       id: application_id,
       type: 1, // user
       allow: (
-        PermissionFlagsBits.SendMessages |
-        PermissionFlagsBits.SendMessagesInThreads |
-        PermissionFlagsBits.CreatePublicThreads |
-        PermissionFlagsBits.CreatePrivateThreads
-      ).toString(),
-    },
+        D.PermissionFlagsBits.SendMessages |
+        D.PermissionFlagsBits.SendMessagesInThreads |
+        D.PermissionFlagsBits.CreatePublicThreads |
+        D.PermissionFlagsBits.CreatePrivateThreads
+      ).toString()
+    }
   ]
 }

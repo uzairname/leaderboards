@@ -8,6 +8,6 @@ export const features = (environment: string) => {
     EXPERIMENTAL_VIEWS: dev,
     ALL_COMMANDS_GUILD: dev,
     HELP_REFERENCE: dev,
-    DIRECT_RESPONSE: true,
+    DIRECT_RESPONSE: true
   }
 }

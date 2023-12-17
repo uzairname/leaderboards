@@ -1,14 +1,12 @@
 import { and, eq } from 'drizzle-orm'
-import { nonNullable } from '../../../utils/utils'
-
-import { MatchPlayers, Matches, Players } from '../../schema'
-import { DbErrors } from '../../errors'
-
-import { DbClient } from '../../client'
-import { DbObject, DbObjectManager } from '../../managers'
 import { Player } from '..'
-import { MatchInsert, MatchPlayerSelect, MatchSelect, MatchUpdate } from '../../types'
+import { nonNullable } from '../../../utils/utils'
 import { unflatten } from '../../../utils/utils'
+import { DbClient } from '../../client'
+import { DbErrors } from '../../errors'
+import { DbObject, DbObjectManager } from '../../managers'
+import { MatchPlayers, Matches, Players } from '../../schema'
+import { MatchInsert, MatchPlayerSelect, MatchSelect, MatchUpdate } from '../../types'
 
 export class Match extends DbObject<MatchSelect> {
   constructor(data: MatchSelect, db: DbClient) {
@@ -25,13 +23,13 @@ export class Match extends DbObject<MatchSelect> {
 
     const player_teams = Array.from(
       { length: nonNullable(this.data.team_players).length },
-      () => [] as { player: Player; match_player: MatchPlayerSelect }[],
+      () => [] as { player: Player; match_player: MatchPlayerSelect }[]
     )
 
-    players.forEach((player) => {
+    players.forEach(player => {
       player_teams[nonNullable(player.match_player.team_num, 'match_player.team_num')].push({
         player: new Player(player.player, this.db),
-        match_player: player.match_player,
+        match_player: player.match_player
       })
     })
 
@@ -42,41 +40,32 @@ export class Match extends DbObject<MatchSelect> {
     data: { team_players_before: { id: number; rating: number; rd: number }[][] } & Omit<
       MatchUpdate,
       'team_players' | 'number'
-    >,
+    >
   ): Promise<this> {
-    await this.db.db
-      .update(Matches)
-      .set({
-        ...data,
-        team_players: data.team_players_before.map((team) => team.map((player) => player.id)),
-      })
-      .where(eq(Matches.id, this.data.id))
-
-    const match_players_new = data.team_players_before
-      .flat()
-      .map((player) => {
-        return {
-          match_id: this.data.id,
-          player_id: player.id,
-          rating_before: player.rating,
-          rd_before: player.rd,
-        }
-      })
-      .flat()
+    this.data = (
+      await this.db.db
+        .update(Matches)
+        .set({
+          ...data,
+          team_players: data.team_players_before.map(team => team.map(player => player.id))
+        })
+        .where(eq(Matches.id, this.data.id))
+        .returning()
+    )[0]
 
     // update all match players' ratings and rd before
     await Promise.all(
-      match_players_new.map(async (new_mp) => {
-        await this.db.db
+      data.team_players_before.flat().map(player => {
+        this.db.db
           .update(MatchPlayers)
-          .set(new_mp)
+          .set({
+            rating_before: player.rating,
+            rd_before: player.rd
+          })
           .where(
-            and(
-              eq(MatchPlayers.match_id, new_mp.match_id),
-              eq(MatchPlayers.player_id, new_mp.player_id),
-            ),
+            and(eq(MatchPlayers.match_id, this.data.id), eq(MatchPlayers.player_id, player.id))
           )
-      }),
+      })
     )
 
     return this
@@ -85,7 +74,7 @@ export class Match extends DbObject<MatchSelect> {
 
 export class MatchesManager extends DbObjectManager {
   async create(
-    data: { team_players: Player[][] } & Omit<MatchInsert, 'team_players'>,
+    data: { team_players: Player[][] } & Omit<MatchInsert, 'team_players'>
   ): Promise<Match> {
     this.validateNewMatch(data)
 
@@ -94,7 +83,7 @@ export class MatchesManager extends DbObjectManager {
         .insert(Matches)
         .values({
           ...data,
-          team_players: data.team_players.map((team) => team.map((player) => player.data.id)),
+          team_players: data.team_players.map(team => team.map(player => player.data.id))
         })
         .returning()
     )[0]
@@ -103,13 +92,13 @@ export class MatchesManager extends DbObjectManager {
 
     const match_players_data = data.team_players
       .map((team, team_num) => {
-        return team.map((player) => {
+        return team.map(player => {
           return {
             match_id: new_match_data.id,
             player_id: player.data.id,
             team_num,
             rating_before: player.data.rating,
-            rd_before: player.data.rd,
+            rd_before: player.data.rd
           }
         })
       })
@@ -129,17 +118,17 @@ export class MatchesManager extends DbObjectManager {
       // make sure all players are from the same ranking, and no duplicate player ids
       if (
         data.team_players.flat().length !==
-        new Set(data.team_players.flat().map((p) => p.data.id)).size
+        new Set(data.team_players.flat().map(p => p.data.id)).size
       ) {
         throw new DbErrors.ValidationError('Duplicate players in one match')
       }
       if (
-        data.team_players.some((team) =>
-          team.some((player) => player.data.ranking_id !== data.ranking_id),
+        data.team_players.some(team =>
+          team.some(player => player.data.ranking_id !== data.ranking_id)
         )
       ) {
         throw new DbErrors.ValidationError(
-          `Some players not in the match's ranking (${data.ranking_id})`,
+          `Some players not in the match's ranking (${data.ranking_id})`
         )
       }
     } else {

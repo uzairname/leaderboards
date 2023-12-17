@@ -1,15 +1,15 @@
 import { InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import {
   AccessTokens,
+  GuildRankings,
   Guilds,
-  Rankings,
+  MatchPlayers,
   Matches,
   Players,
+  Rankings,
   Settings,
-  Users,
-  GuildRankings,
   Teams,
-  MatchPlayers,
+  Users
 } from './schema'
 
 // Types for each model, for each type of query.
@@ -28,19 +28,15 @@ export type AccessTokenUpdate = Partial<Omit<AccessTokenInsert, 'user_id'>>
 
 export type GuildSelect = InferSelectModel<typeof Guilds>
 export type GuildInsert = InferInsertModel<typeof Guilds>
-export type GuildUpdate = Partial<Omit<GuildInsert, 'id'>>
 
 export type RankingSelect = InferSelectModel<typeof Rankings>
 export type RankingInsert = Omit<InferInsertModel<typeof Rankings>, 'id'>
-export type RankingUpdate = Partial<RankingInsert>
 
 export type GuildRankingSelect = InferSelectModel<typeof GuildRankings>
 export type GuildRankingInsert = InferInsertModel<typeof GuildRankings>
-export type GuildRankingUpdate = Partial<Omit<GuildRankingInsert, 'guild_id' | 'ranking_id'>>
 
 export type PlayerSelect = InferSelectModel<typeof Players>
 export type PlayerInsert = InferInsertModel<typeof Players>
-export type PlayerUpdate = Partial<Omit<PlayerInsert, 'user_id' | 'ranking_id'>>
 
 export type TeamSelect = InferSelectModel<typeof Teams>
 export type TeamInsert = Omit<InferInsertModel<typeof Teams>, 'id'>

@@ -1,27 +1,23 @@
-import {
-  APIApplicationCommandAutocompleteResponse,
-  APIApplicationCommandInteractionDataStringOption,
-  APIApplicationCommandOptionChoice,
-  ApplicationCommandType,
-  InteractionResponseType,
-} from 'discord-api-types/v10'
+import * as D from 'discord-api-types/v10'
 import type { AutocompleteContext, ViewAutocompleteCallback } from '../../../discord-framework'
 import type { App } from '../../app/app'
 import { checkGuildInteraction } from './checks'
 
+export const create_choice_value = 'create'
+
 export function rankingsAutocomplete(
   app: App,
-  create_new_choice?: boolean,
-  choice_name: string = 'ranking',
-): ViewAutocompleteCallback<ApplicationCommandType.ChatInput> {
+  create_choice?: boolean,
+  ranking_option_name: string = 'ranking'
+): ViewAutocompleteCallback<D.ApplicationCommandType.ChatInput> {
   return autocompleteTimeout(async (ctx: AutocompleteContext) => {
     const interaction = checkGuildInteraction(ctx.interaction)
 
     // Get the ranking name typed so far.
     const input_value =
       (
-        interaction.data.options?.find((o) => o.name === choice_name) as
-          | APIApplicationCommandInteractionDataStringOption
+        interaction.data.options?.find(o => o.name === ranking_option_name) as
+          | D.APIApplicationCommandInteractionDataStringOption
           | undefined
       )?.value ?? ''
 
@@ -29,30 +25,30 @@ export function rankingsAutocomplete(
     const guild_rankings = await app.db.guild_rankings.get({ guild_id: interaction.guild_id })
 
     // Filter the rankings by name and map them to an array of choices.
-    const choices: APIApplicationCommandOptionChoice[] = guild_rankings
+    const choices: D.APIApplicationCommandOptionChoice[] = guild_rankings
       .filter(
-        (item) =>
+        item =>
           // if no input so far, include all rankings
-          !input_value || item.ranking.data.name?.toLowerCase().includes(input_value.toLowerCase()),
+          !input_value || item.ranking.data.name?.toLowerCase().includes(input_value.toLowerCase())
       )
-      .map((lb) => ({
+      .map(lb => ({
         name: lb.ranking.data.name || 'Unnamed ranking',
-        value: lb.ranking.data.id.toString(),
+        value: lb.ranking.data.id.toString()
       }))
 
-    if (create_new_choice || choices.length == 0) {
+    if (create_choice || choices.length == 0) {
       // Add a choice to create a new ranking.
       choices.push({
         name: 'Create a new ranking',
-        value: 'create',
+        value: create_choice_value
       })
     }
 
-    const response: APIApplicationCommandAutocompleteResponse = {
-      type: InteractionResponseType.ApplicationCommandAutocompleteResult,
+    const response: D.APIApplicationCommandAutocompleteResponse = {
+      type: D.InteractionResponseType.ApplicationCommandAutocompleteResult,
       data: {
-        choices,
-      },
+        choices
+      }
     }
 
     return response
@@ -60,27 +56,27 @@ export function rankingsAutocomplete(
 }
 
 function autocompleteTimeout(
-  callback: ViewAutocompleteCallback<ApplicationCommandType.ChatInput>,
-  message?: string,
-): ViewAutocompleteCallback<ApplicationCommandType.ChatInput> {
+  callback: ViewAutocompleteCallback<D.ApplicationCommandType.ChatInput>,
+  message?: string
+): ViewAutocompleteCallback<D.ApplicationCommandType.ChatInput> {
   return async function (ctx: AutocompleteContext) {
     return Promise.race([
       callback(ctx),
-      new Promise<APIApplicationCommandAutocompleteResponse>((resolve) =>
+      new Promise<D.APIApplicationCommandAutocompleteResponse>(resolve =>
         setTimeout(() => {
           resolve({
-            type: InteractionResponseType.ApplicationCommandAutocompleteResult,
+            type: D.InteractionResponseType.ApplicationCommandAutocompleteResult,
             data: {
               choices: [
                 {
                   name: message || 'Loading options timed out... type something to refresh',
-                  value: '',
-                },
-              ],
-            },
+                  value: ''
+                }
+              ]
+            }
           })
-        }, 2750),
-      ),
+        }, 2750)
+      )
     ])
   }
 }

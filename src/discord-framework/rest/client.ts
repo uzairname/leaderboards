@@ -1,11 +1,8 @@
-import * as D from 'discord-api-types/v10'
-import { I as InternalRequest } from '@discordjs/rest/dist/types-65527f29'
 import { DiscordAPIError, REST, RequestData, RequestMethod } from '@discordjs/rest'
-
+import { I as InternalRequest } from '@discordjs/rest/dist/types-65527f29'
+import * as D from 'discord-api-types/v10'
 import { sentry } from '../../request/sentry'
-
 import { DiscordErrors } from './errors'
-
 import { RESTPostAPIGuildForumThreadsResult } from './types'
 import { DiscordRESTUtils } from './utils'
 
@@ -38,30 +35,30 @@ export class DiscordRESTClient extends REST {
     if (guild_id) {
       return (await this.fetch(
         RequestMethod.Get,
-        D.Routes.applicationGuildCommands(this.application_id, guild_id),
+        D.Routes.applicationGuildCommands(this.application_id, guild_id)
       )) as D.RESTGetAPIApplicationGuildCommandResult[]
     } else {
       return (await this.fetch(
         RequestMethod.Get,
-        D.Routes.applicationCommands(this.application_id),
+        D.Routes.applicationCommands(this.application_id)
       )) as D.RESTGetAPIApplicationCommandsResult[]
     }
   }
 
   async overwriteGuildCommands(
     guild_id: string,
-    body: D.RESTPutAPIApplicationGuildCommandsJSONBody,
+    body: D.RESTPutAPIApplicationGuildCommandsJSONBody
   ) {
     return (await this.fetch(
       RequestMethod.Put,
       D.Routes.applicationGuildCommands(this.application_id, guild_id),
-      { body },
+      { body }
     )) as D.RESTPutAPIApplicationGuildCommandsResult[]
   }
 
   async overwriteGlobalCommands(body: D.RESTPutAPIApplicationCommandsJSONBody) {
     return (await this.fetch(RequestMethod.Put, D.Routes.applicationCommands(this.application_id), {
-      body,
+      body
     })) as D.RESTPutAPIApplicationCommandsResult[]
   }
 
@@ -77,7 +74,7 @@ export class DiscordRESTClient extends REST {
   async makeGuildChannel(guild_id: string, body: D.RESTPostAPIGuildChannelJSONBody) {
     try {
       return (await this.fetch(RequestMethod.Post, D.Routes.guildChannels(guild_id), {
-        body,
+        body
       })) as D.RESTPostAPIGuildChannelResult
     } catch (e) {
       if (
@@ -94,14 +91,14 @@ export class DiscordRESTClient extends REST {
     return (await this.fetch(
       RequestMethod.Get,
       D.Routes.channel(channel_id),
-      {},
+      {}
     )) as D.RESTGetAPIChannelResult
   }
 
   @requiresBotPermissions(D.PermissionFlagsBits.ManageChannels)
   async editChannel(channel_id: string, body: D.RESTPatchAPIChannelJSONBody) {
     return (await this.fetch(RequestMethod.Patch, D.Routes.channel(channel_id), {
-      body,
+      body
     })) as D.RESTPatchAPIChannelResult
   }
 
@@ -109,7 +106,7 @@ export class DiscordRESTClient extends REST {
   async deleteChannel(channel_id: string) {
     return (await this.fetch(
       RequestMethod.Delete,
-      D.Routes.channel(channel_id),
+      D.Routes.channel(channel_id)
     )) as D.RESTDeleteAPIChannelResult
   }
 
@@ -119,24 +116,24 @@ export class DiscordRESTClient extends REST {
   async makePublicThread(
     body: D.RESTPostAPIChannelThreadsJSONBody,
     channel_id: string,
-    message_id?: string,
+    message_id?: string
   ) {
     return (await this.fetch(RequestMethod.Post, D.Routes.threads(channel_id, message_id), {
-      body,
+      body
     })) as D.RESTPostAPIChannelMessagesThreadsResult | D.RESTPostAPIChannelThreadsResult
   }
 
   @requiresBotPermissions(D.PermissionFlagsBits.CreatePrivateThreads)
   async makePrivateThread(body: D.RESTPostAPIChannelThreadsJSONBody, channel_id: string) {
     return (await this.fetch(RequestMethod.Post, D.Routes.threads(channel_id), {
-      body,
+      body
     })) as D.RESTPostAPIChannelThreadsResult
   }
 
   @requiresBotPermissions(D.PermissionFlagsBits.SendMessages)
   async makeForumPost(forum_id: string, body: D.RESTPostAPIGuildForumThreadsJSONBody) {
     return (await this.fetch(RequestMethod.Post, D.Routes.threads(forum_id), {
-      body,
+      body
     })) as RESTPostAPIGuildForumThreadsResult
   }
 
@@ -145,8 +142,8 @@ export class DiscordRESTClient extends REST {
     // https://discord.com/developers/docs/resources/channel#modify-channel
     return (await this.fetch(RequestMethod.Put, D.Routes.channel(thread_id), {
       body: {
-        flags: D.ChannelFlags.Pinned,
-      },
+        flags: D.ChannelFlags.Pinned
+      }
     })) as D.APIChannel
   }
 
@@ -154,7 +151,7 @@ export class DiscordRESTClient extends REST {
   async deleteThread(channel_id: string) {
     return (await this.fetch(
       RequestMethod.Delete,
-      D.Routes.channel(channel_id),
+      D.Routes.channel(channel_id)
     )) as D.RESTDeleteAPIChannelResult
   }
 
@@ -163,14 +160,14 @@ export class DiscordRESTClient extends REST {
   @requiresBotPermissions(D.PermissionFlagsBits.SendMessages)
   async createMessage(channel_id: string, body: D.RESTPostAPIChannelMessageJSONBody) {
     return (await this.fetch(RequestMethod.Post, D.Routes.channelMessages(channel_id), {
-      body,
+      body
     })) as D.RESTPostAPIChannelMessageResult
   }
 
   async getMessage(channel_id: string, message_id: string) {
     return (await this.fetch(
       RequestMethod.Get,
-      D.Routes.channelMessage(channel_id, message_id),
+      D.Routes.channelMessage(channel_id, message_id)
     )) as D.RESTGetAPIChannelMessageResult
   }
 
@@ -178,12 +175,12 @@ export class DiscordRESTClient extends REST {
   async editMessage(
     channel_id: string,
     message_id: string,
-    body: D.RESTPatchAPIChannelMessageJSONBody,
+    body: D.RESTPatchAPIChannelMessageJSONBody
   ) {
     const response = (await this.fetch(
       RequestMethod.Patch,
       D.Routes.channelMessage(channel_id, message_id),
-      { body },
+      { body }
     )) as D.RESTPatchAPIChannelMessageResult
     return response
   }
@@ -192,7 +189,7 @@ export class DiscordRESTClient extends REST {
   async pinMessage(channel_id: string, message_id: string) {
     return (await this.fetch(
       RequestMethod.Put,
-      D.Routes.channelPin(channel_id, message_id),
+      D.Routes.channelPin(channel_id, message_id)
     )) as D.RESTPutAPIChannelPinResult
   }
 
@@ -200,7 +197,7 @@ export class DiscordRESTClient extends REST {
   async deleteMessage(channel_id: string, message_id: string) {
     return (await this.fetch(
       RequestMethod.Delete,
-      D.Routes.channelMessage(channel_id, message_id),
+      D.Routes.channelMessage(channel_id, message_id)
     )) as D.RESTDeleteAPIChannelMessageResult
   }
 
@@ -209,14 +206,14 @@ export class DiscordRESTClient extends REST {
   async getGuild(guild_id: string) {
     return (await this.fetch(
       RequestMethod.Get,
-      D.Routes.guild(guild_id),
+      D.Routes.guild(guild_id)
     )) as D.RESTGetAPIGuildResult
   }
 
   async getGuildMember(guild_id: string, user_id: string) {
     return (await this.fetch(
       RequestMethod.Get,
-      D.Routes.guildMember(guild_id, user_id),
+      D.Routes.guildMember(guild_id, user_id)
     )) as D.RESTGetAPIGuildMemberResult
   }
 
@@ -225,21 +222,21 @@ export class DiscordRESTClient extends REST {
   @requiresBotPermissions(D.PermissionFlagsBits.ManageRoles)
   async makeRole(guild_id: string, body: D.RESTPostAPIGuildRoleJSONBody) {
     return (await this.fetch(RequestMethod.Post, D.Routes.guildRoles(guild_id), {
-      body,
+      body
     })) as D.RESTPostAPIGuildRoleResult
   }
 
   async getRoles(guild_id: string) {
     return (await this.fetch(
       RequestMethod.Get,
-      D.Routes.guildRoles(guild_id),
+      D.Routes.guildRoles(guild_id)
     )) as D.RESTGetAPIGuildRolesResult
   }
 
   @requiresBotPermissions(D.PermissionFlagsBits.ManageRoles)
   async editRole(guild_id: string, role_id: string, body: D.RESTPatchAPIGuildRoleJSONBody) {
     return (await this.fetch(RequestMethod.Patch, D.Routes.guildRole(guild_id, role_id), {
-      body,
+      body
     })) as D.RESTPatchAPIGuildRoleResult
   }
 
@@ -247,7 +244,7 @@ export class DiscordRESTClient extends REST {
   async deleteRole(guild_id: string, role_id: string) {
     return (await this.fetch(
       RequestMethod.Delete,
-      D.Routes.guildRole(guild_id, role_id),
+      D.Routes.guildRole(guild_id, role_id)
     )) as D.RESTDeleteAPIGuildRoleResult
   }
 
@@ -271,42 +268,42 @@ export class DiscordRESTClient extends REST {
   async createInteractionResponse(
     interaction_id: string,
     interaction_token: string,
-    body: D.RESTPostAPIInteractionCallbackJSONBody,
+    body: D.RESTPostAPIInteractionCallbackJSONBody
   ) {
     sentry.addBreadcrumb({
       category: 'interaction',
       message: 'Creating interaction response',
       level: 'info',
       data: {
-        response: JSON.stringify(body),
-      },
+        response: JSON.stringify(body)
+      }
     })
     return await this.fetch(
       RequestMethod.Post,
       D.Routes.interactionCallback(interaction_id, interaction_token),
-      { body },
+      { body }
     )
   }
 
   async followupInteractionResponse(
     interaction_token: string,
-    body: D.RESTPostAPIInteractionFollowupJSONBody,
+    body: D.RESTPostAPIInteractionFollowupJSONBody
   ) {
     return await this.fetch(
       RequestMethod.Post,
       D.Routes.webhook(this.application_id, interaction_token),
-      { body },
+      { body }
     )
   }
 
   async editOriginalInteractionResponse(
     interaction_token: string,
-    body: D.RESTPatchAPIInteractionOriginalResponseJSONBody,
+    body: D.RESTPatchAPIInteractionOriginalResponseJSONBody
   ) {
     return await this.fetch(
       RequestMethod.Patch,
       D.Routes.webhookMessage(this.application_id, interaction_token),
-      { body },
+      { body }
     )
   }
 
@@ -314,7 +311,7 @@ export class DiscordRESTClient extends REST {
     // get all messages
     return await this.fetch(
       RequestMethod.Delete,
-      D.Routes.webhookMessage(this.application_id, interaction_token, '@original'),
+      D.Routes.webhookMessage(this.application_id, interaction_token, '@original')
     )
   }
 
@@ -325,21 +322,21 @@ export class DiscordRESTClient extends REST {
       RequestMethod.Put,
       D.Routes.applicationRoleConnectionMetadata(this.application_id),
       {
-        body,
-      },
+        body
+      }
     )
   }
   async updateUserRoleConnection(
     access_token: string,
-    body: D.RESTPutAPICurrentUserApplicationRoleConnectionJSONBody,
+    body: D.RESTPutAPICurrentUserApplicationRoleConnectionJSONBody
   ) {
     await this.fetch(
       RequestMethod.Put,
       D.Routes.userApplicationRoleConnection(this.application_id),
       {
-        body,
+        body
       },
-      access_token,
+      access_token
     )
   }
 
@@ -351,7 +348,7 @@ export class DiscordRESTClient extends REST {
       response_type: 'code',
       scope: scopes.join(' '),
       redirect_uri,
-      state: state ?? '',
+      state: state ?? ''
     })
     return `${D.OAuth2Routes.authorizationURL}?${params.toString()}`
   }
@@ -362,16 +359,16 @@ export class DiscordRESTClient extends REST {
       client_secret: this.client_secret,
       grant_type: 'authorization_code',
       code,
-      redirect_uri,
+      redirect_uri
     }).toString()
 
     const tokendata = await this.fetch(RequestMethod.Post, D.Routes.oauth2TokenExchange(), {
       body: body,
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/x-www-form-urlencoded'
       },
       auth: false,
-      passThroughBody: true,
+      passThroughBody: true
     })
     return tokendata as D.RESTPostOAuth2AccessTokenResult
   }
@@ -381,13 +378,13 @@ export class DiscordRESTClient extends REST {
       client_id: this.client_id,
       client_secret: this.client_secret,
       grant_type: 'refresh_token',
-      refresh_token,
+      refresh_token
     })
     const tokendata = await this.fetch(RequestMethod.Post, D.Routes.oauth2TokenExchange(), {
       body: body,
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
     })
     return tokendata as D.RESTPostOAuth2AccessTokenResult
   }
@@ -397,7 +394,7 @@ export class DiscordRESTClient extends REST {
       RequestMethod.Get,
       D.Routes.oauth2CurrentAuthorization(),
       {},
-      access_token,
+      access_token
     )
     return response as D.RESTGetAPIOAuth2CurrentAuthorizationResult
   }
@@ -406,7 +403,7 @@ export class DiscordRESTClient extends REST {
     method: 'POST' | 'GET' | 'PATCH' | 'PUT' | 'DELETE',
     route: `/${string}`,
     options: RequestData = {},
-    bearer_token?: string,
+    bearer_token?: string
   ): Promise<unknown> {
     const start_time = Date.now()
 
@@ -420,10 +417,10 @@ export class DiscordRESTClient extends REST {
             GET: RequestMethod.Get,
             PATCH: RequestMethod.Patch,
             PUT: RequestMethod.Put,
-            DELETE: RequestMethod.Delete,
-          }[method],
+            DELETE: RequestMethod.Delete
+          }[method]
         },
-        bearer_token,
+        bearer_token
       )
 
       sentry.request_data['discord_request_time'] =
@@ -435,8 +432,8 @@ export class DiscordRESTClient extends REST {
           message: `Route: ${method?.toString()} ${route}`,
           options: JSON.stringify(options),
           time: `${Date.now() - start_time}ms`,
-          response: JSON.stringify(response),
-        },
+          response: JSON.stringify(response)
+        }
       })
       return response
     } catch (e) {
@@ -450,8 +447,8 @@ export class DiscordRESTClient extends REST {
           message: `Route: ${method?.toString()} ${route}`,
           options: JSON.parse(JSON.stringify(options)),
           time: `${Date.now() - start_time}ms`,
-          error: JSON.parse(JSON.stringify(e)),
-        },
+          error: JSON.parse(JSON.stringify(e))
+        }
       })
       throw e
     }
@@ -461,7 +458,7 @@ export class DiscordRESTClient extends REST {
     if (bearer_token) {
       const rest = new REST({
         version: '10',
-        authPrefix: 'Bearer',
+        authPrefix: 'Bearer'
       }).setToken(bearer_token)
 
       return rest.request(options)

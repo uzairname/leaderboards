@@ -1,12 +1,10 @@
 import { and, eq, sql } from 'drizzle-orm'
-
-import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
-
+import { Ranking, Team, User } from '..'
 import { DbClient } from '../../client'
-import { DbObject, DbObjectManager } from '../../managers'
-import { PlayerSelect, PlayerUpdate, PlayerInsert } from '../../types'
-import { User, Ranking, Team } from '..'
 import { DbErrors } from '../../errors'
+import { DbObject, DbObjectManager } from '../../managers'
+import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
+import { PlayerInsert, PlayerSelect } from '../../types'
 
 export class Player extends DbObject<PlayerSelect> {
   constructor(data: PlayerSelect, db: DbClient) {
@@ -16,8 +14,8 @@ export class Player extends DbObject<PlayerSelect> {
     db.cache.players[data.ranking_id][data.user_id] = this
   }
 
-  async update(data: PlayerUpdate): Promise<this> {
-    const new_data = (
+  async update(data: Partial<Omit<PlayerInsert, 'user_id' | 'ranking_id'>>): Promise<this> {
+    this.data = (
       await this.db.db
         .update(Players)
         .set(data)
@@ -27,7 +25,6 @@ export class Player extends DbObject<PlayerSelect> {
         ))
         .returning()
     )[0] // prettier-ignore
-    this.data = new_data
     return this
   }
 
@@ -38,7 +35,7 @@ export class Player extends DbObject<PlayerSelect> {
       .where(eq(TeamPlayers.player_id, this.data.id))
       .innerJoin(Teams, eq(Teams.id, TeamPlayers.team_id))
 
-    return data.map((data) => new Team(data.team, this.db))
+    return data.map(data => new Team(data.team, this.db))
   }
 
   async queueTeams(): Promise<{ team: Team; in_queue: boolean }[]> {
@@ -47,11 +44,11 @@ export class Player extends DbObject<PlayerSelect> {
       .from(Teams)
       .innerJoin(
         TeamPlayers,
-        and(eq(TeamPlayers.team_id, Teams.id), eq(TeamPlayers.player_id, this.data.id)),
+        and(eq(TeamPlayers.team_id, Teams.id), eq(TeamPlayers.player_id, this.data.id))
       )
       .leftJoin(QueueTeams, eq(QueueTeams.team_id, Teams.id))
 
-    return data.map((data) => ({ team: new Team(data.team, this.db), in_queue: !!data.queue_team }))
+    return data.map(data => ({ team: new Team(data.team, this.db), in_queue: !!data.queue_team }))
   }
 
   async removeTeamsFromQueue(): Promise<void> {
@@ -62,7 +59,25 @@ export class Player extends DbObject<PlayerSelect> {
         INNER JOIN ${Teams} ON 
           ${Teams.id} = ${TeamPlayers.team_id} 
           AND ${TeamPlayers.player_id} = ${this.data.id}
-      )`,
+      )`
+    )
+  }
+}
+
+export class PartialPlayer extends Player {
+  constructor(db: DbClient, id: number) {
+    super(
+      {
+        id,
+        user_id: '',
+        ranking_id: 0,
+        name: null,
+        time_created: null,
+        rating: null,
+        rd: null,
+        stats: null
+      },
+      db
     )
   }
 }
@@ -72,7 +87,7 @@ export class PlayersManager extends DbObjectManager {
   async create(
     user: User,
     ranking: Ranking,
-    data?: Omit<PlayerInsert, 'user_id' | 'ranking_id'>,
+    data?: Omit<PlayerInsert, 'user_id' | 'ranking_id'>
   ): Promise<Player> {
     const new_data = (
       await this.db.db
@@ -104,5 +119,9 @@ export class PlayersManager extends DbObjectManager {
     const data = (await this.db.db.select().from(Players).where(eq(Players.id, id)))[0]
     if (!data) throw new DbErrors.NotFoundError(`Player ${id} doesn't exist`)
     return new Player(data, this.db)
+  }
+
+  getPartial(id: number): PartialPlayer {
+    return new PartialPlayer(this.db, id)
   }
 }

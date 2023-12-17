@@ -1,25 +1,24 @@
+import { sql } from 'drizzle-orm'
+import { DbClient } from '../database/client'
 import {
-  Players,
-  Matches,
-  Rankings,
-  Guilds,
-  Users,
-  QueueTeams,
-  Settings,
   AccessTokens,
+  ActiveMatches,
+  GuildRankings,
+  Guilds,
   MatchPlayers,
   MatchSummaryMessages,
-  ActiveMatches,
+  Matches,
+  Players,
+  QueueTeams,
+  Rankings,
+  Settings,
   TeamPlayers,
   Teams,
-  GuildRankings,
+  Users
 } from '../database/schema'
-import { DbClient } from '../database/client'
 import { App } from '../main/app/app'
-import { getOrAddGuild } from '../main/modules/guilds'
 import { sentry } from '../request/sentry'
 import { nonNullable } from '../utils/utils'
-import { sql } from 'drizzle-orm'
 
 export async function runTests(app: App): Promise<Response> {
   await resetDatabase(app.db)
@@ -33,12 +32,12 @@ async function testDatabase(app: App) {
   // await testQueueTeams(app)
 
   await Promise.all([
-    app.db.db.transaction(async (tx) => {
+    app.db.db.transaction(async tx => {
       await tx.execute(sql`SELECT 1`)
     }),
-    app.db.db.transaction(async (tx) => {
+    app.db.db.transaction(async tx => {
       await tx.execute(sql`SELECT 1`)
-    }),
+    })
   ])
 }
 
@@ -57,36 +56,36 @@ async function testMatches(app: App) {
     ranking_id: 1,
     team_players: [
       [player100, player200],
-      [player300, player400],
+      [player300, player400]
     ],
     outcome: [0, 1],
     metadata: {},
     time_started: new Date(),
-    time_finished: new Date(),
+    time_finished: new Date()
   })
 
   const match_1_2 = await app.db.matches.create({
     ranking_id: 2,
     team_players: [
       [player100, player200],
-      [player300, player400],
+      [player300, player400]
     ],
     outcome: [0, 1],
     metadata: {},
     time_started: new Date(),
-    time_finished: new Date(),
+    time_finished: new Date()
   })
 
   const match_2_1 = await app.db.matches.create({
     ranking_id: 1,
     team_players: [
       [player100, player200],
-      [player300, player400],
+      [player300, player400]
     ],
     outcome: [0, 1],
     metadata: {},
     time_started: new Date(),
-    time_finished: new Date(),
+    time_finished: new Date()
   })
 }
 
@@ -131,36 +130,36 @@ async function testQueueTeams(app: App) {
   // get player 100's queue teams. should be team 1 and 3
   let player100_queue_teams = await player100.queueTeams()
   assert(
-    player100_queue_teams.filter((t) => t.in_queue).length == 2,
-    'player 100 should be in queue team 1 and 3',
+    player100_queue_teams.filter(t => t.in_queue).length == 2,
+    'player 100 should be in queue team 1 and 3'
   )
 
   // user 100 leaves the queue
   assert(
-    (await player300.queueTeams()).filter((t) => t.in_queue).length == 2,
-    'player 300 should be in queue team 2 and 3',
+    (await player300.queueTeams()).filter(t => t.in_queue).length == 2,
+    'player 300 should be in queue team 2 and 3'
   )
 
   await player100.removeTeamsFromQueue()
   // queue teams: team_1_2 (100, 400, ranking 2), team_2 (200, 300, ranking 1)
 
   assert(
-    (await player100.queueTeams()).filter((t) => t.in_queue).length == 0,
-    'player 200 should not be in queue',
+    (await player100.queueTeams()).filter(t => t.in_queue).length == 0,
+    'player 200 should not be in queue'
   )
   assert(
-    (await player200.queueTeams()).filter((t) => t.in_queue).length == 1,
-    'player 200 should be in queue team 2',
+    (await player200.queueTeams()).filter(t => t.in_queue).length == 1,
+    'player 200 should be in queue team 2'
   )
   assert(
-    (await player100_2.queueTeams()).filter((t) => t.in_queue).length == 1,
-    'player 100 should still be in queue team 1 ranking 2',
+    (await player100_2.queueTeams()).filter(t => t.in_queue).length == 1,
+    'player 100 should still be in queue team 1 ranking 2'
   )
 }
 
 async function getRankingInGuildByName(app: App, guild_id: string, name: string) {
   const rankings = await app.db.guild_rankings.get({ guild_id: guild_id })
-  const ranking = rankings.find((r) => r.ranking.data.name === name)
+  const ranking = rankings.find(r => r.ranking.data.name === name)
   assert(ranking !== undefined, `ranking ${name} should exist`)
   return ranking
 }
@@ -175,20 +174,20 @@ async function resetDatabase(client: DbClient) {
     client.db.delete(TeamPlayers),
     client.db.delete(GuildRankings),
     client.db.delete(AccessTokens),
-    client.db.delete(Settings),
+    client.db.delete(Settings)
   ])
   await Promise.all([
     client.db.execute(sql`ALTER SEQUENCE "Matches_id_seq" RESTART WITH 1`),
     client.db.execute(sql`ALTER SEQUENCE "ActiveMatches_id_seq" RESTART WITH 1`),
     client.db.delete(Teams),
     client.db.delete(Players),
-    client.db.delete(Guilds),
+    client.db.delete(Guilds)
   ])
   await Promise.all([
     client.db.execute(sql`ALTER SEQUENCE "Teams_id_seq" RESTART WITH 1`),
     client.db.execute(sql`ALTER SEQUENCE "Players_id_seq" RESTART WITH 1`),
     client.db.delete(Rankings),
-    await client.db.delete(Users),
+    await client.db.delete(Users)
   ])
   await Promise.all([client.db.execute(sql`ALTER SEQUENCE "Rankings_id_seq" RESTART WITH 1`)])
 }
@@ -199,7 +198,7 @@ async function addData(client: DbClient) {
     client.users.getOrCreate({ id: '100', name: 'one' }),
     client.users.getOrCreate({ id: '200', name: 'two' }),
     client.users.getOrCreate({ id: '300', name: 'three' }),
-    client.users.getOrCreate({ id: '400', name: 'four' }),
+    client.users.getOrCreate({ id: '400', name: 'four' })
   ])
 
   const ranking1 = await client.rankings.create({
@@ -208,8 +207,8 @@ async function addData(client: DbClient) {
     num_teams: 2,
     elo_settings: {
       initial_rating: 1000,
-      initial_rd: 300,
-    },
+      initial_rd: 300
+    }
   })
 
   const ranking2 = await client.rankings.create({
@@ -218,8 +217,8 @@ async function addData(client: DbClient) {
     num_teams: 2,
     elo_settings: {
       initial_rating: 1000,
-      initial_rd: 300,
-    },
+      initial_rd: 300
+    }
   })
 
   const guild_ranking_1 = await client.guild_rankings.create(guild1, ranking1, { is_admin: true })
@@ -233,7 +232,7 @@ async function addData(client: DbClient) {
     client.players.create(await client.users.getOrCreate({ id: '100' }), ranking2),
     client.players.create(await client.users.getOrCreate({ id: '200' }), ranking2),
     client.players.create(await client.users.getOrCreate({ id: '300' }), ranking2),
-    client.players.create(await client.users.getOrCreate({ id: '400' }), ranking2),
+    client.players.create(await client.users.getOrCreate({ id: '400' }), ranking2)
   ])
 }
 

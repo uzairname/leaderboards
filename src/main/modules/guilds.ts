@@ -1,8 +1,6 @@
-import { APIChannel, APIRole, ChannelType, GuildFeature } from 'discord-api-types/v10'
-import { GuildChannelData, RoleData } from '../../discord-framework'
-
+import * as D from 'discord-api-types/v10'
 import { Guild } from '../../database/models'
-
+import { GuildChannelData, RoleData } from '../../discord-framework'
 import { App } from '../app/app'
 import { Colors } from '../messages/message_pieces'
 
@@ -12,7 +10,7 @@ export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> 
     let discord_guild = await app.bot.getGuild(guild_id)
     app_guild = await app.db.guilds.create({
       id: discord_guild.id,
-      name: discord_guild.name,
+      name: discord_guild.name
     })
   }
   return app_guild
@@ -20,14 +18,14 @@ export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> 
 
 export async function communityEnabled(app: App, guild_id: string): Promise<boolean> {
   const discord_guild = await app.bot.getGuild(guild_id)
-  return discord_guild.features.includes(GuildFeature.Community)
+  return discord_guild.features.includes(D.GuildFeature.Community)
 }
 
 export async function syncRankedCategory(
   app: App,
-  guild: Guild,
+  guild: Guild
 ): Promise<{
-  channel: APIChannel
+  channel: D.APIChannel
   is_new_channel: boolean
 }> {
   let category_id = guild.data.category_id
@@ -39,10 +37,10 @@ export async function syncRankedCategory(
         guild_id: guild.data.id,
         data: new GuildChannelData({
           name: 'RANKED',
-          type: ChannelType.GuildCategory,
-        }),
+          type: D.ChannelType.GuildCategory
+        })
       }
-    },
+    }
   })
 
   if (result.is_new_channel) {
@@ -54,9 +52,9 @@ export async function syncRankedCategory(
 
 export async function syncGuildAdminRole(
   app: App,
-  guild: Guild,
+  guild: Guild
 ): Promise<{
-  role: APIRole
+  role: D.APIRole
   is_new_role: boolean
 }> {
   let result = await app.bot.utils.syncRole({
@@ -64,7 +62,7 @@ export async function syncGuildAdminRole(
     target_role_id: guild.data.admin_role_id,
     roleData: async () => {
       return new RoleData({ name: 'Leaderboards Admin', color: Colors.Primary, permissions: '0' })
-    },
+    }
   })
 
   if (result.is_new_role) {

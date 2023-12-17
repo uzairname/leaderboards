@@ -23,7 +23,7 @@ export class Sentry extends Toucan {
       release: '1.0.0',
       environment: ctx.env.ENVIRONMENT,
       context: ctx.execution_context,
-      request: ctx.request,
+      request: ctx.request
     })
 
     this.request_name = 'Request'
@@ -39,43 +39,57 @@ export class Sentry extends Toucan {
       message: `Received request`,
       category: 'request',
       data: {
-        number: cache.request_num,
-      },
+        number: cache.request_num
+      }
     })
 
     return handler(this.request)
-      .then((res) => {
-        this.logResult(false)
+      .then(res => {
+        this.logResult()
         return res
       })
-      .catch((e) => {
+      .catch(e => {
         this.captureException(e)
         return new Response('Internal Server Error', { status: 500 })
       })
   }
 
   public waitUntil(callback: Promise<void>): void {
+    this.debug(`waitUntil for ${this.request_name}`)
     this.ctx.execution_context.waitUntil(
-      new Promise<void>((resolve) => {
-        callback
-          .then(() => {
-            this.logResult(true)
-          })
-          .catch((e) => {
-            this.captureException(e)
-          })
-          .finally(() => {
+      Promise.race([
+        new Promise<void>(resolve => {
+          callback
+            .then(() => {
+              this.request_name = `${this.request_name} followup`
+            })
+            .catch(e => {
+              this.captureException(e)
+            })
+            .finally(() => {
+              resolve()
+            })
+        }),
+        new Promise<void>(resolve => {
+          const timeout_ms = 20000
+          setTimeout(() => {
+            this.caught_exception = new RequestTimeout(
+              `${this.request_name} timed out after ${timeout_ms} ms`
+            )
             resolve()
-          })
-      }),
+          }, timeout_ms)
+        })
+      ]).then(() => {
+        this.logResult()
+      })
     )
   }
 
   debug(...message: unknown[]): void {
     console.log(...message)
     this.addBreadcrumb({
-      message: message.map((m) => `${m}`).join(' '),
-      level: 'debug',
+      message: message.map(m => `${m}`).join(' '),
+      level: 'debug'
     })
   }
 
@@ -86,26 +100,33 @@ export class Sentry extends Toucan {
       level: 'error',
       type: 'error',
       data: {
-        exception: e,
-      },
+        exception: e
+      }
     })
     this.caught_exception = e
   }
 
-  logResult(followup: boolean = false) {
+  logResult() {
     if (this.caught_exception) {
       this.setExtra('time taken', `${Date.now() - this.time_received} ms`)
       this.captureException(this.caught_exception)
       this.caught_exception = undefined // for waitUntil
     } else {
       this.captureEvent({
-        message: `${this.request_name}` + (followup ? ' followup' : ''),
+        message: this.request_name,
         level: 'info',
         extra: {
           'time taken': `${Date.now() - this.time_received} ms`,
-          data: JSON.stringify(this.request_data),
-        },
+          data: JSON.stringify(this.request_data)
+        }
       })
     }
+  }
+}
+
+class RequestTimeout extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = RequestTimeout.name
   }
 }
