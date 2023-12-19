@@ -1,10 +1,10 @@
 import * as D from 'discord-api-types/v10'
 import type { Guild, GuildRanking, Ranking } from '../../../database/models'
 import { GuildRankingInsert, GuildRankingSelect } from '../../../database/types'
-import { type DiscordRESTClient, GuildChannelData, MessageData } from '../../../discord-framework'
+import { type DiscordAPIClient, GuildChannelData, MessageData } from '../../../discord-framework'
 import { sentry } from '../../../request/sentry'
 import { type App } from '../../app/app'
-import { Colors } from '../../messages/message_pieces'
+import { Colors, escapeMd } from '../../messages/message_pieces'
 import { syncRankedCategory } from '../guilds'
 import { haveRankingQueueMessage } from '../matches/queue_messages'
 
@@ -14,7 +14,7 @@ export function addRankingChannelsListeners(app: App) {
     await Promise.all(
       guild_rankings.map(async item => {
         await syncGuildRankingChannelsMessages(app, item.guild_ranking)
-      })
+      }),
     )
   })
 
@@ -23,7 +23,7 @@ export function addRankingChannelsListeners(app: App) {
     await Promise.all(
       guild_rankings.map(async guild_ranking => {
         await syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)
-      })
+      }),
     )
   })
 
@@ -38,51 +38,27 @@ export function addRankingChannelsListeners(app: App) {
       guild_rankings.map(async guild_ranking => {
         sentry.debug(`syncing guild ranking ${guild_ranking.guild_ranking.data.guild_id}`)
         await syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)
-      })
+      }),
     )
   })
 }
 
 export async function syncGuildRankingChannelsMessages(
   app: App,
-  guild_ranking: GuildRanking
+  guild_ranking: GuildRanking,
 ): Promise<void> {
   sentry.debug('syncing ranking channels messages')
   await syncGuildRankingLbChannel(app, guild_ranking)
   await syncGuildRankingLbMessage(app, guild_ranking)
 
-  if (app.config.features.QUEUE_MESSAGE) {
+  if (app.config.features.QueueMessage) {
     await haveRankingQueueMessage(app, guild_ranking)
-  }
-}
-
-export async function lbChannelData(
-  app: App,
-  guild: Guild,
-  ranking: Ranking
-): Promise<{
-  guild_id: string
-  data: GuildChannelData
-}> {
-  let category = (await syncRankedCategory(app, guild)).channel
-  return {
-    guild_id: guild.data.id,
-    data: new GuildChannelData({
-      type: D.ChannelType.GuildText,
-      parent_id: category.id,
-      name: `${ranking.data.name} Leaderboard`,
-      topic: 'This leaderboard is displayed and updated live here',
-      permission_overwrites: leaderboardChannelPermissionOverwrites(
-        guild.data.id,
-        app.bot.application_id
-      )
-    })
   }
 }
 
 export async function syncGuildRankingLbChannel(
   app: App,
-  guild_ranking: GuildRanking
+  guild_ranking: GuildRanking,
 ): Promise<void> {
   const guild = await guild_ranking.guild()
   const ranking = await guild_ranking.ranking()
@@ -91,19 +67,19 @@ export async function syncGuildRankingLbChannel(
     target_channel_id: guild_ranking.data.leaderboard_channel_id,
     channelData: async () => {
       return await lbChannelData(app, guild, ranking)
-    }
+    },
   })
 
   if (result.is_new_channel) {
     await guild_ranking.update({
-      leaderboard_channel_id: result.channel.id
+      leaderboard_channel_id: result.channel.id,
     })
   }
 }
 
 export async function syncGuildRankingLbMessage(
   app: App,
-  guild_ranking: GuildRanking
+  guild_ranking: GuildRanking,
 ): Promise<void> {
   sentry.debug(`syncing guild lb message`)
   // update all the messages and channels associated with this guild leaderboard
@@ -115,20 +91,47 @@ export async function syncGuildRankingLbMessage(
     target_channel_id: guild_ranking.data.leaderboard_channel_id,
     target_message_id: guild_ranking.data.leaderboard_message_id,
     messageData: async () => {
+      sentry.debug(`messageData`)
       return await generateLeaderboardMessage(app, ranking)
     },
     channelData: async () => {
+      sentry.debug(`channelData`)
       return await lbChannelData(app, guild, ranking)
-    }
+    },
   })
 
-  const update: Partial<GuildRankingInsert> = {
-    leaderboard_channel_id: result.new_channel?.id,
-    leaderboard_message_id: result.is_new_message ? result.message.id : undefined
+  if (result.is_new_message || result.new_channel) {
+    await guild_ranking.update({
+      leaderboard_channel_id: result.new_channel?.id,
+      leaderboard_message_id: result.is_new_message ? result.message.id : undefined,
+    })
   }
-  Object.keys(update).length > 0 && (await guild_ranking.update(update))
 
   sentry.debug(`synced guild lb message`)
+}
+
+export async function lbChannelData(
+  app: App,
+  guild: Guild,
+  ranking: Ranking,
+): Promise<{
+  guild_id: string
+  data: GuildChannelData
+}> {
+  let category = (await syncRankedCategory(app, guild)).channel
+  return {
+    guild_id: guild.data.id,
+    data: new GuildChannelData({
+      type: D.ChannelType.GuildText,
+      parent_id: category.id,
+      name: `${escapeMd(ranking.data.name)} Leaderboard`,
+      topic: 'This leaderboard is displayed and updated live here',
+      permission_overwrites: leaderboardChannelPermissionOverwrites(
+        guild.data.id,
+        app.bot.application_id,
+      ),
+    }),
+  }
 }
 
 export async function generateLeaderboardMessage(app: App, ranking: Ranking): Promise<MessageData> {
@@ -155,22 +158,22 @@ export async function generateLeaderboardMessage(app: App, ranking: Ranking): Pr
 
   let embed: D.APIEmbed = {
     description: `${players_text}` || 'No players yet',
-    color: Colors.Primary
+    color: Colors.Primary,
   }
 
   return new MessageData({
-    content: `# ${ranking.data.name}`,
+    content: `# ${escapeMd(ranking.data.name)}`,
     embeds: [embed],
     components: null,
     allowed_mentions: {
-      parse: []
-    }
+      parse: [],
+    },
   })
 }
 
 export function leaderboardChannelPermissionOverwrites(
   guild_id: string,
-  application_id: string
+  application_id: string,
 ): D.APIChannelPatchOverwrite[] {
   return [
     {
@@ -182,7 +185,7 @@ export function leaderboardChannelPermissionOverwrites(
         D.PermissionFlagsBits.SendMessagesInThreads |
         D.PermissionFlagsBits.CreatePublicThreads |
         D.PermissionFlagsBits.CreatePrivateThreads
-      ).toString()
+      ).toString(),
     },
     {
       // the bot can send messages and make public threads
@@ -193,8 +196,8 @@ export function leaderboardChannelPermissionOverwrites(
         D.PermissionFlagsBits.SendMessagesInThreads |
         D.PermissionFlagsBits.CreatePublicThreads |
         D.PermissionFlagsBits.CreatePrivateThreads
-      ).toString()
-    }
+      ).toString(),
+    },
   ]
 }
 
@@ -203,6 +206,6 @@ export async function removeRankingLbChannels(app: App, ranking: Ranking): Promi
   await Promise.all(
     guild_rankings.map(async item => {
       await app.bot.utils.deleteChannelIfExists(item.guild_ranking.data.leaderboard_channel_id)
-    })
+    }),
   )
 }

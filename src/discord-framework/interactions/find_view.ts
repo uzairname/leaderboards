@@ -7,17 +7,17 @@ export async function findView_(
   command_interaction?:
     | D.APIApplicationCommandInteraction
     | D.APIApplicationCommandAutocompleteInteraction,
-  custom_id_prefix?: string
+  custom_id_prefix?: string,
 ): Promise<AnyView> {
   const view = await findView(
     command_interaction
       ? {
           name: command_interaction.data.name,
           type: command_interaction.data.type,
-          guild_id: command_interaction.data.guild_id
+          guild_id: command_interaction.data.guild_id,
         }
       : undefined,
-    custom_id_prefix
+    custom_id_prefix,
   )
   if (!view) throw new ViewErrors.UnknownView()
   return view

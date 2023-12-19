@@ -44,11 +44,12 @@ export type FindViewCallback = (
     type: D.ApplicationCommandType
     guild_id?: string
   },
-  custom_id_prefix?: string
+  custom_id_prefix?: string,
 ) => Promise<AnyView | undefined>
 
 export type InteractionErrorCallback = (
-  e: unknown
+  e: unknown,
+  setSentryException?: (e: unknown) => void,
 ) => D.APIInteractionResponseChannelMessageWithSource
 
 export declare type AppCommandInteraction<CommandType extends D.ApplicationCommandType> =
@@ -76,52 +77,61 @@ export interface AutocompleteContext {
   interaction: D.APIApplicationCommandAutocompleteInteraction
 }
 
-export interface Context<View extends AnyView> {
-  state: ViewState<View['options']['state_schema']>
+export interface StateContext<View extends AnyView> {
+  state: ViewState<View['state_schema']>
 }
 
 // Message
-export interface MessageCreateContext<View extends MessageView<any, any>> extends Context<View> {}
+export type MessageCreateContext<View extends AnyMessageView, Params> = StateContext<View> & Params
 
-export interface ChatInteractionContext<
+// Any interaction except ping and autocomplete
+export interface InteractionContext<
   View extends AnyView,
-  InteractionT extends ChatInteraction = ChatInteraction
-> extends Context<View> {
+  InteractionT extends ChatInteraction = ChatInteraction,
+> extends StateContext<View> {
   interaction: InteractionT
 }
 
 // Defer
 export interface DeferContext<
-  Schema extends StringDataSchema,
-  InteractionT extends ChatInteraction = ChatInteraction
-> extends ChatInteractionContext<View<Schema>, InteractionT> {
-  followup: (data: D.APIInteractionResponseCallbackData) => Promise<void>
+  View extends AnyView,
+  InteractionT extends ChatInteraction = ChatInteraction,
+> extends InteractionContext<View, InteractionT> {
+  followup: (
+    data: D.APIInteractionResponseCallbackData,
+  ) => Promise<D.RESTPostAPIWebhookWithTokenWaitResult>
   edit: (data: D.APIInteractionResponseCallbackData) => Promise<void>
+  delete: (message_id?: string) => Promise<void>
 }
 
-export interface InitialChatInteractionContext<
+// Any interaction that hasn't been deferred
+export interface InitialInteractionContext<
   View extends AnyView,
-  InteractionT extends ChatInteraction = ChatInteraction
-> extends ChatInteractionContext<View, InteractionT> {
+  InteractionT extends ChatInteraction = ChatInteraction,
+> extends InteractionContext<View, InteractionT> {
   defer: (
     initial_response: InteractionResponse<InteractionT>,
-    callback: DeferCallback<View, InteractionT>
+    callback: DeferCallback<View, InteractionT>,
   ) => InteractionResponse<InteractionT>
 }
 
 // Command
-export interface CommandContext<View extends AnyCommandView>
-  extends InitialChatInteractionContext<View, AppCommandInteraction<View['options']['type']>> {}
+export interface CommandContext<
+  View extends AnyView,
+  Type extends D.ApplicationCommandType = View extends AnyCommandView
+    ? View['options']['type']
+    : D.ApplicationCommandType,
+> extends InitialInteractionContext<View, AppCommandInteraction<Type>> {}
 
 // Component
 export interface ComponentContext<View extends AnyView>
-  extends InitialChatInteractionContext<View, ComponentInteraction> {}
+  extends InitialInteractionContext<View, ComponentInteraction> {}
 
 export type AnyContext =
-  | ComponentContext<any>
-  | CommandContext<any>
-  | DeferContext<any>
-  | MessageCreateContext<any>
+  | CommandContext<AnyView, D.ApplicationCommandType>
+  | ComponentContext<AnyView>
+  | MessageCreateContext<AnyMessageView, any>
+  | DeferContext<AnyView>
 
 /**
  * CALLBACKS
@@ -129,7 +139,7 @@ export type AnyContext =
 
 // Autocomplete
 export type ViewAutocompleteCallback<Type extends D.ApplicationCommandType> = (
-  ctx: AutocompleteContext
+  ctx: AutocompleteContext,
 ) => Promise<
   Type extends D.ApplicationCommandType.ChatInput
     ? D.APIApplicationCommandAutocompleteResponse
@@ -138,31 +148,23 @@ export type ViewAutocompleteCallback<Type extends D.ApplicationCommandType> = (
 
 // Command
 export type CommandCallback<View extends AnyCommandView> = (
-  ctx: CommandContext<View>
+  ctx: CommandContext<View, View['options']['type']>,
 ) => Promise<CommandInteractionResponse>
 
 // Component
 export type ComponentCallback<View extends AnyView> = (
-  ctx: ComponentContext<View>
+  ctx: ComponentContext<View>,
 ) => Promise<ChatInteractionResponse>
 
 // Defer
 export type DeferCallback<View extends AnyView, InteractionType extends ChatInteraction> = (
-  ctx: DeferContext<View['options']['state_schema'], InteractionType>
+  ctx: DeferContext<View, InteractionType>,
 ) => Promise<void>
 
 // Message
-export type SendMessageCallback<View extends MessageView<any, any>, Params> = (
-  ctx: MessageCreateContext<View> & Params
+export type SendMessageCallback<View extends AnyMessageView, Params> = (
+  ctx: MessageCreateContext<View, Params>,
 ) => Promise<MessageData>
-export type ApplicationCommandDefinitionArg<Type extends D.ApplicationCommandType> = Omit<
-  Type extends D.ApplicationCommandType.ChatInput
-    ? D.RESTPostAPIChatInputApplicationCommandsJSONBody
-    : Type extends D.ApplicationCommandType.User | D.ApplicationCommandType.Message
-      ? D.RESTPostAPIContextMenuApplicationCommandsJSONBody
-      : never,
-  'type'
->
 
 export const _ = null
 

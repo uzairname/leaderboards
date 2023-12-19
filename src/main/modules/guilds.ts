@@ -10,7 +10,7 @@ export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> 
     let discord_guild = await app.bot.getGuild(guild_id)
     app_guild = await app.db.guilds.create({
       id: discord_guild.id,
-      name: discord_guild.name
+      name: discord_guild.name,
     })
   }
   return app_guild
@@ -23,7 +23,7 @@ export async function communityEnabled(app: App, guild_id: string): Promise<bool
 
 export async function syncRankedCategory(
   app: App,
-  guild: Guild
+  guild: Guild,
 ): Promise<{
   channel: D.APIChannel
   is_new_channel: boolean
@@ -37,10 +37,10 @@ export async function syncRankedCategory(
         guild_id: guild.data.id,
         data: new GuildChannelData({
           name: 'RANKED',
-          type: D.ChannelType.GuildCategory
-        })
+          type: D.ChannelType.GuildCategory,
+        }),
       }
-    }
+    },
   })
 
   if (result.is_new_channel) {
@@ -52,7 +52,7 @@ export async function syncRankedCategory(
 
 export async function syncGuildAdminRole(
   app: App,
-  guild: Guild
+  guild: Guild,
 ): Promise<{
   role: D.APIRole
   is_new_role: boolean
@@ -62,7 +62,7 @@ export async function syncGuildAdminRole(
     target_role_id: guild.data.admin_role_id,
     roleData: async () => {
       return new RoleData({ name: 'Leaderboards Admin', color: Colors.Primary, permissions: '0' })
-    }
+    },
   })
 
   if (result.is_new_role) {

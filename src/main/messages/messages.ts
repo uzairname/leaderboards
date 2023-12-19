@@ -1,4 +1,5 @@
-import { DiscordErrors, DiscordRESTClient } from '../../discord-framework'
+import { DiscordErrors, DiscordAPIClient } from '../../discord-framework'
+import { App } from '../app/app'
 import { inviteUrl } from './message_pieces'
 
 export namespace Messages {
@@ -7,10 +8,7 @@ export namespace Messages {
 
   export const github_url = 'https://github.com/uzairname/leaderboards'
 
-  export function botPermisssionsError(
-    bot: DiscordRESTClient,
-    e: DiscordErrors.BotPermissions
-  ): string {
+  export function botPermisssionsError(app: App, e: DiscordErrors.BotPermissions): string {
     let msg = "I'm missing some permissions"
 
     let missing_perms = e.getMissingPermissionsNames()
@@ -18,10 +16,10 @@ export namespace Messages {
     if (missing_perms.length > 0) {
       msg = `I'm missing the following permissions: ${permsToString(missing_perms)}`
     }
-    return msg + `\n[Click here to re-invite me with the required perms](${inviteUrl(bot)})`
+    return msg + `\n[Click here to re-invite me with the required perms](${inviteUrl(app)})`
   }
 
-  export const no_rankings_description = `This server has no rankings. A ranking allows you to have ranked matches and leaderboards for a specific game.`
+  export const no_rankings_description = `This server has no rankings. Create one to host ranked matches and leaderboards for any game.`
 }
 
 function permsToString(perms: string[]) {
@@ -31,7 +29,7 @@ function permsToString(perms: string[]) {
         .toLowerCase()
         .split('_')
         .map(e => e.charAt(0).toUpperCase() + e.slice(1))
-        .join(' ')
+        .join(' '),
     )
     .join(', ')
 }

@@ -10,40 +10,52 @@ export function initSentry(ctx: RequestArgs) {
 }
 
 export class Sentry extends Toucan {
-  request_name: string
-  time_received = Date.now()
+  private time_received = Date.now()
   private caught_exception: unknown
-  request_data: Record<string, unknown> = {}
-
   private request: Request
 
-  constructor(private ctx: RequestArgs) {
+  request_data: Record<string, unknown> = {}
+  request_name: string
+
+  constructor(private request_args: RequestArgs) {
     super({
-      dsn: ctx.env.SENTRY_DSN,
+      dsn: request_args.env.SENTRY_DSN,
       release: '1.0.0',
-      environment: ctx.env.ENVIRONMENT,
-      context: ctx.execution_context,
-      request: ctx.request
+      environment: request_args.env.ENVIRONMENT,
+      context: request_args.execution_context,
+      request: request_args.request,
     })
 
     this.request_name = 'Request'
     cache.request_num = (typeof cache.request_num == 'number' ? cache.request_num : 0) + 1
-    this.request = ctx.request
-    console.log('d')
+    this.request = request_args.request
   }
 
   async handlerWrapper(handler: (request: Request) => Promise<Response>): Promise<Response> {
     this.setTag('cold-start', `${cache.request_num == 1}`)
     this.request_name = `${this.request.method} ${new URL(this.request.url).pathname}`
     this.addBreadcrumb({
-      message: `Received request`,
-      category: 'request',
-      data: {
-        number: cache.request_num
-      }
+      message: `Received request #${cache.request_num}`,
+      level: 'info',
     })
 
-    return handler(this.request)
+    return await new Promise<Response>((resolve, reject) => {
+      const timeout_ms = 5000
+      const timeout = setTimeout(() => {
+        reject(new TimeoutError(`${this.request_name} timed out after ${timeout_ms} ms`))
+      }, timeout_ms)
+
+      handler(this.request)
+        .then(res => {
+          clearTimeout(timeout)
+          if (this.caught_exception) reject(this.caught_exception)
+          resolve(res)
+        })
+        .catch(e => {
+          clearTimeout(timeout)
+          reject(e)
+        })
+    })
       .then(res => {
         this.logResult()
         return res
@@ -54,79 +66,86 @@ export class Sentry extends Toucan {
       })
   }
 
-  public waitUntil(callback: Promise<void>): void {
-    this.debug(`waitUntil for ${this.request_name}`)
-    this.ctx.execution_context.waitUntil(
-      Promise.race([
-        new Promise<void>(resolve => {
-          callback
-            .then(() => {
-              this.request_name = `${this.request_name} followup`
-            })
-            .catch(e => {
-              this.captureException(e)
-            })
-            .finally(() => {
-              resolve()
-            })
-        }),
-        new Promise<void>(resolve => {
-          const timeout_ms = 20000
-          setTimeout(() => {
-            this.caught_exception = new RequestTimeout(
-              `${this.request_name} timed out after ${timeout_ms} ms`
-            )
+  public offload(
+    callback: (ctx: {
+      setException: (e: unknown) => void
+      setRequestName: (name: string) => void
+    }) => Promise<void>,
+  ): void {
+    let offload_caught_exception: unknown
+    let request_name = `${this.request_name} followup`
+
+    const ctx = {
+      setException: (e: unknown) => {
+        offload_caught_exception = e
+      },
+      setRequestName: (name: string) => {
+        request_name = name
+      },
+    }
+
+    // try executing callback. If it takes longer than 20 seconds, log a timeout error. If not, cancel the timeout and log the result
+    this.request_args.execution_context.waitUntil(
+      new Promise<void>((resolve, reject) => {
+        const timeout_ms = 10000
+        const timeout = setTimeout(() => {
+          reject(new TimeoutError(`"${request_name}" timed out after ${timeout_ms} ms`))
+        }, timeout_ms)
+
+        this.debug(`Offloading "${request_name}"`)
+
+        callback(ctx)
+          .then(() => {
+            clearTimeout(timeout)
+            this.debug(`Finished offloading "${request_name}"`)
+            if (offload_caught_exception) reject(offload_caught_exception)
             resolve()
-          }, timeout_ms)
-        })
-      ]).then(() => {
-        this.logResult()
+          })
+          .catch(e => {
+            clearTimeout(timeout)
+            reject(e)
+          })
       })
+        .then(() => {
+          this.logResult(request_name)
+        })
+        .catch(e => {
+          this.captureException(e)
+        }),
     )
+  }
+
+  setException(exception: unknown): void {
+    this.addBreadcrumb({
+      message: `Caught exception`,
+      level: 'error',
+      data: { exception },
+    })
+
+    this.caught_exception = exception
   }
 
   debug(...message: unknown[]): void {
     console.log(...message)
     this.addBreadcrumb({
       message: message.map(m => `${m}`).join(' '),
-      level: 'debug'
+      level: 'debug',
     })
   }
 
-  catchAfterResponding(e: unknown) {
-    this.addBreadcrumb({
-      message: `Caught exception`,
-      category: 'error',
-      level: 'error',
-      type: 'error',
-      data: {
-        exception: e
-      }
+  private logResult(request_name: string = this.request_name) {
+    this.setExtra('time taken', `${Date.now() - this.time_received} ms`)
+    this.setExtra('data', JSON.stringify(this.request_data))
+    this.captureEvent({
+      message: request_name,
+      level: 'info',
     })
-    this.caught_exception = e
-  }
-
-  logResult() {
-    if (this.caught_exception) {
-      this.setExtra('time taken', `${Date.now() - this.time_received} ms`)
-      this.captureException(this.caught_exception)
-      this.caught_exception = undefined // for waitUntil
-    } else {
-      this.captureEvent({
-        message: this.request_name,
-        level: 'info',
-        extra: {
-          'time taken': `${Date.now() - this.time_received} ms`,
-          data: JSON.stringify(this.request_data)
-        }
-      })
-    }
   }
 }
 
-class RequestTimeout extends Error {
+class TimeoutError extends Error {
   constructor(message: string) {
     super(message)
-    this.name = RequestTimeout.name
+    this.name = TimeoutError.name
   }
 }

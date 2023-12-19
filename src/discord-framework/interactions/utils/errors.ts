@@ -8,6 +8,12 @@ export class ViewError extends Error {
 export namespace ViewErrors {
   export class UnknownView extends ViewError {}
 
+  export class InvalidViewType extends ViewError {
+    constructor() {
+      super(`Invalid view type for interaction type`)
+    }
+  }
+
   export class AutocompleteNotImplemented extends ViewError {}
 
   export class ComponentCallbackNotImplemented extends ViewError {}

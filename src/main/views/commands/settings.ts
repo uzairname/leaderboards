@@ -1,28 +1,27 @@
 import * as D from 'discord-api-types/v10'
-import { ChoiceField, CommandView, _ } from '../../../discord-framework'
+import { CommandView, field, _ } from '../../../discord-framework'
 import { App } from '../../app/app'
-import { AppErrors, UserErrors } from '../../app/errors'
+import { AppErrors } from '../../app/errors'
 import { getOrAddGuild, syncGuildAdminRole } from '../../modules/guilds'
 import { checkGuildInteraction, ensureAdminPerms } from '../utils/checks'
+import { rankings_cmd_def } from './rankings/rankings'
 
 const settings_cmd = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
 
-  custom_id_prefix: 'settings',
+  custom_id_id: 'settings',
 
-  command: {
-    name: 'settings',
-    description: 'Settings'
-  },
+  name: 'settings',
+  description: 'Settings',
 
   state_schema: {
-    page: new ChoiceField({
-      'admin role': _
-    })
-  }
+    page: field.Choice({
+      'admin role': _,
+    }),
+  },
 })
 
-export const settingsCmd = (app: App) =>
+export const settings = (app: App) =>
   settings_cmd
     .onCommand(async ctx => {
       return {
@@ -35,15 +34,21 @@ export const settingsCmd = (app: App) =>
               components: [
                 {
                   type: D.ComponentType.Button,
+                  label: '⭐ Rankings',
+                  style: D.ButtonStyle.Primary,
+                  custom_id: rankings_cmd_def.getState({ page: 'all rankings' }).cId(),
+                },
+                {
+                  type: D.ComponentType.Button,
                   label: 'create admin role',
                   style: D.ButtonStyle.Primary,
-                  custom_id: ctx.state.set.page('admin role').encode()
-                }
-              ]
-            }
+                  custom_id: ctx.state.set.page('admin role').cId(),
+                },
+              ],
+            },
           ],
-          flags: D.MessageFlags.Ephemeral
-        }
+          flags: D.MessageFlags.Ephemeral,
+        },
       }
     })
 
@@ -57,14 +62,14 @@ export const settingsCmd = (app: App) =>
         await app.bot.addRoleToMember(
           interaction.guild_id,
           interaction.member.user.id,
-          role_result.role.id
+          role_result.role.id,
         )
 
         return {
           type: D.InteractionResponseType.UpdateMessage,
           data: {
-            content: `<@&${role_result.role.id}> has bot admin permissions. You can edit and assign it as you like`
-          }
+            content: `<@&${role_result.role.id}> has bot admin permissions. You can edit and assign it as you like`,
+          },
         }
       } else {
         throw new AppErrors.UnknownState(ctx.state.data.page)

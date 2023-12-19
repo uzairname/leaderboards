@@ -11,7 +11,7 @@ import { getRegisterPlayer } from '../players'
 export async function onJoinQueue(
   app: App,
   ranking_id: number,
-  user: D.APIUser
+  user: D.APIUser,
 ): Promise<{
   rejoined: boolean
 }> {

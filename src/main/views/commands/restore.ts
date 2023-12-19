@@ -11,11 +11,9 @@ import { checkGuildInteraction } from '../utils/checks'
 export const restore_cmd = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
   state_schema: {},
-  command: {
-    name: 'restore',
-    description: 'Restores all channels and messages managed by this bot'
-  },
-  custom_id_prefix: 'r'
+  name: 'restore',
+  description: 'Restores all channels and messages managed by this bot',
+  custom_id_id: 'r',
 })
 
 export const restoreCmd = (app: App) =>
@@ -25,8 +23,8 @@ export const restoreCmd = (app: App) =>
         type: D.InteractionResponseType.ChannelMessageWithSource,
         data: {
           content: `Restoring channels and messages...`,
-          flags: D.MessageFlags.Ephemeral
-        }
+          flags: D.MessageFlags.Ephemeral,
+        },
       },
       async ctx => {
         const interaction = checkGuildInteraction(ctx.interaction)
@@ -61,8 +59,8 @@ export const restoreCmd = (app: App) =>
 
         return await ctx.edit({
           content: `done`,
-          flags: D.MessageFlags.Ephemeral
+          flags: D.MessageFlags.Ephemeral,
         })
-      }
+      },
     )
   })

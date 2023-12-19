@@ -1,72 +1,81 @@
 import { AnyView, FindViewCallback, isCommandView } from '../../discord-framework'
-import { helpCmd } from '../views/commands/help'
+import { sentry } from '../../request/sentry'
+import { help } from '../views/commands/help'
 import points from '../views/commands/points'
-import { ranking_settings_page } from '../views/commands/rankings/ranking_settings'
-import { rankings_cmd } from '../views/commands/rankings/rankings'
-import { record_match_cmd } from '../views/commands/record_match'
+import { rankingSettings } from '../views/commands/rankings/ranking_settings'
+import { rankings } from '../views/commands/rankings/rankings'
+import { recordMatch } from '../views/commands/record_match'
 import { restoreCmd } from '../views/commands/restore'
-import { settingsCmd } from '../views/commands/settings'
+import { settings } from '../views/commands/settings'
 import { startMatch } from '../views/commands/start_match'
 import temp from '../views/commands/temp_command'
 import test from '../views/commands/test_command'
 import queue from '../views/messages/queue'
 import { App } from './app'
+import { AppErrors } from './errors'
 
 export function getAllViews(app: App): AnyView[] {
-  let enabled_views: (AnyView)[] = [
-    helpCmd(app), 
-    [rankings_cmd(app), ranking_settings_page(app)],
-    record_match_cmd(app),
-    settingsCmd(app),
-  ].flat() // prettier-ignore
+  let enabled_views: AnyView[] = [
+    help(app), 
+    settings(app),
+    rankings(app), 
+    rankingSettings(app),
+    recordMatch(app),
+  ] // prettier-ignore
 
-  const experimental_views: (AnyView)[] = [
+  const experimental_views: AnyView[] = [
     startMatch(app),
     restoreCmd(app),
     points(app), 
     queue(app),
     test(app),
     temp(app),
-  ].flat() // prettier-ignore
+  ] // prettier-ignore
 
-  if (app.config.features.EXPERIMENTAL_VIEWS) {
+  if (app.config.features.ExperimentalViews) {
     enabled_views = enabled_views.concat(experimental_views)
   }
 
-  if (app.config.features.ALL_COMMANDS_GUILD) {
+  if (app.config.features.DevGuildCommands) {
     enabled_views.filter(isCommandView).forEach(view => {
-      view.options.guild_id = app.config.DEV_GUILD_ID
+      view.options.guild_id = app.config.DevGuildId
     })
   }
 
   // check for duplicate custom_id_prefixes
-  const custom_id_prefixes = enabled_views.filter(view => !!view.options.custom_id_prefix)
+  const custom_id_prefixes = enabled_views.filter(view => !!view.options.custom_id_id)
 
   if (custom_id_prefixes.length !== new Set(custom_id_prefixes).size) {
-    throw new Error(`Duplicate custom id prefixes found in views: ${custom_id_prefixes}`)
+    throw new AppErrors.InvalidViews(
+      `Duplicate custom id prefixes found in views: ${custom_id_prefixes}`,
+    )
+  }
+
+  // check if any view has a state_schema without a custom_id_prefix
+  const views = enabled_views
+    .filter(view => !!Object.keys(view.state_schema).length && !view.options.custom_id_id)
+    .map(view => view.name)
+  if (views.length) {
+    throw new Error(`Stateful view has no custom_id id: ${views}`)
   }
 
   return enabled_views
 }
 
-export function findView(app: App): FindViewCallback {
-  return async (
+export const findView = (app: App): FindViewCallback => {
+  return async function (
     command?: { name: string; type: number; guild_id?: string },
-    custom_id_prefix?: string
-  ) => {
-    const known_views: AnyView[] = getAllViews(app)
-
-    if (custom_id_prefix) {
-      var view = known_views.find(view => view.options.custom_id_prefix === custom_id_prefix)
-    } else if (command) {
-      view = known_views.find(
-        view =>
-          isCommandView(view) &&
-          command.name === view.options.command.name &&
-          command.type === view.options.type &&
-          command.guild_id === view.options.guild_id
-      )
-    }
-    return view
+    custom_id_prefix?: string,
+  ) {
+    return getAllViews(app).find(view =>
+      custom_id_prefix
+        ? view.options.custom_id_id === custom_id_prefix
+        : command
+          ? isCommandView(view) &&
+            command.name === view.options.name &&
+            command.type === view.options.type &&
+            command.guild_id === view.options.guild_id
+          : false,
+    )
   }
 }

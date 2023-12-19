@@ -9,7 +9,7 @@ import {
   Rankings,
   Settings,
   Teams,
-  Users
+  Users,
 } from './schema'
 
 // Types for each model, for each type of query.

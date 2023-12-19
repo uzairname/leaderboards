@@ -1,5 +1,6 @@
 import { desc, eq } from 'drizzle-orm'
 import { Match, Player } from '..'
+import { sentry } from '../../../request/sentry'
 import { DbClient } from '../../client'
 import { DbErrors } from '../../errors'
 import { DbObject, DbObjectManager } from '../../managers'
@@ -11,7 +12,7 @@ export const default_num_teams = 2
 
 export const default_elo_settings = {
   initial_rating: 50,
-  initial_rd: 50 / 3
+  initial_rd: 50 / 3,
 }
 // displayed_rating = rating - 0.6 * rd
 
@@ -29,11 +30,13 @@ export class Ranking extends DbObject<RankingSelect> {
    * @returns The top players in this ranking, ordered by highest rating to lowest
    */
   async getOrderedTopPlayers(): Promise<Player[]> {
+    sentry.debug(`getting players`)
     const players = await this.db.db
       .select()
       .from(Players)
       .where(eq(Players.ranking_id, this.data.id))
       .orderBy(desc(Players.rating))
+    sentry.debug(`got players`)
     return players.map(item => {
       return new Player(item, this.db)
     })
@@ -81,7 +84,7 @@ export class RankingsManager extends DbObjectManager {
 
     const data = (await this.db.db.select().from(Rankings).where(eq(Rankings.id, ranking_id)))[0]
     if (!data) {
-      throw new DbErrors.NotFoundError(`Ranking doesn't exist`)
+      throw new DbErrors.NotFoundError(`Ranking ${ranking_id} doesn't exist`)
     }
     return new Ranking(data, this.db)
   }

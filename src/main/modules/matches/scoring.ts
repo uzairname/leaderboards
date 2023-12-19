@@ -10,7 +10,7 @@ export function getNewRatings(
   elo_settings: {
     initial_rating?: number
     initial_rd?: number
-  }
+  },
 ): Rating[][] {
   const team_ranks = outcome.map(score => 1 - score)
 

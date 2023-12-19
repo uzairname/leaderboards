@@ -11,8 +11,9 @@ import {
   RankingsManager,
   SettingsManager,
   TeamsManager,
-  UsersManager
+  UsersManager,
 } from './models'
+import { AccessTokensManager } from './models/models/access_tokens'
 import * as schema from './schema'
 
 export class DbClient {
@@ -33,6 +34,7 @@ export class DbClient {
 
   settings = new SettingsManager(this)
   users = new UsersManager(this)
+  access_tokens = new AccessTokensManager(this)
   guilds = new GuildsManager(this)
   rankings = new RankingsManager(this)
   guild_rankings = new GuildRankingsManager(this)

@@ -1,7 +1,7 @@
 export default {
   printWidth: 100,
   tabWidth: 2,
-  trailingComma: 'none',
+  trailingComma: 'all',
   singleQuote: true,
   semi: false,
   endOfLine: 'crlf',

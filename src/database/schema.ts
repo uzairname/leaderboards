@@ -1,4 +1,5 @@
-import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, bigint, uniqueIndex } from 'drizzle-orm/pg-core'
+import { RESTPostOAuth2AccessTokenResult } from 'discord-api-types/v10'
+import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, uniqueIndex } from 'drizzle-orm/pg-core'
 
 
 export const Settings = pgTable('Settings', {
@@ -7,6 +8,7 @@ export const Settings = pgTable('Settings', {
   config: jsonb('config').$type<any>(),
 })
 
+
 export const Users = pgTable('Users', {
   id: text('id').primaryKey(),
   name: text('name'),
@@ -14,22 +16,14 @@ export const Users = pgTable('Users', {
   linked_roles_ranking_id: integer('linked_roles_ranking_id')
 })
 
-export type AccessTokenData = Partial<{
-  access_token: string
-  token_type: string
-  expires_in: number
-  refresh_token: string
-  scope: string
-}>
 
 export const AccessTokens = pgTable('AccessTokens', {
   id: serial('id').primaryKey(),
   user_id: text('user_id').notNull().references(() => Users.id, {onDelete: 'cascade'}),
-  data: jsonb('data').$type<AccessTokenData>(),
-  purpose: text('purpose'),
-}, (table) => { return {
-  user_id_purpose_unique: uniqueIndex('access_token_user_id_purpose_unique').on(table.user_id, table.purpose),
-}})
+  data: jsonb('data').$type<RESTPostOAuth2AccessTokenResult>().notNull(),
+  expires_at: timestamp('expires_at').notNull(),
+  time_created: timestamp('time_created').defaultNow(),
+})
 
 
 export const Guilds = pgTable('Guilds', {
@@ -48,6 +42,7 @@ export type EloSettings = Partial<{
   initial_rd: number
 }>
 
+
 export const Rankings = pgTable('Rankings', {
   id: serial('id').primaryKey(),
   name: text('name'),
@@ -57,6 +52,7 @@ export const Rankings = pgTable('Rankings', {
   elo_settings: jsonb('elo_settings').$type<EloSettings>(),
   // match_settings: jsonb('match_settings'),
 })
+
 
 export const GuildRankings = pgTable('GuildRankings', {
   guild_id: text('guild_id').notNull().references(() => Guilds.id, {onDelete: 'cascade'}),

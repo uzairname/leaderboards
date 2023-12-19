@@ -1,35 +1,38 @@
-import { RequestArgs } from '../../request/request'
-import { features } from './features'
+import * as D from 'discord-api-types/v10'
+
+export const features = (environment: string) => {
+  const dev = environment === 'development'
+
+  return {
+    ExperimentalViews: dev,
+    DevGuildCommands: dev,
+    DetailedErrorMessages: dev,
+
+    RoleConnectionsMetadata: dev,
+    QueueMessage: dev,
+    HelpReference: dev,
+  }
+}
 
 export class Config {
-  readonly routes = {
-    INTERACTIONS: '/interactions',
-    OAUTH_CALLBACK: '/oauth/callback',
-    OAUTH_LINKED_ROLES: '/oauth/linkedroles',
-    TEST: '/test',
-    INIT: '/init',
-    BASE_API: '/api'
+  readonly OauthRoutes = {
+    Redirect: '/redirect',
+    LinkedRoles: '/linkedroles',
+    InviteOauth: '/invite',
   }
 
-  readonly DEV_GUILD_ID = '1041458052055978024'
+  readonly DevGuildId = '1041458052055978024'
 
-  readonly HOME_GUILD_ID: string
-  readonly home_guild_ids: { [key: string]: string } = {
-    development: this.DEV_GUILD_ID,
-    staging: '1003698664767762575', //private server
-    production: '1110286104734740595' //support server
-  }
+  readonly RequiredBotPermissions =
+    D.PermissionFlagsBits.ManageChannels |
+    D.PermissionFlagsBits.ManageThreads |
+    D.PermissionFlagsBits.ManageRoles
 
+  public readonly OauthRedirectURI: string
   readonly features: ReturnType<typeof features>
 
-  readonly OAUTH_REDIRECT_URI: string
-
-  readonly env: Env
-
-  constructor(ctx: RequestArgs) {
-    this.env = ctx.env
-    this.HOME_GUILD_ID = this.home_guild_ids[this.env.ENVIRONMENT]
-    this.OAUTH_REDIRECT_URI = this.env.BASE_URL + this.routes.OAUTH_CALLBACK
-    this.features = features(this.env.ENVIRONMENT)
+  constructor(readonly env: Env) {
+    this.OauthRedirectURI = env.BASE_URL + `/oauth` + this.OauthRoutes.Redirect
+    this.features = features(env.ENVIRONMENT)
   }
 }

@@ -8,14 +8,8 @@ export class Event<EventData> {
   }
 
   async emit(data: EventData): Promise<void> {
-    sentry.debug(`emitting event`)
-    await Promise.all(
-      this.callbacks.map(
-        c =>
-          new Promise<void>(resolve => {
-            c(data).then(() => resolve())
-          })
-      )
-    )
+    for (const callback of this.callbacks) {
+      await callback(data)
+    }
   }
 }

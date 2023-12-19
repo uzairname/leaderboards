@@ -35,7 +35,7 @@ export class Team extends DbObject<TeamSelect> {
       .insert(TeamPlayers)
       .values({
         team_id: this.data.id,
-        player_id: player.data.id
+        player_id: player.data.id,
       })
       .onConflictDoNothing()
     return this
@@ -77,7 +77,7 @@ export class TeamsManager extends DbObjectManager {
   async create(
     ranking: Ranking,
     data: Omit<TeamInsert, 'ranking_id'>,
-    players: Player[] = []
+    players: Player[] = [],
   ): Promise<Team> {
     data.rating = calculateTeamRating(players, ranking)
 

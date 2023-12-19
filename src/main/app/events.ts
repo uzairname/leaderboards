@@ -15,7 +15,7 @@ export function events() {
     // Guild ranking was created
     GuildRankingCreated: new Event<GuildRanking>(),
     // Player's name, rating, or metadata modified.
-    PlayerUpdated: new Event<Player>()
+    PlayerUpdated: new Event<Player>(),
   }
 }
 

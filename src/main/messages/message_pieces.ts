@@ -1,9 +1,10 @@
 import * as D from 'discord-api-types/v10'
-import { AnyCommandView, DiscordRESTClient } from '../../discord-framework'
+import { AnyCommandView, DiscordAPIClient } from '../../discord-framework'
 import { App } from '../app/app'
 
 export class Colors {
   static Primary = 0xa1ffda
+  static Secondary = 0x4a6666
   static DiscordBackground = 0x313338
   static EmbedBackground = 0x2b2d31
 }
@@ -17,12 +18,22 @@ export function dateTimestamp(time: Date): string {
 }
 
 /**
- * Converts a string that may contain special markdown characters to Discord's markdown.
+ * Escapes special Discord markdown characters: ( ` * _ ~ < : \ )
  */
-export function toMarkdown(str: string | undefined | null): string {
+export function escapeMd(str: string | undefined | null): string {
   if (!str) return ''
   return str
-  // return str.replace(/_/g, '\\_').replace(/\*/g, '\\*').replace(/~/g, '\\~').replace(/`/g, '\\`')
+    .replace(/\\/g, `\\\\`) // must be first to avoid double escaping
+    .replace(/\*/g, '\\*')
+    .replace(/_/g, '\\_')
+    .replace(/~/g, '\\~')
+    .replace(/`/g, '\\`')
+    .replace(/</g, '\\<')
+    .replace(/:/g, '\\:')
+}
+
+export function truncateString(str: string, max_length: number): string {
+  return str.length > max_length ? str.slice(0, max_length - 2) + '..' : str
 }
 
 export function messageLink(guild_id: string, channel_id: string, message_id: string): string {
@@ -36,9 +47,9 @@ export function channelMention(channel_id?: string): string {
 export async function commandMention(app: App, command: AnyCommandView) {
   return await _commandMention(
     app,
-    command.options.command.name,
+    command.options.name,
     command.options.type,
-    command.options.guild_id
+    command.options.guild_id,
   )
 }
 
@@ -46,25 +57,24 @@ export async function _commandMention(
   app: App,
   name: string,
   type: D.ApplicationCommandType = D.ApplicationCommandType.ChatInput,
-  guild_id?: string
+  guild_id?: string,
 ): Promise<string> {
   let commands = (await app.bot.getAppCommands(guild_id)) as D.APIApplicationCommand[]
   let command = commands.find(command => command.name === name && command.type === type)
   return `</${name}:${command?.id || '0'}>`
 }
 
-export function inviteUrl(bot: DiscordRESTClient): string {
-  const REQUIRED_BOT_PERMISSIONS =
-    D.PermissionFlagsBits.ManageChannels |
-    D.PermissionFlagsBits.ManageThreads |
-    D.PermissionFlagsBits.ManageRoles
-
+export function inviteUrl(app: App): string {
   return (
     'https://discord.com/api/oauth2/authorize?' +
     new URLSearchParams({
-      client_id: bot.application_id,
+      client_id: app.bot.application_id,
       scope: 'bot',
-      permissions: REQUIRED_BOT_PERMISSIONS.toString()
+      permissions: app.config.RequiredBotPermissions.toString(),
     }).toString()
   )
+}
+
+export function botAndOauthUrl(app: App): string {
+  return app.config.env.BASE_URL + `/oauth` + app.config.OauthRoutes.InviteOauth
 }

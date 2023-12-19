@@ -8,7 +8,7 @@ export const create_choice_value = 'create'
 export function rankingsAutocomplete(
   app: App,
   create_choice?: boolean,
-  ranking_option_name: string = 'ranking'
+  ranking_option_name: string = 'ranking',
 ): ViewAutocompleteCallback<D.ApplicationCommandType.ChatInput> {
   return autocompleteTimeout(async (ctx: AutocompleteContext) => {
     const interaction = checkGuildInteraction(ctx.interaction)
@@ -29,35 +29,35 @@ export function rankingsAutocomplete(
       .filter(
         item =>
           // if no input so far, include all rankings
-          !input_value || item.ranking.data.name?.toLowerCase().includes(input_value.toLowerCase())
+          !input_value || item.ranking.data.name?.toLowerCase().includes(input_value.toLowerCase()),
       )
       .map(lb => ({
         name: lb.ranking.data.name || 'Unnamed ranking',
-        value: lb.ranking.data.id.toString()
+        value: lb.ranking.data.id.toString(),
       }))
 
     if (create_choice || choices.length == 0) {
       // Add a choice to create a new ranking.
       choices.push({
         name: 'Create a new ranking',
-        value: create_choice_value
+        value: create_choice_value,
       })
     }
 
     const response: D.APIApplicationCommandAutocompleteResponse = {
       type: D.InteractionResponseType.ApplicationCommandAutocompleteResult,
       data: {
-        choices
-      }
+        choices,
+      },
     }
 
     return response
-  })
+  }, `Loading rankings timed out... try again`)
 }
 
 function autocompleteTimeout(
   callback: ViewAutocompleteCallback<D.ApplicationCommandType.ChatInput>,
-  message?: string
+  message?: string,
 ): ViewAutocompleteCallback<D.ApplicationCommandType.ChatInput> {
   return async function (ctx: AutocompleteContext) {
     return Promise.race([
@@ -69,14 +69,14 @@ function autocompleteTimeout(
             data: {
               choices: [
                 {
-                  name: message || 'Loading options timed out... type something to refresh',
-                  value: ''
-                }
-              ]
-            }
+                  name: message || `Loading options timed out... try again`,
+                  value: '',
+                },
+              ],
+            },
           })
-        }, 2750)
-      )
+        }, 2750),
+      ),
     ])
   }
 }

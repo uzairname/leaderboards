@@ -1,79 +1,119 @@
 import * as D from 'discord-api-types/v10'
+import { eq } from 'drizzle-orm'
+import { Router } from 'itty-router'
+import { AccessToken } from '../../database/models/models/access_tokens'
 import { AccessTokens } from '../../database/schema'
-import { DiscordRESTClient } from '../../discord-framework'
+import { AccessTokenSelect } from '../../database/types'
+import { DiscordAPIClient } from '../../discord-framework'
 import { sentry } from '../../request/sentry'
 import { nonNullable } from '../../utils/utils'
 import { App } from '../app/app'
-import { AppErrors, UserErrors } from '../app/errors'
-import { updateUserRoleConnectionData } from './linked_roles'
+import { AppErrors } from '../app/errors'
 
-export function oauthRedirect(app: App, scopes: D.OAuth2Scopes[]): Response {
+export const oauthRouter = (app: App) =>
+  Router({ base: `/oauth` })
+    .get(app.config.OauthRoutes.LinkedRoles, () => {
+      return oauthRedirect(app, [D.OAuth2Scopes.Identify, D.OAuth2Scopes.RoleConnectionsWrite])
+    })
+
+    .get(app.config.OauthRoutes.InviteOauth, () => {
+      return oauthRedirect(
+        app,
+        [D.OAuth2Scopes.Identify, D.OAuth2Scopes.Bot, D.OAuth2Scopes.RoleConnectionsWrite],
+        app.config.RequiredBotPermissions,
+      )
+    })
+
+    .get(app.config.OauthRoutes.Redirect, request => {
+      return oauthRedirectCallback(app, request)
+    })
+
+    .get(`/*`, () => new Response('Unknown oauth route', { status: 404 }))
+
+export function oauthRedirect(
+  app: App,
+  scopes: D.OAuth2Scopes[],
+  bot_permissions?: bigint,
+): Response {
   const state = crypto.randomUUID()
-  const url = app.bot.oauthRedirectURL(app.config.OAUTH_REDIRECT_URI, scopes, state)
+
+  const url = app.bot.oauthRedirectURL(app.config.OauthRedirectURI, scopes, state, bot_permissions)
 
   return new Response(null, {
     status: 302,
     headers: {
-      Location: url,
-      'Set-Cookie': `state=${state}; HttpOnly; Secure; Max-Age=300; path=/`
-    }
+      Location: url.toString(),
+      'Set-Cookie': `state=${state}; HttpOnly; Secure; Max-Age=300; path=/;`,
+    },
   })
 }
 
-export async function oauthCallback(app: App, request: Request): Promise<Response> {
+export async function oauthRedirectCallback(app: App, request: Request): Promise<Response> {
   const url = new URL(request.url)
   const client_state = request.headers.get('Cookie')?.split('state=')[1]?.split(';')[0]
   const discord_state = url.searchParams.get('state')
 
   if (client_state !== discord_state) {
-    return new Response('Invalid state', { status: 400 })
+    return new Response('Invalid state', { status: 403 })
   }
 
   try {
     const code = nonNullable(url.searchParams.get('code'), 'code')
-    var tokendata = await app.bot.getOauthToken(code, app.config.OAUTH_REDIRECT_URI)
+    var tokendata = await app.bot.getOauthToken(code, app.config.OauthRedirectURI)
   } catch (e) {
-    sentry.catchAfterResponding(e)
+    sentry.setException(e)
     return new Response('Invalid code', { status: 400 })
   }
 
+  const purpose = url.searchParams.get('purpose')
   await saveUserAccessToken(app, tokendata)
 
   return new Response(`Authorized. You may return to Discord`, {
-    status: 200
+    status: 200,
   })
 }
 
 export async function saveUserAccessToken(app: App, token: D.RESTPostOAuth2AccessTokenResult) {
   const me = await app.bot.getOauthUser(token.access_token)
-  const expires_at = Date.now() + token.expires_in * 1000
 
   if (me.user) {
     // save token
     await app.db.db.insert(AccessTokens).values({
       user_id: me.user.id,
       data: token,
-      purpose: 'user'
+      expires_at: new Date(Date.now() + token.expires_in * 1000),
     })
   } else {
     throw new AppErrors.MissingIdentifyScope()
   }
 }
 
-type StoredToken = {
-  access_token: string
-  refresh_token: string
-  expires_at: number
+export async function getUserAccessToken(
+  app: App,
+  user_id: string,
+  scopes?: D.OAuth2Scopes[],
+): Promise<string | undefined> {
+  const all_tokens = await app.db.access_tokens.get(user_id)
+
+  const scope_tokens = scopes
+    ? all_tokens.filter(token => {
+        const token_scopes = token.data.data.scope.split(' ')
+        return scopes.every(scope => token_scopes.includes(scope))
+      })
+    : all_tokens
+
+  // get the most recent token
+  const token = scope_tokens.sort(
+    (a, b) => b.data.expires_at.getTime() - a.data.expires_at.getTime(),
+  )[0]
+  return await refreshAccessToken(app.bot, token.data)
 }
 
 export async function refreshAccessToken(
-  bot: DiscordRESTClient,
-  tokens: StoredToken
+  bot: DiscordAPIClient,
+  token: AccessToken['data'],
 ): Promise<string> {
-  if (Date.now() < tokens.expires_at) {
-    return tokens.access_token
-  }
-
-  const response = await bot.refreshOauthToken(tokens.refresh_token)
-  return response.access_token
+  return token.expires_at.getTime() > Date.now()
+    ? token.data.access_token
+    : (await bot.refreshOauthToken(token.data.refresh_token)).access_token
 }

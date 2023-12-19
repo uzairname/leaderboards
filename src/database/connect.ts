@@ -6,11 +6,11 @@ import * as schema from './schema'
 
 export function connect(connection_string: string, sentry?: Sentry): NeonDatabase<typeof schema> {
   const pool = new Pool({
-    connectionString: connection_string
+    connectionString: connection_string,
   })
   const logger = new DrizzleLogger(sentry)
   return drizzle(pool, {
-    logger
+    logger,
   })
 }
 
@@ -25,11 +25,11 @@ class DrizzleLogger implements Logger {
       this.sentry.addBreadcrumb({
         data: {
           query: query,
-          params: params
+          params: params,
         },
         category: 'database',
         type: 'query',
-        level: 'info'
+        level: 'info',
       })
     } else {
       console.log('query', query, params)

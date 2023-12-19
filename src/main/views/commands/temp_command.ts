@@ -1,33 +1,21 @@
 import * as D from 'discord-api-types/v10'
-import {
-  ChatInteractionContext,
-  ChoiceField,
-  CommandView,
-  Context,
-  IntField,
-  ListField,
-  _
-} from '../../../discord-framework'
-import { sentry } from '../../../request/sentry'
-import { nonNullable } from '../../../utils/utils'
+import { CommandView, StateContext, _, field } from '../../../discord-framework'
 import { App } from '../../app/app'
 import { AppErrors } from '../../app/errors'
 
 const temp_command = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
-  command: {
-    name: 'temp',
-    description: 'record a match'
-  },
-  custom_id_prefix: 'tmp',
+  name: 'temp',
+  description: 'record a match',
+  custom_id_id: 'tmp',
   state_schema: {
-    clicked_component: new ChoiceField({
+    clicked_component: field.Choice({
       'select team': _,
-      'confirm match': _
+      'confirm match': _,
     }),
-    selected_team: new IntField(),
-    players: new ListField()
-  }
+    selected_team: field.Int(),
+    players: field.List(field.String()),
+  },
 })
 
 export default (app: App) =>
@@ -37,8 +25,8 @@ export default (app: App) =>
         type: D.InteractionResponseType.ChannelMessageWithSource,
         data: {
           components: await selectTeamComponents(app, ctx),
-          flags: D.MessageFlags.Ephemeral
-        }
+          flags: D.MessageFlags.Ephemeral,
+        },
       }
     })
 
@@ -73,13 +61,13 @@ export default (app: App) =>
                       type: D.ComponentType.Button,
                       label: 'Confirm',
                       style: D.ButtonStyle.Success,
-                      custom_id: ctx.state.set.clicked_component('confirm match').encode()
-                    }
-                  ]
-                }
+                      custom_id: ctx.state.set.clicked_component('confirm match').cId(),
+                    },
+                  ],
+                },
               ],
-              flags: D.MessageFlags.Ephemeral
-            }
+              flags: D.MessageFlags.Ephemeral,
+            },
           }
         }
 
@@ -88,8 +76,8 @@ export default (app: App) =>
           data: {
             content: `Data: ${JSON.stringify(ctx.state.data)}`,
             components: await selectTeamComponents(app, ctx),
-            flags: D.MessageFlags.Ephemeral
-          }
+            flags: D.MessageFlags.Ephemeral,
+          },
         }
       } else {
         throw new AppErrors.UnknownState(ctx.state.data.clicked_component)
@@ -98,7 +86,7 @@ export default (app: App) =>
 
 async function selectTeamComponents(
   app: App,
-  ctx: Context<typeof temp_command>
+  ctx: StateContext<typeof temp_command>,
 ): Promise<D.APIActionRowComponent<D.APIMessageActionRowComponent>[]> {
   const components: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = [
     {
@@ -107,11 +95,11 @@ async function selectTeamComponents(
         {
           type: D.ComponentType.UserSelect,
           placeholder: `Team ${1}`,
-          custom_id: ctx.state.set.selected_team(0).set.clicked_component('select team').encode(),
+          custom_id: ctx.state.set.selected_team(0).set.clicked_component('select team').cId(),
           min_values: 1,
-          max_values: 1
-        }
-      ]
+          max_values: 1,
+        },
+      ],
     },
 
     {
@@ -120,12 +108,12 @@ async function selectTeamComponents(
         {
           type: D.ComponentType.UserSelect,
           placeholder: `Team ${2}`,
-          custom_id: ctx.state.set.selected_team(1).set.clicked_component('select team').encode(),
+          custom_id: ctx.state.set.selected_team(1).set.clicked_component('select team').cId(),
           min_values: 1,
-          max_values: 1
-        }
-      ]
-    }
+          max_values: 1,
+        },
+      ],
+    },
   ]
 
   return components

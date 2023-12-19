@@ -10,7 +10,7 @@ export function assert(condition: boolean, message?: string): asserts condition 
 
 export function getEnumValue<T extends Record<string, string | number>>(
   enum_: T,
-  value: unknown
+  value: unknown,
 ): T[keyof T] | null {
   const keys = Object.keys(enum_) as (keyof T)[]
   for (const key of keys) {
@@ -26,8 +26,9 @@ export type ModifyType<T, K extends keyof T, U> = Omit<T, K> & {
 export function cloneSimpleObj<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj))
 }
-export function unflatten<T>(arr: T[], dim_2_size: number): T[][] {
-  return Array.from({ length: arr.length / dim_2_size }, (_, i) =>
-    arr.slice(i * dim_2_size, (i + 1) * dim_2_size)
+export function unflatten<T>(arr: T[], dim_2_size: number, full_rows = true): T[][] {
+  return Array.from(
+    { length: full_rows ? arr.length / dim_2_size : Math.ceil(arr.length / dim_2_size) },
+    (_, i) => arr.slice(i * dim_2_size, (i + 1) * dim_2_size),
   )
 }

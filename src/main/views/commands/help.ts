@@ -1,31 +1,29 @@
 import * as D from 'discord-api-types/v10'
-import { ChatInteractionContext, ChoiceField, CommandView, _ } from '../../../discord-framework'
+import { InteractionContext, CommandView, _, field } from '../../../discord-framework'
 import { App } from '../../app/app'
 import { AppErrors } from '../../app/errors'
-import { Colors, dateTimestamp, inviteUrl } from '../../messages/message_pieces'
+import { Colors, botAndOauthUrl, dateTimestamp, inviteUrl } from '../../messages/message_pieces'
 import { Messages } from '../../messages/messages'
 
 export const help_cmd = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
 
-  custom_id_prefix: 'help',
+  custom_id_id: 'help',
 
-  command: {
-    name: 'help',
-    description: 'All about this bot'
-  },
+  name: 'help',
+  description: 'All about this bot',
   state_schema: {
-    page: new ChoiceField({ main: _, reference: _ })
-  }
+    page: field.Choice({ main: _, reference: _ }),
+  },
 })
 
-export const helpCmd = (app: App) =>
+export const help = (app: App) =>
   help_cmd
     .onCommand(async ctx => {
       ctx.state.save.page('main')
       return {
         type: D.InteractionResponseType.ChannelMessageWithSource,
-        data: await mainPage(app, ctx, true)
+        data: await mainPage(app, ctx, true),
       }
     })
     .onComponent(async ctx => {
@@ -41,33 +39,33 @@ export const helpCmd = (app: App) =>
 
 async function helpComponents(
   app: App,
-  ctx: ChatInteractionContext<typeof help_cmd>
+  ctx: InteractionContext<typeof help_cmd>,
 ): Promise<D.APIActionRowComponent<D.APIMessageActionRowComponent>[]> {
   let components: D.APIButtonComponent[] = []
   let action_rows: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = [
     {
       type: D.ComponentType.ActionRow,
-      components
-    }
+      components,
+    },
   ]
 
   components.push({
     type: D.ComponentType.Button,
-    custom_id: ctx.state.set.page('main').encode(),
+    custom_id: ctx.state.set.page('main').cId(),
     label: 'About',
     style: ctx.state.is.page('main') ? D.ButtonStyle.Primary : D.ButtonStyle.Secondary,
-    disabled: ctx.state.is.page('main')
+    disabled: ctx.state.is.page('main'),
   })
 
-  if (app.config.features.HELP_REFERENCE) {
+  if (app.config.features.HelpReference) {
     components = components.concat([
       {
         type: D.ComponentType.Button,
-        custom_id: ctx.state.set.page('reference').encode(),
+        custom_id: ctx.state.set.page('reference').cId(),
         label: 'Reference',
         style: ctx.state.is.page('reference') ? D.ButtonStyle.Primary : D.ButtonStyle.Secondary,
-        disabled: ctx.state.is.page('reference')
-      }
+        disabled: ctx.state.is.page('reference'),
+      },
     ])
   }
 
@@ -77,11 +75,12 @@ async function helpComponents(
       components: [
         {
           type: D.ComponentType.Button,
-          url: inviteUrl(app.bot),
+          // url: inviteUrl(app.bot),
+          url: botAndOauthUrl(app),
           label: 'Invite',
-          style: D.ButtonStyle.Link
-        }
-      ]
+          style: D.ButtonStyle.Link,
+        },
+      ],
     })
   }
 
@@ -90,8 +89,8 @@ async function helpComponents(
 
 async function mainPage<Send extends boolean>(
   app: App,
-  ctx: ChatInteractionContext<typeof help_cmd>,
-  send: boolean = false as Send
+  ctx: InteractionContext<typeof help_cmd>,
+  send: boolean = false as Send,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const last_deployed = (await app.db.settings.getOrUpdate()).data.last_deployed
 
@@ -103,36 +102,36 @@ async function mainPage<Send extends boolean>(
     fields: [
       {
         name: `Source Code`,
-        value: `This bot is open source. [GitHub](${Messages.github_url})`
+        value: `This bot is open source. [GitHub](${Messages.github_url})`,
       },
       {
         name: `Version`,
-        value: `This bot was last updated on ${last_deployed_timestamp}`
-      }
+        value: `This bot was last updated on ${last_deployed_timestamp}`,
+      },
     ],
-    color: Colors.EmbedBackground
+    color: Colors.EmbedBackground,
   }
 
   return {
     embeds: [embed],
     components: await helpComponents(app, ctx),
-    flags: D.MessageFlags.Ephemeral
+    flags: D.MessageFlags.Ephemeral,
   }
 }
 
 async function referencePage(
   app: App,
-  ctx: ChatInteractionContext<typeof help_cmd>
+  ctx: InteractionContext<typeof help_cmd>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const embed: D.APIEmbed = {
     title: 'Help',
     description: `reference`,
-    color: Colors.EmbedBackground
+    color: Colors.EmbedBackground,
   }
 
   return {
     embeds: [embed],
     components: await helpComponents(app, ctx),
-    flags: D.MessageFlags.Ephemeral
+    flags: D.MessageFlags.Ephemeral,
   }
 }

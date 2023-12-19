@@ -21,8 +21,8 @@ export class GuildRanking extends DbObject<GuildRankingSelect> {
         .where(
           and(
             eq(GuildRankings.guild_id, this.data.guild_id),
-            eq(GuildRankings.ranking_id, this.data.ranking_id)
-          )
+            eq(GuildRankings.ranking_id, this.data.ranking_id),
+          ),
         )
         .returning()
     )[0]
@@ -47,7 +47,7 @@ export class GuildRankingsManager extends DbObjectManager {
   async create(
     guild: Guild,
     ranking: Ranking,
-    data: Omit<GuildRankingInsert, 'guild_id' | 'ranking_id'>
+    data: Omit<GuildRankingInsert, 'guild_id' | 'ranking_id'>,
   ): Promise<GuildRanking> {
     const new_data = (
       await this.db.db
@@ -55,7 +55,7 @@ export class GuildRankingsManager extends DbObjectManager {
         .values({
           guild_id: guild.data.id,
           ranking_id: ranking.data.id,
-          ...data
+          ...data,
         })
         .returning()
     )[0]
@@ -64,7 +64,7 @@ export class GuildRankingsManager extends DbObjectManager {
   }
 
   async get<By extends { guild_id?: string; ranking_id?: number }>(
-    by: By
+    by: By,
   ): Promise<
     By extends { guild_id: string }
       ? By extends { ranking_id: number }
@@ -81,11 +81,11 @@ export class GuildRankingsManager extends DbObjectManager {
         .select()
         .from(GuildRankings)
         .where(
-          and(eq(GuildRankings.guild_id, by.guild_id), eq(GuildRankings.ranking_id, by.ranking_id))
+          and(eq(GuildRankings.guild_id, by.guild_id), eq(GuildRankings.ranking_id, by.ranking_id)),
         )
       if (data.length == 0)
         throw new DbErrors.NotFoundError(
-          `GuildRanking ${by.guild_id} ${by.ranking_id} doesn't exist`
+          `GuildRanking ${by.guild_id} ${by.ranking_id} doesn't exist`,
         )
       return new GuildRanking(data[0], this.db) as any
     } else if (by.guild_id) {
@@ -94,11 +94,11 @@ export class GuildRankingsManager extends DbObjectManager {
         .from(GuildRankings)
         .innerJoin(
           Rankings,
-          and(eq(GuildRankings.ranking_id, Rankings.id), eq(GuildRankings.guild_id, by.guild_id))
+          and(eq(GuildRankings.ranking_id, Rankings.id), eq(GuildRankings.guild_id, by.guild_id)),
         )
       return data.map(d => ({
         guild_ranking: new GuildRanking(d.GuildRankings, this.db),
-        ranking: new Ranking(d.Rankings, this.db)
+        ranking: new Ranking(d.Rankings, this.db),
       })) as any
     } else if (by.ranking_id) {
       const data = await this.db.db
@@ -106,11 +106,11 @@ export class GuildRankingsManager extends DbObjectManager {
         .from(GuildRankings)
         .innerJoin(
           Guilds,
-          and(eq(GuildRankings.guild_id, Guilds.id), eq(GuildRankings.ranking_id, by.ranking_id))
+          and(eq(GuildRankings.guild_id, Guilds.id), eq(GuildRankings.ranking_id, by.ranking_id)),
         )
       return data.map(d => ({
         guild_ranking: new GuildRanking(d.GuildRankings, this.db),
-        guild: new Guild(d.Guilds, this.db)
+        guild: new Guild(d.Guilds, this.db),
       })) as any
     } else {
       throw new DbErrors.ArgumentError(`Must specify guild_id or ranking_id`)

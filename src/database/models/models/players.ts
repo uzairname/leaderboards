@@ -44,7 +44,7 @@ export class Player extends DbObject<PlayerSelect> {
       .from(Teams)
       .innerJoin(
         TeamPlayers,
-        and(eq(TeamPlayers.team_id, Teams.id), eq(TeamPlayers.player_id, this.data.id))
+        and(eq(TeamPlayers.team_id, Teams.id), eq(TeamPlayers.player_id, this.data.id)),
       )
       .leftJoin(QueueTeams, eq(QueueTeams.team_id, Teams.id))
 
@@ -59,7 +59,7 @@ export class Player extends DbObject<PlayerSelect> {
         INNER JOIN ${Teams} ON 
           ${Teams.id} = ${TeamPlayers.team_id} 
           AND ${TeamPlayers.player_id} = ${this.data.id}
-      )`
+      )`,
     )
   }
 }
@@ -75,9 +75,9 @@ export class PartialPlayer extends Player {
         time_created: null,
         rating: null,
         rd: null,
-        stats: null
+        stats: null,
       },
-      db
+      db,
     )
   }
 }
@@ -87,7 +87,7 @@ export class PlayersManager extends DbObjectManager {
   async create(
     user: User,
     ranking: Ranking,
-    data?: Omit<PlayerInsert, 'user_id' | 'ranking_id'>
+    data?: Omit<PlayerInsert, 'user_id' | 'ranking_id'>,
   ): Promise<Player> {
     const new_data = (
       await this.db.db

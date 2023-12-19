@@ -1,7 +1,8 @@
 import { Match, Player, Ranking } from '../../../database/models'
-import { MatchPlayerSelect } from '../../../database/types'
+import { MatchInsert } from '../../../database/types'
 import { nonNullable } from '../../../utils/utils'
 import { App } from '../../app/app'
+import { AppErrors } from '../../app/errors'
 import { getNewRatings } from './scoring'
 
 /**
@@ -15,7 +16,7 @@ export async function recordAndScoreNewMatch(
   players: Player[][],
   outcome: number[],
   time_started: Date = new Date(),
-  metadata?: { [key: string]: any }
+  metadata?: { [key: string]: any },
 ) {
   // add match
   const match = await app.db.matches.create({
@@ -24,23 +25,23 @@ export async function recordAndScoreNewMatch(
     outcome: outcome,
     metadata: metadata,
     time_started,
-    time_finished: new Date()
+    time_finished: new Date(),
   })
 
   const player_ratings_before = players.map(t =>
     t.map(p => {
       return {
         rating: nonNullable(p.data.rating, 'rating'),
-        rd: nonNullable(p.data.rd, 'rd')
+        rd: nonNullable(p.data.rd, 'rd'),
       }
-    })
+    }),
   )
 
   // calculate new player ratings
   const new_player_ratings = getNewRatings(
     nonNullable(match.data.outcome, 'match outcome'),
     player_ratings_before,
-    nonNullable(ranking.data.elo_settings, 'elo settings')
+    nonNullable(ranking.data.elo_settings, 'elo settings'),
   )
 
   // update player ratings in database
@@ -50,18 +51,27 @@ export async function recordAndScoreNewMatch(
         team.map(async (player, j) => {
           await player.update({
             rating: new_player_ratings[i][j].mu,
-            rd: new_player_ratings[i][j].sigma
+            rd: new_player_ratings[i][j].sigma,
           })
-        })
+        }),
       )
-    })
+    }),
   )
 
   // update any other channels
   await app.events.MatchScored.emit(match)
 }
 
-export async function getAndCalculateMatchNewRatings(match: Match, ranking: Ranking) {
+/**
+ * Retrieves the players of a match and calculates their new ratings based on the match result.
+ * @param match - The match object.
+ * @param ranking - The ranking object.
+ * @returns A promise that resolves to the new ratings of the players.
+ */
+export async function getAndCalculateMatchNewRatings(
+  match: Match,
+  ranking: Ranking,
+): Promise<ReturnType<typeof calculateMatchNewRatings>> {
   const players = await match.players()
 
   const player_ratings_before = players.map(t =>
@@ -69,17 +79,21 @@ export async function getAndCalculateMatchNewRatings(match: Match, ranking: Rank
       return {
         id: p.player.data.id,
         rating: nonNullable(p.match_player.rating_before, 'rating before'),
-        rd: nonNullable(p.match_player.rd_before, 'rd before')
+        rd: nonNullable(p.match_player.rd_before, 'rd before'),
       }
-    })
+    }),
   )
   return calculateMatchNewRatings(
     match,
     player_ratings_before,
-    nonNullable(ranking.data.elo_settings)
+    nonNullable(ranking.data.elo_settings),
   )
 }
 
+/**
+ * Returns the new ratings for each player in a match according to elo settings,
+ * the players' ratings before the match, and the match outcome.
+ */
 export function calculateMatchNewRatings(
   match: Match,
   players_before: {
@@ -87,7 +101,7 @@ export function calculateMatchNewRatings(
     rating: number
     rd: number
   }[][],
-  elo_settings?: { initial_rating?: number; initial_rd?: number }
+  elo_settings?: { initial_rating?: number; initial_rd?: number },
 ): {
   player_id: number
   rating_before: number
@@ -98,20 +112,19 @@ export function calculateMatchNewRatings(
   const new_player_ratings = getNewRatings(
     nonNullable(match.data.outcome, 'match outcome'),
     players_before,
-    nonNullable(elo_settings)
+    nonNullable(elo_settings),
   )
 
-  const result: Awaited<ReturnType<typeof calculateMatchNewRatings>> = players_before.map(
-    (t, team_num) =>
-      t.map((before, player_num) => {
-        return {
-          player_id: before.id,
-          rating_before: before.rating,
-          rd_before: before.rd,
-          rating_after: new_player_ratings[team_num][player_num].mu,
-          rd_after: new_player_ratings[team_num][player_num].sigma
-        }
-      })
+  const result = players_before.map((t, team_num) =>
+    t.map((before, player_num) => {
+      return {
+        player_id: before.id,
+        rating_before: before.rating,
+        rd_before: before.rd,
+        rating_after: new_player_ratings[team_num][player_num].mu,
+        rd_after: new_player_ratings[team_num][player_num].sigma,
+      }
+    }),
   )
 
   return result
@@ -134,9 +147,9 @@ export async function scoreRankingHistory(app: App, ranking: Ranking) {
         return {
           id: player_id,
           rating: current_player_ratings[player_id]?.rating ?? elo_settings.initial_rating,
-          rd: current_player_ratings[player_id]?.rd ?? elo_settings.initial_rd
+          rd: current_player_ratings[player_id]?.rd ?? elo_settings.initial_rd,
         }
-      })
+      }),
     )
     await match.update({ team_players_before: player_ratings_before })
 
@@ -146,7 +159,7 @@ export async function scoreRankingHistory(app: App, ranking: Ranking) {
     new_player_ratings.flat().forEach(player => {
       current_player_ratings[player.player_id] = {
         rating: player.rating_after,
-        rd: player.rd_after
+        rd: player.rd_after,
       }
     })
   })
@@ -155,8 +168,33 @@ export async function scoreRankingHistory(app: App, ranking: Ranking) {
   await Promise.all(
     Object.entries(current_player_ratings).map(async ([player_id, { rating, rd }]) => {
       await app.db.players.getPartial(+player_id).update({ rating, rd })
-    })
+    }),
   )
 
   await app.events.RankingUpdated.emit(ranking)
+}
+
+function validateNewMatch(data: { team_players: Player[][] } & Omit<MatchInsert, 'team_players'>) {
+  if (data.team_players && data.outcome) {
+    if (data.team_players.length !== data.outcome.length) {
+      throw new AppErrors.ValidationError(`team_players and outcome length don't match`)
+    }
+    // make sure all players are from the same ranking, and no duplicate player ids
+    if (
+      data.team_players.flat().length !== new Set(data.team_players.flat().map(p => p.data.id)).size
+    ) {
+      throw new AppErrors.ValidationError('Duplicate players in one match')
+    }
+    if (
+      data.team_players.some(team =>
+        team.some(player => player.data.ranking_id !== data.ranking_id),
+      )
+    ) {
+      throw new AppErrors.ValidationError(
+        `Some players not in the match's ranking (${data.ranking_id})`,
+      )
+    }
+  } else {
+    throw new AppErrors.ValidationError('team_players or outcome undefined')
+  }
 }

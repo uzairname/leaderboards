@@ -2,7 +2,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "format": "prettier --write 'src/**/*.{ts,js,css,json,md}'"
+    "format": "prettier --write 'src/**/*.{ts,js,css,json,md}'",
+    "migrate": "npx tsc migratons/migrate.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20231121.0",

@@ -1,103 +1,88 @@
 import * as D from 'discord-api-types/v10'
 import { json } from 'itty-router'
 import { sentry } from '../../request/sentry'
-import { DiscordRESTClient } from '../rest/client'
+import { DiscordAPIClient } from '../rest/client'
 import { findView_ } from './find_view'
 import {
   FindViewCallback,
   InteractionErrorCallback,
   isChatInputCommandView,
-  isCommandView
+  isCommandView,
 } from './types'
+import { ViewErrors } from './utils/errors'
 import { verify } from './utils/verify'
 import { ViewState } from './view_state'
 
-export async function respondToDiscordInteraction(
-  bot: DiscordRESTClient,
+export async function respondToInteraction(
+  bot: DiscordAPIClient,
   request: Request,
-  getView: FindViewCallback,
+  findView: FindViewCallback,
   onError: InteractionErrorCallback,
-  direct_response: boolean = true
 ): Promise<Response> {
-  if (await verify(request, bot.public_key)) {
-    var interaction = (await request.json()) as D.APIInteraction
-  } else {
+  if (!(await verify(request, bot.public_key))) {
     sentry.addBreadcrumb({
       message: 'Invalid signature',
       category: 'discord',
-      level: 'info'
+      level: 'info',
     })
     return new Response('Invalid signature', { status: 401 })
   }
 
-  if (interaction.type === D.InteractionType.Ping) {
-    return json({ type: D.InteractionResponseType.Pong })
-  } else {
-    const response = await respondToUserInteraction(
-      interaction,
-      bot,
-      getView,
-      onError,
-      direct_response
-    )
-    return json(response) || new Response(null, { status: 204 })
+  const interaction = (await request.json()) as D.APIInteraction
+  const response = await respond(interaction, bot, findView, onError)
+
+  const direct_response = false
+
+  if (direct_response) {
+    sentry.addBreadcrumb({
+      category: 'response',
+      message: 'Sending initial interaction response',
+      level: 'info',
+      data: { response: JSON.stringify(response) },
+    })
+
+    return json(response)
   }
+
+  await bot.createInteractionResponse(interaction.id, interaction.token, response)
+  return new Response('OK', { status: 200 })
 }
 
-export async function respondToUserInteraction(
+async function respond(
   interaction: D.APIInteraction,
-  bot: DiscordRESTClient,
+  bot: DiscordAPIClient,
   findView: FindViewCallback,
   onError: InteractionErrorCallback,
-  direct_response: boolean = true
-): Promise<D.APIInteractionResponse | undefined> {
-  /*
-  Handle any non-ping interaction. Might return a Response
-  */
-  let response: D.APIInteractionResponse | undefined
-
-  sentry.setExtra(
-    'interaction user',
-    interaction.user?.username ?? interaction.member?.user.username ?? undefined
-  )
+): Promise<D.APIInteractionResponse> {
+  sentry.setUser({
+    id: interaction.user?.id ?? interaction.member?.user.id,
+    username: interaction.user?.username ?? interaction.member?.user.username,
+    guild: interaction.guild_id,
+  })
 
   try {
+    if (interaction.type === D.InteractionType.Ping) return { type: D.InteractionResponseType.Pong }
+
     if (
       interaction.type === D.InteractionType.ApplicationCommand ||
       interaction.type === D.InteractionType.ApplicationCommandAutocomplete
     ) {
       let view = await findView_(findView, interaction)
+
       if (interaction.type === D.InteractionType.ApplicationCommand) {
-        response = isCommandView(view)
-          ? await view.respondCommandInteraction(interaction, bot, onError)
-          : undefined
-      } else if (interaction.type === D.InteractionType.ApplicationCommandAutocomplete) {
-        response = isChatInputCommandView(view)
-          ? await view.respondAutocompleteInteraction(interaction)
-          : undefined
+        if (isCommandView(view)) return await view.respondToCommand(interaction, bot, onError)
+        throw new ViewErrors.InvalidViewType()
       }
-    } else if (
-      interaction.type === D.InteractionType.MessageComponent ||
-      interaction.type === D.InteractionType.ModalSubmit
-    ) {
-      let { view, state } = await ViewState.decode(interaction.data.custom_id, findView)
-      response = await view.respondComponentInteraction(interaction, state, bot, onError)
+
+      if (interaction.type === D.InteractionType.ApplicationCommandAutocomplete) {
+        if (isChatInputCommandView(view)) return await view.respondToAutocomplete(interaction)
+        throw new ViewErrors.InvalidViewType()
+      }
     }
+
+    let { view, state } = await ViewState.from(interaction.data.custom_id, findView)
+    return await view.respondToComponent(interaction, state, bot, onError)
   } catch (e) {
-    response = onError(e)
+    return onError(e)
   }
-
-  sentry.addBreadcrumb({
-    category: 'response',
-    level: 'info',
-    message: 'Responding to interaction request',
-    data: {
-      response
-    }
-  })
-
-  if (!direct_response && response) {
-    return void (await bot.createInteractionResponse(interaction.id, interaction.token, response))
-  }
-  return response
 }
