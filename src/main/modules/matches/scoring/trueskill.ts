@@ -1,5 +1,5 @@
 import { Rating, TrueSkill } from 'ts-trueskill'
-import { sentry } from '../../../request/sentry'
+import { sentry } from '../../../../request/sentry'
 
 export function getNewRatings(
   outcome: number[],

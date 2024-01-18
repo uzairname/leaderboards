@@ -35,7 +35,7 @@ const points_command = new CommandView({
   ],
 })
 
-export default (app: App) =>
+export const pointsCmd = (app: App) =>
   points_command
     .onAutocomplete(rankingsAutocomplete(app))
 
@@ -71,17 +71,17 @@ export default (app: App) =>
             ctx.interaction.data.resolved?.users?.[options.user],
             'interaction data user',
           )
-          let player = await getRegisterPlayer(app, user, ranking)
+          // let player = await getRegisterPlayer(app, user, ranking)
 
-          // add points to player
-          await player.update({
-            rating: nonNullable(player.data.rating, 'player rating') + points,
-          })
+          // // add points to player
+          // await player.update({
+          //   rating: nonNullable(player.data.rating, 'player rating') + points,
+          // })
 
           // update the leaderboard display
-          await app.events.PlayerUpdated.emit(player)
+          await app.events.RankingLeaderboardUpdated.emit(ranking)
 
-          return await ctx.edit({
+          return void ctx.edit({
             content: `Added ${points} points to <@${user.id}> in ${ranking.data.name}`,
             flags: D.MessageFlags.Ephemeral,
             allowed_mentions: {

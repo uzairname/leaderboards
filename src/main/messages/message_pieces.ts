@@ -7,6 +7,7 @@ export class Colors {
   static Secondary = 0x4a6666
   static DiscordBackground = 0x313338
   static EmbedBackground = 0x2b2d31
+  static Success = 0x5fde70
 }
 
 export function relativeTimestamp(time: Date): string {
@@ -32,6 +33,8 @@ export function escapeMd(str: string | undefined | null): string {
     .replace(/:/g, '\\:')
 }
 
+export const space = `⠀`
+
 export function truncateString(str: string, max_length: number): string {
   return str.length > max_length ? str.slice(0, max_length - 2) + '..' : str
 }
@@ -45,12 +48,7 @@ export function channelMention(channel_id?: string): string {
 }
 
 export async function commandMention(app: App, command: AnyCommandView) {
-  return await _commandMention(
-    app,
-    command.options.name,
-    command.options.type,
-    command.options.guild_id,
-  )
+  return _commandMention(app, command.options.name, command.options.type, command.options.guild_id)
 }
 
 export async function _commandMention(
@@ -76,5 +74,5 @@ export function inviteUrl(app: App): string {
 }
 
 export function botAndOauthUrl(app: App): string {
-  return app.config.env.BASE_URL + `/oauth` + app.config.OauthRoutes.InviteOauth
+  return app.config.env.BASE_URL + `/oauth` + app.config.OauthRoutes.BotAndRoleConnections
 }

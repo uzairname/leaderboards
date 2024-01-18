@@ -14,10 +14,16 @@ export class MessageData {
       ...body,
     }
     this.postdata = body as D.RESTPostAPIChannelMessageJSONBody
+    this.responsedata = {
+      content: body.content ?? undefined,
+      embeds: body.embeds ?? undefined,
+      components: body.components ?? undefined,
+    }
   }
 
   patchdata: D.RESTPatchAPIChannelMessageJSONBody
   postdata: D.RESTPostAPIChannelMessageJSONBody
+  responsedata: D.APIInteractionResponseCallbackData
 }
 
 export class RoleData {

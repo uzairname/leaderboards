@@ -1,113 +1,59 @@
 import * as D from 'discord-api-types/v10'
 import type { Guild, GuildRanking, Ranking } from '../../../database/models'
-import { GuildRankingInsert, GuildRankingSelect } from '../../../database/types'
-import { type DiscordAPIClient, GuildChannelData, MessageData } from '../../../discord-framework'
+import { GuildChannelData, MessageData } from '../../../discord-framework'
 import { sentry } from '../../../request/sentry'
 import { type App } from '../../app/app'
-import { Colors, escapeMd } from '../../messages/message_pieces'
+import { Colors, escapeMd, relativeTimestamp, space } from '../../messages/message_pieces'
 import { syncRankedCategory } from '../guilds'
-import { haveRankingQueueMessage } from '../matches/queue_messages'
 
 export function addRankingChannelsListeners(app: App) {
-  app.events.RankingUpdated.on(async ranking => {
-    const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
-    await Promise.all(
-      guild_rankings.map(async item => {
-        await syncGuildRankingChannelsMessages(app, item.guild_ranking)
-      }),
-    )
+  app.events.RankingLeaderboardUpdated.on(async ranking => {
+    await syncRankingLbMessages(app, ranking)
   })
-
   app.events.MatchScored.on(async match => {
-    const guild_rankings = await app.db.guild_rankings.get({ ranking_id: match.data.ranking_id })
-    await Promise.all(
-      guild_rankings.map(async guild_ranking => {
-        await syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)
-      }),
-    )
-  })
-
-  app.events.GuildRankingCreated.on(async guild_ranking => {
-    await syncGuildRankingChannelsMessages(app, guild_ranking)
-  })
-
-  app.events.PlayerUpdated.on(async player => {
-    const guild_rankings = await app.db.guild_rankings.get({ ranking_id: player.data.ranking_id })
-    sentry.debug(`guild rankngs ${guild_rankings.length}`)
-    await Promise.all(
-      guild_rankings.map(async guild_ranking => {
-        sentry.debug(`syncing guild ranking ${guild_ranking.guild_ranking.data.guild_id}`)
-        await syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)
-      }),
-    )
+    await app.events.RankingLeaderboardUpdated.emit(await match.ranking())
   })
 }
 
-export async function syncGuildRankingChannelsMessages(
-  app: App,
-  guild_ranking: GuildRanking,
-): Promise<void> {
-  sentry.debug('syncing ranking channels messages')
-  await syncGuildRankingLbChannel(app, guild_ranking)
-  await syncGuildRankingLbMessage(app, guild_ranking)
-
-  if (app.config.features.QueueMessage) {
-    await haveRankingQueueMessage(app, guild_ranking)
-  }
-}
-
-export async function syncGuildRankingLbChannel(
-  app: App,
-  guild_ranking: GuildRanking,
-): Promise<void> {
-  const guild = await guild_ranking.guild()
-  const ranking = await guild_ranking.ranking()
-
-  const result = await app.bot.utils.syncGuildChannel({
-    target_channel_id: guild_ranking.data.leaderboard_channel_id,
-    channelData: async () => {
-      return await lbChannelData(app, guild, ranking)
-    },
-  })
-
-  if (result.is_new_channel) {
-    await guild_ranking.update({
-      leaderboard_channel_id: result.channel.id,
-    })
-  }
+export async function syncRankingLbMessages(app: App, ranking: Ranking): Promise<void> {
+  sentry.debug('syncLeaderboardMessages')
+  const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
+  await Promise.all(
+    guild_rankings.map(async guild_ranking => {
+      await syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)
+    }),
+  )
 }
 
 export async function syncGuildRankingLbMessage(
   app: App,
   guild_ranking: GuildRanking,
+  create_channel_if_not_exists: boolean = false,
 ): Promise<void> {
-  sentry.debug(`syncing guild lb message`)
-  // update all the messages and channels associated with this guild leaderboard
-  const guild = await guild_ranking.guild()
-  const ranking = await guild_ranking.ranking()
+  // check if the leaderboard message is enabled for the guild ranking
+  sentry.debug(`leaderboard_message: ${guild_ranking.data.display_settings?.leaderboard_message}`)
+  if (!guild_ranking.data.display_settings?.leaderboard_message) return
 
-  // a channel for the leaderboard and queue
+  const guild = await guild_ranking.guild
+  const ranking = await guild_ranking.ranking
+
+  sentry.debug('syncing leaderboard message')
   const result = await app.bot.utils.syncChannelMessage({
     target_channel_id: guild_ranking.data.leaderboard_channel_id,
     target_message_id: guild_ranking.data.leaderboard_message_id,
-    messageData: async () => {
-      sentry.debug(`messageData`)
-      return await generateLeaderboardMessage(app, ranking)
-    },
-    channelData: async () => {
-      sentry.debug(`channelData`)
-      return await lbChannelData(app, guild, ranking)
-    },
+    messageData: () => leaderboardMessage(ranking),
+    channelData: create_channel_if_not_exists
+      ? () => lbChannelData(app, guild, ranking)
+      : undefined,
   })
+  sentry.debug('edited leaderboard message')
 
   if (result.is_new_message || result.new_channel) {
     await guild_ranking.update({
-      leaderboard_channel_id: result.new_channel?.id,
+      leaderboard_channel_id: result.new_channel?.id ?? guild_ranking.data.leaderboard_channel_id,
       leaderboard_message_id: result.is_new_message ? result.message.id : undefined,
     })
   }
-
-  sentry.debug(`synced guild lb message`)
 }
 
 export async function lbChannelData(
@@ -117,6 +63,7 @@ export async function lbChannelData(
 ): Promise<{
   guild_id: string
   data: GuildChannelData
+  reason?: string
 }> {
   let category = (await syncRankedCategory(app, guild)).channel
   return {
@@ -131,38 +78,40 @@ export async function lbChannelData(
         app.bot.application_id,
       ),
     }),
+    reason: `Leaderboard channel for ${ranking.data.name}`,
   }
 }
 
-export async function generateLeaderboardMessage(app: App, ranking: Ranking): Promise<MessageData> {
-  sentry.debug('generating leaderboard message')
+export async function leaderboardMessage(ranking: Ranking): Promise<MessageData> {
   const players = await ranking.getOrderedTopPlayers()
 
-  sentry.debug('got players')
-
-  const displayed_players: Map<string, number> = new Map()
-
-  players.forEach(p => {
-    if (p.data.rating) {
-      displayed_players.set(p.data.user_id, p.data.rating)
-    }
-  })
-
   let place = 0
-  const players_text = [...displayed_players.entries()]
-    .map(([player_id, points]) => {
+  const max_rating_len = players[0].data.rating?.toFixed(0).length ?? 0
+  const players_text = players
+    .filter(p => p.data.rating != null && p.data.rating != undefined)
+    .map(p => {
       place++
-      return `### ${place}. <@${player_id}> ${points.toFixed(0)}`
+      return `### ${(place => {
+        if (place==1) return `🥇`
+        else if (place==2) return `🥈`
+        else if (place==3) return `🥉`
+        else return `${place}.${space}`
+      })(place)}` 
+      + `${space}\`${p.data.rating!.toFixed(0).padStart(max_rating_len)}\``
+      + `${space}<@${p.data.user_id}> ` // prettier-ignore
     })
     .join('\n\n')
 
   let embed: D.APIEmbed = {
-    description: `${players_text}` || 'No players yet',
-    color: Colors.Primary,
+    title: `${escapeMd(ranking.data.name)} Leaderboard`,
+    description: 
+      (players_text || 'No players yet') 
+      + `\n\nLast updated ${relativeTimestamp(new Date())}`, //prettier-ignore
+    color: Colors.EmbedBackground,
   }
 
   return new MessageData({
-    content: `# ${escapeMd(ranking.data.name)}`,
+    content: null,
     embeds: [embed],
     components: null,
     allowed_mentions: {
@@ -201,11 +150,14 @@ export function leaderboardChannelPermissionOverwrites(
   ]
 }
 
-export async function removeRankingLbChannels(app: App, ranking: Ranking): Promise<void> {
+export async function removeRankingMessages(app: App, ranking: Ranking): Promise<void> {
   const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
   await Promise.all(
     guild_rankings.map(async item => {
-      await app.bot.utils.deleteChannelIfExists(item.guild_ranking.data.leaderboard_channel_id)
+      await app.bot.utils.deleteMessageIfExists(
+        item.guild_ranking.data.leaderboard_channel_id,
+        item.guild_ranking.data.leaderboard_message_id,
+      )
     }),
   )
 }

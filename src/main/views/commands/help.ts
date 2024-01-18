@@ -1,5 +1,5 @@
 import * as D from 'discord-api-types/v10'
-import { InteractionContext, CommandView, _, field } from '../../../discord-framework'
+import { InteractionContext, CommandView, _, field, StateContext } from '../../../discord-framework'
 import { App } from '../../app/app'
 import { AppErrors } from '../../app/errors'
 import { Colors, botAndOauthUrl, dateTimestamp, inviteUrl } from '../../messages/message_pieces'
@@ -7,23 +7,21 @@ import { Messages } from '../../messages/messages'
 
 export const help_cmd = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
-
-  custom_id_id: 'help',
-
+  custom_id_prefix: 'h',
   name: 'help',
   description: 'All about this bot',
   state_schema: {
-    page: field.Choice({ main: _, reference: _ }),
+    page: field.Enum({ main: _, reference: _ }),
   },
 })
 
-export const help = (app: App) =>
+export const helpCmd = (app: App) =>
   help_cmd
     .onCommand(async ctx => {
       ctx.state.save.page('main')
       return {
         type: D.InteractionResponseType.ChannelMessageWithSource,
-        data: await mainPage(app, ctx, true),
+        data: await mainPage(app, ctx),
       }
     })
     .onComponent(async ctx => {
@@ -37,9 +35,59 @@ export const help = (app: App) =>
       return { type: D.InteractionResponseType.UpdateMessage, data }
     })
 
-async function helpComponents(
+async function mainPage(
   app: App,
   ctx: InteractionContext<typeof help_cmd>,
+): Promise<D.APIInteractionResponseCallbackData> {
+  const last_deployed = (await app.db.settings.getOrUpdate()).data.last_deployed
+
+  let last_deployed_timestamp = last_deployed ? dateTimestamp(last_deployed) : 'unknown'
+
+  const embed: D.APIEmbed = {
+    title: '🏅 Leaderboards',
+    description: Messages.concise_description,
+    fields: [
+      {
+        name: `Source Code`,
+        value: `[Source Code](${Messages.github_url})`,
+        inline: true,
+      },
+      {
+        name: `Version`,
+        value: `This bot was last updated on ${last_deployed_timestamp}`,
+        inline: true,
+      },
+    ],
+    color: Colors.EmbedBackground,
+  }
+
+  return {
+    embeds: [embed],
+    components: await helpComponents(app, ctx),
+    flags: D.MessageFlags.Ephemeral,
+  }
+}
+
+async function referencePage(
+  app: App,
+  ctx: InteractionContext<typeof help_cmd>,
+): Promise<D.APIInteractionResponseCallbackData> {
+  const embed: D.APIEmbed = {
+    title: 'Help',
+    description: `reference`,
+    color: Colors.EmbedBackground,
+  }
+
+  return {
+    embeds: [embed],
+    components: await helpComponents(app, ctx),
+    flags: D.MessageFlags.Ephemeral,
+  }
+}
+
+async function helpComponents(
+  app: App,
+  ctx: StateContext<typeof help_cmd>,
 ): Promise<D.APIActionRowComponent<D.APIMessageActionRowComponent>[]> {
   let components: D.APIButtonComponent[] = []
   let action_rows: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = [
@@ -85,53 +133,4 @@ async function helpComponents(
   }
 
   return action_rows
-}
-
-async function mainPage<Send extends boolean>(
-  app: App,
-  ctx: InteractionContext<typeof help_cmd>,
-  send: boolean = false as Send,
-): Promise<D.APIInteractionResponseCallbackData> {
-  const last_deployed = (await app.db.settings.getOrUpdate()).data.last_deployed
-
-  let last_deployed_timestamp = last_deployed ? dateTimestamp(last_deployed) : 'unknown'
-
-  const embed: D.APIEmbed = {
-    title: '🏅Leaderboards',
-    description: Messages.concise_description,
-    fields: [
-      {
-        name: `Source Code`,
-        value: `This bot is open source. [GitHub](${Messages.github_url})`,
-      },
-      {
-        name: `Version`,
-        value: `This bot was last updated on ${last_deployed_timestamp}`,
-      },
-    ],
-    color: Colors.EmbedBackground,
-  }
-
-  return {
-    embeds: [embed],
-    components: await helpComponents(app, ctx),
-    flags: D.MessageFlags.Ephemeral,
-  }
-}
-
-async function referencePage(
-  app: App,
-  ctx: InteractionContext<typeof help_cmd>,
-): Promise<D.APIInteractionResponseCallbackData> {
-  const embed: D.APIEmbed = {
-    title: 'Help',
-    description: `reference`,
-    color: Colors.EmbedBackground,
-  }
-
-  return {
-    embeds: [embed],
-    components: await helpComponents(app, ctx),
-    flags: D.MessageFlags.Ephemeral,
-  }
 }

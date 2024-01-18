@@ -4,13 +4,14 @@ export const features = (environment: string) => {
   const dev = environment === 'development'
 
   return {
-    ExperimentalViews: dev,
-    DevGuildCommands: dev,
-    DetailedErrorMessages: dev,
-
     RoleConnectionsMetadata: dev,
     QueueMessage: dev,
     HelpReference: dev,
+    EloSettings: dev,
+
+    ExperimentalViews: dev,
+    DevGuildCommands: dev,
+    DetailedErrorMessages: dev,
   }
 }
 
@@ -18,7 +19,8 @@ export class Config {
   readonly OauthRoutes = {
     Redirect: '/redirect',
     LinkedRoles: '/linkedroles',
-    InviteOauth: '/invite',
+    BotAndRoleConnections: '/auth',
+    Bot: '/invite',
   }
 
   readonly DevGuildId = '1041458052055978024'

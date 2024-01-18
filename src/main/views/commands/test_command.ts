@@ -1,35 +1,15 @@
 import * as D from 'discord-api-types/v10'
-import {
-  CommandContext,
-  CommandView,
-  ComponentContext,
-  StringData,
-  _,
-  field,
-} from '../../../discord-framework'
+import { CommandView, _, field, MessageView, StateContext } from '../../../discord-framework'
+import { ViewState } from '../../../discord-framework/interactions/view_state'
+import { sentry } from '../../../request/sentry'
+import { nonNullable } from '../../../utils/utils'
 import { App } from '../../app/app'
 import { AppErrors } from '../../app/errors'
-import { rankings_cmd_def } from './rankings/rankings'
-
-// const user_command = new CommandView({
-//   type: ApplicationCommandType.Message,
-//   custom_id_prefix: 'user',
-
-//   command: {
-//     name: 'user',
-//   },
-
-//   state_schema: {}
-// }).onCommand(async (ctx) => {
-
-//   ctx.defer({
-//     type: InteractionResponseType.DeferredChannelMessageWithSource
-//   }, async (ctx) => {
-//     ctx.interaction.data.resolved.messages
-//   })
-
-//   throw new Error('not implemented')
-// })
+import { findView } from '../../app/find_view'
+import { Colors, escapeMd, relativeTimestamp } from '../../messages/message_pieces'
+import { getRegisterPlayer } from '../../modules/players'
+import { leaderboardMessage } from '../../modules/rankings/ranking_channels'
+import { checkGuildInteraction } from '../utils/checks'
 
 const test_command = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
@@ -37,56 +17,59 @@ const test_command = new CommandView({
   description: 'Test command',
   options: [
     {
-      type: D.ApplicationCommandOptionType.Boolean,
-      name: 'ephemeral',
-      description: 'Whether the message is ephemeral',
-    },
-    {
       type: D.ApplicationCommandOptionType.User,
       name: 'user',
       description: 'The user to test',
     },
   ],
-  custom_id_id: 'test',
+  custom_id_prefix: 'test',
   state_schema: {
-    clicked_btn: field.Choice({ wait: _, increment: _, one: _, two: _ }),
+    clicked_btn: field.Enum({ wait: _, increment: _, one: _, input: _ }),
     counter: field.Int(),
     original_user: field.String(),
-    value: field.List(field.String()),
+    input_date: field.Date(),
   },
 })
 
-export default (app: App) =>
+export const testCommand = (app: App) =>
   test_command
     .onCommand(async ctx => {
+      const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
+      ctx.state.save.original_user(user_id)
+      ctx.state.save.counter(0)
+
       return ctx.defer(
         {
           type: D.InteractionResponseType.DeferredChannelMessageWithSource,
           data: { flags: D.MessageFlags.Ephemeral },
         },
         async ctx => {
-          await new Promise(resolve => setTimeout(resolve, 1200))
-          await ctx.edit({
-            content: 'test',
+          const user = checkGuildInteraction(ctx.interaction).member.user
+
+          const ranking = await app.db.rankings.get(17)
+          await app.events.RankingLeaderboardUpdated.emit(ranking)
+
+          // const embed = (await leaderboardMessage(ranking)).patchdata.embeds![0]
+
+          return void ctx.edit({
+            // embeds: [embed],
+            content: 'a',
+            // content: (await leaderboardMessage(ranking)).patchdata.content ?? undefined,
           })
         },
       )
 
-      const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
-      ctx.state.save.original_user(user_id)
-      ctx.state.save.counter(0)
-      ctx.state.save.value(new Array(2).fill('0'))
-
-      const ephemeral =
+      const user =
         (
-          ctx.interaction.data.options?.find(o => o.name === 'ephemeral') as
-            | D.APIApplicationCommandInteractionDataBooleanOption
+          ctx.interaction.data.options?.find(o => o.name === 'user') as
+            | D.APIApplicationCommandInteractionDataUserOption
             | undefined
         )?.value ?? true
 
+      // const ephemeral = true
       return {
         type: D.InteractionResponseType.ChannelMessageWithSource,
-        data: testMessageData(ctx, ephemeral),
+        data: testMessageData(ctx, true),
       }
     })
     .onComponent(async ctx => {
@@ -99,17 +82,18 @@ export default (app: App) =>
       if (ctx.state.is.clicked_btn('wait')) {
         return ctx.defer(
           {
+            type: D.InteractionResponseType.ChannelMessageWithSource,
             data: {
               content: `waiting`,
               flags: D.MessageFlags.Ephemeral,
             },
-            type: D.InteractionResponseType.ChannelMessageWithSource,
           },
           async ctx => {
             const seconds = ctx.state.data.counter ?? 0
 
             await new Promise(resolve => setTimeout(resolve, seconds * 1000))
-            await ctx.followup({
+            throw new Error('test')
+            return void ctx.followup({
               content: `waited ${seconds} seconds.`,
               flags: D.MessageFlags.Ephemeral,
             })
@@ -117,41 +101,19 @@ export default (app: App) =>
         )
       } else if (ctx.state.is.clicked_btn('increment')) {
         ctx.state.save.counter((ctx.state.data.counter ?? 0) + 1)
+      }
 
-        return { type: D.InteractionResponseType.UpdateMessage, data: testMessageData(ctx) }
-      } else if (ctx.state.is.clicked_btn('one')) {
-        const current_value = ctx.state.get('value')
-
-        current_value[0] += '1'
-        ctx.state.save.value(current_value)
-        return {
-          type: D.InteractionResponseType.UpdateMessage,
-          data: testMessageData(ctx),
-        }
-      } else if (ctx.state.is.clicked_btn('two')) {
-        const current_value = ctx.state.get('value')
-
-        current_value[1] += '2'
-        ctx.state.save.value(current_value)
-        return {
-          type: D.InteractionResponseType.UpdateMessage,
-          data: testMessageData(ctx),
-        }
-      } else {
-        throw new AppErrors.UnknownState(ctx.state.data.clicked_btn)
+      return {
+        type: D.InteractionResponseType.UpdateMessage,
+        data: testMessageData(ctx),
       }
     })
 
 function testMessageData(
-  ctx: CommandContext<typeof test_command> | ComponentContext<typeof test_command>,
-  ephemeral = false,
+  ctx: StateContext<typeof test_command>,
+  ephemeral: boolean = false,
 ): D.APIInteractionResponseCallbackData {
-  // `\ncommand context ${test_command.isCommandContext(ctx)}. component context: ${test_command.isComponentContext(ctx)}. ${test_command.isContextForView(ctx)}. ${test_command.isChatInteractionContext(ctx)}`
-
   return {
-    content:
-      `Value: ${ctx.state.data.value?.join(', ')}\nCounter: ${ctx.state.data.counter}` +
-      `\n${ctx.state.data.clicked_btn}`,
     components: [
       {
         type: D.ComponentType.ActionRow,
@@ -170,8 +132,14 @@ function testMessageData(
           },
           {
             type: D.ComponentType.Button,
-            label: 'Two',
-            custom_id: ctx.state.set.clicked_btn('two').cId(),
+            label: 'Input',
+            custom_id: helper_view
+              .newState({
+                back_cid: ctx.state.set.clicked_btn('one').cId(),
+                back_counter_field: 'counter',
+                counter: ctx.state.data.counter ?? 0,
+              })
+              .cId(),
             style: D.ButtonStyle.Primary,
           },
         ],
@@ -181,23 +149,74 @@ function testMessageData(
   }
 }
 
+const helper_view = new MessageView({
+  name: 'test helper',
+  custom_id_prefix: 'th',
+  state_schema: {
+    back_cid: field.String(),
+    // back_state: field.String(),
+    back_counter_field: field.String(),
+
+    counter: field.Int(),
+    clicked_component: field.Enum({
+      halve: _,
+      submit: _,
+    }),
+  },
+})
+
+const helperView = (app: App) =>
+  helper_view.onComponent(async ctx => {
+    const back_state = (await ViewState.fromCustomId(ctx.state.get('back_cid'), findView(app)))
+      .state
+
+    back_state.save[ctx.state.get('back_counter_field')](ctx.state.data.counter)
+
+    return {
+      type: D.InteractionResponseType.UpdateMessage,
+      data: {
+        components: [
+          {
+            type: D.ComponentType.ActionRow,
+            components: [
+              {
+                type: D.ComponentType.Button,
+                label: 'halve',
+                custom_id: ctx.state.set.counter((ctx.state.data.counter ?? 0) / 2).cId(),
+                style: D.ButtonStyle.Secondary,
+              },
+              {
+                type: D.ComponentType.Button,
+                label: `Submit: ${ctx.state.data.counter}`,
+                custom_id: back_state.cId(),
+                style: D.ButtonStyle.Secondary,
+              },
+            ],
+          },
+        ],
+      },
+    }
+  })
+
+export const test_views = [testCommand, helperView]
+
 const schema = {
   originalUserId: field.String(),
   createdAt: field.Date(),
-  current_page: field.Choice({
+  current_page: field.Enum({
     settings: null,
     main: null,
     chat: null,
   }),
-  clickedComponent: field.Choice({
+  clickedComponent: field.Enum({
     'button: add user': null,
     'button: delete': null,
     'modal: rename': null,
     'button: rename confirm': null,
   }),
-  messages: field.List(field.String()),
+  messages: field.Array(field.String()),
   isAdmin: field.Bool(),
-  counter: field.Int(0),
+  counter: field.Int(),
 }
 
 // // encode data

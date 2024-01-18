@@ -1,27 +1,29 @@
 import * as D from 'discord-api-types/v10'
 import {
   $type,
+  InteractionContext,
   MessageCreateContext,
   MessageData,
   MessageView,
   _,
   field,
 } from '../../../discord-framework'
-import { nonNullable } from '../../../utils/utils'
 import { App } from '../../app/app'
 import { AppErrors } from '../../app/errors'
-import { onJoinQueue, onLeaveQueue } from '../../modules/matches/queue'
+import { Colors, relativeTimestamp } from '../../messages/message_pieces'
+import { onJoinQueue, onLeaveQueue } from '../../modules/matches/matchmaking/queue'
 import { checkGuildInteraction } from '../utils/checks'
 
 const queue_message_def = new MessageView({
-  custom_id_id: 'q',
+  custom_id_prefix: 'q',
   state_schema: {
-    component: field.Choice({ join: _, leave: _ }),
+    component: field.Enum({ join: _, leave: _ }),
     ranking_id: field.Int(),
+    last_active: field.Date(),
   },
 })
 
-export default (app: App) =>
+export const queueView = (app: App) =>
   queue_message_def.onComponent(async ctx => {
     const interaction = checkGuildInteraction(ctx.interaction)
     const ranking_id = ctx.state.get('ranking_id')
@@ -37,9 +39,11 @@ export default (app: App) =>
         },
         async ctx => {
           await onJoinQueue(app, ranking_id, interaction.member.user)
+          ctx.state.save.last_active(new Date())
+          await app.bot.editMessage(interaction.channel!.id, interaction.message!.id, (await queueMessage(app, ranking_id, ctx)).patchdata)
         },
       )
-    } else if (ctx.state.is.component('leave')) {
+    } else if (ctx.state.data.component == 'leave') {
       return ctx.defer(
         {
           type: D.InteractionResponseType.ChannelMessageWithSource,
@@ -57,9 +61,18 @@ export default (app: App) =>
     }
   })
 
-export async function queueMessage(ranking_id: number): Promise<MessageData> {
-  const state = queue_message_def.getState({ ranking_id })
+export async function queueMessage(app: App, ranking_id: number, ctx?: InteractionContext<typeof queue_message_def>): Promise<MessageData> {
+  const state = ctx?.state ?? queue_message_def.newState({ ranking_id })
+  const ranking = await app.db.rankings.get(ranking_id)
   return new MessageData({
+    embeds: [
+      {
+        title: `${ranking.data.name} Queue`,
+        description: `Join or leave the matchmaking queue for ${ranking.data.name} here`
+          + `\nLast active: ${state.data.last_active ? relativeTimestamp(state.data.last_active) : `never`}`, //prettier-ignore
+        color: Colors.EmbedBackground,
+      },
+    ],
     components: [
       {
         type: D.ComponentType.ActionRow,
@@ -68,13 +81,13 @@ export async function queueMessage(ranking_id: number): Promise<MessageData> {
             type: D.ComponentType.Button,
             style: D.ButtonStyle.Primary,
             custom_id: state.set.component('join').cId(),
-            label: 'Join Queue',
+            label: 'Join',
           },
           {
             type: D.ComponentType.Button,
             style: D.ButtonStyle.Secondary,
             custom_id: state.set.component('leave').cId(),
-            label: 'Leave Queue',
+            label: 'Leave',
           },
         ],
       },

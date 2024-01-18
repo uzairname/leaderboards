@@ -1,16 +1,10 @@
 import { and, eq } from 'drizzle-orm'
 import { Guild, GuildRanking, Ranking } from '../../../database/models'
-import {
-  default_elo_settings,
-  default_num_teams,
-  default_players_per_team,
-} from '../../../database/models/models/rankings'
 import { GuildRankings, Rankings } from '../../../database/schema'
-import { RankingInsert, RankingSelect } from '../../../database/types'
-import { sentry } from '../../../request/sentry'
+import { GuildRankingInsert, RankingInsert } from '../../../database/types'
 import { App } from '../../app/app'
 import { AppError, AppErrors } from '../../app/errors'
-import { removeRankingLbChannels } from './ranking_channels'
+import { removeRankingMessages, syncGuildRankingLbMessage } from './ranking_channels'
 
 /**
  *
@@ -27,14 +21,15 @@ export async function createNewRankingInGuild(
     num_teams?: number
     players_per_team?: number
     elo_settings?: RankingInsert['elo_settings']
+    display_settings?: GuildRankingInsert['display_settings']
   },
 ): Promise<{
   new_guild_ranking: GuildRanking
   new_ranking: Ranking
 }> {
-  // make sure a ranking from this guild with the same name doesn't already exist
   options = validateRankingOptions(options)
 
+  // make sure a ranking from this guild with the same name doesn't already exist
   let same_name_ranking = (
     await app.db.db
       .select()
@@ -57,30 +52,41 @@ export async function createNewRankingInGuild(
 
   const new_guild_ranking = await app.db.guild_rankings.create(guild, new_ranking, {
     is_admin: true,
+    display_settings: options.display_settings || default_display_settings,
   })
-
-  await app.events.GuildRankingCreated.emit(new_guild_ranking)
 
   return { new_guild_ranking, new_ranking }
 }
 
-export async function updateRanking(
-  app: App,
-  ranking: Ranking,
-  options: Pick<RankingInsert, 'name' | 'elo_settings'>,
-) {
+export async function updateRanking(app: App, ranking: Ranking, options: RankingInsert) {
   await ranking.update(options)
-  await app.events.RankingUpdated.emit(ranking)
+  const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
+  await Promise.all(
+    guild_rankings.map(async item => {
+      await syncGuildRankingLbMessage(app, item.guild_ranking)
+    }),
+  )
 }
 
 export async function deleteRanking(app: App, ranking: Ranking): Promise<void> {
-  await removeRankingLbChannels(app, ranking)
+  await removeRankingMessages(app, ranking)
   await ranking.delete()
 }
 
+export const default_num_teams = 2
+export const default_players_per_team = 1
+export const default_elo_settings = {
+  initial_rating: 50,
+  initial_rd: 50 / 3,
+}
+export const default_display_settings = {
+  log_matches: true,
+  leaderboard_message: true,
+}
+
 export const max_ranking_name_length = 32
-export const max_num_teams = 6
-export const max_players_per_team = 25
+export const max_num_teams = 4
+export const max_players_per_team = 12
 
 export function validateRankingOptions<T extends Partial<RankingInsert>>(o: T): T {
   if (o.name !== undefined) {

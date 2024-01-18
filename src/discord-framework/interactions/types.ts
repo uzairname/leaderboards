@@ -4,31 +4,45 @@ import type { MessageData } from '../rest/objects'
 import type { ViewState } from './view_state'
 import { CommandView, MessageView, View } from './views'
 
+export type AppCommandInteraction<CommandType extends D.ApplicationCommandType> =
+  CommandType extends D.ApplicationCommandType.ChatInput
+    ? D.APIChatInputApplicationCommandInteraction
+    : CommandType extends D.ApplicationCommandType.User
+      ? D.APIUserApplicationCommandInteraction
+      : CommandType extends D.ApplicationCommandType.Message
+        ? D.APIMessageApplicationCommandInteraction
+        : never
+
+export type ComponentInteraction = D.APIMessageComponentInteraction | D.APIModalSubmitInteraction
+
+export type ChatInteraction = D.APIApplicationCommandInteraction | ComponentInteraction
+
 // response to any app command interaction
-export declare type CommandInteractionResponse =
+export type CommandInteractionResponse =
   | D.APIInteractionResponseChannelMessageWithSource
   | D.APIInteractionResponseDeferredChannelMessageWithSource
   | D.APIModalInteractionResponse
 
 // Response to any interaction except autocomplete and ping
-export declare type ChatInteractionResponse =
+export type ChatInteractionResponse =
   | CommandInteractionResponse
   | D.APIInteractionResponseUpdateMessage
   | D.APIInteractionResponseDeferredMessageUpdate
 
-export declare type ComponentInteraction =
-  | D.APIMessageComponentInteraction
-  | D.APIModalSubmitInteraction
+type InteractionResponse<InteractionType extends ChatInteraction> =
+  InteractionType extends D.APIApplicationCommandInteraction
+    ? CommandInteractionResponse
+    : InteractionType extends ComponentInteraction
+      ? ChatInteractionResponse
+      : never
 
-export declare type ChatInteraction = D.APIApplicationCommandInteraction | ComponentInteraction
+export type AnyView = View<any>
 
-export declare type AnyView = View<any>
+export type AnyCommandView = CommandView<any, D.ApplicationCommandType>
 
-export declare type AnyCommandView = CommandView<any, D.ApplicationCommandType>
+export type ChatInputCommandView = CommandView<any, D.ApplicationCommandType.ChatInput>
 
-export declare type ChatInputCommandView = CommandView<any, D.ApplicationCommandType.ChatInput>
-
-export declare type AnyMessageView = MessageView<any, any>
+export type AnyMessageView = MessageView<any, any>
 
 export function isCommandView(view: AnyView): view is AnyCommandView {
   return view instanceof CommandView
@@ -49,34 +63,19 @@ export type FindViewCallback = (
 
 export type InteractionErrorCallback = (
   e: unknown,
-  setSentryException?: (e: unknown) => void,
+  setException?: (e: unknown) => void,
 ) => D.APIInteractionResponseChannelMessageWithSource
-
-export declare type AppCommandInteraction<CommandType extends D.ApplicationCommandType> =
-  CommandType extends D.ApplicationCommandType.ChatInput
-    ? D.APIChatInputApplicationCommandInteraction
-    : CommandType extends D.ApplicationCommandType.User
-      ? D.APIUserApplicationCommandInteraction
-      : CommandType extends D.ApplicationCommandType.Message
-        ? D.APIMessageApplicationCommandInteraction
-        : never
-
-declare type InteractionResponse<InteractionType extends ChatInteraction> =
-  InteractionType extends D.APIApplicationCommandInteraction
-    ? CommandInteractionResponse
-    : InteractionType extends ComponentInteraction
-      ? ChatInteractionResponse
-      : never
 
 /**
  * CONTEXTS
  */
 
-// Autocomplete
+// Autocomplete interactions
 export interface AutocompleteContext {
   interaction: D.APIApplicationCommandAutocompleteInteraction
 }
 
+// Any context that can have a custom id
 export interface StateContext<View extends AnyView> {
   state: ViewState<View['state_schema']>
 }

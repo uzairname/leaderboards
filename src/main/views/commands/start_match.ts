@@ -1,56 +1,55 @@
 import * as D from 'discord-api-types/v10'
+import { Ranking } from '../../../database/models'
 import {
   CommandContext,
   CommandInteractionResponse,
   CommandView,
   field,
   _,
-  getModalSubmitEntries,
 } from '../../../discord-framework'
 import { nonNullable } from '../../../utils/utils'
 import { App } from '../../app/app'
 import { AppError } from '../../app/errors'
-import { getRegisterPlayer } from '../../modules/players'
-import { checkGuildInteraction, ensureAdminPerms, hasAdminPerms } from '../utils/checks'
+import { checkGuildInteraction, ensureAdminPerms } from '../utils/checks'
 import { rankingsAutocomplete } from '../utils/common'
-import { newRankingModal } from './rankings/new_ranking'
-import { allGuildRankingsPage, rankings, rankings_cmd_def } from './rankings/rankings'
+import { createRankingModal, create_ranking_view } from './rankings/create_ranking'
+import { allGuildRankingsPage, rankings_cmd_def } from './rankings/rankings_cmd'
 
 const optionnames = {
   ranking: 'for',
-  player1: 'player 1',
-  player2: 'player 2',
+  player1: 'player-1',
+  player2: 'player-2',
 }
 
 const start_match_command = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
   name: 'startmatch',
   description: 'description',
-  custom_id_id: 'sm',
+  custom_id_prefix: 'sm',
   options: [
     {
+      name: optionnames.ranking,
+      description: `Ranking to record the match for (Leave blank for default)`,
+      type: D.ApplicationCommandOptionType.String,
+      required: false,
+      autocomplete: true,
+    },
+    {
       name: optionnames.player1,
-      description: `Player 1 (optional)`,
+      description: `Player 1 (Optional if more than 2 players)`,
       type: D.ApplicationCommandOptionType.User,
       required: false,
     },
     {
       name: optionnames.player2,
-      description: `Player 2 (optional)`,
+      description: `Player 2 (Optional if more than 2 players)`,
       type: D.ApplicationCommandOptionType.User,
       required: false,
-    },
-    {
-      name: optionnames.ranking,
-      description: `Ranking to record the match for (Optional if there's one ranking)`,
-      type: D.ApplicationCommandOptionType.String,
-      required: false,
-      autocomplete: true,
     },
   ],
   state_schema: {
     ranking_id: field.Int(),
-    component: field.Choice({
+    component: field.Enum({
       'select:team': _,
       'btn:confirm teams': _,
     }),
@@ -61,7 +60,7 @@ const start_match_command = new CommandView({
   },
 })
 
-export const startMatch = (app: App) =>
+export const startMatchCmd = (app: App) =>
   start_match_command.onAutocomplete(rankingsAutocomplete(app)).onCommand(async ctx => {
     return onCommand(app, ctx)
   })
@@ -79,7 +78,7 @@ async function onCommand(
   )?.value
 
   if (ranking_option_value == 'create') {
-    return newRankingModal(rankings_cmd_def.getState({}))
+    return createRankingModal(app, { state: create_ranking_view.newState({}) })
   }
 
   await ensureAdminPerms(app, ctx)
@@ -90,15 +89,16 @@ async function onCommand(
       data: { flags: D.MessageFlags.Ephemeral },
     },
     async ctx => {
+      let ranking: Ranking
       if (ranking_option_value) {
-        var ranking = await app.db.rankings.get(parseInt(ranking_option_value))
+        ranking = await app.db.rankings.get(parseInt(ranking_option_value))
       } else {
-        const rankings = await app.db.guild_rankings.get({ guild_id: interaction.guild_id })
-        if (rankings.length == 1) {
-          ranking = rankings[0].ranking
-        } else if (rankings.length == 0) {
+        const res = await app.db.guild_rankings.get({ guild_id: interaction.guild_id })
+        if (res.length == 1) {
+          ranking = res[0].ranking
+        } else if (res.length == 0) {
           return void (await ctx.edit(
-            await allGuildRankingsPage(app, { interaction, state: rankings_cmd_def.getState() }),
+            await allGuildRankingsPage(app, { interaction, state: rankings_cmd_def.newState() }),
           ))
         } else {
           throw new AppError('Please specify a ranking to record the match for')
@@ -112,7 +112,7 @@ async function onCommand(
       ctx.state.save.num_teams(nonNullable(ranking.data.num_teams, 'num_teams'))
 
       if (ctx.state.is.players_per_team(1) && ctx.state.is.num_teams(2)) {
-        // If this is a 1v1 ranking, check if the winner and loser were specified
+        // If this is a 1v1 ranking, check if both players were selected
 
         const p1_id = (
           interaction.data.options?.find(o => o.name === optionnames.player1) as
@@ -134,7 +134,6 @@ async function onCommand(
           }))
         }
       }
-
       // Otherwise, select teams
     },
   )

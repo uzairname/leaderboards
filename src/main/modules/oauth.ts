@@ -1,9 +1,7 @@
 import * as D from 'discord-api-types/v10'
-import { eq } from 'drizzle-orm'
 import { Router } from 'itty-router'
 import { AccessToken } from '../../database/models/models/access_tokens'
 import { AccessTokens } from '../../database/schema'
-import { AccessTokenSelect } from '../../database/types'
 import { DiscordAPIClient } from '../../discord-framework'
 import { sentry } from '../../request/sentry'
 import { nonNullable } from '../../utils/utils'
@@ -12,23 +10,21 @@ import { AppErrors } from '../app/errors'
 
 export const oauthRouter = (app: App) =>
   Router({ base: `/oauth` })
-    .get(app.config.OauthRoutes.LinkedRoles, () => {
-      return oauthRedirect(app, [D.OAuth2Scopes.Identify, D.OAuth2Scopes.RoleConnectionsWrite])
-    })
+    .get(app.config.OauthRoutes.Redirect, request => oauthCallback(app, request))
 
-    .get(app.config.OauthRoutes.InviteOauth, () => {
-      return oauthRedirect(
+    .get(app.config.OauthRoutes.LinkedRoles, () =>
+      oauthRedirect(app, [D.OAuth2Scopes.Identify, D.OAuth2Scopes.RoleConnectionsWrite]),
+    )
+
+    .get(app.config.OauthRoutes.BotAndRoleConnections, () =>
+      oauthRedirect(
         app,
         [D.OAuth2Scopes.Identify, D.OAuth2Scopes.Bot, D.OAuth2Scopes.RoleConnectionsWrite],
         app.config.RequiredBotPermissions,
-      )
-    })
+      ),
+    )
 
-    .get(app.config.OauthRoutes.Redirect, request => {
-      return oauthRedirectCallback(app, request)
-    })
-
-    .get(`/*`, () => new Response('Unknown oauth route', { status: 404 }))
+    .get(`*`, () => new Response('Unknown oauth route', { status: 404 }))
 
 export function oauthRedirect(
   app: App,
@@ -37,7 +33,7 @@ export function oauthRedirect(
 ): Response {
   const state = crypto.randomUUID()
 
-  const url = app.bot.oauthRedirectURL(app.config.OauthRedirectURI, scopes, state, bot_permissions)
+  const url = app.bot.oauthURL(app.config.OauthRedirectURI, scopes, state, bot_permissions)
 
   return new Response(null, {
     status: 302,
@@ -48,7 +44,7 @@ export function oauthRedirect(
   })
 }
 
-export async function oauthRedirectCallback(app: App, request: Request): Promise<Response> {
+export async function oauthCallback(app: App, request: Request): Promise<Response> {
   const url = new URL(request.url)
   const client_state = request.headers.get('Cookie')?.split('state=')[1]?.split(';')[0]
   const discord_state = url.searchParams.get('state')
@@ -58,15 +54,17 @@ export async function oauthRedirectCallback(app: App, request: Request): Promise
   }
 
   try {
-    const code = nonNullable(url.searchParams.get('code'), 'code')
-    var tokendata = await app.bot.getOauthToken(code, app.config.OauthRedirectURI)
+    await saveUserAccessToken(
+      app,
+      await app.bot.getOauthToken(
+        nonNullable(url.searchParams.get('code'), 'code'),
+        app.config.OauthRedirectURI,
+      ),
+    )
   } catch (e) {
     sentry.setException(e)
     return new Response('Invalid code', { status: 400 })
   }
-
-  const purpose = url.searchParams.get('purpose')
-  await saveUserAccessToken(app, tokendata)
 
   return new Response(`Authorized. You may return to Discord`, {
     status: 200,
@@ -106,7 +104,7 @@ export async function getUserAccessToken(
   const token = scope_tokens.sort(
     (a, b) => b.data.expires_at.getTime() - a.data.expires_at.getTime(),
   )[0]
-  return await refreshAccessToken(app.bot, token.data)
+  return refreshAccessToken(app.bot, token.data)
 }
 
 export async function refreshAccessToken(

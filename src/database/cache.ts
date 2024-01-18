@@ -2,12 +2,12 @@ import { Guild, GuildRanking, Match, Player, Ranking, Setting, Team, User } from
 
 export default class DbCache {
   setting: Setting | undefined
-  users: { [user_id: string]: User } = {}
-  guilds: { [guild_id: string]: Guild } = {}
-  rankings: { [ranking_id: number]: Ranking } = {}
+  users: { [id: string]: User } = {}
+  guilds: { [id: string]: Guild } = {}
+  rankings: { [id: number]: Ranking } = {}
   guild_rankings: { [guild_id: string]: { [ranking_id: number]: GuildRanking } } = {}
   players: { [ranking_id: number]: { [user_id: string]: Player } } = {}
-  players_by_id: { [player_id: string]: Player } = {}
-  matches: { [match_id: string]: Match } = {}
-  teams: { [team_id: number]: Team } = {}
+  players_by_id: { [id: string]: Player } = {}
+  matches: { [id: string]: Match } = {}
+  teams: { [id: number]: Team } = {}
 }

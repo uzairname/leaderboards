@@ -1,7 +1,10 @@
 import { DiscordAPIError, REST, RequestData, RequestMethod } from '@discordjs/rest'
 import { I as InternalRequest } from '@discordjs/rest/dist/types-65527f29'
 import * as D from 'discord-api-types/v10'
+import { truncateString } from '../../main/messages/message_pieces'
+import { cache } from '../../request/cache'
 import { sentry } from '../../request/sentry'
+import { DiscordCache } from './cache'
 import { DiscordErrors } from './errors'
 import { RESTPostAPIGuildForumThreadsResult } from './types'
 import { DiscordAPIUtils } from './utils'
@@ -12,6 +15,7 @@ export class DiscordAPIClient extends REST {
   private readonly client_secret: string
   readonly public_key: string
   readonly utils: DiscordAPIUtils
+  readonly cache: DiscordCache
 
   constructor(params: {
     token: string
@@ -27,6 +31,11 @@ export class DiscordAPIClient extends REST {
     this.client_secret = params.client_secret
     this.public_key = params.public_key
     this.utils = new DiscordAPIUtils(this)
+
+    if (!(cache['discord'] instanceof DiscordCache)) {
+      cache['discord'] = new DiscordCache()
+    }
+    this.cache = cache['discord'] as DiscordCache
   }
 
   // APPLICATION COMMANDS
@@ -71,11 +80,16 @@ export class DiscordAPIClient extends REST {
   // CHANNELS
 
   @requiresBotPerms(D.PermissionFlagsBits.ManageChannels)
-  async createGuildChannel(guild_id: string, body: D.RESTPostAPIGuildChannelJSONBody) {
+  async createGuildChannel(
+    guild_id: string,
+    body: D.RESTPostAPIGuildChannelJSONBody,
+    reason?: string,
+  ) {
     try {
-      sentry.debug(`Creating channel in guild ${guild_id}`)
+      sentry.debug(`Creating channel in guild ${guild_id} with reason ${reason}`)
       return (await this.fetch(RequestMethod.Post, D.Routes.guildChannels(guild_id), {
         body,
+        reason,
       })) as D.RESTPostAPIGuildChannelResult
     } catch (e) {
       if (
@@ -94,6 +108,16 @@ export class DiscordAPIClient extends REST {
       D.Routes.channel(channel_id),
       {},
     )) as D.RESTGetAPIChannelResult
+  }
+
+  async getGuildChannels(guild_id: string) {
+    if (!this.cache.guild_channels[guild_id]) {
+      this.cache.guild_channels[guild_id] = (await this.fetch(
+        RequestMethod.Get,
+        D.Routes.guildChannels(guild_id),
+      )) as D.RESTGetAPIGuildChannelsResult
+    }
+    return this.cache.guild_channels[guild_id]
   }
 
   @requiresBotPerms(D.PermissionFlagsBits.ManageChannels)
@@ -274,13 +298,9 @@ export class DiscordAPIClient extends REST {
   ) {
     sentry.addBreadcrumb({
       category: 'interaction',
-      message: 'Creating interaction response',
-      level: 'info',
-      data: {
-        response: JSON.stringify(body),
-      },
+      message: 'Creating initial interaction response',
     })
-    return await this.fetch(
+    return this.fetch(
       RequestMethod.Post,
       D.Routes.interactionCallback(interaction_id, interaction_token),
       { body },
@@ -302,7 +322,7 @@ export class DiscordAPIClient extends REST {
     interaction_token: string,
     body: D.RESTPatchAPIInteractionOriginalResponseJSONBody,
   ) {
-    return await this.fetch(
+    return this.fetch(
       RequestMethod.Patch,
       D.Routes.webhookMessage(this.application_id, interaction_token, '@original'),
       { body },
@@ -343,10 +363,21 @@ export class DiscordAPIClient extends REST {
 
   // OAUTH
 
-  oauthRedirectURL(
+  botInviteURL(permissions?: bigint): URL {
+    const params = new URLSearchParams({
+      client_id: this.client_id,
+      permissions: permissions?.toString() ?? '',
+      scope: 'bot',
+    })
+    let url = new URL(D.OAuth2Routes.authorizationURL)
+    url.search = params.toString()
+    return url
+  }
+
+  oauthURL(
     redirect_uri: string,
     scopes: D.OAuth2Scopes[],
-    state?: string,
+    state: string,
     permissions?: bigint,
   ): URL {
     const params = new URLSearchParams({
@@ -354,7 +385,7 @@ export class DiscordAPIClient extends REST {
       response_type: 'code',
       scope: scopes.join(' '),
       redirect_uri,
-      state: state ?? '',
+      state: state,
       permissions: permissions?.toString() ?? '',
     })
     let url = new URL(D.OAuth2Routes.authorizationURL)
@@ -414,7 +445,6 @@ export class DiscordAPIClient extends REST {
     bearer_token?: string,
   ): Promise<unknown> {
     const start_time = Date.now()
-
     try {
       var response = await this.request(
         {
@@ -424,35 +454,26 @@ export class DiscordAPIClient extends REST {
         },
         bearer_token,
       )
+      return response
+    } catch (e) {
+      var error = e
+      throw e
+    } finally {
+      sentry.request_data['discord requests'] =
+        ((sentry.request_data['discord requests'] as number) || 0) + 1
 
-      sentry.request_data['discord_request_time'] =
-        ((sentry.request_data['discord_request_time'] as number) || 0) + (Date.now() - start_time)
       sentry.addBreadcrumb({
         category: 'Fetched Discord',
         type: 'http',
+        level: error ? 'error' : 'info',
         data: {
-          message: `Route: ${method?.toString()} ${route}`,
+          route: `Route: ${method?.toString()} ${route}`,
           options: JSON.stringify(options),
-          time: `${Date.now() - start_time}ms`,
-          response: JSON.stringify(response),
+          response: truncateString(JSON.stringify(response) ?? '', 1500),
+          error: JSON.stringify(error),
+          'time taken': `${Date.now() - start_time}ms`,
         },
       })
-      return response
-    } catch (e) {
-      sentry.request_data['discord_request_time'] =
-        ((sentry.request_data['discord_request_time'] as number) || 0) + (Date.now() - start_time)
-      sentry.addBreadcrumb({
-        category: 'Error Fetching Discord',
-        type: 'http',
-        level: 'error',
-        data: {
-          message: `Route: ${method?.toString()} ${route}`,
-          options: JSON.parse(JSON.stringify(options)),
-          time: `${Date.now() - start_time}ms`,
-          error: JSON.parse(JSON.stringify(e)),
-        },
-      })
-      throw e
     }
   }
 
@@ -473,7 +494,7 @@ function requiresBotPerms(permissions: bigint) {
     const original_method = descriptor.value
     descriptor.value = async function (this: DiscordAPIClient, ...args: unknown[]) {
       try {
-        return await original_method.apply(this, args)
+        return original_method.apply(this, args)
       } catch (e) {
         if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.MissingPermissions) {
           throw new DiscordErrors.BotPermissions(permissions)

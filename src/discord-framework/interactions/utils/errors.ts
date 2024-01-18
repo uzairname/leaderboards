@@ -14,19 +14,15 @@ export namespace ViewErrors {
     }
   }
 
-  export class AutocompleteNotImplemented extends ViewError {}
-
-  export class ComponentCallbackNotImplemented extends ViewError {}
-
-  export class DeferNotImplemented extends ViewError {}
-
-  export class InvalidEncodedCustomId extends ViewError {}
-
   export class CustomIdTooLong extends ViewError {
     constructor(custom_id: string) {
       super(`Custom id is ${custom_id.length} characters long: ${custom_id}`)
     }
   }
 
+  export class InvalidEncodedCustomId extends ViewError {}
+
   export class InvalidCustomId extends ViewError {}
+
+  export class CallbackNotImplemented extends ViewError {}
 }

@@ -9,7 +9,7 @@ export abstract class DiscordError extends Error {
 
 export namespace DiscordErrors {
   export class BotPermissions extends DiscordError {
-    getMissingPermissionsNames() {
+    get missingPermissionsNames() {
       const missing_permissions_names: string[] = []
       for (const [key, value] of Object.entries(D.PermissionFlagsBits)) {
         if ((BigInt(value) & this.missing_permissions) === BigInt(value)) {

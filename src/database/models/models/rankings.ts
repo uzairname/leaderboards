@@ -1,5 +1,7 @@
-import { desc, eq } from 'drizzle-orm'
+import { desc, eq, sql } from 'drizzle-orm'
+import { SerialisableMatcherRegExps } from 'miniflare'
 import { Match, Player } from '..'
+import { getRegisterPlayer } from '../../../main/modules/players'
 import { sentry } from '../../../request/sentry'
 import { DbClient } from '../../client'
 import { DbErrors } from '../../errors'
@@ -7,20 +9,8 @@ import { DbObject, DbObjectManager } from '../../managers'
 import { Matches, Players, Rankings } from '../../schema'
 import { RankingInsert, RankingSelect } from '../../types'
 
-export const default_players_per_team = 1
-export const default_num_teams = 2
-
-export const default_elo_settings = {
-  initial_rating: 50,
-  initial_rd: 50 / 3,
-}
-// displayed_rating = rating - 0.6 * rd
-
-export class Ranking extends DbObject<RankingSelect> {
-  constructor(data: RankingSelect, db: DbClient) {
-    !data.elo_settings && (data.elo_settings = default_elo_settings)
-    !data.num_teams && (data.num_teams = default_num_teams)
-    !data.players_per_team && (data.players_per_team = default_players_per_team)
+export class Ranking extends DbObject<Partial<RankingSelect> & { id: number }> {
+  constructor(data: Partial<RankingSelect> & { id: number }, db: DbClient) {
     super(data, db)
     db.cache.rankings[data.id] = this
   }
@@ -30,13 +20,16 @@ export class Ranking extends DbObject<RankingSelect> {
    * @returns The top players in this ranking, ordered by highest rating to lowest
    */
   async getOrderedTopPlayers(): Promise<Player[]> {
-    sentry.debug(`getting players`)
+    sentry.debug('getting ordered top players')
     const players = await this.db.db
       .select()
       .from(Players)
       .where(eq(Players.ranking_id, this.data.id))
       .orderBy(desc(Players.rating))
-    sentry.debug(`got players`)
+    // const players = await this.db.db.execute(
+    //   sql`select * from "Players" where "Players".ranking_id=${this.data.id} order by "Players".rating desc`,
+    // )
+    sentry.debug(`got players`, players)
     return players.map(item => {
       return new Player(item, this.db)
     })
@@ -87,5 +80,9 @@ export class RankingsManager extends DbObjectManager {
       throw new DbErrors.NotFoundError(`Ranking ${ranking_id} doesn't exist`)
     }
     return new Ranking(data, this.db)
+  }
+
+  partial(ranking_id: number): Ranking {
+    return new Ranking({ id: ranking_id }, this.db)
   }
 }

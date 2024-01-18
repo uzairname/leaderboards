@@ -43,7 +43,7 @@ export class DiscordAPIUtils {
     }
   }
 
-  async dontHaveRole(params: {
+  async deleteRoleIfExists(params: {
     guild_id: string
     target_role_id?: string | null
   }): Promise<D.APIRole | void> {
@@ -62,6 +62,7 @@ export class DiscordAPIUtils {
     channelData: () => Promise<{
       guild_id: string
       data: GuildChannelData
+      create_reason?: string
     }>
   }): Promise<{
     channel: D.APIChannel
@@ -98,9 +99,9 @@ export class DiscordAPIUtils {
       }
     }
 
-    const { guild_id, data } = await params.channelData()
+    const { guild_id, data, create_reason: reason } = await params.channelData()
     return {
-      channel: await this.bot.createGuildChannel(guild_id, data.postdata),
+      channel: await this.bot.createGuildChannel(guild_id, data.postdata, reason),
       is_new_channel: true,
     }
   }
@@ -116,11 +117,37 @@ export class DiscordAPIUtils {
     }
   }
 
+  async deleteMessageIfExists(
+    target_channel_id?: string | null,
+    target_message_id?: string | null,
+  ): Promise<D.APIMessage | void> {
+    try {
+      if (!target_message_id || !target_channel_id) return
+      sentry.debug('deleting message')
+      return await this.bot.deleteMessage(target_channel_id, target_message_id)
+    } catch (e) {
+      sentry.debug(
+        e,
+        (e as any).code === D.RESTJSONErrorCodes.UnknownChannel,
+        e instanceof DiscordAPIError,
+      )
+      if (
+        !(
+          e instanceof DiscordAPIError &&
+          (e.code === D.RESTJSONErrorCodes.UnknownMessage ||
+            e.code === D.RESTJSONErrorCodes.UnknownChannel)
+        )
+      ) {
+        throw e
+      }
+    }
+  }
+
   async syncChannelMessage(params: {
     target_channel_id?: string | null
     target_message_id?: string | null
     messageData: () => Promise<MessageData>
-    channelData: () => Promise<{
+    channelData?: () => Promise<{
       guild_id: string
       data: GuildChannelData
     }>
@@ -147,6 +174,7 @@ export class DiscordAPIUtils {
           is_new_message: false,
         }
       } else if (!params.target_channel_id) {
+        if (!params.channelData) throw new Error('No Channel')
         new_channel = (
           await this.syncGuildChannel({
             channelData: params.channelData,
@@ -156,7 +184,7 @@ export class DiscordAPIUtils {
     } catch (e) {
       if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.UnknownChannel) {
         // channel doesn't exist
-        sentry.debug(`channel doesn't exist`)
+        if (!params.channelData) throw e
         new_channel = (
           await this.syncGuildChannel({
             channelData: params.channelData,
@@ -311,7 +339,7 @@ export class DiscordAPIUtils {
       // forum doesn't exist
     }
 
-    var new_forum = (
+    const new_forum = (
       await this.syncGuildChannel({
         channelData: params.new_forum,
       })

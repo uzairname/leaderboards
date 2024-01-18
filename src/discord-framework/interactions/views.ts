@@ -33,15 +33,15 @@ export abstract class View<TSchema extends StringDataSchema> {
   name: string
   protected constructor(
     public options: {
-      custom_id_id?: string
+      custom_id_prefix?: string
       name?: string
     },
     public state_schema = {} as TSchema,
   ) {
-    this.name = this.options.name ?? this.options.custom_id_id ?? 'Unnamed View'
-    if (options.custom_id_id?.includes('.')) {
+    this.name = this.options.name ?? this.options.custom_id_prefix ?? 'Unnamed View'
+    if (options.custom_id_prefix?.includes('.')) {
       throw new ViewErrors.InvalidCustomId(
-        `Custom id prefix contains delimiter: ${options.custom_id_id}`,
+        `Custom id prefix contains delimiter: ${options.custom_id_prefix}`,
       )
     }
   }
@@ -52,7 +52,7 @@ export abstract class View<TSchema extends StringDataSchema> {
   }
 
   private componentCallback: ComponentCallback<this> = async () => {
-    throw new Error('This view has no component callback')
+    throw new ViewErrors.CallbackNotImplemented(`${this.name} has no component callback`)
   }
 
   async respondToComponent(
@@ -63,7 +63,7 @@ export abstract class View<TSchema extends StringDataSchema> {
   ): Promise<ChatInteractionResponse> {
     sentry.request_name = `${this.name} Component`
 
-    return await this.componentCallback({
+    return this.componentCallback({
       interaction,
       state,
       defer: (initial_response, callback) => {
@@ -87,44 +87,37 @@ export abstract class View<TSchema extends StringDataSchema> {
     onError: InteractionErrorCallback
   }): void {
     sentry.offload(
-      ctx =>
-        new Promise<void>(async resolve => {
-          args
-            .callback({
-              interaction: args.interaction,
-              state: args.state,
-              followup: async (response_data: D.APIInteractionResponseCallbackData) => {
-                return await args.bot.createFollowupMessage(args.interaction.token, response_data)
-              },
-              edit: async (data: D.RESTPatchAPIWebhookWithTokenMessageJSONBody) => {
-                await args.bot.editOriginalInteractionResponse(args.interaction.token, data)
-              },
-              delete: async (message_id?: string) => {
-                await args.bot.deleteInteractionResponse(args.interaction.token, message_id)
-              },
-            })
-            .catch(async e => {
-              await args.bot.createFollowupMessage(
-                args.interaction.token,
-                args.onError(e, ctx.setException).data,
-              )
-            })
-            .finally(resolve)
-        }),
+      async ctx =>
+        await args
+          .callback({
+            interaction: args.interaction,
+            state: args.state,
+            followup: async (response_data: D.APIInteractionResponseCallbackData) => {
+              return args.bot.createFollowupMessage(args.interaction.token, response_data)
+            },
+            edit: async (data: D.RESTPatchAPIWebhookWithTokenMessageJSONBody) => {
+              await args.bot.editOriginalInteractionResponse(args.interaction.token, data)
+            },
+            delete: async (message_id?: string) => {
+              await args.bot.deleteInteractionResponse(args.interaction.token, message_id)
+            },
+          })
+          .catch(async e => {
+            await args.bot.createFollowupMessage(
+              args.interaction.token,
+              args.onError(e, ctx.setException).data,
+            )
+          }),
     )
   }
 
-  getState(
-    data: {
-      [K in keyof TSchema]?: TSchema[K]['default_value']
-    } = {},
-  ): ViewState<TSchema> {
-    return ViewState.make(this).setData(data)
+  newState(data: { [K in keyof TSchema]?: TSchema[K]['write'] | null } = {}): ViewState<TSchema> {
+    return ViewState.fromView(this).setAll(data)
   }
 
   isStateCtx(ctx: StateContext<this>): ctx is StateContext<this> {
     try {
-      return JSON.stringify(this.getState(ctx.state.data).data) === JSON.stringify(ctx.state.data)
+      return JSON.stringify(this.newState(ctx.state.data).data) === JSON.stringify(ctx.state.data)
     } catch {
       return false
     }
@@ -163,17 +156,14 @@ export class CommandView<
   CommandType extends D.ApplicationCommandType,
 > extends View<TSchema> {
   constructor(
-    public options: {
+    public options: (CommandType extends D.ApplicationCommandType.ChatInput
+      ? D.RESTPostAPIChatInputApplicationCommandsJSONBody
+      : D.RESTPostAPIContextMenuApplicationCommandsJSONBody) & {
       type: CommandType
       guild_id?: string
       state_schema?: TSchema
-      custom_id_id?: string
-    } & Omit<
-      CommandType extends D.ApplicationCommandType.ChatInput
-        ? D.RESTPostAPIChatInputApplicationCommandsJSONBody
-        : D.RESTPostAPIContextMenuApplicationCommandsJSONBody,
-      'type'
-    >,
+      custom_id_prefix?: string
+    },
   ) {
     super(options, options.state_schema)
   }
@@ -184,7 +174,7 @@ export class CommandView<
   }
 
   private commandCallback: CommandCallback<this> = () => {
-    throw new Error('This view has no command callback')
+    throw new ViewErrors.CallbackNotImplemented(`${this.name} has no command callback`)
   }
 
   async respondToCommand(
@@ -194,9 +184,9 @@ export class CommandView<
   ): Promise<CommandInteractionResponse> {
     sentry.request_name = `${this.name} Command`
 
-    const state = this.getState()
+    const state = this.newState()
 
-    return await this.commandCallback({
+    return this.commandCallback({
       interaction,
       state,
       defer: (response, callback) => {
@@ -218,27 +208,27 @@ export class CommandView<
   }
 
   private autocompleteCallback: ViewAutocompleteCallback<CommandType> = () => {
-    throw new Error('This view has no autocomplete callback')
+    throw new ViewErrors.CallbackNotImplemented(`${this.name} has no autocomplete callback`)
   }
 
   async respondToAutocomplete(
     interaction: D.APIApplicationCommandAutocompleteInteraction,
   ): Promise<D.APIApplicationCommandAutocompleteResponse> {
     sentry.request_name = `${interaction.data.name} Autocomplete`
-    return await this.autocompleteCallback({ interaction })
+    return this.autocompleteCallback({ interaction })
   }
 }
 
 export class MessageView<TSchema extends StringDataSchema, Params> extends View<TSchema> {
   private sendCallback: SendMessageCallback<this, Params> = async () => {
-    throw new Error('This view has no send callback')
+    throw new ViewErrors.CallbackNotImplemented(`${this.name} has no send message callback`)
   }
 
   constructor(
     public readonly options: {
       name?: string
       state_schema?: TSchema
-      custom_id_id?: string
+      custom_id_prefix?: string
       param?: () => Params
     },
   ) {
@@ -246,8 +236,8 @@ export class MessageView<TSchema extends StringDataSchema, Params> extends View<
   }
 
   async send(args: Params): Promise<MessageData> {
-    return await this.sendCallback({
-      state: this.getState(),
+    return this.sendCallback({
+      state: this.newState(),
       ...args,
     })
   }

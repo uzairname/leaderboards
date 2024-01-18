@@ -10,7 +10,7 @@ export function rankingsAutocomplete(
   create_choice?: boolean,
   ranking_option_name: string = 'ranking',
 ): ViewAutocompleteCallback<D.ApplicationCommandType.ChatInput> {
-  return autocompleteTimeout(async (ctx: AutocompleteContext) => {
+  return async function (ctx: AutocompleteContext) {
     const interaction = checkGuildInteraction(ctx.interaction)
 
     // Get the ranking name typed so far.
@@ -52,31 +52,5 @@ export function rankingsAutocomplete(
     }
 
     return response
-  }, `Loading rankings timed out... try again`)
-}
-
-function autocompleteTimeout(
-  callback: ViewAutocompleteCallback<D.ApplicationCommandType.ChatInput>,
-  message?: string,
-): ViewAutocompleteCallback<D.ApplicationCommandType.ChatInput> {
-  return async function (ctx: AutocompleteContext) {
-    return Promise.race([
-      callback(ctx),
-      new Promise<D.APIApplicationCommandAutocompleteResponse>(resolve =>
-        setTimeout(() => {
-          resolve({
-            type: D.InteractionResponseType.ApplicationCommandAutocompleteResult,
-            data: {
-              choices: [
-                {
-                  name: message || `Loading options timed out... try again`,
-                  value: '',
-                },
-              ],
-            },
-          })
-        }, 2750),
-      ),
-    ])
   }
 }

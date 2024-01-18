@@ -29,9 +29,12 @@ export async function respondToInteraction(
   }
 
   const interaction = (await request.json()) as D.APIInteraction
-  const response = await respond(interaction, bot, findView, onError)
 
-  const direct_response = false
+  const response = await respond(interaction, bot, findView, onError)
+    .then(res => res)
+    .catch(e => onError(e))
+
+  const direct_response = true
 
   if (direct_response) {
     sentry.addBreadcrumb({
@@ -60,29 +63,25 @@ async function respond(
     guild: interaction.guild_id,
   })
 
-  try {
-    if (interaction.type === D.InteractionType.Ping) return { type: D.InteractionResponseType.Pong }
+  if (interaction.type === D.InteractionType.Ping) return { type: D.InteractionResponseType.Pong }
 
-    if (
-      interaction.type === D.InteractionType.ApplicationCommand ||
-      interaction.type === D.InteractionType.ApplicationCommandAutocomplete
-    ) {
-      let view = await findView_(findView, interaction)
+  if (
+    interaction.type === D.InteractionType.ApplicationCommand ||
+    interaction.type === D.InteractionType.ApplicationCommandAutocomplete
+  ) {
+    const view = await findView_(findView, interaction)
 
-      if (interaction.type === D.InteractionType.ApplicationCommand) {
-        if (isCommandView(view)) return await view.respondToCommand(interaction, bot, onError)
-        throw new ViewErrors.InvalidViewType()
-      }
-
-      if (interaction.type === D.InteractionType.ApplicationCommandAutocomplete) {
-        if (isChatInputCommandView(view)) return await view.respondToAutocomplete(interaction)
-        throw new ViewErrors.InvalidViewType()
-      }
+    if (interaction.type === D.InteractionType.ApplicationCommand) {
+      if (isCommandView(view)) return view.respondToCommand(interaction, bot, onError)
+      throw new ViewErrors.InvalidViewType()
     }
 
-    let { view, state } = await ViewState.from(interaction.data.custom_id, findView)
-    return await view.respondToComponent(interaction, state, bot, onError)
-  } catch (e) {
-    return onError(e)
+    if (interaction.type === D.InteractionType.ApplicationCommandAutocomplete) {
+      if (isChatInputCommandView(view)) return view.respondToAutocomplete(interaction)
+      throw new ViewErrors.InvalidViewType()
+    }
   }
+
+  const { view, state } = await ViewState.fromCustomId(interaction.data.custom_id, findView)
+  return view.respondToComponent(interaction, state, bot, onError)
 }

@@ -25,39 +25,36 @@ export class Sentry extends Toucan {
       context: request_args.execution_context,
       request: request_args.request,
     })
-
     this.request_name = 'Request'
-    cache.request_num = (typeof cache.request_num == 'number' ? cache.request_num : 0) + 1
+    cache.request_num = typeof cache.request_num == 'number' ? cache.request_num + 1 : 1
     this.request = request_args.request
   }
 
   async handlerWrapper(handler: (request: Request) => Promise<Response>): Promise<Response> {
     this.setTag('cold-start', `${cache.request_num == 1}`)
+    this.debug(`Request #${cache.request_num}`)
     this.request_name = `${this.request.method} ${new URL(this.request.url).pathname}`
-    this.addBreadcrumb({
-      message: `Received request #${cache.request_num}`,
-      level: 'info',
-    })
 
-    return await new Promise<Response>((resolve, reject) => {
-      const timeout_ms = 5000
-      const timeout = setTimeout(() => {
+    return new Promise<Response>((resolve, reject) => {
+      const timeout_ms = 10000
+      setTimeout(() => {
         reject(new TimeoutError(`${this.request_name} timed out after ${timeout_ms} ms`))
       }, timeout_ms)
 
       handler(this.request)
         .then(res => {
-          clearTimeout(timeout)
-          if (this.caught_exception) reject(this.caught_exception)
           resolve(res)
         })
         .catch(e => {
-          clearTimeout(timeout)
           reject(e)
         })
     })
       .then(res => {
-        this.logResult()
+        if (this.caught_exception) {
+          this.captureException(this.caught_exception)
+        } else {
+          this.logResult()
+        }
         return res
       })
       .catch(e => {
@@ -77,6 +74,11 @@ export class Sentry extends Toucan {
 
     const ctx = {
       setException: (e: unknown) => {
+        this.addBreadcrumb({
+          message: `Caught exception`,
+          level: 'error',
+          data: { e },
+        })
         offload_caught_exception = e
       },
       setRequestName: (name: string) => {
@@ -88,28 +90,40 @@ export class Sentry extends Toucan {
     this.request_args.execution_context.waitUntil(
       new Promise<void>((resolve, reject) => {
         const timeout_ms = 10000
-        const timeout = setTimeout(() => {
+        setTimeout(() => {
+          this.captureMessage(`Timeout after ${timeout_ms} ms`)
           reject(new TimeoutError(`"${request_name}" timed out after ${timeout_ms} ms`))
         }, timeout_ms)
 
+        // setTimeout(() => {
+        //   this.captureMessage(`3000 ms`)
+        // }, 3000)
+
+        // setTimeout(() => {
+        //   this.captureMessage(`4000 ms`)
+        // }, 4000)
+
+        // setTimeout(() => {
+        //   this.captureMessage(`5000 ms`)
+        // }, 5000)
+
+        // setTimeout(() => {
+        //   this.captureMessage(`10000 ms`)
+        // }, 10000)
+
         this.debug(`Offloading "${request_name}"`)
 
-        callback(ctx)
-          .then(() => {
-            clearTimeout(timeout)
-            this.debug(`Finished offloading "${request_name}"`)
-            if (offload_caught_exception) reject(offload_caught_exception)
-            resolve()
-          })
-          .catch(e => {
-            clearTimeout(timeout)
-            reject(e)
-          })
+        callback(ctx).catch(reject).finally(resolve)
       })
         .then(() => {
-          this.logResult(request_name)
+          if (offload_caught_exception) {
+            this.captureException(offload_caught_exception)
+          } else {
+            this.logResult(request_name)
+          }
         })
         .catch(e => {
+          this.captureMessage('catch')
           this.captureException(e)
         }),
     )
@@ -121,7 +135,6 @@ export class Sentry extends Toucan {
       level: 'error',
       data: { exception },
     })
-
     this.caught_exception = exception
   }
 
@@ -135,7 +148,7 @@ export class Sentry extends Toucan {
 
   private logResult(request_name: string = this.request_name) {
     this.setExtra('time taken', `${Date.now() - this.time_received} ms`)
-    this.setExtra('data', JSON.stringify(this.request_data))
+    this.setExtra('data', this.request_data)
     this.captureEvent({
       message: request_name,
       level: 'info',

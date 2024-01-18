@@ -12,7 +12,7 @@ export async function overwriteDiscordCommandsWithViews(
   } = {}
   const global_commands: D.RESTPostAPIApplicationCommandsJSONBody[] = []
 
-  views.map(view => {
+  views.forEach(view => {
     if (view.options.guild_id) {
       if (!guild_commands[view.options.guild_id]) {
         guild_commands[view.options.guild_id] = []
@@ -40,12 +40,14 @@ export async function overwriteDiscordCommandsWithViews(
   })
 }
 
-function validateAndGetPostJSONBody(view: AnyCommandView) {
+function validateAndGetPostJSONBody(
+  view: AnyCommandView,
+): D.RESTPostAPIApplicationGuildCommandsJSONBody {
   if (isChatInputCommandView(view) && view.options.description.length > 100) {
-    throw new Error(`Description for command ${view.options.custom_id_id} > 100 characters`)
+    throw new Error(`Description for command ${view.options.custom_id_prefix} > 100 characters`)
   }
-  const body = {
+
+  return {
     ...view.options,
-  } as D.RESTPostAPIApplicationCommandsJSONBody
-  return body
+  } as D.RESTPostAPIApplicationGuildCommandsJSONBody
 }

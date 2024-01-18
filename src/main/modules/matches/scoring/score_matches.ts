@@ -1,9 +1,11 @@
-import { Match, Player, Ranking } from '../../../database/models'
-import { MatchInsert } from '../../../database/types'
-import { nonNullable } from '../../../utils/utils'
-import { App } from '../../app/app'
-import { AppErrors } from '../../app/errors'
-import { getNewRatings } from './scoring'
+import { Match, Player, Ranking } from '../../../../database/models'
+import { MatchInsert } from '../../../../database/types'
+import { sentry } from '../../../../request/sentry'
+import { nonNullable } from '../../../../utils/utils'
+import { App } from '../../../app/app'
+import { AppErrors } from '../../../app/errors'
+import { syncGuildRankingLbMessage } from '../../rankings/ranking_channels'
+import { getNewRatings } from './trueskill'
 
 /**
  * Record a completed match. create a new Match. Update everyone's scores.
@@ -19,6 +21,16 @@ export async function recordAndScoreNewMatch(
   metadata?: { [key: string]: any },
 ) {
   // add match
+  sentry.captureMessage('Recording match')
+
+  validateNewMatch({
+    ranking_id: ranking.data.id,
+    players: players,
+    outcome,
+    metadata,
+    time_started,
+  })
+
   const match = await app.db.matches.create({
     ranking_id: ranking.data.id,
     team_players: players,
@@ -27,6 +39,8 @@ export async function recordAndScoreNewMatch(
     time_started,
     time_finished: new Date(),
   })
+
+  sentry.captureMessage('1')
 
   const player_ratings_before = players.map(t =>
     t.map(p => {
@@ -58,8 +72,12 @@ export async function recordAndScoreNewMatch(
     }),
   )
 
+  sentry.captureMessage('2')
+
   // update any other channels
   await app.events.MatchScored.emit(match)
+
+  sentry.captureMessage('3')
 }
 
 /**
@@ -171,24 +189,26 @@ export async function scoreRankingHistory(app: App, ranking: Ranking) {
     }),
   )
 
-  await app.events.RankingUpdated.emit(ranking)
+  // update leaderboard messages
+  const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
+  await Promise.all(
+    guild_rankings.map(async guild_ranking => {
+      await syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)
+    }),
+  )
 }
 
-function validateNewMatch(data: { team_players: Player[][] } & Omit<MatchInsert, 'team_players'>) {
-  if (data.team_players && data.outcome) {
-    if (data.team_players.length !== data.outcome.length) {
+function validateNewMatch(data: { players: Player[][] } & Omit<MatchInsert, 'team_players'>) {
+  if (data.players && data.outcome) {
+    if (data.players.length !== data.outcome.length) {
       throw new AppErrors.ValidationError(`team_players and outcome length don't match`)
     }
     // make sure all players are from the same ranking, and no duplicate player ids
-    if (
-      data.team_players.flat().length !== new Set(data.team_players.flat().map(p => p.data.id)).size
-    ) {
+    if (data.players.flat().length !== new Set(data.players.flat().map(p => p.data.id)).size) {
       throw new AppErrors.ValidationError('Duplicate players in one match')
     }
     if (
-      data.team_players.some(team =>
-        team.some(player => player.data.ranking_id !== data.ranking_id),
-      )
+      data.players.some(team => team.some(player => player.data.ranking_id !== data.ranking_id))
     ) {
       throw new AppErrors.ValidationError(
         `Some players not in the match's ranking (${data.ranking_id})`,

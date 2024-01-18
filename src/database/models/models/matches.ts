@@ -1,9 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import { Player, Ranking } from '..'
 import { nonNullable } from '../../../utils/utils'
-import { unflatten } from '../../../utils/utils'
 import { DbClient } from '../../client'
-import { DbErrors } from '../../errors'
 import { DbObject, DbObjectManager } from '../../managers'
 import { MatchPlayers, Matches, Players } from '../../schema'
 import { MatchInsert, MatchPlayerSelect, MatchSelect, MatchUpdate } from '../../types'
@@ -15,7 +13,7 @@ export class Match extends DbObject<MatchSelect> {
   }
 
   async ranking(): Promise<Ranking> {
-    return this.db.rankings.get(this.data.id)
+    return this.db.rankings.get(this.data.ranking_id)
   }
 
   async players(): Promise<{ player: Player; match_player: MatchPlayerSelect }[][]> {

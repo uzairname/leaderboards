@@ -16,19 +16,19 @@ export function respond(req: RequestArgs): Promise<Response> {
   const app = new App(req.env)
 
   const router = Router()
-    .get('/', () => new Response(`👀`))
-
     .post('/interactions', request =>
       respondToInteraction(app.bot, request, findView(app), onViewError(app)),
     )
 
     .get(`/oauth/*`, request => oauthRouter(app).handle(request))
 
-    .post('/init/*', authorize(req), () => initApp(app))
-
     .all('/api/*', request => apiRouter(app).handle(request))
 
+    .post('/init/*', authorize(req), () => initApp(app))
+
     .post('/test/*', authorize(req), () => runTests(app))
+
+    .get('*', () => new Response(`👀`))
 
     .all('*', () => new Response('Not Foun', { status: 404 }))
 

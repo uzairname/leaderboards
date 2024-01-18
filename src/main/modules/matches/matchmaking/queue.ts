@@ -1,11 +1,9 @@
 import * as D from 'discord-api-types/v10'
-import { type Team } from '../../../database/models'
-import { nonNullable } from '../../../utils/utils'
-import { App } from '../../app/app'
-import { getRegisterPlayer } from '../players'
+import { App } from '../../../app/app'
+import { getRegisterPlayer } from '../../players'
 
 /**
- * When a user uses a command or button to join queue.
+ * When a user uses a command or button to join a global queue for a ranking.
  * User's team joins the queue. Or a new team with the user joins.
  */
 export async function onJoinQueue(

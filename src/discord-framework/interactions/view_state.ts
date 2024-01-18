@@ -3,26 +3,20 @@ import { sentry } from '../../request/sentry'
 import { StringData, StringDataSchema } from '../../utils/string_data'
 import { findView_ } from './find_view'
 import { AnyView, FindViewCallback } from './types'
-import { ViewError, ViewErrors } from './utils/errors'
+import { ViewErrors } from './utils/errors'
 import { View } from './views'
 
 export class ViewState<TSchema extends StringDataSchema> extends StringData<TSchema> {
-  set: {
-    [K in keyof TSchema]: (value: TSchema[K]['default_value']) => ViewState<TSchema>
-  } = {} as any
-
-  copy(): ViewState<TSchema> {
-    let temp = new ViewState(this.view_id, this.schema)
-    temp.data = {
-      ...this.data,
-    }
-    return temp
+  set = {} as {
+    [K in keyof TSchema]: (value: TSchema[K]['write'] | null | undefined) => ViewState<TSchema>
   }
 
-  setData(
-    data: Partial<{ [K in keyof TSchema]: TSchema[K]['default_value'] }>,
-  ): ViewState<TSchema> {
-    return this.copy().saveData(data)
+  setAll(data: { [K in keyof TSchema]?: TSchema[K]['write'] | null }): ViewState<TSchema> {
+    return this.copy().saveAll(data)
+  }
+
+  copy(): ViewState<TSchema> {
+    return new ViewState(this.schema, this.view_id).decode(this.encode())
   }
 
   cId(): string {
@@ -32,23 +26,31 @@ export class ViewState<TSchema extends StringDataSchema> extends StringData<TSch
   }
 
   private constructor(
-    private view_id: string | undefined,
     protected schema: TSchema,
+    private view_id: string | undefined,
   ) {
     super(schema)
     for (const key in this.schema) {
-      this.set[key] = (value: TSchema[typeof key]['default_value']) => this.copy().save[key](value)
+      this.set[key] = value => this.copy().save[key](value)
     }
   }
 
-  static make<T extends StringDataSchema>(view: View<T>): ViewState<T> {
-    return new ViewState(view.options.custom_id_id, view.state_schema)
+  static fromView<T extends StringDataSchema>(view: View<T>): ViewState<T> {
+    return new ViewState(view.state_schema, view.options.custom_id_prefix)
   }
 
-  static async from(
+  static async fromCustomId(
     custom_id: string,
     findViewCallback: FindViewCallback,
   ): Promise<{ view: AnyView; state: ViewState<StringDataSchema> }> {
+    sentry.addBreadcrumb({
+      category: 'custom_id',
+      level: 'info',
+      data: {
+        custom_id,
+      },
+    })
+
     let decompressed_custom_id = decompressFromUTF16(custom_id)
 
     if (!decompressed_custom_id)
@@ -58,13 +60,15 @@ export class ViewState<TSchema extends StringDataSchema> extends StringData<TSch
     const encoded_data = extra.join('.')
 
     let view = await findView_(findViewCallback, undefined, prefix)
-    let state = ViewState.make(view).decode(encoded_data || '')
+    let state = ViewState.fromView(view)
+    if (encoded_data) {
+      state = state.decode(encoded_data)
+    }
 
     sentry.addBreadcrumb({
-      category: 'custom_id',
+      category: 'decoded custom_id',
       level: 'info',
       data: {
-        custom_id,
         encoded_data,
         prefix,
         data: state.data,

@@ -37,19 +37,16 @@ export const Guilds = pgTable('Guilds', {
 })
 
 
-export type EloSettings = Partial<{
-  initial_rating: number
-  initial_rd: number
-}>
-
-
 export const Rankings = pgTable('Rankings', {
   id: serial('id').primaryKey(),
   name: text('name'),
   time_created: timestamp('time_created').defaultNow(),
   players_per_team: integer('players_per_team'),
   num_teams: integer('num_teams'),
-  elo_settings: jsonb('elo_settings').$type<EloSettings>(),
+  elo_settings: jsonb('elo_settings').$type<{
+    initial_rating: number
+    initial_rd: number
+  }>(),
   // match_settings: jsonb('match_settings'),
 })
 
@@ -62,10 +59,10 @@ export const GuildRankings = pgTable('GuildRankings', {
   leaderboard_channel_id: text('leaderboard_channel_id'),
   leaderboard_message_id: text('leaderboard_message_id'),
   ongoing_matches_channel_id: text('ongoing_matches_channel_id'),
-  match_results_textchannel_id: text('match_results_textchannel_id'),
-  match_results_forum_id: text('match_results_forum_id'),
-  queue_channel_id: text('queue_channel_id'),
-  queue_message_id: text('queue_message_id'),
+  display_settings: jsonb('display_settings').$type<{
+    leaderboard_message?: boolean
+    log_matches?: boolean
+  }>(),
 },(table) => { return {
   cpk: primaryKey(table.guild_id, table.ranking_id),
 }})

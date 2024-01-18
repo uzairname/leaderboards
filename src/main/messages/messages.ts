@@ -1,17 +1,17 @@
-import { DiscordErrors, DiscordAPIClient } from '../../discord-framework'
+import { DiscordErrors } from '../../discord-framework'
 import { App } from '../app/app'
 import { inviteUrl } from './message_pieces'
 
 export namespace Messages {
   export const concise_description =
-    'This bot tracks Elo ratings for any game. Players can match against players of their skill level and record the results of their games. There are additional utilities for moderation, display, and statistics.'
+    'Tracks Elo ratings and matches for any game. Additional utilities for moderation, display, and statistics.'
 
   export const github_url = 'https://github.com/uzairname/leaderboards'
 
   export function botPermisssionsError(app: App, e: DiscordErrors.BotPermissions): string {
     let msg = "I'm missing some permissions"
 
-    let missing_perms = e.getMissingPermissionsNames()
+    let missing_perms = e.missingPermissionsNames
 
     if (missing_perms.length > 0) {
       msg = `I'm missing the following permissions: ${permsToString(missing_perms)}`

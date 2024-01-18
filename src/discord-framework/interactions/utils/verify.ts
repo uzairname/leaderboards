@@ -21,7 +21,7 @@ export async function verify(request: Request, public_key: string) {
   const timestamp = request.headers.get('X-Signature-Timestamp')
   const unknown = await request.clone().text()
 
-  return await crypto.subtle.verify(
+  return crypto.subtle.verify(
     'NODE-ED25519',
     await PUBLIC_KEY,
     signature,

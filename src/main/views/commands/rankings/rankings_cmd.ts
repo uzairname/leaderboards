@@ -1,33 +1,22 @@
 import * as D from 'discord-api-types/v10'
 import type { GuildRanking, Ranking } from '../../../../database/models'
 import { type InteractionContext, CommandView, _, field } from '../../../../discord-framework'
-import { ViewState } from '../../../../discord-framework/interactions/view_state'
 import { sentry } from '../../../../request/sentry'
 import { unflatten } from '../../../../utils/utils'
 import type { App } from '../../../app/app'
-import { AppErrors } from '../../../app/errors'
-import {
-  Colors,
-  commandMention,
-  dateTimestamp,
-  messageLink,
-  escapeMd,
-} from '../../../messages/message_pieces'
+import { Colors, dateTimestamp, messageLink, escapeMd } from '../../../messages/message_pieces'
 import { Messages } from '../../../messages/messages'
 import { getOrAddGuild } from '../../../modules/guilds'
-import { max_ranking_name_length } from '../../../modules/rankings/rankings'
 import { checkGuildInteraction } from '../../utils/checks'
 import { create_choice_value, rankingsAutocomplete } from '../../utils/common'
-import { help_cmd } from '../help'
-import { restore_cmd } from '../restore'
-import { newRankingModal, onCreateConfirmBtn, onCreateNewModal } from './new_ranking'
-import { rankingSettingsPage, ranking_settings_page_def } from './ranking_settings'
+import { create_ranking_view, createRankingModal } from './create_ranking'
+import { guildRankingSettingsPage, ranking_settings_page } from './ranking_settings'
 
 const ranking_option_name = 'ranking'
 
 export const rankings_cmd_def = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
-  custom_id_id: 'r',
+  custom_id_prefix: 'r',
   name: 'rankings',
   description: 'Create and manage rankings and leaderboards',
   options: [
@@ -37,30 +26,10 @@ export const rankings_cmd_def = new CommandView({
       description: 'Select a rankings or create a new one',
       autocomplete: true,
     },
-    {
-      name: 'create new',
-      type: D.ApplicationCommandOptionType.String,
-      description: 'Create a new ranking',
-    },
   ],
-  state_schema: {
-    page: field.Choice({
-      'all rankings': _,
-      'creating new': _,
-    }),
-    component: field.Choice({
-      'btn:create': _,
-      'modal:create new': _,
-      'btn:create confirm': _,
-      'select:ranking': _,
-    }),
-    input_name: field.String(),
-    input_players_per_team: field.Int(),
-    input_num_teams: field.Int(),
-  },
 })
 
-export const rankings = (app: App) =>
+export const rankingsCmd = (app: App) =>
   rankings_cmd_def
     .onAutocomplete(rankingsAutocomplete(app, true))
 
@@ -72,8 +41,7 @@ export const rankings = (app: App) =>
       )?.value
 
       if (ranking_option_value === create_choice_value) {
-        // Selected create new ranking. Input name
-        return newRankingModal(ctx.state)
+        return createRankingModal(app, { state: create_ranking_view.newState() })
       }
 
       if (ranking_option_value) {
@@ -85,12 +53,15 @@ export const rankings = (app: App) =>
             },
           },
           async ctx => {
-            ctx.edit(
-              await rankingSettingsPage(
-                app,
-                parseInt(ranking_option_value),
-                checkGuildInteraction(ctx.interaction).guild_id,
-              ),
+            const ranking = await app.db.rankings.get(parseInt(ranking_option_value))
+            return void ctx.edit(
+              await guildRankingSettingsPage(app, {
+                state: ranking_settings_page.newState({
+                  ranking_id: ranking.data.id,
+                  guild_id: checkGuildInteraction(ctx.interaction).guild_id,
+                  ranking_name: ranking.data.name,
+                }),
+              }),
             )
           },
         )
@@ -100,52 +71,27 @@ export const rankings = (app: App) =>
             type: D.InteractionResponseType.DeferredChannelMessageWithSource,
             data: { flags: D.MessageFlags.Ephemeral },
           },
-          async ctx => {
-            await ctx.edit(await allGuildRankingsPage(app, ctx))
-          },
+          async ctx => ctx.edit(await allGuildRankingsPage(app, ctx)),
         )
       }
     })
 
     .onComponent(async ctx => {
-      if (ctx.state.is.component('btn:create')) {
-        // can be from any page
-        return newRankingModal(ctx.state)
-      }
-
-      if (ctx.state.is.component('btn:create confirm')) {
-        return onCreateConfirmBtn(app, ctx)
-      }
-
-      if (ctx.state.is.component('modal:create new')) {
-        return await onCreateNewModal(app, ctx)
-      }
-
-      if (ctx.state.is.page('all rankings')) {
-        return ctx.defer(
-          {
-            type: D.InteractionResponseType.DeferredChannelMessageWithSource,
-            data: { flags: D.MessageFlags.Ephemeral },
-          },
-          async ctx => {
-            await ctx.edit(await allGuildRankingsPage(app, ctx))
-          },
-        )
-      }
-
-      throw new AppErrors.UnknownState(`${JSON.stringify(ctx.state.data)}`)
+      return ctx.defer(
+        {
+          type: D.InteractionResponseType.DeferredMessageUpdate,
+        },
+        async ctx => ctx.edit(await allGuildRankingsPage(app, ctx)),
+      )
     })
 
 export async function allGuildRankingsPage(
   app: App,
   ctx: InteractionContext<typeof rankings_cmd_def>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  ctx.state.save.page('all rankings')
   const interaction = checkGuildInteraction(ctx.interaction)
   const guild_rankings = await app.db.guild_rankings.get({ guild_id: interaction.guild_id })
   const guild = await getOrAddGuild(app, interaction.guild_id)
-
-  const guild_name = guild.data.name ?? 'Unnamed Server'
 
   let embeds: D.APIEmbed[] = [
     {
@@ -153,25 +99,18 @@ export async function allGuildRankingsPage(
         `# ${escapeMd(guild.data.name)}'s Rankings`
         + `\n` + (guild_rankings.length === 0
           ? Messages.no_rankings_description
-          : `You have **${guild_rankings.length}** ranking${guild_rankings.length === 1 ? `` : `s`}` 
-            + ` in this server`), //prettier-ignore
+          : `You have **${guild_rankings.length}** ranking${guild_rankings.length === 1 ? `` : `s`}`
+          + ` in this server`), //prettier-ignore
       fields: [],
       color: Colors.Primary,
     },
-    // {
-    //   title: 'Other Commands',
-    //   description:
-    //     `${await commandMention(app, rankings_cmd_def)} **[name]** - Manage a ranking` +
-    //     `\n${await commandMention(app, help_cmd)} - Help`,
-    //   color: Colors.Secondary,
-    // },
   ]
 
   embeds[0].fields = await Promise.all(
     guild_rankings.map(async item => {
       return {
         name: escapeMd(item.ranking.data.name),
-        value: await guildRankingDetails(app, item.guild_ranking, item.ranking),
+        value: await guildRankingDetails(item.guild_ranking, item.ranking),
         inline: true,
       }
     }),
@@ -182,9 +121,10 @@ export async function allGuildRankingsPage(
       type: D.ComponentType.Button,
       label: item.ranking.data.name || 'Unnamed Ranking',
       style: D.ButtonStyle.Primary,
-      custom_id: ranking_settings_page_def
-        .getState({
+      custom_id: ranking_settings_page
+        .newState({
           ranking_id: item.ranking.data.id,
+          guild_id: item.guild_ranking.data.guild_id,
         })
         .cId(),
     }
@@ -213,9 +153,12 @@ export async function allGuildRankingsPage(
         components: [
           {
             type: D.ComponentType.Button,
-            style: D.ButtonStyle.Primary,
-            custom_id: ctx.state.set.component('btn:create').cId(),
-            label: 'Create a Ranking',
+            style: D.ButtonStyle.Success,
+            custom_id: create_ranking_view.newState({ callback: createRankingModal }).cId(),
+            label: 'Ranking',
+            emoji: {
+              name: '➕',
+            },
           },
         ],
       },
@@ -224,7 +167,6 @@ export async function allGuildRankingsPage(
 }
 
 export async function guildRankingDetails(
-  app: App,
   guild_ranking: GuildRanking,
   ranking: Ranking,
 ): Promise<string> {
@@ -238,39 +180,7 @@ export async function guildRankingDetails(
         guild_ranking.data.leaderboard_channel_id || '0',
         guild_ranking.data.leaderboard_message_id,
       )
-    : `Not displayed in a message anywhere`
+    : `Leaderboard not displayed anywhere`
 
   return `${display_message_msg}` + `\n${time_created_msg}`
-}
-
-export function rankingNameTextInput(
-  required: boolean = true,
-): D.APIActionRowComponent<D.APITextInputComponent> {
-  const example_names = [
-    `Smash 1v1`,
-    `Starcraft 2v2`,
-    `Valorant 5s`,
-    `Chess`,
-    `Ping Pong 1v1`,
-    `Ranked Customs 2v2`,
-    `Halo Comp 8s`,
-    `Chess Rapid`,
-    `Elden Ring League PC`,
-    `Rounds Battleground`,
-    `Ranked Brawl 2v2`,
-  ]
-  return {
-    type: D.ComponentType.ActionRow,
-    components: [
-      {
-        type: D.ComponentType.TextInput,
-        style: D.TextInputStyle.Short,
-        custom_id: 'name',
-        label: 'Name',
-        placeholder: `e.g. ${example_names[Math.floor(Math.random() * example_names.length)]}`,
-        max_length: max_ranking_name_length,
-        required,
-      },
-    ],
-  }
 }

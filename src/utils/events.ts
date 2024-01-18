@@ -1,5 +1,3 @@
-import { sentry } from '../request/sentry'
-
 export class Event<EventData> {
   callbacks: ((data: EventData) => Promise<void>)[] = []
 
