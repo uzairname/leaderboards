@@ -101,20 +101,18 @@ export async function allGuildRankingsPage(
           ? Messages.no_rankings_description
           : `You have **${guild_rankings.length}** ranking${guild_rankings.length === 1 ? `` : `s`}`
           + ` in this server`), //prettier-ignore
-      fields: [],
+      fields: await Promise.all(
+        guild_rankings.map(async item => {
+          return {
+            name: escapeMd(item.ranking.data.name),
+            value: await guildRankingDetails(app, item.guild_ranking, { queue_teams: true }),
+            inline: false,
+          }
+        }),
+      ),
       color: Colors.Primary,
     },
   ]
-
-  embeds[0].fields = await Promise.all(
-    guild_rankings.map(async item => {
-      return {
-        name: escapeMd(item.ranking.data.name),
-        value: await guildRankingDetails(item.guild_ranking, item.ranking),
-        inline: true,
-      }
-    }),
-  )
 
   const ranking_btns: D.APIButtonComponent[] = guild_rankings.map(item => {
     return {
@@ -167,20 +165,30 @@ export async function allGuildRankingsPage(
 }
 
 export async function guildRankingDetails(
+  app: App,
   guild_ranking: GuildRanking,
-  ranking: Ranking,
+  details?: {
+    queue_teams?: boolean
+  },
 ): Promise<string> {
+  const ranking = await guild_ranking.ranking
   const time_created = ranking.data.time_created
-  const time_created_msg = time_created ? `Created on ${dateTimestamp(time_created)}` : ``
 
-  // display link
-  const display_message_msg = guild_ranking.data.leaderboard_message_id
-    ? messageLink(
-        guild_ranking.data.guild_id,
-        guild_ranking.data.leaderboard_channel_id || '0',
-        guild_ranking.data.leaderboard_message_id,
-      )
-    : `Leaderboard not displayed anywhere`
+  return (
+    `- Match type: **` +new Array(ranking.data.num_teams).fill(ranking.data.players_per_team).join('v') + `**` 
+    + `\n- ` + (guild_ranking.data.leaderboard_message_id
+      ? messageLink(
+          guild_ranking.data.guild_id,
+          guild_ranking.data.leaderboard_channel_id || '0',
+          guild_ranking.data.leaderboard_message_id,
+        )
+      : `Leaderboard not displayed anywhere`) 
+    + (time_created ? `\n- Created on ${dateTimestamp(time_created)}` : ``) 
+    + (details?.queue_teams ? `\n- Teams in queue: ${await (async ()=>{
+      const queue_teams = await ranking.queueTeams()
+      return Object.keys(queue_teams).length
+    })()}` : ``)
 
-  return `${display_message_msg}` + `\n${time_created_msg}`
+    // prettier-ignore
+  )
 }

@@ -28,7 +28,7 @@ export async function getRegisterPlayer(
 
     player = await app.db.players.create(app_user, ranking, {
       time_created: new Date(),
-      name: discord_user.username,
+      name: discord_user.global_name,
       rating: nonNullable(ranking.data.elo_settings?.initial_rating, 'initial_rating'),
       rd: nonNullable(ranking.data.elo_settings?.initial_rd, 'initial_rd'),
     })

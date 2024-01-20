@@ -3,7 +3,7 @@ import { Ranking, Team, User } from '..'
 import { DbClient } from '../../client'
 import { DbErrors } from '../../errors'
 import { DbObject, DbObjectManager } from '../../managers'
-import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
+import { Players, QueueTeams, Rankings, TeamPlayers, Teams } from '../../schema'
 import { PlayerInsert, PlayerSelect } from '../../types'
 
 export class Player extends DbObject<PlayerSelect> {
@@ -36,6 +36,10 @@ export class Player extends DbObject<PlayerSelect> {
       .innerJoin(Teams, eq(Teams.id, TeamPlayers.team_id))
 
     return data.map(data => new Team(data.team, this.db))
+  }
+
+  get ranking(): Promise<Ranking> {
+    return this.db.rankings.get(this.data.ranking_id)
   }
 
   async queueTeams(): Promise<{ team: Team; in_queue: boolean }[]> {
@@ -119,6 +123,11 @@ export class PlayersManager extends DbObjectManager {
     const data = (await this.db.db.select().from(Players).where(eq(Players.id, id)))[0]
     if (!data) throw new DbErrors.NotFoundError(`Player ${id} doesn't exist`)
     return new Player(data, this.db)
+  }
+
+  async getByUser(user_id: string): Promise<Player[]> {
+    const data = await this.db.db.select().from(Players).where(eq(Players.user_id, user_id))
+    return data.map(data => new Player(data, this.db))
   }
 
   getPartial(id: number): PartialPlayer {

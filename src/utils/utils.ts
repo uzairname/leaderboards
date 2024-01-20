@@ -32,3 +32,21 @@ export function unflatten<T>(arr: T[], dim_2_size: number, full_rows = true): T[
     (_, i) => arr.slice(i * dim_2_size, (i + 1) * dim_2_size),
   )
 }
+
+// if greatest element is repeated, return undefined
+export function maxIndex(arr: number[]): number {
+  if (arr.length === 0) return -1
+  let max = arr[0]
+  let max_index = 0
+  let max_repeated = false
+  for (let i = 1; i < arr.length; i++) {
+    if (arr[i] > max) {
+      max = arr[i]
+      max_index = i
+      max_repeated = false
+    } else if (arr[i] === max) {
+      max_repeated = true
+    }
+  }
+  return max_repeated ? -1 : max_index
+}

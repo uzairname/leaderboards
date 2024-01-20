@@ -4,6 +4,7 @@ import { sentry } from '../../../../request/sentry'
 import { nonNullable } from '../../../../utils/utils'
 import { App } from '../../../app/app'
 import { AppErrors } from '../../../app/errors'
+import { default_elo_settings } from '../../rankings/manage_rankings'
 import { syncGuildRankingLbMessage } from '../../rankings/ranking_channels'
 import { getNewRatings } from './trueskill'
 
@@ -19,9 +20,8 @@ export async function recordAndScoreNewMatch(
   outcome: number[],
   time_started: Date = new Date(),
   metadata?: { [key: string]: any },
-) {
+): Promise<Match> {
   // add match
-  sentry.captureMessage('Recording match')
 
   validateNewMatch({
     ranking_id: ranking.data.id,
@@ -55,7 +55,7 @@ export async function recordAndScoreNewMatch(
   const new_player_ratings = getNewRatings(
     nonNullable(match.data.outcome, 'match outcome'),
     player_ratings_before,
-    nonNullable(ranking.data.elo_settings, 'elo settings'),
+    ranking.data.elo_settings ?? default_elo_settings,
   )
 
   // update player ratings in database
@@ -78,34 +78,8 @@ export async function recordAndScoreNewMatch(
   await app.events.MatchScored.emit(match)
 
   sentry.captureMessage('3')
-}
 
-/**
- * Retrieves the players of a match and calculates their new ratings based on the match result.
- * @param match - The match object.
- * @param ranking - The ranking object.
- * @returns A promise that resolves to the new ratings of the players.
- */
-export async function getAndCalculateMatchNewRatings(
-  match: Match,
-  ranking: Ranking,
-): Promise<ReturnType<typeof calculateMatchNewRatings>> {
-  const players = await match.players()
-
-  const player_ratings_before = players.map(t =>
-    t.map(p => {
-      return {
-        id: p.player.data.id,
-        rating: nonNullable(p.match_player.rating_before, 'rating before'),
-        rd: nonNullable(p.match_player.rd_before, 'rd before'),
-      }
-    }),
-  )
-  return calculateMatchNewRatings(
-    match,
-    player_ratings_before,
-    nonNullable(ranking.data.elo_settings),
-  )
+  return match
 }
 
 /**
@@ -119,7 +93,7 @@ export function calculateMatchNewRatings(
     rating: number
     rd: number
   }[][],
-  elo_settings?: { initial_rating?: number; initial_rd?: number },
+  elo_settings: { initial_rating?: number; initial_rd?: number },
 ): {
   player_id: number
   rating_before: number
@@ -130,7 +104,7 @@ export function calculateMatchNewRatings(
   const new_player_ratings = getNewRatings(
     nonNullable(match.data.outcome, 'match outcome'),
     players_before,
-    nonNullable(elo_settings),
+    elo_settings,
   )
 
   const result = players_before.map((t, team_num) =>
@@ -148,30 +122,43 @@ export function calculateMatchNewRatings(
   return result
 }
 
-export async function scoreRankingHistory(app: App, ranking: Ranking) {
+export async function scoreRankingHistory(
+  app: App,
+  ranking: Ranking,
+  starting_match: Match,
+  progress?: (scored: number, total: number) => void,
+) {
   /*
   update all players' score based on match history
   */
 
-  const matches = await ranking.latestMatches()
+  const matches = await app.db.matches.get({
+    ranking_ids: [ranking.data.id],
+    after: starting_match,
+  })
+
   const elo_settings = nonNullable(ranking.data.elo_settings, 'elo settings')
 
   let current_player_ratings: { [key: number]: { rating: number; rd: number } } = {}
 
-  matches.forEach(async match => {
+  matches.forEach(async (match, num) => {
     // get player ratings before
-    const player_ratings_before = nonNullable(match.data.team_players, 'team_players').map(team =>
-      team.map(player_id => {
-        return {
-          id: player_id,
-          rating: current_player_ratings[player_id]?.rating ?? elo_settings.initial_rating,
-          rd: current_player_ratings[player_id]?.rd ?? elo_settings.initial_rd,
-        }
-      }),
+    const player_ratings_before = nonNullable(match.match.data.team_players, 'team_players').map(
+      team =>
+        team.map(player_id => {
+          return {
+            id: player_id,
+            rating: current_player_ratings[player_id]?.rating ?? elo_settings.initial_rating,
+            rd: current_player_ratings[player_id]?.rd ?? elo_settings.initial_rd,
+          }
+        }),
     )
-    await match.update({ team_players_before: player_ratings_before })
 
-    const new_player_ratings = calculateMatchNewRatings(match, player_ratings_before, elo_settings)
+    const new_player_ratings = calculateMatchNewRatings(
+      match.match,
+      player_ratings_before,
+      elo_settings,
+    )
 
     // update current player ratings
     new_player_ratings.flat().forEach(player => {
@@ -180,22 +167,26 @@ export async function scoreRankingHistory(app: App, ranking: Ranking) {
         rd: player.rd_after,
       }
     })
+
+    progress?.(num, matches.length)
   })
 
   // update all players' ratings
-  await Promise.all(
-    Object.entries(current_player_ratings).map(async ([player_id, { rating, rd }]) => {
-      await app.db.players.getPartial(+player_id).update({ rating, rd })
-    }),
-  )
 
-  // update leaderboard messages
-  const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
-  await Promise.all(
-    guild_rankings.map(async guild_ranking => {
-      await syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)
-    }),
-  )
+  await Promise.all([
+    Promise.all(
+      Object.entries(current_player_ratings).map(async ([player_id, { rating, rd }]) => {
+        await app.db.players.getPartial(+player_id).update({ rating, rd })
+      }),
+    ),
+    Promise.all(
+      (await app.db.guild_rankings.get({ ranking_id: ranking.data.id })).map(
+        async guild_ranking => {
+          await syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)
+        },
+      ),
+    ),
+  ])
 }
 
 function validateNewMatch(data: { players: Player[][] } & Omit<MatchInsert, 'team_players'>) {

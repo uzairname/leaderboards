@@ -2,7 +2,7 @@ import * as D from 'discord-api-types/v10'
 import { CommandView, _, field, MessageView, StateContext } from '../../../discord-framework'
 import { ViewState } from '../../../discord-framework/interactions/view_state'
 import { sentry } from '../../../request/sentry'
-import { nonNullable } from '../../../utils/utils'
+import { maxIndex, nonNullable } from '../../../utils/utils'
 import { App } from '../../app/app'
 import { AppErrors } from '../../app/errors'
 import { findView } from '../../app/find_view'
@@ -44,17 +44,25 @@ export const testCommand = (app: App) =>
           data: { flags: D.MessageFlags.Ephemeral },
         },
         async ctx => {
-          const user = checkGuildInteraction(ctx.interaction).member.user
+          const matches = await Promise.all(
+            (
+              await app.db.matches.get({
+                player_ids: [33, 40],
+                ranking_ids: [17, 26],
+                limit_matches: 10,
+              })
+            ).map(async (item, idx) => {
+              // await app.bot.getChannel('1183169465232392202')
 
-          const ranking = await app.db.rankings.get(17)
-          await app.events.RankingLeaderboardUpdated.emit(ranking)
+              return {
+                match: item.match,
+                team_players: item.teams,
+              }
+            }),
+          )
 
-          // const embed = (await leaderboardMessage(ranking)).patchdata.embeds![0]
-
-          return void ctx.edit({
-            // embeds: [embed],
-            content: 'a',
-            // content: (await leaderboardMessage(ranking)).patchdata.content ?? undefined,
+          await ctx.edit({
+            content: 'done',
           })
         },
       )

@@ -40,7 +40,11 @@ export const queueView = (app: App) =>
         async ctx => {
           await onJoinQueue(app, ranking_id, interaction.member.user)
           ctx.state.save.last_active(new Date())
-          await app.bot.editMessage(interaction.channel!.id, interaction.message!.id, (await queueMessage(app, ranking_id, ctx)).patchdata)
+          await app.bot.editMessage(
+            interaction.channel!.id,
+            interaction.message!.id,
+            (await queueMessage(app, ranking_id, ctx)).patchdata,
+          )
         },
       )
     } else if (ctx.state.data.component == 'leave') {
@@ -61,7 +65,11 @@ export const queueView = (app: App) =>
     }
   })
 
-export async function queueMessage(app: App, ranking_id: number, ctx?: InteractionContext<typeof queue_message_def>): Promise<MessageData> {
+export async function queueMessage(
+  app: App,
+  ranking_id: number,
+  ctx?: InteractionContext<typeof queue_message_def>,
+): Promise<MessageData> {
   const state = ctx?.state ?? queue_message_def.newState({ ranking_id })
   const ranking = await app.db.rankings.get(ranking_id)
   return new MessageData({

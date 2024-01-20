@@ -1,14 +1,16 @@
 import * as D from 'discord-api-types/v10'
 import { type InferInsertModel, eq, and } from 'drizzle-orm'
-import { Guild, GuildRanking, Match, Ranking } from '../../../../database/models'
+import { Guild, GuildRanking, Match, Player, Ranking } from '../../../../database/models'
 import { MatchSummaryMessages } from '../../../../database/schema'
+import { MatchPlayerSelect } from '../../../../database/types'
 import { GuildChannelData, MessageData } from '../../../../discord-framework'
 import { sentry } from '../../../../request/sentry'
-import { nonNullable } from '../../../../utils/utils'
+import { maxIndex, nonNullable } from '../../../../utils/utils'
 import { App } from '../../../app/app'
-import { Colors, escapeMd } from '../../../messages/message_pieces'
+import { Colors, emojis, escapeMd, relativeTimestamp } from '../../../messages/message_pieces'
 import { communityEnabled, syncRankedCategory } from '../../guilds'
-import { getAndCalculateMatchNewRatings } from '../scoring/score_matches'
+import { default_elo_settings } from '../../rankings/manage_rankings'
+import { calculateMatchNewRatings } from '../scoring/score_matches'
 
 export function addMatchSummaryMessagesListeners(app: App): void {
   app.events.MatchScored.on(async match => {
@@ -67,10 +69,10 @@ async function syncMatchSummaryMessageInGuild(
         target_forum_id: guild.data.match_results_forum_id,
         body: {
           name: `Match #${match.data.number} in ${ranking.data.name}`,
-          message: (await matchSummaryMessageData(match)).postdata,
+          message: (await matchSummaryMessageData(app, match)).postdata,
         },
       }),
-      update_message: async () => (await matchSummaryMessageData(match)).patchdata,
+      update_message: async () => (await matchSummaryMessageData(app, match)).patchdata,
       new_forum: async () => matchSummaryChannelData(app, guild, true),
     })
 
@@ -109,7 +111,7 @@ async function syncMatchSummaryMessageInGuild(
       // default to the guild's match results text channel if the guild ranking doesn't have one
       target_channel_id: guild.data.match_results_textchannel_id,
       target_message_id: existing_message?.message_id,
-      messageData: async () => matchSummaryMessageData(match),
+      messageData: async () => matchSummaryMessageData(app, match),
       channelData: async () => matchSummaryChannelData(app, guild),
     })
 
@@ -145,35 +147,15 @@ async function syncMatchSummaryMessageInGuild(
   }
 }
 
-export async function matchSummaryMessageData(match: Match): Promise<MessageData> {
-  const ranking = await match.ranking()
-  const num_teams = nonNullable(ranking.data.num_teams)
-  const players = await match.players()
-  const player_ratings = await getAndCalculateMatchNewRatings(match, ranking)
-
-  const embed: D.APIEmbed = {
-    title: `Match #${match.data.number} in ${escapeMd(ranking.data.name)}`,
-    fields: new Array(num_teams).fill(0).map((_, i) => {
-      return {
-        name: `Team ${i + 1}`,
-        value: players[i]
-          .map((p, j) => {
-            return `<@${p.player.data.user_id}> (${player_ratings[i][j].rating_before.toFixed(
-              0,
-            )} → **${player_ratings[i][j].rating_after.toFixed(0)}**)`
-          })
-          .join('\n'),
-        inline: true,
-      }
-    }),
-    color: Colors.EmbedBackground,
-  }
-
+export async function matchSummaryMessageData(app: App, match: Match): Promise<MessageData> {
   return new MessageData({
-    content: `Match finished: ${players
-      .map(team => team.map(p => p.player.data.name).join(', '))
-      .join(' vs. ')}`,
-    embeds: [embed],
+    embeds: [
+      await matchSummaryEmbed(app, match, await match.teams(), {
+        ranking_name: true,
+        id: true,
+        time_finished: true,
+      }),
+    ],
   })
 }
 
@@ -260,4 +242,101 @@ export function matchSummaryChannelPermissionOverwrites(
       ).toString(),
     },
   ]
+}
+
+export async function matchSummaryEmbed(
+  app: App,
+  match: Match,
+  team_players: { player: Player; match_player: MatchPlayerSelect }[][],
+  options?: {
+    ranking_name?: boolean
+    id?: boolean
+    time_finished?: boolean
+    include_outcome_num?: boolean
+  },
+): Promise<D.APIEmbed> {
+  sentry.debug(
+    'team players,',
+    JSON.stringify(
+      team_players.map(t =>
+        t.map(p => {
+          return {
+            id: nonNullable(p.player.data.id, 'player id'),
+            rating: nonNullable(p.match_player.rating_before, 'rating before'),
+            rd: nonNullable(p.match_player.rd_before, 'rd before'),
+          }
+        }),
+      ),
+    ),
+    match.data.id,
+  )
+
+  const new_ratings = calculateMatchNewRatings(
+    match,
+    team_players.map(t =>
+      t.map(p => {
+        return {
+          id: nonNullable(p.player.data.id, 'player id'),
+          rating: nonNullable(p.match_player.rating_before, 'rating before'),
+          rd: nonNullable(p.match_player.rd_before, 'rd before'),
+        }
+      }),
+    ),
+    (await match.ranking()).data.elo_settings ?? default_elo_settings,
+  )
+
+  let details: string = options?.id ? `id: ${match.data.id}` : ''
+
+  const time_finished_str =
+    options?.time_finished && match.data.time_finished
+      ? `${relativeTimestamp(match.data.time_finished)}`
+      : ``
+
+  const winning_team_index = maxIndex(match.data.outcome ?? [])
+  const is_draw = winning_team_index === -1
+
+  const embed = {
+    title: (options?.ranking_name ? `${escapeMd((await match.ranking()).data.name)} ` : '') 
+      + `Match #${match.data.number}`
+      // If details only contains the time finished, put it in the title of the embed instead of a separate field.
+      + (time_finished_str 
+        ? (details
+          ? (() => {
+              (time_finished_str && (details = `Time finished: ${time_finished_str}\n` + details)); return ``
+            })()
+          : ` - ${time_finished_str}`) 
+        : ``)
+      ,
+    fields: [team_players.map((team, team_num) => {
+      const team_outcome = `${nonNullable(match.data.outcome, 'match outcome')[team_num]}`
+      return {
+        name:
+          (is_draw 
+            ? emojis.light_circle + (options?.include_outcome_num ? team_outcome : `Draw`)
+            : (team_num === winning_team_index 
+              ? emojis.green_triangle + (options?.include_outcome_num ? team_outcome : `Win`)
+              : emojis.red_triangle + (options?.include_outcome_num ? team_outcome : `Loss`)
+            )
+          ),
+        value: team
+          .map((player, player_num) => {
+            const rating_after_text =
+              new_ratings[team_num][player_num].rating_after.toFixed(0)
+            const diff =
+              new_ratings[team_num][player_num].rating_after -
+              nonNullable(player.match_player.rating_before)
+            const diff_text = (diff > 0 ? '+' : '') + diff.toFixed(0)
+            return `<@${player.player.data.user_id}> ${rating_after_text} *(${diff_text})*`
+          })
+          .join('\n'),
+        inline: true,
+      }
+    }), details ? [{
+      name: `Details`,
+      value: details,
+    }] : []].flat(),
+    color: Colors.EmbedBackground,
+  } // prettier-ignore
+
+  return embed
 }

@@ -1,6 +1,7 @@
 import { AnyView, FindViewCallback, isCommandView } from '../../discord-framework'
 import { helpCmd } from '../views/commands/help'
 import { leaderboardCmd } from '../views/commands/leaderboard'
+import { matchHistoryView } from '../views/commands/match_history'
 import { pointsCmd } from '../views/commands/points'
 import { createRankingCmd, createRankingView } from '../views/commands/rankings/create_ranking'
 import { rankingSettingsView } from '../views/commands/rankings/ranking_settings'
@@ -37,6 +38,7 @@ export function getAllViews(app: App): AnyView[] {
     pointsCmd(app), 
     queueView(app),
     statsCmd(app),
+    matchHistoryView(app),
   ].flat() // prettier-ignore
 
   if (app.config.features.ExperimentalViews) {

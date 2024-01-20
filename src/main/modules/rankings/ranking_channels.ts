@@ -86,7 +86,7 @@ export async function leaderboardMessage(ranking: Ranking): Promise<MessageData>
   const players = await ranking.getOrderedTopPlayers()
 
   let place = 0
-  const max_rating_len = players[0].data.rating?.toFixed(0).length ?? 0
+  const max_rating_len = players[0]?.data.rating?.toFixed(0).length ?? 0
   const players_text = players
     .filter(p => p.data.rating != null && p.data.rating != undefined)
     .map(p => {

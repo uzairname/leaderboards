@@ -32,4 +32,17 @@ export class UsersManager extends DbObjectManager {
       return new User(new_data, this.db)
     }
   }
+
+  async get(id: string): Promise<User | undefined> {
+    const cached_user = this.db.cache.users[id]
+    if (cached_user) {
+      return cached_user
+    }
+
+    const result = (await this.db.db.select().from(Users).where(eq(Users.id, id)))[0]
+
+    if (result) {
+      return new User(result, this.db)
+    }
+  }
 }

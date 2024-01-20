@@ -16,7 +16,7 @@ export function getNewRatings(
 
   const env = new TrueSkill(elo_settings.initial_rating, elo_settings.initial_rd)
 
-  sentry.debug(`elo settings ${JSON.stringify(elo_settings)}`)
+  sentry.debug(`players: ${JSON.stringify(players)}`)
 
   let player_ratings = players.map(team => {
     return team.map(player => {

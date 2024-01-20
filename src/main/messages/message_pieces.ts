@@ -76,3 +76,9 @@ export function inviteUrl(app: App): string {
 export function botAndOauthUrl(app: App): string {
   return app.config.env.BASE_URL + `/oauth` + app.config.OauthRoutes.BotAndRoleConnections
 }
+
+export const emojis = {
+  green_triangle: `<:green_triangle:1198069662353735740>`,
+  light_circle: `<:light_circle:1198070971513438269>`,
+  red_triangle: `<:red_triangle:1198069664153079878>`,
+}

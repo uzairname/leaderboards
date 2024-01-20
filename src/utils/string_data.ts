@@ -1,4 +1,5 @@
 import { sentry } from '../request/sentry'
+import { nonNullable } from './utils'
 
 export type StringDataSchema = {
   [k: string]: Field<unknown>
@@ -230,15 +231,18 @@ export class ListValueField<T> extends Field<T> {
   decompress = (value: string) => this.values[parseInt(value, 36)]
 }
 
-class ArrayField<T> extends Field<T[]> {
+class ArrayField<T> extends Field<NonNullable<T>[]> {
   constructor(private field: Field<T>) {
     super()
   }
-  compress = (value: T[]) => arrayToString(value.map(v => this.field.compress(v)))
-  decompress = (compressed: string) => stringToArray(compressed).map(v => this.field.decompress(v))
+  compress = (value: NonNullable<T>[]) => arrayToString(value.map(v => this.field.compress(v)))
+  decompress = (compressed: string) =>
+    stringToArray(compressed).map(v =>
+      nonNullable(this.field.decompress(v), 'decompressed list element'),
+    )
 }
 
-class StringField extends Field<string> {
+class StringField extends Field<string | undefined> {
   compress = (value: string) => value
   decompress = (value: string) => value
 }

@@ -15,6 +15,7 @@ import { assert, nonNullable, unflatten } from '../../../../utils/utils'
 import { App } from '../../../app/app'
 import { AppErrors, AppError } from '../../../app/errors'
 import { Colors, relativeTimestamp } from '../../../messages/message_pieces'
+import { matchSummaryEmbed } from '../../../modules/matches/match_logging/match_logging'
 import { recordAndScoreNewMatch } from '../../../modules/matches/scoring/score_matches'
 import { getRegisterPlayer } from '../../../modules/players'
 import { checkGuildInteraction, hasAdminPerms } from '../../utils/checks'
@@ -413,7 +414,10 @@ function onConfirmOutcomeBtn(
 ): ChatInteractionResponse {
   return ctx.defer(
     {
-      type: D.InteractionResponseType.DeferredMessageUpdate,
+      type: D.InteractionResponseType.UpdateMessage,
+      data: {
+        content: `Recording match...`,
+      },
     },
     async ctx => {
       if (ctx.state.is.admin()) {
@@ -605,30 +609,11 @@ async function recordMatchFromSelectedTeams(
     }),
   )
 
-  await recordAndScoreNewMatch(app, ranking, team_players, relative_scores)
-
-  const embed: D.APIEmbed = {
-    title: `Match recorded`,
-    description: `**${ranking.data.name}**`,
-    fields: [
-      {
-        name: 'Teams',
-        value: team_players
-          .map(team => {
-            return team
-              .map(player => `<@${player.data.user_id}>`)
-              .join(players_per_team == 1 ? ', ' : '\n')
-          })
-          .join('\n\n'),
-      },
-    ],
-    color: Colors.EmbedBackground,
-  }
+  const new_match = await recordAndScoreNewMatch(app, ranking, team_players, relative_scores)
 
   return {
-    content: `Recorded match`,
     components: [],
-    embeds: [embed],
+    embeds: [await matchSummaryEmbed(app, new_match, await new_match.teams(), { id: true })],
     flags: D.MessageFlags.Ephemeral,
   }
 }

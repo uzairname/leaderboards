@@ -91,7 +91,6 @@ export class Sentry extends Toucan {
       new Promise<void>((resolve, reject) => {
         const timeout_ms = 10000
         setTimeout(() => {
-          this.captureMessage(`Timeout after ${timeout_ms} ms`)
           reject(new TimeoutError(`"${request_name}" timed out after ${timeout_ms} ms`))
         }, timeout_ms)
 

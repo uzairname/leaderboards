@@ -93,7 +93,7 @@ export async function guildRankingSettingsPage(
 
   const embed: D.APIEmbed = {
     title: `${escapeMd(ctx.state.data.ranking_name)}`,
-    description: await guildRankingDetails(guild_ranking, ranking),
+    description: await guildRankingDetails(app, guild_ranking, { queue_teams: true }),
     color: Colors.EmbedBackground,
   }
 

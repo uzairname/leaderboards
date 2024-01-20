@@ -1,6 +1,6 @@
 import type { GuildRanking, Match, Player, Ranking } from '../../database/models'
 import { Event } from '../../utils/events'
-import { addMatchSummaryMessagesListeners } from '../modules/matches/match_logging/match_summary'
+import { addMatchSummaryMessagesListeners } from '../modules/matches/match_logging/match_logging'
 import { addRankingChannelsListeners } from '../modules/rankings/ranking_channels'
 import type { App } from './app'
 
