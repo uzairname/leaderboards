@@ -1,9 +1,64 @@
 {
   "version": "5",
   "dialect": "pg",
-  "id": "cb6a7381-9661-4cf9-98dd-388d86607f42",
-  "prevId": "01154bcb-b8f2-41a2-aa34-3e30129c9b2b",
+  "id": "a67eb7dd-3606-404e-8263-904af626125b",
+  "prevId": "cb6a7381-9661-4cf9-98dd-388d86607f42",
   "tables": {
+    "AccessTokens": {
+      "name": "AccessTokens",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data": {
+          "name": "data",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "time_created": {
+          "name": "time_created",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "AccessTokens_user_id_Users_id_fk": {
+          "name": "AccessTokens_user_id_Users_id_fk",
+          "tableFrom": "AccessTokens",
+          "tableTo": "Users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
     "ActiveMatches": {
       "name": "ActiveMatches",
       "schema": "",
@@ -830,8 +885,6 @@
   "_meta": {
     "schemas": {},
     "tables": {},
-    "columns": {
-      "\"Matches\".\"time_created\"": "\"Matches\".\"time_started\""
-    }
+    "columns": {}
   }
 }
