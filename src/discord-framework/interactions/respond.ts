@@ -6,8 +6,8 @@ import { findView_ } from './find_view'
 import {
   FindViewCallback,
   InteractionErrorCallback,
-  isChatInputCommandView,
-  isCommandView,
+  viewIsChatInputAppCommand,
+  viewIsAppCommand,
 } from './types'
 import { ViewErrors } from './utils/errors'
 import { verify } from './utils/verify'
@@ -39,7 +39,7 @@ export async function respondToInteraction(
   if (direct_response) {
     sentry.addBreadcrumb({
       category: 'response',
-      message: 'Sending initial interaction response',
+      message: 'Sending direct interaction response',
       level: 'info',
       data: { response: JSON.stringify(response) },
     })
@@ -72,12 +72,12 @@ async function respond(
     const view = await findView_(findView, interaction)
 
     if (interaction.type === D.InteractionType.ApplicationCommand) {
-      if (isCommandView(view)) return view.respondToCommand(interaction, bot, onError)
+      if (viewIsAppCommand(view)) return view.respondToCommand(interaction, bot, onError)
       throw new ViewErrors.InvalidViewType()
     }
 
     if (interaction.type === D.InteractionType.ApplicationCommandAutocomplete) {
-      if (isChatInputCommandView(view)) return view.respondToAutocomplete(interaction)
+      if (viewIsChatInputAppCommand(view)) return view.respondToAutocomplete(interaction)
       throw new ViewErrors.InvalidViewType()
     }
   }

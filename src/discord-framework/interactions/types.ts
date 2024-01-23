@@ -2,7 +2,7 @@ import * as D from 'discord-api-types/v10'
 import type { StringDataSchema } from '../../utils/string_data'
 import type { MessageData } from '../rest/objects'
 import type { ViewState } from './view_state'
-import { CommandView, MessageView, View } from './views'
+import { AppCommand, MessageView, View } from './views'
 
 export type AppCommandInteraction<CommandType extends D.ApplicationCommandType> =
   CommandType extends D.ApplicationCommandType.ChatInput
@@ -38,18 +38,18 @@ type InteractionResponse<InteractionType extends ChatInteraction> =
 
 export type AnyView = View<any>
 
-export type AnyCommandView = CommandView<any, D.ApplicationCommandType>
+export type AnyAppCommand = AppCommand<any, D.ApplicationCommandType>
 
-export type ChatInputCommandView = CommandView<any, D.ApplicationCommandType.ChatInput>
+export type ChatInputAppCommand = AppCommand<any, D.ApplicationCommandType.ChatInput>
 
 export type AnyMessageView = MessageView<any, any>
 
-export function isCommandView(view: AnyView): view is AnyCommandView {
-  return view instanceof CommandView
+export function viewIsAppCommand(view: AnyView): view is AnyAppCommand {
+  return view instanceof AppCommand
 }
 
-export function isChatInputCommandView(view: AnyView): view is ChatInputCommandView {
-  return isCommandView(view) && view.options.type === D.ApplicationCommandType.ChatInput
+export function viewIsChatInputAppCommand(view: AnyView): view is ChatInputAppCommand {
+  return viewIsAppCommand(view) && view.options.type === D.ApplicationCommandType.ChatInput
 }
 
 export type FindViewCallback = (
@@ -59,7 +59,7 @@ export type FindViewCallback = (
     guild_id?: string
   },
   custom_id_prefix?: string,
-) => Promise<AnyView | undefined>
+) => AnyView | undefined
 
 export type InteractionErrorCallback = (
   e: unknown,
@@ -117,7 +117,7 @@ export interface InitialInteractionContext<
 // Command
 export interface CommandContext<
   View extends AnyView,
-  Type extends D.ApplicationCommandType = View extends AnyCommandView
+  Type extends D.ApplicationCommandType = View extends AnyAppCommand
     ? View['options']['type']
     : D.ApplicationCommandType,
 > extends InitialInteractionContext<View, AppCommandInteraction<Type>> {}
@@ -146,7 +146,7 @@ export type ViewAutocompleteCallback<Type extends D.ApplicationCommandType> = (
 >
 
 // Command
-export type CommandCallback<View extends AnyCommandView> = (
+export type CommandCallback<View extends AnyAppCommand> = (
   ctx: CommandContext<View, View['options']['type']>,
 ) => Promise<CommandInteractionResponse>
 

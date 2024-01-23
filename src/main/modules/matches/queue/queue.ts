@@ -6,7 +6,7 @@ import { getRegisterPlayer } from '../../players'
  * When a user uses a command or button to join a global queue for a ranking.
  * User's team joins the queue. Or a new team with the user joins.
  */
-export async function onJoinQueue(
+export async function userJoinQueue(
   app: App,
   ranking_id: number,
   user: D.APIUser,
@@ -15,12 +15,11 @@ export async function onJoinQueue(
 }> {
   const ranking = await app.db.rankings.get(ranking_id)
   const player = await getRegisterPlayer(app, user, ranking)
-  const player_queue_teams = await player.queueTeams()
+  const player_queue_teams = await player.teams()
 
   if (player_queue_teams.length == 0) {
     // the player is not in a team. create a new team with the player and add it to the queue
-    const team = await app.db.teams.create(ranking, {}, [player])
-    await team.addToQueue()
+    ;(await app.db.teams.create(ranking, {}, [player])).addToQueue()
     return { rejoined: false }
   } else if (player_queue_teams.every(team => !team.in_queue)) {
     // the player is in at least one team, but none are in the queue.
@@ -44,7 +43,12 @@ export async function onJoinQueue(
 
 /**
  * When a user uses a command or button to leave queue.
+ * Returns the number of teams removed from the queue.
  */
-export async function onLeaveQueue(app: App, ranking_id: number, user: D.APIUser) {
-  ;(await app.db.players.get(user.id, ranking_id))?.removeTeamsFromQueue()
+export async function userLeaveQueue(
+  app: App,
+  ranking_id: number,
+  user: D.APIUser,
+): Promise<number | undefined> {
+  return (await app.db.players.get(user.id, ranking_id))?.removeTeamsFromQueue()
 }

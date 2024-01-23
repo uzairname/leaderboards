@@ -151,7 +151,7 @@ export abstract class View<TSchema extends StringDataSchema> {
   }
 }
 
-export class CommandView<
+export class AppCommand<
   TSchema extends StringDataSchema,
   CommandType extends D.ApplicationCommandType,
 > extends View<TSchema> {
@@ -160,7 +160,6 @@ export class CommandView<
       ? D.RESTPostAPIChatInputApplicationCommandsJSONBody
       : D.RESTPostAPIContextMenuApplicationCommandsJSONBody) & {
       type: CommandType
-      guild_id?: string
       state_schema?: TSchema
       custom_id_prefix?: string
     },

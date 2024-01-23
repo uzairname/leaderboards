@@ -1,32 +1,31 @@
 import * as D from 'discord-api-types/v10'
-import { check } from 'drizzle-orm/mysql-core'
 import {
   ChatInteractionResponse,
-  CommandView,
+  AppCommand,
   ComponentContext,
   InteractionContext,
   field,
 } from '../../../discord-framework'
 import { App } from '../../app/app'
 import { Colors } from '../../messages/message_pieces'
+import { match_history_view_def } from '../../modules/matches/match_logging/matches_view'
+import { ViewModule, globalView } from '../../modules/view_manager/view_module'
 import { checkGuildInteraction } from '../utils/checks'
-import { match_history_view } from './match_history'
 
-const options = {
+const option_names = {
   user: 'user',
 }
 
-export const stats_cmd = new CommandView({
+export const stats_cmd = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
   custom_id_prefix: 'st',
   name: 'stats',
   description: `View a player's stats`,
   options: [
     {
-      name: options.user,
+      name: option_names.user,
       description: 'Leave blank to view your own stats',
       type: D.ApplicationCommandOptionType.User,
-      required: false,
     },
   ],
   state_schema: {
@@ -42,7 +41,7 @@ export const statsCmd = (app: App) =>
   stats_cmd
     .onCommand(async ctx => {
       const user_option_value = (
-        ctx.interaction.data.options?.find(o => o.name === options.user) as
+        ctx.interaction.data.options?.find(o => o.name === option_names.user) as
           | D.APIApplicationCommandInteractionDataStringOption
           | undefined
       )?.value
@@ -107,7 +106,7 @@ async function mainPageData(
             type: D.ComponentType.Button,
             label: `Matches`,
             style: D.ButtonStyle.Primary,
-            custom_id: match_history_view
+            custom_id: match_history_view_def
               .newState({
                 ranking_ids: ctx.state.data.selected_ranking_id
                   ? [ctx.state.data.selected_ranking_id]
@@ -131,3 +130,5 @@ async function mainPage(
     data: await mainPageData(app, ctx),
   }
 }
+
+export const stats_module = new ViewModule([globalView(statsCmd)])

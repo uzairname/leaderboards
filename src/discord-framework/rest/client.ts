@@ -102,7 +102,7 @@ export class DiscordAPIClient extends REST {
     }
   }
 
-  async getChannel(channel_id: string) {
+  async getChannel(channel_id: string): Promise<D.APIChannel> {
     return (await this.fetch(
       RequestMethod.Get,
       D.Routes.channel(channel_id),

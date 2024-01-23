@@ -42,4 +42,6 @@ export namespace AppErrors {
   }
 
   export class InvalidViews extends AppError {}
+
+  export class Warning extends AppError {}
 }

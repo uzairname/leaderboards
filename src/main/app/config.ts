@@ -7,7 +7,6 @@ export const features = (environment: string) => {
     RoleConnectionsMetadata: dev,
     QueueMessage: dev,
     HelpReference: dev,
-    EloSettings: dev,
 
     ExperimentalViews: dev,
     DevGuildCommands: dev,

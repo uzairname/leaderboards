@@ -68,7 +68,8 @@ export const GuildRankings = pgTable('GuildRankings', {
 }})
 
 
-export const player_cols = {
+
+export const Players = pgTable('Players', {
   id: serial('id').primaryKey(),
   user_id: text('user_id').notNull().references(() => Users.id, { onDelete: 'cascade' }),
   ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, { onDelete: 'cascade' }),
@@ -77,10 +78,7 @@ export const player_cols = {
   rating: real('rating'),
   rd: real('rd'),
   stats: jsonb('stats'),
-}
-export const Players = pgTable('Players', 
-  player_cols, 
-  (table) => { return {
+}, (table) => { return {
   user_idx: index('player_user_id_index').on(table.user_id),
   ranking_idx: index('player_ranking_id_index').on(table.ranking_id),
 }})
@@ -121,7 +119,8 @@ export const ActiveMatches = pgTable('ActiveMatches', {
   message_id: text('message_id'),
 })
 
-export const match_cols = {
+
+export const Matches = pgTable('Matches', {
   id: serial('id').primaryKey(),
   ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, {onDelete: 'cascade'}),
   number: integer('number'),
@@ -130,10 +129,7 @@ export const match_cols = {
   time_finished: timestamp('time_finished'),
   outcome: jsonb('outcome').$type<number[]>(),
   metadata: jsonb('metadata'),
-}
-export const Matches = pgTable('Matches', 
-  match_cols, 
-  (table) => { return {
+}, (table) => { return {
   ranking_idx: index('match_ranking_id_index').on(table.ranking_id),
 }})
 
@@ -148,16 +144,13 @@ export const MatchSummaryMessages = pgTable('MatchSummaryMessages', {
 }})
 
 
-export const match_player_cols = {
+export const MatchPlayers = pgTable('MatchPlayers', {
   match_id: integer('match_id').notNull().references(() => Matches.id, { onDelete: 'cascade' }),
   player_id: integer('player_id').notNull().references(() => Players.id, { onDelete: 'cascade' }),
   team_num: integer('team_num'),
   rating_before: real('rating_before'),
   rd_before: real('rd_before'),
   time_created: timestamp('time_created').defaultNow(),
-}
-export const MatchPlayers = pgTable('MatchPlayers', 
-  match_player_cols, 
-  (table) => { return {
+}, (table) => { return {
   cpk: primaryKey(table.match_id, table.player_id),
 }})

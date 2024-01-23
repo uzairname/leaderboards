@@ -7,7 +7,13 @@ import { GuildChannelData, MessageData } from '../../../../discord-framework'
 import { sentry } from '../../../../request/sentry'
 import { maxIndex, nonNullable } from '../../../../utils/utils'
 import { App } from '../../../app/app'
-import { Colors, emojis, escapeMd, relativeTimestamp } from '../../../messages/message_pieces'
+import {
+  Colors,
+  emojis,
+  escapeMd,
+  messageLink,
+  relativeTimestamp,
+} from '../../../messages/message_pieces'
 import { communityEnabled, syncRankedCategory } from '../../guilds'
 import { default_elo_settings } from '../../rankings/manage_rankings'
 import { calculateMatchNewRatings } from '../scoring/score_matches'
@@ -285,7 +291,7 @@ export async function matchSummaryEmbed(
     (await match.ranking()).data.elo_settings ?? default_elo_settings,
   )
 
-  let details: string = options?.id ? `id: ${match.data.id}` : ''
+  let details: string = options?.id ? `id: \`${match.data.id}\`` : ''
 
   const time_finished_str =
     options?.time_finished && match.data.time_finished
@@ -302,7 +308,7 @@ export async function matchSummaryEmbed(
       + (time_finished_str 
         ? (details
           ? (() => {
-              (time_finished_str && (details = `Time finished: ${time_finished_str}\n` + details)); return ``
+              (time_finished_str && (details = `Finished ${time_finished_str}\n` + details)); return ``
             })()
           : ` - ${time_finished_str}`) 
         : ``)

@@ -3,17 +3,21 @@ import { Ranking } from '../../../database/models'
 import {
   CommandContext,
   CommandInteractionResponse,
-  CommandView,
+  AppCommand,
   field,
   _,
 } from '../../../discord-framework'
 import { nonNullable } from '../../../utils/utils'
 import { App } from '../../app/app'
 import { AppError } from '../../app/errors'
+import { allGuildRankingsPage } from '../../modules/rankings/rankings_commands/all_rankings'
+import {
+  createRankingModal,
+  create_ranking_view_def,
+} from '../../modules/rankings/rankings_commands/create_ranking'
+import { rankings_cmd_def } from '../../modules/rankings/rankings_commands/rankings_cmd'
 import { checkGuildInteraction, ensureAdminPerms } from '../utils/checks'
 import { rankingsAutocomplete } from '../utils/common'
-import { createRankingModal, create_ranking_view } from './rankings/create_ranking'
-import { allGuildRankingsPage, rankings_cmd_def } from './rankings/rankings_cmd'
 
 const optionnames = {
   ranking: 'for',
@@ -21,7 +25,7 @@ const optionnames = {
   player2: 'player-2',
 }
 
-const start_match_command = new CommandView({
+const start_match_command = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
   name: 'startmatch',
   description: 'description',
@@ -31,20 +35,17 @@ const start_match_command = new CommandView({
       name: optionnames.ranking,
       description: `Ranking to record the match for (Leave blank for default)`,
       type: D.ApplicationCommandOptionType.String,
-      required: false,
       autocomplete: true,
     },
     {
       name: optionnames.player1,
       description: `Player 1 (Optional if more than 2 players)`,
       type: D.ApplicationCommandOptionType.User,
-      required: false,
     },
     {
       name: optionnames.player2,
       description: `Player 2 (Optional if more than 2 players)`,
       type: D.ApplicationCommandOptionType.User,
-      required: false,
     },
   ],
   state_schema: {
@@ -78,7 +79,7 @@ async function onCommand(
   )?.value
 
   if (ranking_option_value == 'create') {
-    return createRankingModal(app, { state: create_ranking_view.newState({}) })
+    return createRankingModal(app, { state: create_ranking_view_def.newState({}) })
   }
 
   await ensureAdminPerms(app, ctx)

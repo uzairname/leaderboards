@@ -4,12 +4,12 @@ import { sentry } from '../../../../request/sentry'
 import { nonNullable } from '../../../../utils/utils'
 import { App } from '../../../app/app'
 import { AppErrors } from '../../../app/errors'
+import { syncGuildRankingLbMessage } from '../../leaderboard/leaderboard_messages'
 import { default_elo_settings } from '../../rankings/manage_rankings'
-import { syncGuildRankingLbMessage } from '../../rankings/ranking_channels'
 import { getNewRatings } from './trueskill'
 
 /**
- * Record a completed match. create a new Match. Update everyone's scores.
+ * Records a new match from players, outcome, and metadata. Updates players' scores.
  * @param team_player_ids list of player ids for each team
  * @param outcome relative team scores
  */

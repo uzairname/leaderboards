@@ -1,17 +1,23 @@
 import * as D from 'discord-api-types/v10'
 import {
+  AnyView,
+  ChatInteraction,
   ChatInteractionResponse,
   ComponentContext,
+  InitialInteractionContext,
   InteractionContext,
   MessageView,
   StateContext,
+  StringDataSchema,
+  View,
   _,
   field,
 } from '../../../discord-framework'
 import { ViewState } from '../../../discord-framework/interactions/view_state'
 import { App } from '../../app/app'
 import { AppErrors } from '../../app/errors'
-import { findView } from '../../app/find_view'
+import { findView } from '../../modules/view_manager/manage_views'
+import { ViewModule, globalView } from '../../modules/view_manager/view_module'
 import { checkGuildInteraction } from '../utils/checks'
 
 export const select_channel_view = new MessageView({
@@ -33,8 +39,8 @@ export const select_channel_view = new MessageView({
   },
 })
 
-export const selectChannelView = (app: App) =>
-  select_channel_view.onComponent(async ctx => {
+function selectChannelView(app: App) {
+  return select_channel_view.onComponent(async ctx => {
     if (ctx.state.is.callback()) return ctx.state.get('callback')(app, ctx)
 
     return ctx.defer(
@@ -46,10 +52,28 @@ export const selectChannelView = (app: App) =>
       },
     )
   })
+}
+
+export async function sendSelectChannelPage(
+  app: App,
+  interaction: ChatInteraction,
+  data: ViewState<typeof select_channel_view.state_schema>['data'],
+  message?: string,
+): Promise<D.APIInteractionResponseCallbackData> {
+  return await selectChannelPage(
+    app,
+    {
+      interaction,
+      state: select_channel_view.newState(data),
+    },
+    message,
+  )
+}
 
 async function selectChannelPage(
   app: App,
   ctx: InteractionContext<typeof select_channel_view>,
+  message?: string,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const channels = (
     await app.bot.getGuildChannels(checkGuildInteraction(ctx.interaction).guild_id)
@@ -80,36 +104,35 @@ async function selectChannelPage(
     ]
   }
 
-  if (channels.length <= 25) {
-    return {
-      content: ctx.state.is.selected_channel_id()
+  return {
+    content:
+      (message ? `${message}\n` : ``) +
+      (ctx.state.is.selected_channel_id()
         ? `Selected channel: <#${ctx.state.data.selected_channel_id}>`
-        : ``,
-      embeds: [],
-      components: [
-        {
-          type: D.ComponentType.ActionRow,
-          components: [
-            {
-              type: D.ComponentType.StringSelect,
-              custom_id: ctx.state.set.callback(onSelectChannel).cId(),
-              placeholder: 'select a channel',
-              options: channels.map(c => ({
-                label: c.name ?? 'unknown',
-                value: c.id,
-                default: ctx.state.data.selected_channel_id === c.id,
-              })),
-            },
-          ],
-        },
-        {
-          type: D.ComponentType.ActionRow,
-          components: btns,
-        },
-      ],
-    }
-  } else {
-    throw new AppErrors.NotImplimented()
+        : ``),
+    embeds: [],
+    components: [
+      {
+        type: D.ComponentType.ActionRow,
+        components: [
+          {
+            type: D.ComponentType.StringSelect,
+            custom_id: ctx.state.set.callback(onSelectChannel).cId(),
+            placeholder: 'select a channel',
+            options: channels.map(c => ({
+              label: c.name ?? 'unknown',
+              value: c.id,
+              default: ctx.state.data.selected_channel_id === c.id,
+            })),
+          },
+        ],
+      },
+      {
+        type: D.ComponentType.ActionRow,
+        components: btns,
+      },
+    ],
+    flags: D.MessageFlags.Ephemeral,
   }
 }
 
@@ -152,3 +175,5 @@ function onSelectChannel(
     async ctx => ctx.edit(await selectChannelPage(app, ctx)),
   )
 }
+
+export const utility_views = new ViewModule([globalView(selectChannelView)])

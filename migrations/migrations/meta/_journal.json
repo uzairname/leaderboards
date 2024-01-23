@@ -26,50 +26,8 @@
     {
       "idx": 3,
       "version": "5",
-      "when": 1702416192629,
-      "tag": "0003_dashing_selene",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1702418900860,
-      "tag": "0004_complete_sir_ram",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "5",
-      "when": 1702795740471,
-      "tag": "0005_gigantic_toad_men",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "5",
-      "when": 1702795749586,
-      "tag": "0006_minor_skin",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "5",
-      "when": 1702967813935,
-      "tag": "0007_sturdy_shotgun",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "5",
-      "when": 1703306637941,
-      "tag": "0008_parallel_skreet",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "5",
-      "when": 1705476417212,
-      "tag": "0009_old_wolverine",
+      "when": 1706043094506,
+      "tag": "0003_furry_morbius",
       "breakpoints": true
     }
   ]

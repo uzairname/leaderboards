@@ -1,30 +1,23 @@
 import * as D from 'discord-api-types/v10'
-import { CommandView, field } from '../../../discord-framework'
+import { AppCommand, field } from '../../../discord-framework'
 import { nonNullable } from '../../../utils/utils'
 import { App } from '../../app/app'
 import { AppError } from '../../app/errors'
-import { leaderboardMessage } from '../../modules/rankings/ranking_channels'
-import { checkGuildInteraction } from '../utils/checks'
-import { rankingsAutocomplete } from '../utils/common'
-import { allGuildRankingsPage, rankings_cmd_def } from './rankings/rankings_cmd'
+import { checkGuildInteraction } from '../../views/utils/checks'
+import { guildRankingsOptionChoices, rankingsAutocomplete } from '../../views/utils/common'
+import { allGuildRankingsPage } from '../rankings/rankings_commands/all_rankings'
+import { rankings_cmd_def } from '../rankings/rankings_commands/rankings_cmd'
+import { ViewModule, guildCommand } from '../view_manager/view_module'
+import { leaderboardMessage } from './leaderboard_messages'
 
 const optionnames = {
   ranking: 'ranking',
 }
 
-const leaderboard_cmd = new CommandView({
+const leaderboard_cmd = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
   custom_id_prefix: 'lb',
   name: 'leaderboard',
-  options: [
-    {
-      type: D.ApplicationCommandOptionType.Integer,
-      name: optionnames.ranking,
-      description: 'The ranking to show the leaderboard for',
-      required: false,
-      autocomplete: true,
-    },
-  ],
   description: 'All about this bot',
 
   state_schema: {
@@ -32,6 +25,21 @@ const leaderboard_cmd = new CommandView({
     ranking_id: field.Int(),
   },
 })
+
+const leaderboardCmdDef = async (app: App, guild_id?: string) =>
+  guild_id
+    ? new AppCommand({
+        ...leaderboard_cmd.options,
+        options: [
+          {
+            name: optionnames.ranking,
+            type: D.ApplicationCommandOptionType.String,
+            description: 'Select a ranking',
+            choices: await guildRankingsOptionChoices(app, guild_id, false),
+          },
+        ],
+      })
+    : undefined
 
 export const leaderboardCmd = (app: App) =>
   leaderboard_cmd
@@ -80,3 +88,5 @@ export const leaderboardCmd = (app: App) =>
         },
       )
     })
+
+export const leaderboard = new ViewModule([guildCommand(leaderboardCmd, leaderboardCmdDef)])

@@ -1,6 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import {
-  CommandView,
+  AppCommand,
   field,
   _,
   InteractionContext,
@@ -9,10 +9,11 @@ import {
 import { App } from '../../app/app'
 import { AppErrors } from '../../app/errors'
 import { getOrAddGuild, syncGuildAdminRole } from '../../modules/guilds'
+import { rankings_cmd_def } from '../../modules/rankings/rankings_commands/rankings_cmd'
+import { ViewModule, globalView } from '../../modules/view_manager/view_module'
 import { checkGuildInteraction, ensureAdminPerms } from '../utils/checks'
-import { rankings_cmd_def } from './rankings/rankings_cmd'
 
-const settings_cmd = new CommandView({
+export const settings_cmd_def = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
 
   custom_id_prefix: 's',
@@ -27,8 +28,8 @@ const settings_cmd = new CommandView({
   },
 })
 
-export const settingsCmd = (app: App) =>
-  settings_cmd
+const settingsCmd = (app: App) =>
+  settings_cmd_def
     .onCommand(async ctx => {
       return {
         type: D.InteractionResponseType.ChannelMessageWithSource,
@@ -63,7 +64,7 @@ export const settingsCmd = (app: App) =>
 
 async function onAdminRoleBtn(
   app: App,
-  ctx: InteractionContext<typeof settings_cmd>,
+  ctx: InteractionContext<typeof settings_cmd_def>,
 ): Promise<ChatInteractionResponse> {
   await ensureAdminPerms(app, ctx)
 
@@ -90,3 +91,5 @@ async function onAdminRoleBtn(
     },
   }
 }
+
+export const settings = new ViewModule([globalView(settingsCmd)])

@@ -1,3 +1,4 @@
+import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { Guild } from '../../database/models'
 import { GuildChannelData, RoleData } from '../../discord-framework'
@@ -19,6 +20,32 @@ export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> 
 export async function communityEnabled(app: App, guild_id: string): Promise<boolean> {
   const discord_guild = await app.bot.getGuild(guild_id)
   return discord_guild.features.includes(D.GuildFeature.Community)
+}
+
+export async function guildMatchLogsChannelType(
+  app: App,
+  guild_id: string,
+): Promise<'forum' | 'text'> {
+  return (await communityEnabled(app, guild_id)) ? 'forum' : 'text'
+}
+
+export async function getMatchLogsChannel(
+  app: App,
+  guild_id: string,
+): Promise<D.APIChannel | undefined> {
+  const guild = await getOrAddGuild(app, guild_id)
+  const channel_id =
+    (await guildMatchLogsChannelType(app, guild_id)) == 'forum'
+      ? guild.data.match_results_forum_id
+      : guild.data.match_results_textchannel_id
+  if (channel_id)
+    try {
+      return await app.bot.getChannel(channel_id)
+    } catch (e) {
+      if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.UnknownChannel)
+        return undefined
+      throw e
+    }
 }
 
 export async function syncRankedCategory(

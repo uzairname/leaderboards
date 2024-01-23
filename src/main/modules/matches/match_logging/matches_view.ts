@@ -1,50 +1,51 @@
 import * as D from 'discord-api-types/v10'
-import { MessageView, field } from '../../../discord-framework'
-import { ViewState } from '../../../discord-framework/interactions/view_state'
-import { App } from '../../app/app'
-import { Colors } from '../../messages/message_pieces'
-import { matchSummaryEmbed } from '../../modules/matches/match_logging/match_logging'
+import { MessageView, field } from '../../../../discord-framework'
+import { ViewState } from '../../../../discord-framework/interactions/view_state'
+import { App } from '../../../app/app'
+import { Colors } from '../../../messages/message_pieces'
+import { ViewModule, globalView, guildCommand } from '../../view_manager/view_module'
+import { matchSummaryEmbed } from './match_logging'
+import { matchesCommand, matchesCommandDef } from './matches_command'
 
-export const match_history_view = new MessageView({
+export const match_history_view_def = new MessageView({
   custom_id_prefix: 'mh',
   name: 'match history',
   state_schema: {
     on_page: field.Bool(),
     ranking_ids: field.Array(field.Int()),
     player_ids: field.Array(field.Int()),
+    user_ids: field.Array(field.String()),
     page: field.Int(),
-    // callback: field.Choice({
-    //   mainPage,
-    // })
   },
 })
 
 export const matchHistoryView = (app: App) =>
-  match_history_view.onComponent(async ctx => {
+  match_history_view_def.onComponent(async ctx => {
     return ctx.defer(
       {
         type: D.InteractionResponseType.DeferredMessageUpdate,
       },
       async ctx => {
         return void (ctx.state.data.on_page ? ctx.edit : ctx.followup)({
-          ...(await mainPageData(app, ctx.state.set.on_page(true))),
+          ...(await matchesPage(app, ctx.state.set.on_page(true))),
           flags: D.MessageFlags.Ephemeral,
         })
       },
     )
   })
 
-async function mainPageData(
+export async function matchesPage(
   app: App,
-  state?: ViewState<typeof match_history_view.state_schema>,
+  state?: ViewState<typeof match_history_view_def.state_schema>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  state = state ?? match_history_view.newState()
+  state = state ?? match_history_view_def.newState()
 
   const matches_per_page = 5
 
   const matches = await Promise.all(
     await app.db.matches.get({
       player_ids: state.data.player_ids,
+      user_ids: state.data.user_ids,
       ranking_ids: state.data.ranking_ids,
       limit_matches: matches_per_page,
       offset: (state.data.page ?? 0) * matches_per_page,
@@ -92,3 +93,8 @@ async function mainPageData(
     ],
   }
 }
+
+export const match_history_module = new ViewModule([
+  globalView(matchHistoryView, true),
+  guildCommand(matchesCommand, matchesCommandDef, true),
+])

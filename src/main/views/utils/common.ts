@@ -54,3 +54,25 @@ export function rankingsAutocomplete(
     return response
   }
 }
+
+export async function guildRankingsOptionChoices(
+  app: App,
+  guild_id: string,
+  create_ranking_option?: boolean,
+): Promise<D.APIApplicationCommandOptionChoice<string>[]> {
+  const choices = await app.db.guild_rankings.get({ guild_id }).then(guild_rankings =>
+    guild_rankings.map(item => ({
+      name: item.ranking.data.name ?? 'Unnamed Ranking',
+      value: item.ranking.data.id.toString(),
+    })),
+  )
+
+  if (create_ranking_option || choices.length == 0) {
+    choices.push({
+      name: 'Create a new ranking',
+      value: create_choice_value,
+    })
+  }
+
+  return choices
+}

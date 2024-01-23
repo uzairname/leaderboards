@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "pg",
-  "id": "779d1d10-8961-4e8b-98b1-cbe90e3b0d31",
+  "id": "7223430c-412d-4406-80db-f630914cba28",
   "prevId": "01154bcb-b8f2-41a2-aa34-3e30129c9b2b",
   "tables": {
     "AccessTokens": {
@@ -10,7 +10,7 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "text",
+          "type": "serial",
           "primaryKey": true,
           "notNull": true
         },
@@ -24,13 +24,20 @@
           "name": "data",
           "type": "jsonb",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "purpose": {
-          "name": "purpose",
-          "type": "text",
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
+        },
+        "time_created": {
+          "name": "time_created",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
         }
       },
       "indexes": {},
@@ -172,27 +179,9 @@
           "primaryKey": false,
           "notNull": false
         },
-        "match_results_textchannel_id": {
-          "name": "match_results_textchannel_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "match_results_forum_id": {
-          "name": "match_results_forum_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "queue_channel_id": {
-          "name": "queue_channel_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "queue_message_id": {
-          "name": "queue_message_id",
-          "type": "text",
+        "display_settings": {
+          "name": "display_settings",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         }
@@ -457,19 +446,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "time_created": {
-          "name": "time_created",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "now()"
-        },
-        "time_finished": {
-          "name": "time_finished",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
         "number": {
           "name": "number",
           "type": "integer",
@@ -479,6 +455,18 @@
         "team_players": {
           "name": "team_players",
           "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_started": {
+          "name": "time_started",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_finished": {
+          "name": "time_finished",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false
         },
@@ -495,7 +483,15 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "match_ranking_id_index": {
+          "name": "match_ranking_id_index",
+          "columns": [
+            "ranking_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "Matches_ranking_id_Rankings_id_fk": {
           "name": "Matches_ranking_id_Rankings_id_fk",
@@ -870,6 +866,12 @@
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
+        },
+        "linked_roles_ranking_id": {
+          "name": "linked_roles_ranking_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -883,6 +885,8 @@
   "_meta": {
     "schemas": {},
     "tables": {},
-    "columns": {}
+    "columns": {
+      "\"Matches\".\"time_created\"": "\"Matches\".\"time_started\""
+    }
   }
 }

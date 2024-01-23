@@ -10,8 +10,9 @@ import {
 } from '../../../discord-framework'
 import { App } from '../../app/app'
 import { AppErrors } from '../../app/errors'
-import { Colors, relativeTimestamp } from '../../messages/message_pieces'
-import { onJoinQueue, onLeaveQueue } from '../../modules/matches/matchmaking/queue'
+import { Colors, escapeMd, relativeTimestamp } from '../../messages/message_pieces'
+import { userJoinQueue, userLeaveQueue } from '../../modules/matches/queue/queue'
+import { ViewModule, globalView } from '../../modules/view_manager/view_module'
 import { checkGuildInteraction } from '../utils/checks'
 
 const queue_message_def = new MessageView({
@@ -31,33 +32,38 @@ export const queueView = (app: App) =>
     if (ctx.state.is.component('join')) {
       return ctx.defer(
         {
-          type: D.InteractionResponseType.ChannelMessageWithSource,
-          data: {
-            content: 'Joined Queue',
-            flags: D.MessageFlags.Ephemeral,
-          },
+          type: D.InteractionResponseType.DeferredChannelMessageWithSource,
+          data: { flags: D.MessageFlags.Ephemeral },
         },
         async ctx => {
-          await onJoinQueue(app, ranking_id, interaction.member.user)
+          await userJoinQueue(app, ranking_id, interaction.member.user)
           ctx.state.save.last_active(new Date())
-          await app.bot.editMessage(
-            interaction.channel!.id,
-            interaction.message!.id,
-            (await queueMessage(app, ranking_id, ctx)).patchdata,
-          )
+
+          await Promise.all([
+            app.bot.editMessage(
+              interaction.channel!.id,
+              interaction.message!.id,
+              (await queueMessage(app, ranking_id, ctx)).patchdata,
+            ),
+            ctx.edit({
+              content: 'You joined the queue',
+            }),
+          ])
         },
       )
     } else if (ctx.state.data.component == 'leave') {
       return ctx.defer(
         {
-          type: D.InteractionResponseType.ChannelMessageWithSource,
+          type: D.InteractionResponseType.DeferredChannelMessageWithSource,
           data: {
-            content: 'Left queue',
             flags: D.MessageFlags.Ephemeral,
           },
         },
         async ctx => {
-          await onLeaveQueue(app, ranking_id, interaction.member.user)
+          const teams_removed = await userLeaveQueue(app, ranking_id, interaction.member.user)
+          await ctx.edit({
+            content: teams_removed ? 'You left the queue' : `You're not in the queue`,
+          })
         },
       )
     } else {
@@ -75,8 +81,10 @@ export async function queueMessage(
   return new MessageData({
     embeds: [
       {
-        title: `${ranking.data.name} Queue`,
-        description: `Join or leave the matchmaking queue for ${ranking.data.name} here`
+        title: `${escapeMd(ranking.data.name)} Queue`,
+        description: 
+          `Join or leave the ${new Array(ranking.data.num_teams).fill(ranking.data.players_per_team).join('v')}`
+            + ` matchmaking queue for ${ranking.data.name}`
           + `\nLast active: ${state.data.last_active ? relativeTimestamp(state.data.last_active) : `never`}`, //prettier-ignore
         color: Colors.EmbedBackground,
       },
@@ -102,3 +110,5 @@ export async function queueMessage(
     ],
   })
 }
+
+export const queue_module = new ViewModule([globalView(queueView, true)])

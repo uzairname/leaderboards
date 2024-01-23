@@ -1,5 +1,5 @@
 import * as D from 'discord-api-types/v10'
-import { AnyCommandView, DiscordAPIClient } from '../../discord-framework'
+import { AnyAppCommand, DiscordAPIClient } from '../../discord-framework'
 import { App } from '../app/app'
 
 export class Colors {
@@ -47,8 +47,8 @@ export function channelMention(channel_id?: string): string {
   return `<#${channel_id || '0'}>`
 }
 
-export async function commandMention(app: App, command: AnyCommandView) {
-  return _commandMention(app, command.options.name, command.options.type, command.options.guild_id)
+export async function commandMention(app: App, command: AnyAppCommand, guild_id?: string) {
+  return _commandMention(app, command.options.name, command.options.type, guild_id)
 }
 
 export async function _commandMention(

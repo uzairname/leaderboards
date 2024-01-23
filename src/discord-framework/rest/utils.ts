@@ -83,7 +83,7 @@ export class DiscordAPIUtils {
         }
       } else if (params.target_channel_id) {
         // don't edit the channel. Return if it exists.
-        const channel = (await this.bot.getChannel(params.target_channel_id)) as D.APIChannel
+        const channel = await this.bot.getChannel(params.target_channel_id)
         return {
           channel,
           is_new_channel: false,

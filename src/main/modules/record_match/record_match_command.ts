@@ -3,25 +3,30 @@ import {
   ChatInteractionResponse,
   CommandContext,
   CommandInteractionResponse,
-  CommandView,
+  AppCommand,
   ComponentContext,
   StateContext,
   DeferContext,
   _,
   field,
-} from '../../../../discord-framework'
-import { sentry } from '../../../../request/sentry'
-import { assert, nonNullable, unflatten } from '../../../../utils/utils'
-import { App } from '../../../app/app'
-import { AppErrors, AppError } from '../../../app/errors'
-import { Colors, relativeTimestamp } from '../../../messages/message_pieces'
-import { matchSummaryEmbed } from '../../../modules/matches/match_logging/match_logging'
-import { recordAndScoreNewMatch } from '../../../modules/matches/scoring/score_matches'
-import { getRegisterPlayer } from '../../../modules/players'
-import { checkGuildInteraction, hasAdminPerms } from '../../utils/checks'
-import { rankingsAutocomplete } from '../../utils/common'
-import { create_ranking_view, createRankingModal } from '../rankings/create_ranking'
-import { allGuildRankingsPage, rankings_cmd_def } from '../rankings/rankings_cmd'
+} from '../../../discord-framework'
+import { sentry } from '../../../request/sentry'
+import { assert, nonNullable, unflatten } from '../../../utils/utils'
+import { App } from '../../app/app'
+import { AppErrors, AppError } from '../../app/errors'
+import { Colors, relativeTimestamp } from '../../messages/message_pieces'
+import { checkGuildInteraction, hasAdminPerms } from '../../views/utils/checks'
+import { guildRankingsOptionChoices, rankingsAutocomplete } from '../../views/utils/common'
+import { matchSummaryEmbed } from '../matches/match_logging/match_logging'
+import { recordAndScoreNewMatch } from '../matches/scoring/score_matches'
+import { getRegisterPlayer } from '../players'
+import { allGuildRankingsPage } from '../rankings/rankings_commands/all_rankings'
+import {
+  create_ranking_view_def,
+  createRankingModal,
+} from '../rankings/rankings_commands/create_ranking'
+import { rankings_cmd_def } from '../rankings/rankings_commands/rankings_cmd'
+import { ViewModule, globalView } from '../view_manager/view_module'
 
 const optionnames = {
   ranking: 'for',
@@ -29,29 +34,20 @@ const optionnames = {
   loser: 'loser',
 }
 
-const record_match_command_def = new CommandView({
+const record_match_command_def = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
   name: 'record-match',
   description: 'record a match',
   options: [
     {
-      name: optionnames.ranking,
-      description: `Ranking to record the match for (Leave blank for default)`,
-      type: D.ApplicationCommandOptionType.String,
-      required: false,
-      autocomplete: true,
-    },
-    {
       name: optionnames.winner,
       description: 'Who won (if applicable)',
       type: D.ApplicationCommandOptionType.User,
-      required: false,
     },
     {
       name: optionnames.loser,
       description: 'Who lost (if applicable)',
       type: D.ApplicationCommandOptionType.User,
-      required: false,
     },
   ],
   custom_id_prefix: 'rm',
@@ -91,6 +87,31 @@ const record_match_command_def = new CommandView({
   },
 })
 
+const recordMatchCmdDef = async (app: App, guild_id?: string) =>
+  guild_id
+    ? new AppCommand({
+        ...record_match_command_def.options,
+        options: [
+          {
+            name: optionnames.ranking,
+            type: D.ApplicationCommandOptionType.String,
+            choices: await guildRankingsOptionChoices(app, guild_id, false),
+            description: `Ranking to record the match for (Leave blank for default)`,
+          },
+          {
+            name: optionnames.winner,
+            description: 'Who won (if applicable)',
+            type: D.ApplicationCommandOptionType.User,
+          },
+          {
+            name: optionnames.loser,
+            description: 'Who lost (if applicable)',
+            type: D.ApplicationCommandOptionType.User,
+          },
+        ],
+      })
+    : undefined
+
 export const recordMatchCmd = (app: App) =>
   record_match_command_def
     .onAutocomplete(rankingsAutocomplete(app, false, optionnames.ranking))
@@ -104,7 +125,7 @@ export const recordMatchCmd = (app: App) =>
       )?.value
 
       if (selected_ranking_id == 'create') {
-        return createRankingModal(app, { state: create_ranking_view.newState({}) })
+        return createRankingModal(app, { state: create_ranking_view_def.newState({}) })
       }
 
       return ctx.defer(
@@ -643,3 +664,5 @@ function allTeamsSelected(
     })
   )
 }
+
+export const record_match = new ViewModule([globalView(recordMatchCmd)])

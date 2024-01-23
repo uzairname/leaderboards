@@ -1,4 +1,4 @@
-import { NeonDatabase } from 'drizzle-orm/neon-serverless'
+import { NeonHttpDatabase } from 'drizzle-orm/neon-http'
 import { cache } from '../request/cache'
 import { Sentry } from '../request/sentry'
 import DbCache from './cache'
@@ -17,7 +17,7 @@ import { AccessTokensManager } from './models/models/access_tokens'
 import * as schema from './schema'
 
 export class DbClient {
-  public readonly db: NeonDatabase<typeof schema>
+  public readonly db: NeonHttpDatabase<typeof schema>
 
   public readonly cache: DbCache
 

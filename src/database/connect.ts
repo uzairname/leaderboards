@@ -1,15 +1,16 @@
-import { Pool } from '@neondatabase/serverless'
+import { neon } from '@neondatabase/serverless'
 import { Logger } from 'drizzle-orm'
-import { NeonDatabase, drizzle } from 'drizzle-orm/neon-serverless'
+import { NeonHttpDatabase, drizzle } from 'drizzle-orm/neon-http'
 import { Sentry } from '../request/sentry'
 import * as schema from './schema'
 
-export function connect(connection_string: string, sentry?: Sentry): NeonDatabase<typeof schema> {
-  const pool = new Pool({
-    connectionString: connection_string,
-  })
+export function connect(
+  connection_string: string,
+  sentry?: Sentry,
+): NeonHttpDatabase<typeof schema> {
+  const sql = neon(connection_string)
   const logger = new DrizzleLogger(sentry)
-  return drizzle(pool, {
+  return drizzle(sql, {
     logger,
   })
 }

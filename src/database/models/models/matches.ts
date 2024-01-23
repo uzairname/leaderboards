@@ -4,14 +4,7 @@ import { sentry } from '../../../request/sentry'
 import { cloneSimpleObj, nonNullable } from '../../../utils/utils'
 import { DbClient } from '../../client'
 import { DbObject, DbObjectManager } from '../../managers'
-import {
-  MatchPlayers,
-  Matches,
-  Players,
-  match_cols,
-  match_player_cols,
-  player_cols,
-} from '../../schema'
+import { MatchPlayers, Matches, Players } from '../../schema'
 import { MatchInsert, MatchPlayerSelect, MatchSelect, MatchUpdate, PlayerSelect } from '../../types'
 
 export class Match extends DbObject<MatchSelect> {
@@ -120,6 +113,7 @@ export class MatchesManager extends DbObjectManager {
 
   async get(filters: {
     player_ids?: number[]
+    user_ids?: string[]
     ranking_ids?: number[]
     after?: Match
     limit_matches?: number
@@ -133,6 +127,14 @@ export class MatchesManager extends DbObjectManager {
       sql_chunks.push(sql`${Matches.id} in (
         select ${MatchPlayers.match_id} from ${MatchPlayers} 
         where ${MatchPlayers.player_id} in ${filters.player_ids}
+      )`)
+    }
+
+    if (filters.user_ids) {
+      sql_chunks.push(sql`${Matches.id} in (
+        select ${MatchPlayers.match_id} from ${MatchPlayers}
+        where ${Players.user_id} in ${filters.user_ids}
+        inner join ${Players} on ${Players.id} = ${MatchPlayers.player_id}
       )`)
     }
 
@@ -152,60 +154,19 @@ export class MatchesManager extends DbObjectManager {
         filters.offset ?? 0
       })
     `
-
-    let query = this.db.db
+    const result = await this.db.db
       .select({ match: Matches, player: Players, match_player: MatchPlayers })
       .from(Matches)
+      .innerJoin(MatchPlayers, eq(Matches.id, MatchPlayers.match_id))
+      .innerJoin(Players, eq(MatchPlayers.player_id, Players.id))
       .where(matches_sql)
-
-    const matches_result = 
-
-    // const result = (
-    //   await this.db.db.execute(
-    //     sql`
-    //   select ${Matches}, ${Players}, ${MatchPlayers} from
-    //     (select * from ${Matches} where ${and(...sql_chunks)} order by ${
-    //       Matches.time_finished
-    //     } desc${filters.limit_matches ? sql` limit ${filters.limit_matches}` : ``} offset ${
-    //       filters.offset ?? 0
-    //     })
-    //   as ${Matches}
-    //   inner join ${MatchPlayers} on ${Matches.id} = ${MatchPlayers.match_id}
-    //   inner join ${Players} on ${MatchPlayers.player_id} = ${Players.id}
-    //   `,
-    //   )
-    // ).rows as { Matches: string; Players: string; MatchPlayers: string }[]
-
-    // convert lists to objects according to schema
-
-    sentry.debug('result', JSON.stringify(result))
-
-    const data = result.map(row => {
-      sentry.debug('parse', JSON.parse(row.MatchPlayers)[0])
-      return {
-        match: Object.fromEntries(
-          Object.keys(match_cols).map((col, i) => [col, JSON.parse(row.Matches)[i]]),
-        ) as MatchSelect,
-        player: Object.fromEntries(
-          Object.keys(player_cols).map((col, i) => [col, JSON.parse(row.Players)[i]]),
-        ) as PlayerSelect,
-        match_player: Object.fromEntries(
-          Object.keys(match_player_cols).map((col, i) => [col, JSON.parse(row.MatchPlayers)[i]]),
-        ) as MatchPlayerSelect,
-      }
-    })
-
-    sentry.debug('data', JSON.stringify(data))
-
-    // const result = await query
-    // Group results by match
 
     const matches = new Map<
       number,
       { match: Match; teams: { player: Player; match_player: MatchPlayerSelect }[][] }
     >()
 
-    data.forEach(row => {
+    result.forEach(row => {
       const match_id = nonNullable(row.match.id, 'match id')
 
       if (!matches.has(match_id)) {
@@ -220,8 +181,6 @@ export class MatchesManager extends DbObjectManager {
 
       const match = matches.get(match_id)!
 
-      sentry.debug('match', JSON.stringify(match.teams), row.match.team_players)
-
       match.teams[nonNullable(row.match_player.team_num, 'match_player.team_num')].push({
         player: new Player(row.player, this.db),
         match_player: row.match_player,
@@ -231,306 +190,3 @@ export class MatchesManager extends DbObjectManager {
     return Array.from(matches.values())
   }
 }
-
-;[
-  {
-    match: {
-      id: '(',
-      ranking_id: '1',
-      number: '5',
-      team_players: '5',
-      time_started: ',',
-      time_finished: '1',
-      outcome: '7',
-      metadata: ',',
-    },
-    player: {
-      id: '(',
-      user_id: '3',
-      ranking_id: '2',
-      time_created: ',',
-      name: '3',
-      rating: '7',
-      rd: '5',
-      stats: '4',
-    },
-    match_player: {
-      match_id: '(',
-      player_id: '1',
-      team_num: '5',
-      rating_before: '5',
-      rd_before: ',',
-      time_created: '3',
-    },
-  },
-  {
-    match: {
-      id: '(',
-      ranking_id: '1',
-      number: '5',
-      team_players: '5',
-      time_started: ',',
-      time_finished: '1',
-      outcome: '7',
-      metadata: ',',
-    },
-    player: {
-      id: '(',
-      user_id: '3',
-      ranking_id: '0',
-      time_created: ',',
-      name: '9',
-      rating: '9',
-      rd: '1',
-      stats: '3',
-    },
-    match_player: {
-      match_id: '(',
-      player_id: '1',
-      team_num: '5',
-      rating_before: '5',
-      rd_before: ',',
-      time_created: '3',
-    },
-  },
-  {
-    match: {
-      id: '(',
-      ranking_id: '1',
-      number: '5',
-      team_players: '7',
-      time_started: ',',
-      time_finished: '1',
-      outcome: '7',
-      metadata: ',',
-    },
-    player: {
-      id: '(',
-      user_id: '3',
-      ranking_id: '2',
-      time_created: ',',
-      name: '3',
-      rating: '7',
-      rd: '5',
-      stats: '4',
-    },
-    match_player: {
-      match_id: '(',
-      player_id: '1',
-      team_num: '5',
-      rating_before: '7',
-      rd_before: ',',
-      time_created: '3',
-    },
-  },
-  {
-    match: {
-      id: '(',
-      ranking_id: '1',
-      number: '5',
-      team_players: '7',
-      time_started: ',',
-      time_finished: '1',
-      outcome: '7',
-      metadata: ',',
-    },
-    player: {
-      id: '(',
-      user_id: '3',
-      ranking_id: '0',
-      time_created: ',',
-      name: '9',
-      rating: '9',
-      rd: '1',
-      stats: '3',
-    },
-    match_player: {
-      match_id: '(',
-      player_id: '1',
-      team_num: '5',
-      rating_before: '7',
-      rd_before: ',',
-      time_created: '3',
-    },
-  },
-  {
-    match: {
-      id: '(',
-      ranking_id: '1',
-      number: '5',
-      team_players: '8',
-      time_started: ',',
-      time_finished: '1',
-      outcome: '7',
-      metadata: ',',
-    },
-    player: {
-      id: '(',
-      user_id: '3',
-      ranking_id: '0',
-      time_created: ',',
-      name: '9',
-      rating: '9',
-      rd: '1',
-      stats: '3',
-    },
-    match_player: {
-      match_id: '(',
-      player_id: '1',
-      team_num: '5',
-      rating_before: '8',
-      rd_before: ',',
-      time_created: '3',
-    },
-  },
-  {
-    match: {
-      id: '(',
-      ranking_id: '1',
-      number: '5',
-      team_players: '8',
-      time_started: ',',
-      time_finished: '1',
-      outcome: '7',
-      metadata: ',',
-    },
-    player: {
-      id: '(',
-      user_id: '3',
-      ranking_id: '4',
-      time_created: ',',
-      name: '1',
-      rating: '1',
-      rd: '0',
-      stats: '8',
-    },
-    match_player: {
-      match_id: '(',
-      player_id: '1',
-      team_num: '5',
-      rating_before: '8',
-      rd_before: ',',
-      time_created: '3',
-    },
-  },
-  {
-    match: {
-      id: '(',
-      ranking_id: '1',
-      number: '5',
-      team_players: '9',
-      time_started: ',',
-      time_finished: '1',
-      outcome: '7',
-      metadata: ',',
-    },
-    player: {
-      id: '(',
-      user_id: '3',
-      ranking_id: '4',
-      time_created: ',',
-      name: '1',
-      rating: '1',
-      rd: '0',
-      stats: '8',
-    },
-    match_player: {
-      match_id: '(',
-      player_id: '1',
-      team_num: '5',
-      rating_before: '9',
-      rd_before: ',',
-      time_created: '3',
-    },
-  },
-  {
-    match: {
-      id: '(',
-      ranking_id: '1',
-      number: '5',
-      team_players: '9',
-      time_started: ',',
-      time_finished: '1',
-      outcome: '7',
-      metadata: ',',
-    },
-    player: {
-      id: '(',
-      user_id: '3',
-      ranking_id: '0',
-      time_created: ',',
-      name: '9',
-      rating: '9',
-      rd: '1',
-      stats: '3',
-    },
-    match_player: {
-      match_id: '(',
-      player_id: '1',
-      team_num: '5',
-      rating_before: '9',
-      rd_before: ',',
-      time_created: '3',
-    },
-  },
-  {
-    match: {
-      id: '(',
-      ranking_id: '1',
-      number: '6',
-      team_players: '0',
-      time_started: ',',
-      time_finished: '1',
-      outcome: '7',
-      metadata: ',',
-    },
-    player: {
-      id: '(',
-      user_id: '3',
-      ranking_id: '4',
-      time_created: ',',
-      name: '1',
-      rating: '1',
-      rd: '0',
-      stats: '8',
-    },
-    match_player: {
-      match_id: '(',
-      player_id: '1',
-      team_num: '6',
-      rating_before: '0',
-      rd_before: ',',
-      time_created: '3',
-    },
-  },
-  {
-    match: {
-      id: '(',
-      ranking_id: '1',
-      number: '6',
-      team_players: '0',
-      time_started: ',',
-      time_finished: '1',
-      outcome: '7',
-      metadata: ',',
-    },
-    player: {
-      id: '(',
-      user_id: '3',
-      ranking_id: '0',
-      time_created: ',',
-      name: '9',
-      rating: '9',
-      rd: '1',
-      stats: '3',
-    },
-    match_player: {
-      match_id: '(',
-      player_id: '1',
-      team_num: '6',
-      rating_before: '0',
-      rd_before: ',',
-      time_created: '3',
-    },
-  },
-]

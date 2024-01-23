@@ -1,17 +1,18 @@
 import * as D from 'discord-api-types/v10'
-import { CommandView, _, field, MessageView, StateContext } from '../../../discord-framework'
+import { AppCommand, _, field, MessageView, StateContext } from '../../../discord-framework'
 import { ViewState } from '../../../discord-framework/interactions/view_state'
 import { sentry } from '../../../request/sentry'
 import { maxIndex, nonNullable } from '../../../utils/utils'
 import { App } from '../../app/app'
 import { AppErrors } from '../../app/errors'
-import { findView } from '../../app/find_view'
 import { Colors, escapeMd, relativeTimestamp } from '../../messages/message_pieces'
+import { leaderboardMessage } from '../../modules/leaderboard/leaderboard_messages'
 import { getRegisterPlayer } from '../../modules/players'
-import { leaderboardMessage } from '../../modules/rankings/ranking_channels'
+import { findView } from '../../modules/view_manager/manage_views'
+import { ViewModule, globalView } from '../../modules/view_manager/view_module'
 import { checkGuildInteraction } from '../utils/checks'
 
-const test_command = new CommandView({
+const test_command = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
   name: 'test',
   description: 'Test command',
@@ -37,35 +38,6 @@ export const testCommand = (app: App) =>
       const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
       ctx.state.save.original_user(user_id)
       ctx.state.save.counter(0)
-
-      return ctx.defer(
-        {
-          type: D.InteractionResponseType.DeferredChannelMessageWithSource,
-          data: { flags: D.MessageFlags.Ephemeral },
-        },
-        async ctx => {
-          const matches = await Promise.all(
-            (
-              await app.db.matches.get({
-                player_ids: [33, 40],
-                ranking_ids: [17, 26],
-                limit_matches: 10,
-              })
-            ).map(async (item, idx) => {
-              // await app.bot.getChannel('1183169465232392202')
-
-              return {
-                match: item.match,
-                team_players: item.teams,
-              }
-            }),
-          )
-
-          await ctx.edit({
-            content: 'done',
-          })
-        },
-      )
 
       const user =
         (
@@ -99,8 +71,12 @@ export const testCommand = (app: App) =>
           async ctx => {
             const seconds = ctx.state.data.counter ?? 0
 
-            await new Promise(resolve => setTimeout(resolve, seconds * 1000))
-            throw new Error('test')
+            await ctx.edit({
+              content: `waiting....`,
+            })
+
+            await new Promise(r => setTimeout(r, seconds * 1000))
+
             return void ctx.followup({
               content: `waited ${seconds} seconds.`,
               flags: D.MessageFlags.Ephemeral,
@@ -206,7 +182,10 @@ const helperView = (app: App) =>
     }
   })
 
-export const test_views = [testCommand, helperView]
+export const test_module = new ViewModule([
+  globalView(testCommand, true),
+  globalView(helperView, true),
+])
 
 const schema = {
   originalUserId: field.String(),

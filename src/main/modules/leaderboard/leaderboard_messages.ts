@@ -149,15 +149,3 @@ export function leaderboardChannelPermissionOverwrites(
     },
   ]
 }
-
-export async function removeRankingMessages(app: App, ranking: Ranking): Promise<void> {
-  const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
-  await Promise.all(
-    guild_rankings.map(async item => {
-      await app.bot.utils.deleteMessageIfExists(
-        item.guild_ranking.data.leaderboard_channel_id,
-        item.guild_ranking.data.leaderboard_message_id,
-      )
-    }),
-  )
-}
