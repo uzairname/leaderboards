@@ -53,7 +53,7 @@ async function syncMatchSummaryMessageInGuild(
   const guild = await guild_ranking.guild
 
   const sync_channel_result = await app.bot.utils.syncGuildChannel({
-    target_channel_id: guild.data.match_results_textchannel_id,
+    target_channel_id: guild.data.match_results_channel_id,
     channelData: async () => matchLogsChannelData(app, guild),
   })
 
@@ -64,7 +64,7 @@ async function syncMatchSummaryMessageInGuild(
         (await matchLogsChannelDescriptionMessageData(app, guild)).postdata,
       ),
       guild.update({
-        match_results_textchannel_id: sync_channel_result.channel.id,
+        match_results_channel_id: sync_channel_result.channel.id,
       }),
     ])
   }
@@ -72,7 +72,7 @@ async function syncMatchSummaryMessageInGuild(
   const existing_message = await match.summaryMessage(guild_ranking.data.guild_id)
 
   const sync_message_result = await app.bot.utils.syncChannelMessage({
-    target_channel_id: guild.data.match_results_textchannel_id,
+    target_channel_id: sync_channel_result.channel.id,
     target_message_id: existing_message?.message_id,
     messageData: await matchSummaryMessageData(app, match),
   })
