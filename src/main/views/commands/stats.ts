@@ -63,14 +63,14 @@ export const statsCmd = (app: App) =>
       )
     })
     .onComponent(async ctx => {
-      return await ctx.state.get('callback')(app, ctx)
+      return await ctx.state.get.callback()(app, ctx)
     })
 
 async function mainPageData(
   app: App,
   ctx: InteractionContext<typeof stats_cmd>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  const user_id = ctx.state.get('user_id')
+  const user_id = ctx.state.get.user_id()
   const discord_user = await app.bot.getUser(user_id)
 
   // find all of the user's players that are in a ranking that the guild has

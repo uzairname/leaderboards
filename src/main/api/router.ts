@@ -65,7 +65,7 @@ async function matches(app: App, player_ids: number[] = [33, 40]) {
 
   const matches = await Promise.all(
     (
-      await app.db.matches.get({
+      await app.db.matches.getMany({
         player_ids: [35],
         ranking_ids: [17, 26],
         limit_matches: 10,
@@ -82,8 +82,8 @@ async function matches(app: App, player_ids: number[] = [33, 40]) {
             t.map(p => {
               return {
                 id: nonNullable(p.player.data.id, 'player id'),
-                rating: nonNullable(p.match_player.rating_before, 'rating before'),
-                rd: nonNullable(p.match_player.rd_before, 'rd before'),
+                rating_before: nonNullable(p.match_player.rating_before, 'rating before'),
+                rd_before: nonNullable(p.match_player.rd_before, 'rd before'),
               }
             }),
           ),

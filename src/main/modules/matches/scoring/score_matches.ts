@@ -4,12 +4,16 @@ import { sentry } from '../../../../request/sentry'
 import { nonNullable } from '../../../../utils/utils'
 import { App } from '../../../app/app'
 import { AppErrors } from '../../../app/errors'
-import { syncGuildRankingLbMessage } from '../../leaderboard/leaderboard_messages'
+import {
+  syncGuildRankingLbMessage,
+  syncRankingLbMessages,
+} from '../../leaderboard/leaderboard_messages'
 import { default_elo_settings } from '../../rankings/manage_rankings'
+import { validateMatch } from '../manage_matches'
 import { getNewRatings } from './trueskill'
 
 /**
- * Records a new match from players, outcome, and metadata. Updates players' scores.
+ * Validates and records a new match from players, outcome, and metadata. Updates players' scores.
  * @param team_player_ids list of player ids for each team
  * @param outcome relative team scores
  */
@@ -23,7 +27,7 @@ export async function recordAndScoreNewMatch(
 ): Promise<Match> {
   // add match
 
-  validateNewMatch({
+  validateMatch({
     ranking_id: ranking.data.id,
     players: players,
     outcome,
@@ -40,20 +44,19 @@ export async function recordAndScoreNewMatch(
     time_finished: new Date(),
   })
 
-  sentry.captureMessage('1')
-
   const player_ratings_before = players.map(t =>
     t.map(p => {
       return {
-        rating: nonNullable(p.data.rating, 'rating'),
-        rd: nonNullable(p.data.rd, 'rd'),
+        id: p.data.id,
+        rating_before: nonNullable(p.data.rating, 'rating'),
+        rd_before: nonNullable(p.data.rd, 'rd'),
       }
     }),
   )
 
   // calculate new player ratings
-  const new_player_ratings = getNewRatings(
-    nonNullable(match.data.outcome, 'match outcome'),
+  const new_player_ratings = calculateMatchNewRatings(
+    match,
     player_ratings_before,
     ranking.data.elo_settings ?? default_elo_settings,
   )
@@ -63,21 +66,20 @@ export async function recordAndScoreNewMatch(
     players.map(async (team, i) => {
       await Promise.all(
         team.map(async (player, j) => {
+          sentry.debug(
+            `updating player ${player.data.id} rating to ${new_player_ratings[i][j].rating_after}`,
+          )
           await player.update({
-            rating: new_player_ratings[i][j].mu,
-            rd: new_player_ratings[i][j].sigma,
+            rating: new_player_ratings[i][j].rating_after,
+            rd: new_player_ratings[i][j].rd_after,
           })
         }),
       )
     }),
   )
 
-  sentry.captureMessage('2')
-
   // update any other channels
-  await app.events.MatchScored.emit(match)
-
-  sentry.captureMessage('3')
+  await app.events.MatchCreatedOrUpdated.emit(match)
 
   return match
 }
@@ -90,14 +92,12 @@ export function calculateMatchNewRatings(
   match: Match,
   players_before: {
     id: number
-    rating: number
-    rd: number
+    rating_before: number
+    rd_before: number
   }[][],
   elo_settings: { initial_rating?: number; initial_rd?: number },
 ): {
   player_id: number
-  rating_before: number
-  rd_before: number
   rating_after: number
   rd_after: number
 }[][] {
@@ -111,8 +111,6 @@ export function calculateMatchNewRatings(
     t.map((before, player_num) => {
       return {
         player_id: before.id,
-        rating_before: before.rating,
-        rd_before: before.rd,
         rating_after: new_player_ratings[team_num][player_num].mu,
         rd_after: new_player_ratings[team_num][player_num].sigma,
       }
@@ -122,37 +120,72 @@ export function calculateMatchNewRatings(
   return result
 }
 
-export async function scoreRankingHistory(
-  app: App,
-  ranking: Ranking,
-  starting_match: Match,
-  progress?: (scored: number, total: number) => void,
-) {
+export async function scoreRankingHistory(app: App, ranking: Ranking, on_or_after?: Date) {
   /*
   update all players' score based on match history
   */
 
-  const matches = await app.db.matches.get({
+  sentry.debug('ranking history')
+
+  const matches = await app.db.matches.getMany({
     ranking_ids: [ranking.data.id],
-    after: starting_match,
+    on_or_after,
   })
+
+  sentry.debug('scoring matches', matches.length)
+
+  if (matches.length > app.config.settings.MaxRescoreableMatches) {
+    throw new AppErrors.RescoreMatchesLimitExceeded()
+  }
 
   const elo_settings = nonNullable(ranking.data.elo_settings, 'elo settings')
 
-  let current_player_ratings: { [key: number]: { rating: number; rd: number } } = {}
+  let affected_player_ratings: { [key: number]: { rating: number; rd: number } } = {}
 
-  matches.forEach(async (match, num) => {
+  for (const match of matches) {
     // get player ratings before
-    const player_ratings_before = nonNullable(match.match.data.team_players, 'team_players').map(
-      team =>
-        team.map(player_id => {
-          return {
-            id: player_id,
-            rating: current_player_ratings[player_id]?.rating ?? elo_settings.initial_rating,
-            rd: current_player_ratings[player_id]?.rd ?? elo_settings.initial_rd,
-          }
-        }),
+    let player_ratings_before_changed: boolean = false
+    const player_ratings_before = nonNullable(match.teams, 'team_players').map(team =>
+      team.map(current_player => {
+        const player_id = current_player.player.data.id
+        // Check if the player ratings before have changed
+        sentry.debug(
+          current_player.match_player.rating_before,
+          affected_player_ratings[player_id]?.rating,
+        )
+        if (
+          affected_player_ratings[player_id] !== undefined &&
+          (current_player.match_player.rating_before !==
+            affected_player_ratings[player_id].rating ||
+            current_player.match_player.rd_before !== affected_player_ratings[player_id].rd)
+        ) {
+          player_ratings_before_changed = true
+        }
+
+        return {
+          id: player_id,
+          rating_before:
+            affected_player_ratings[player_id]?.rating ?? current_player.match_player.rating_before,
+          rd_before:
+            affected_player_ratings[player_id]?.rd ?? current_player.match_player.rd_before,
+        }
+      }),
     )
+
+    if (player_ratings_before_changed) {
+      // update match players' ratings and rd before
+      await match.match.updateMatchPlayers(
+        player_ratings_before.map(team =>
+          team.map(player => {
+            return {
+              id: player.id,
+              rating_before: player.rating_before,
+              rd_before: player.rd_before,
+            }
+          }),
+        ),
+      )
+    }
 
     const new_player_ratings = calculateMatchNewRatings(
       match.match,
@@ -162,50 +195,28 @@ export async function scoreRankingHistory(
 
     // update current player ratings
     new_player_ratings.flat().forEach(player => {
-      current_player_ratings[player.player_id] = {
+      affected_player_ratings[player.player_id] = {
         rating: player.rating_after,
         rd: player.rd_after,
       }
     })
 
-    progress?.(num, matches.length)
-  })
+    sentry.debug('affected player ratings: ', JSON.stringify(affected_player_ratings))
+  }
 
-  // update all players' ratings
-
-  await Promise.all([
+  const res = await Promise.all([
+    // update all players' ratings
     Promise.all(
-      Object.entries(current_player_ratings).map(async ([player_id, { rating, rd }]) => {
-        await app.db.players.getPartial(+player_id).update({ rating, rd })
+      Object.entries(affected_player_ratings).map(async ([player_id, { rating, rd }]) => {
+        sentry.debug(`updating player ${player_id} rating to ${rating}`)
+        const player = app.db.players.getPartial(+player_id)
+        sentry.debug(`player: ${player.data.id}`)
+        await player.update({ rating, rd })
       }),
     ),
-    Promise.all(
-      (await app.db.guild_rankings.get({ ranking_id: ranking.data.id })).map(
-        async guild_ranking => {
-          await syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)
-        },
-      ),
-    ),
+    // update leaderboard messages
+    syncRankingLbMessages(app, ranking),
   ])
-}
 
-function validateNewMatch(data: { players: Player[][] } & Omit<MatchInsert, 'team_players'>) {
-  if (data.players && data.outcome) {
-    if (data.players.length !== data.outcome.length) {
-      throw new AppErrors.ValidationError(`team_players and outcome length don't match`)
-    }
-    // make sure all players are from the same ranking, and no duplicate player ids
-    if (data.players.flat().length !== new Set(data.players.flat().map(p => p.data.id)).size) {
-      throw new AppErrors.ValidationError('Duplicate players in one match')
-    }
-    if (
-      data.players.some(team => team.some(player => player.data.ranking_id !== data.ranking_id))
-    ) {
-      throw new AppErrors.ValidationError(
-        `Some players not in the match's ranking (${data.ranking_id})`,
-      )
-    }
-  } else {
-    throw new AppErrors.ValidationError('team_players or outcome undefined')
-  }
+  sentry.debug('result', res)
 }

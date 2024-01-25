@@ -1,4 +1,5 @@
 import * as D from 'discord-api-types/v10'
+import { calcDrawMargin } from 'ts-trueskill'
 import {
   ChatInteractionResponse,
   ComponentContext,
@@ -100,7 +101,7 @@ export const create_ranking_view_def = new MessageView({
 
 export const createRankingView = (app: App) =>
   create_ranking_view_def.onComponent(async ctx => {
-    return ctx.state.get('callback')(app, ctx)
+    return ctx.state.get.callback()(app, ctx)
   })
 
 export function createRankingModal(app: App, ctx: any): D.APIModalInteractionResponse {
@@ -180,10 +181,10 @@ export async function createRankingPageData(
 ): Promise<D.APIInteractionResponseCallbackData> {
   const guild = await getOrAddGuild(app, checkGuildInteraction(ctx.interaction).guild_id)
 
-  ctx.state.save.from_page('creating_new')
+  ctx.state.saveAll({ from_page: 'creating_new', callback: createRankingPage })
 
   const { name, num_teams, players_per_team } = validateRankingOptions({
-    name: ctx.state.get('input_name'),
+    name: ctx.state.get.input_name(),
     num_teams: ctx.state.data.input_num_teams || default_num_teams,
     players_per_team: ctx.state.data.input_players_per_team || default_players_per_team,
   })
@@ -195,6 +196,7 @@ export async function createRankingPageData(
   const match_results_channel_id = (await getMatchLogsChannel(app, guild.data.id))?.id
 
   const description = `## Making a New Ranking: *${escapeMd(name)}*`
+    + `\nClick "Confirm" to create ranking called "${escapeMd(name)}" with the settings below:`
     + `\n- Matches in this ranking will be **`
       + new Array(num_teams).fill(players_per_team).join('v') + `s**`
       + ` (${num_teams} teams and ${players_per_team} player` 
@@ -212,7 +214,8 @@ export async function createRankingPageData(
         ? `A message will be posted where players can join a matchmaking queue`
         : `A message will be posted in <#${nonNullable(ctx.interaction.channel, 'interaction channel').id}>`
           + ` where players can join a matchmaking queue`)
-      : ``) // prettier-ignore
+      : ``
+    + `\nUse the buttons to modify these settings`) // prettier-ignore
 
   const response: D.APIInteractionResponseCallbackData = {
     flags: D.MessageFlags.Ephemeral,
@@ -230,42 +233,25 @@ export async function createRankingPageData(
             type: D.ComponentType.Button,
             style: D.ButtonStyle.Primary,
             custom_id: ctx.state.set.callback(createRankingModal).cId(),
-            label: 'Edit Name & Teams',
+            label: 'Change Name & Teams',
           },
           {
             type: D.ComponentType.Button,
             style: leaderboard_message ? D.ButtonStyle.Primary : D.ButtonStyle.Secondary,
-            label: leaderboard_message
-              ? `Disable Leaderboard Display`
-              : `Enable Leaderboard Display`,
-            custom_id: ctx.state
-              .setAll({
-                callback: createRankingPage,
-                leaderboard_message: !leaderboard_message,
-              })
-              .cId(),
+            label: leaderboard_message ? `Don't Send Leaderboard` : `Send Live Leaderboard`,
+            custom_id: ctx.state.set.leaderboard_message(!leaderboard_message).cId(),
           },
           {
             type: D.ComponentType.Button,
             style: log_matches ? D.ButtonStyle.Primary : D.ButtonStyle.Secondary,
-            label: log_matches ? `Disable Match Logging` : `Enable Match Logging`,
-            custom_id: ctx.state
-              .setAll({
-                callback: createRankingPage,
-                log_matches: !log_matches,
-              })
-              .cId(),
+            label: log_matches ? `Don't Log Matches` : `Log Matches`,
+            custom_id: ctx.state.set.log_matches(!log_matches).cId(),
           },
           {
             type: D.ComponentType.Button,
             style: queue_message ? D.ButtonStyle.Primary : D.ButtonStyle.Secondary,
-            label: (queue_message ? `Disable` : `Enable`) + ` Queue Message`,
-            custom_id: ctx.state
-              .setAll({
-                callback: createRankingPage,
-                queue_message: !queue_message,
-              })
-              .cId(),
+            label: (queue_message ? `Don't Create` : `Create`) + ` Queue Message`,
+            custom_id: ctx.state.set.queue_message(!queue_message).cId(),
           },
         ],
       },
@@ -283,7 +269,7 @@ export async function createRankingPageData(
                 queue_message,
               })
               .cId(),
-            label: 'Create Ranking',
+            label: 'Confirm',
           },
         ],
       },
@@ -305,7 +291,7 @@ export function onCreateConfirmBtn(
       const guild = await getOrAddGuild(app, checkGuildInteraction(ctx.interaction).guild_id)
       sentry.debug('ctx.state.data.leaderboard_message', ctx.state.data.leaderboard_message)
       const result = await createNewRankingInGuild(app, guild, {
-        name: ctx.state.get('input_name'),
+        name: ctx.state.get.input_name(),
         num_teams: ctx.state.data.input_num_teams,
         players_per_team: ctx.state.data.input_players_per_team,
         display_settings: {

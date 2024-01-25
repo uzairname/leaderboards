@@ -1,4 +1,4 @@
-import { ApplicationCommandPermissionType } from 'discord-api-types/v10'
+import { APIUser, ApplicationCommandPermissionType } from 'discord-api-types/v10'
 import { eq, sql } from 'drizzle-orm'
 import { DbClient } from '../database/client'
 import {
@@ -18,22 +18,14 @@ import {
   Users,
 } from '../database/schema'
 import { App } from '../main/app/app'
+import { updateMatch } from '../main/modules/matches/manage_matches'
+import { recordAndScoreNewMatch } from '../main/modules/matches/scoring/score_matches'
+import { getRegisterPlayer } from '../main/modules/players'
 import { sentry } from '../request/sentry'
 import { nonNullable } from '../utils/utils'
 
 export async function runTests(app: App): Promise<Response> {
-  // await new Promise(resolve => setTimeout(resolve, 1200))
-
-  sentry.offload(async ctx => {
-    await new Promise<void>(async resolve => {
-      await new Promise(resolve => setTimeout(resolve, 8000))
-      ctx.setRequestName('Request B')
-      sentry.debug('offload 1')
-      resolve()
-    })
-  })
-
-  // await testDatabase(app)
+  await testDatabase(app)
   sentry.debug(`Tested Leaderboards app (${app.config.env.ENVIRONMENT})`)
   return new Response('Successfully tested Leaderboards app', { status: 200 })
 }
@@ -42,11 +34,12 @@ async function testDatabase(app: App) {
   await resetDatabase(app.db)
   // await testMatches(app)
   // await testQueueTeams(app)
-  await testQueue(app)
+  // await testQueue(app)
+  await testMatchScoring(app)
 }
 
 async function testQueue(app: App) {
-  await addData(app.db)
+  await addData(app)
   const ranking = (await getRankingInGuildByName(app, '98623457887', 'ranking 1')).ranking
 
   const player1 = nonNullable(await app.db.players.get('100', ranking.data.id), 'player 100')
@@ -70,7 +63,7 @@ async function testQueue(app: App) {
 
 async function testMatches(app: App) {
   await resetDatabase(app.db)
-  await addData(app.db)
+  await addData(app)
 
   const ranking = (await getRankingInGuildByName(app, '98623457887', 'ranking 1')).ranking
 
@@ -120,7 +113,7 @@ async function testQueueTeams(app: App) {
   sentry.debug('resetting database')
   await resetDatabase(app.db)
   sentry.debug('adding data')
-  await addData(app.db)
+  await addData(app)
 
   const ranking = (await getRankingInGuildByName(app, '98623457887', 'ranking 1')).ranking
   const ranking2 = (await getRankingInGuildByName(app, '98623457887', 'ranking 2')).ranking
@@ -184,6 +177,37 @@ async function testQueueTeams(app: App) {
   )
 }
 
+async function testMatchScoring(app: App) {
+  await resetDatabase(app.db)
+  sentry.debug('reset database')
+  await addData(app)
+  sentry.debug('added data')
+
+  const ranking = (await getRankingInGuildByName(app, '98623457887', 'ranking 1')).ranking
+  const player100 = await getRegisterPlayer(app, '100', ranking)
+  const player200 = await getRegisterPlayer(app, '200', ranking)
+  const player300 = await getRegisterPlayer(app, '300', ranking)
+  const player400 = await getRegisterPlayer(app, '400', ranking)
+
+  const match = await recordAndScoreNewMatch(
+    app,
+    ranking,
+    [
+      [player100, player200],
+      [player300, player400],
+    ],
+    [0, 1],
+  )
+
+  await updateMatch(app, match, [1, 0])
+
+  sentry.debug(player100.data.id, player100.data.rating, player300.data.id, player300.data.rating)
+  sentry.debug(
+    (await getRegisterPlayer(app, '100', ranking)).data.rating,
+    (await getRegisterPlayer(app, '300', ranking)).data.rating,
+  )
+}
+
 async function getRankingInGuildByName(app: App, guild_id: string, name: string) {
   const rankings = await app.db.guild_rankings.get({ guild_id: guild_id })
   const ranking = rankings.find(r => r.ranking.data.name === name)
@@ -200,6 +224,7 @@ async function resetDatabase(client: DbClient) {
     client.db.delete(QueueTeams),
     client.db.delete(TeamPlayers),
     client.db.delete(GuildRankings),
+    client.db.execute(sql`ALTER SEQUENCE "AccessTokens_id_seq" RESTART WITH 1`),
     client.db.delete(AccessTokens),
     client.db.delete(Settings),
   ])
@@ -219,16 +244,16 @@ async function resetDatabase(client: DbClient) {
   await Promise.all([client.db.execute(sql`ALTER SEQUENCE "Rankings_id_seq" RESTART WITH 1`)])
 }
 
-async function addData(client: DbClient) {
-  const guild1 = await client.guilds.create({ id: '98623457887' })
+async function addData(app: App) {
+  const guild1 = await app.db.guilds.create({ id: '98623457887' })
   await Promise.all([
-    client.users.getOrCreate({ id: '100', name: 'one' }),
-    client.users.getOrCreate({ id: '200', name: 'two' }),
-    client.users.getOrCreate({ id: '300', name: 'three' }),
-    client.users.getOrCreate({ id: '400', name: 'four' }),
+    app.db.users.getOrCreate({ id: '100', name: 'one' }),
+    app.db.users.getOrCreate({ id: '200', name: 'two' }),
+    app.db.users.getOrCreate({ id: '300', name: 'three' }),
+    app.db.users.getOrCreate({ id: '400', name: 'four' }),
   ])
 
-  const ranking1 = await client.rankings.create({
+  const ranking1 = await app.db.rankings.create({
     name: 'ranking 1',
     players_per_team: 2,
     num_teams: 2,
@@ -238,7 +263,7 @@ async function addData(client: DbClient) {
     },
   })
 
-  const ranking2 = await client.rankings.create({
+  const ranking2 = await app.db.rankings.create({
     name: 'ranking 2',
     players_per_team: 2,
     num_teams: 2,
@@ -248,18 +273,18 @@ async function addData(client: DbClient) {
     },
   })
 
-  const guild_ranking_1 = await client.guild_rankings.create(guild1, ranking1, { is_admin: true })
-  const guild_ranking_2 = await client.guild_rankings.create(guild1, ranking2, { is_admin: true })
+  const guild_ranking_1 = await app.db.guild_rankings.create(guild1, ranking1, { is_admin: true })
+  const guild_ranking_2 = await app.db.guild_rankings.create(guild1, ranking2, { is_admin: true })
 
   await Promise.all([
-    client.players.create(await client.users.getOrCreate({ id: '100' }), ranking1),
-    client.players.create(await client.users.getOrCreate({ id: '200' }), ranking1),
-    client.players.create(await client.users.getOrCreate({ id: '300' }), ranking1),
-    client.players.create(await client.users.getOrCreate({ id: '400' }), ranking1),
-    client.players.create(await client.users.getOrCreate({ id: '100' }), ranking2),
-    client.players.create(await client.users.getOrCreate({ id: '200' }), ranking2),
-    client.players.create(await client.users.getOrCreate({ id: '300' }), ranking2),
-    client.players.create(await client.users.getOrCreate({ id: '400' }), ranking2),
+    getRegisterPlayer(app, { id: '100', global_name: 'p100' } as APIUser, ranking1),
+    getRegisterPlayer(app, { id: '200', global_name: 'p200' } as APIUser, ranking1),
+    getRegisterPlayer(app, { id: '300', global_name: 'p300' } as APIUser, ranking1),
+    getRegisterPlayer(app, { id: '400', global_name: 'p400' } as APIUser, ranking1),
+    getRegisterPlayer(app, { id: '100', global_name: 'p100' } as APIUser, ranking2),
+    getRegisterPlayer(app, { id: '200', global_name: 'p200' } as APIUser, ranking2),
+    getRegisterPlayer(app, { id: '300', global_name: 'p300' } as APIUser, ranking2),
+    getRegisterPlayer(app, { id: '400', global_name: 'p400' } as APIUser, ranking2),
   ])
 }
 

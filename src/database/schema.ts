@@ -16,7 +16,6 @@ export const Users = pgTable('Users', {
   linked_roles_ranking_id: integer('linked_roles_ranking_id')
 })
 
-
 export const AccessTokens = pgTable('AccessTokens', {
   id: serial('id').primaryKey(),
   user_id: text('user_id').notNull().references(() => Users.id, {onDelete: 'cascade'}),
@@ -24,7 +23,6 @@ export const AccessTokens = pgTable('AccessTokens', {
   expires_at: timestamp('expires_at').notNull(),
   time_created: timestamp('time_created').defaultNow(),
 })
-
 
 export const Guilds = pgTable('Guilds', {
   id: text('id').primaryKey(),

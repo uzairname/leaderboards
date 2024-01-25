@@ -41,7 +41,7 @@ export const select_channel_view = new MessageView({
 
 function selectChannelView(app: App) {
   return select_channel_view.onComponent(async ctx => {
-    if (ctx.state.is.callback()) return ctx.state.get('callback')(app, ctx)
+    if (ctx.state.data.callback) return ctx.state.data.callback(app, ctx)
 
     return ctx.defer(
       {
@@ -83,8 +83,8 @@ async function selectChannelPage(
     {
       type: D.ComponentType.Button,
       custom_id: (
-        await ViewState.fromCustomId(ctx.state.get('submit_cid'), findView(app))
-      ).state.set[ctx.state.get('channel_id_field')](undefined).cId(),
+        await ViewState.fromCustomId(ctx.state.get.submit_cid(), findView(app))
+      ).state.set[ctx.state.get.channel_id_field()](undefined).cId(),
       label: 'Cancel',
       style: D.ButtonStyle.Danger,
     },
@@ -95,8 +95,8 @@ async function selectChannelPage(
       {
         type: D.ComponentType.Button,
         custom_id: (
-          await ViewState.fromCustomId(ctx.state.get('submit_cid'), findView(app))
-        ).state.set[ctx.state.get('channel_id_field')](ctx.state.data.selected_channel_id).cId(),
+          await ViewState.fromCustomId(ctx.state.get.submit_cid(), findView(app))
+        ).state.set[ctx.state.get.channel_id_field()](ctx.state.data.selected_channel_id).cId(),
         label: 'Submit',
         style: D.ButtonStyle.Success,
       },

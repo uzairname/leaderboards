@@ -24,6 +24,8 @@ export class Config {
 
   readonly DevGuildId = '1041458052055978024'
 
+  readonly OwnerIds = ['991398096565182467', '375438205253713933']
+
   readonly RequiredBotPermissions =
     D.PermissionFlagsBits.ManageChannels |
     D.PermissionFlagsBits.ManageThreads |
@@ -32,8 +34,14 @@ export class Config {
   public readonly OauthRedirectURI: string
   readonly features: ReturnType<typeof features>
 
+  readonly settings = settings
+
   constructor(readonly env: Env) {
     this.OauthRedirectURI = env.BASE_URL + `/oauth` + this.OauthRoutes.Redirect
     this.features = features(env.ENVIRONMENT)
   }
+}
+
+const settings = {
+  MaxRescoreableMatches: 1500,
 }

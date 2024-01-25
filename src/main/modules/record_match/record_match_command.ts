@@ -17,7 +17,7 @@ import { AppErrors, AppError } from '../../app/errors'
 import { Colors, relativeTimestamp } from '../../messages/message_pieces'
 import { checkGuildInteraction, hasAdminPerms } from '../../views/utils/checks'
 import { guildRankingsOptionChoices, rankingsAutocomplete } from '../../views/utils/common'
-import { matchSummaryEmbed } from '../matches/match_logging/match_logging'
+import { matchSummaryEmbed } from '../matches/match_logging/match_messages'
 import { recordAndScoreNewMatch } from '../matches/scoring/score_matches'
 import { getRegisterPlayer } from '../players'
 import { allGuildRankingsPage } from '../rankings/rankings_commands/all_rankings'
@@ -26,7 +26,7 @@ import {
   createRankingModal,
 } from '../rankings/rankings_commands/create_ranking'
 import { rankings_cmd_def } from '../rankings/rankings_commands/rankings_cmd'
-import { ViewModule, globalView } from '../view_manager/view_module'
+import { ViewModule, globalView, guildCommand } from '../view_manager/view_module'
 
 const optionnames = {
   ranking: 'for',
@@ -38,18 +38,6 @@ const record_match_command_def = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
   name: 'record-match',
   description: 'record a match',
-  options: [
-    {
-      name: optionnames.winner,
-      description: 'Who won (if applicable)',
-      type: D.ApplicationCommandOptionType.User,
-    },
-    {
-      name: optionnames.loser,
-      description: 'Who lost (if applicable)',
-      type: D.ApplicationCommandOptionType.User,
-    },
-  ],
   custom_id_prefix: 'rm',
   state_schema: {
     // whether the user can record a match on their own
@@ -87,35 +75,48 @@ const record_match_command_def = new AppCommand({
   },
 })
 
-const recordMatchCmdDef = async (app: App, guild_id?: string) =>
-  guild_id
-    ? new AppCommand({
-        ...record_match_command_def.options,
-        options: [
-          {
-            name: optionnames.ranking,
-            type: D.ApplicationCommandOptionType.String,
-            choices: await guildRankingsOptionChoices(app, guild_id, false),
-            description: `Ranking to record the match for (Leave blank for default)`,
-          },
-          {
-            name: optionnames.winner,
-            description: 'Who won (if applicable)',
-            type: D.ApplicationCommandOptionType.User,
-          },
-          {
-            name: optionnames.loser,
-            description: 'Who lost (if applicable)',
-            type: D.ApplicationCommandOptionType.User,
-          },
-        ],
-      })
-    : undefined
+const recordMatchCmdDef = async (app: App, guild_id?: string) => {
+  if (!guild_id) return
+
+  const ranking_choices = await guildRankingsOptionChoices(app, guild_id, false)
+
+  const cmd = new AppCommand({
+    ...record_match_command_def.options,
+    options: [
+      {
+        name: optionnames.winner,
+        description: 'Who won (if applicable)',
+        type: D.ApplicationCommandOptionType.User,
+      },
+      {
+        name: optionnames.loser,
+        description: 'Who lost (if applicable)',
+        type: D.ApplicationCommandOptionType.User,
+      },
+    ],
+  })
+
+  if (ranking_choices.length > 1) {
+    cmd.options.options!.push({
+      name: optionnames.ranking,
+      type: D.ApplicationCommandOptionType.String,
+      choices: await guildRankingsOptionChoices(app, guild_id, false),
+      description: `Ranking to record the match for (Leave blank for default)`,
+    })
+  }
+
+  return cmd
+}
 
 export const recordMatchCmd = (app: App) =>
   record_match_command_def
-    .onAutocomplete(rankingsAutocomplete(app, false, optionnames.ranking))
 
+    /**
+     * If the ranking is 1v1 all the required options are provided, record the match.
+     * If not, open a menu to select the teams
+     *
+     * If the user is admin, skip the confirmation step
+     */
     .onCommand(async ctx => {
       const interaction = checkGuildInteraction(ctx.interaction)
       const selected_ranking_id = (
@@ -242,13 +243,15 @@ export const recordMatchCmd = (app: App) =>
       }
     })
 
+export const record_match = new ViewModule([guildCommand(recordMatchCmd, recordMatchCmdDef)])
+
 async function selectTeamPage(
   app: App,
   ctx: StateContext<typeof record_match_command_def>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   let components: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = []
-  const players_per_team = ctx.state.get('players_per_team')
-  const num_teams = ctx.state.get('num_teams')
+  const players_per_team = ctx.state.get.players_per_team()
+  const num_teams = ctx.state.get.num_teams()
   if (players_per_team == 1) {
     components = [
       {
@@ -321,8 +324,8 @@ async function onSelectTeam(
 ): Promise<ChatInteractionResponse> {
   const data = ctx.interaction.data as unknown as D.APIMessageUserSelectInteractionData
   const selected_user_ids = data.values
-  const players_per_team = ctx.state.get('players_per_team')
-  const num_teams = ctx.state.get('num_teams')
+  const players_per_team = ctx.state.get.players_per_team()
+  const num_teams = ctx.state.get.num_teams()
 
   const current_selected_players =
     ctx.state.data.players?.slice() ||
@@ -344,11 +347,9 @@ async function onSelectTeam(
     )
 
     const updated_selected_players = current_selected_players.slice()
-    updated_selected_players[ctx.state.get('selected_team_idx')] = selected_user_ids.map(
-      user_id => {
-        return { user_id }
-      },
-    )
+    updated_selected_players[ctx.state.get.selected_team_idx()] = selected_user_ids.map(user_id => {
+      return { user_id }
+    })
     ctx.state.save.players(current_selected_players)
   }
 
@@ -362,9 +363,9 @@ async function selectAndConfirmOutcomePage(
   app: App,
   ctx: ComponentContext<typeof record_match_command_def>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  const players_per_team = ctx.state.get('players_per_team')
-  const num_teams = ctx.state.get('num_teams')
-  const players = nonNullable(ctx.state.data.players, 'players')
+  const players_per_team = ctx.state.get.players_per_team()
+  const num_teams = ctx.state.get.num_teams()
+  const players = ctx.state.get.players()
   const interaction = checkGuildInteraction(ctx.interaction)
 
   // find the name of the users in the match
@@ -465,22 +466,15 @@ async function playersConfirmingMatchPage(
   app: App,
   ctx: StateContext<typeof record_match_command_def>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  const requested_at = ctx.state.get('match_requested_at')
-  const expires_at = new Date(requested_at.getTime() + match_confirm_timeout_ms)
-
-  const players = nonNullable(ctx.state.data.players, 'players')
-  const players_per_team = ctx.state.get('players_per_team')
-  const num_teams = ctx.state.get('num_teams')
-
-  // take the first user name from each team as the team name
-  const selected_winner_index = nonNullable(
-    ctx.state.data.selected_winning_team_index,
-    'winner_index',
+  const expires_at = new Date(
+    ctx.state.get.match_requested_at().getTime() + match_confirm_timeout_ms,
   )
-
-  const original_user_id = ctx.state.get('requesting_player_id')
-
-  const ranking = await app.db.rankings.get(ctx.state.get('ranking_id'))
+  const players = ctx.state.get.players()
+  const players_per_team = ctx.state.get.players_per_team()
+  const num_teams = ctx.state.get.num_teams()
+  const selected_winner_index = ctx.state.get.selected_winning_team_index()
+  const original_user_id = ctx.state.get.requesting_player_id()
+  const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
 
   const embed: D.APIEmbed = {
     title: `New Match`,
@@ -498,7 +492,9 @@ async function playersConfirmingMatchPage(
       .concat([
         {
           name: 'Confirmed Players',
-          value: nonNullable(ctx.state.data.players?.flat())
+          value: ctx.state.get
+            .players()
+            .flat()
             .map((c, i) => {
               return c.confirmed == 'y' ? `\n<@${c.user_id}>` : ''
             })
@@ -542,7 +538,7 @@ async function onPlayerConfirmOrCancelBtn(
   ctx: ComponentContext<typeof record_match_command_def>,
 ): Promise<ChatInteractionResponse> {
   const time_since_match_requested =
-    new Date().getTime() - ctx.state.get('match_requested_at').getTime()
+    new Date().getTime() - ctx.state.get.match_requested_at().getTime()
 
   if (time_since_match_requested > match_confirm_timeout_ms) {
     ctx.interaction.channel?.id &&
@@ -561,7 +557,7 @@ async function onPlayerConfirmOrCancelBtn(
   const user_id = interaction.member.user.id
 
   // find which user is confirming/cancelling
-  const players = nonNullable(ctx.state.data.players, 'players')
+  const players = ctx.state.get.players()
 
   const player_team = players.findIndex(team => team.some(p => p.user_id == user_id))
   const user_index = players[player_team].findIndex(p => p.user_id == user_id)
@@ -595,10 +591,19 @@ async function onPlayerConfirmOrCancelBtn(
   // check if all users have confirmed
   if (players.every(team => team.every(p => p.confirmed == 'y'))) {
     // record the match
-    return {
-      type: D.InteractionResponseType.UpdateMessage,
-      data: await recordMatchFromSelectedTeams(app, ctx),
-    }
+    return ctx.defer(
+      {
+        type: D.InteractionResponseType.DeferredMessageUpdate,
+      },
+      async ctx => {
+        const followup = await ctx.followup({
+          content: `Recording match...`,
+          flags: D.MessageFlags.Ephemeral,
+        })
+        await ctx.edit(await recordMatchFromSelectedTeams(app, ctx))
+        return void app.bot.deleteMessage(followup.channel_id, followup.id)
+      },
+    )
   }
 
   return {
@@ -611,18 +616,18 @@ async function recordMatchFromSelectedTeams(
   app: App,
   ctx: StateContext<typeof record_match_command_def>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  const players_per_team = ctx.state.get('players_per_team')
-  const num_teams = ctx.state.get('num_teams')
+  const players_per_team = ctx.state.get.players_per_team()
+  const num_teams = ctx.state.get.num_teams()
 
-  const players = ctx.state.get('players')
+  const players = ctx.state.get.players()
 
   assert(allTeamsSelected(players, players_per_team, num_teams), 'not all teams selected')
 
   const relative_scores = new Array(num_teams)
     .fill(0)
-    .map((_, i) => (i == ctx.state.get('selected_winning_team_index') ? 1 : 0))
+    .map((_, i) => (i == ctx.state.get.selected_winning_team_index() ? 1 : 0))
 
-  const ranking = await app.db.rankings.get(ctx.state.get('ranking_id'))
+  const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
   // register all the players
   const team_players = await Promise.all(
     players.map(async user_ids => {
@@ -664,5 +669,3 @@ function allTeamsSelected(
     })
   )
 }
-
-export const record_match = new ViewModule([globalView(recordMatchCmd)])

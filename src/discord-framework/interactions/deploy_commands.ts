@@ -1,4 +1,6 @@
+import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
+import { AppError } from '../../main/app/errors'
 import { sentry } from '../../request/sentry'
 import type { DiscordAPIClient } from '../rest/client'
 import { AnyAppCommand, viewIsChatInputAppCommand } from './types'
@@ -13,7 +15,13 @@ export async function overwriteDiscordCommandsWithViews(
   if (guild_id === undefined) {
     await bot.overwriteGlobalCommands(commands_data)
   } else {
-    await bot.overwriteGuildCommands(guild_id, commands_data)
+    try {
+      await bot.overwriteGuildCommands(guild_id, commands_data)
+    } catch (e) {
+      if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.MissingAccess) {
+        throw new AppError(`Missing access to guild ${guild_id}`)
+      }
+    }
   }
 
   sentry.addBreadcrumb({

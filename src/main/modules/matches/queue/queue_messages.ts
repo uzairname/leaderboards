@@ -10,7 +10,7 @@ export async function sendGuildRankingQueueMessage(
 ): Promise<{ message_id: string }> {
   const result = await app.bot.utils.syncChannelMessage({
     target_channel_id: channel_id,
-    messageData: async () => queueMessage(app, guild_ranking.data.ranking_id),
+    messageData: await queueMessage(app, guild_ranking.data.ranking_id),
   })
   return { message_id: result.message.id }
 }

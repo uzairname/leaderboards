@@ -1,11 +1,18 @@
-import { and, eq, sql, desc, inArray, SQL } from 'drizzle-orm'
+import { and, eq, sql, desc, inArray, SQL, asc } from 'drizzle-orm'
 import { Player, Ranking } from '..'
 import { sentry } from '../../../request/sentry'
-import { cloneSimpleObj, nonNullable } from '../../../utils/utils'
+import { nonNullable } from '../../../utils/utils'
 import { DbClient } from '../../client'
+import { DbErrors } from '../../errors'
 import { DbObject, DbObjectManager } from '../../managers'
-import { MatchPlayers, Matches, Players } from '../../schema'
-import { MatchInsert, MatchPlayerSelect, MatchSelect, MatchUpdate, PlayerSelect } from '../../types'
+import { MatchPlayers, MatchSummaryMessages, Matches, Players } from '../../schema'
+import {
+  MatchInsert,
+  MatchPlayerSelect,
+  MatchSelect,
+  MatchSummaryMessageSelect,
+  MatchUpdate,
+} from '../../types'
 
 export class Match extends DbObject<MatchSelect> {
   constructor(data: MatchSelect, db: DbClient) {
@@ -39,10 +46,27 @@ export class Match extends DbObject<MatchSelect> {
     return player_teams
   }
 
+  async summaryMessage(guild_id: string): Promise<MatchSummaryMessageSelect | undefined> {
+    const data = (
+      await this.db.db
+        .select()
+        .from(MatchSummaryMessages)
+        .where(
+          and(
+            eq(MatchSummaryMessages.match_id, this.data.id),
+            eq(MatchSummaryMessages.guild_id, guild_id),
+          ),
+        )
+    )[0]
+    return data
+  }
+
   async update(
-    data: { team_players_before: { id: number; rating: number; rd: number }[][] } & Omit<
-      MatchUpdate,
-      'team_players' | 'number'
+    data: Partial<
+      { team_players: { id: number; rating_before: number; rd_before: number }[][] } & Omit<
+        MatchUpdate,
+        'team_players' | 'number'
+      >
     >,
   ): Promise<this> {
     this.data = (
@@ -50,28 +74,47 @@ export class Match extends DbObject<MatchSelect> {
         .update(Matches)
         .set({
           ...data,
-          team_players: data.team_players_before.map(team => team.map(player => player.id)),
+          team_players: data.team_players?.map(team => team.map(player => player.id)),
         })
         .where(eq(Matches.id, this.data.id))
         .returning()
     )[0]
 
     // update all match players' ratings and rd before
+    if (data.team_players) {
+      await this.updateMatchPlayers(data.team_players)
+    }
+
+    return this
+  }
+
+  async updateMatchPlayers(
+    team_players: { id: number; rating_before: number; rd_before: number }[][],
+  ): Promise<this> {
+    sentry.debug(
+      `updating match players for match ${this.data.id}, ${JSON.stringify(
+        team_players.map(t => t.map(p => p.rating_before)),
+      )}`,
+    )
     await Promise.all(
-      data.team_players_before.flat().map(player => {
+      team_players.flat().map(player =>
         this.db.db
           .update(MatchPlayers)
           .set({
-            rating_before: player.rating,
-            rd_before: player.rd,
+            rating_before: player.rating_before,
+            rd_before: player.rd_before,
           })
           .where(
             and(eq(MatchPlayers.match_id, this.data.id), eq(MatchPlayers.player_id, player.id)),
-          )
-      }),
+          ),
+      ),
     )
-
     return this
+  }
+
+  async delete(): Promise<void> {
+    await this.db.db.delete(Matches).where(eq(Matches.id, this.data.id))
+    delete this.db.cache.matches[this.data.id]
   }
 }
 
@@ -111,16 +154,28 @@ export class MatchesManager extends DbObjectManager {
     return new_match
   }
 
-  async get(filters: {
+  async get(id: number): Promise<Match> {
+    if (this.db.cache.matches[id]) {
+      return this.db.cache.matches[id]
+    }
+
+    const data = (await this.db.db.select().from(Matches).where(eq(Matches.id, id)))[0]
+
+    if (!data) {
+      throw new DbErrors.NotFoundError(`Match ${id} doesn't exist`)
+    }
+
+    return new Match(data, this.db)
+  }
+
+  async getMany(filters: {
     player_ids?: number[]
     user_ids?: string[]
     ranking_ids?: number[]
-    after?: Match
+    on_or_after?: Date
     limit_matches?: number
     offset?: number
   }): Promise<{ match: Match; teams: { player: Player; match_player: MatchPlayerSelect }[][] }[]> {
-    const default_limit = 10
-
     let sql_chunks: SQL[] = []
 
     if (filters.player_ids) {
@@ -133,8 +188,8 @@ export class MatchesManager extends DbObjectManager {
     if (filters.user_ids) {
       sql_chunks.push(sql`${Matches.id} in (
         select ${MatchPlayers.match_id} from ${MatchPlayers}
-        where ${Players.user_id} in ${filters.user_ids}
         inner join ${Players} on ${Players.id} = ${MatchPlayers.player_id}
+        where ${Players.user_id} in ${filters.user_ids}
       )`)
     }
 
@@ -142,24 +197,37 @@ export class MatchesManager extends DbObjectManager {
       sql_chunks.push(inArray(Matches.ranking_id, filters.ranking_ids))
     }
 
-    if (filters.after) {
-      const date = nonNullable(filters.after.data.time_finished, 'time_finished')
-      sql_chunks.push(sql`${Matches.time_finished} < ${date}`)
+    if (filters.on_or_after) {
+      sql_chunks.push(sql`${Matches.time_finished} >= ${filters.on_or_after}`)
+    }
+
+    sentry.debug(`sql_chunks: ${sql_chunks}`, `and(...sql_chunks): ${and(...sql_chunks)}`)
+
+    const matches_sql_chunks = [
+      sql`select ${Matches.id} from ${Matches} where ${and(...sql_chunks)} order by ${
+        Matches.time_finished
+      } desc`,
+    ]
+
+    if (filters.limit_matches) {
+      matches_sql_chunks.push(sql` limit ${filters.limit_matches}`)
+    }
+
+    if (filters.offset) {
+      matches_sql_chunks.push(sql` offset ${filters.offset}`)
     }
 
     const matches_sql = sql`
-      ${Matches.id} in (select ${Matches.id} from ${Matches} where ${and(...sql_chunks)} order by ${
-        Matches.time_finished
-      } desc${filters.limit_matches ? sql` limit ${filters.limit_matches}` : ``} offset ${
-        filters.offset ?? 0
-      })
+      ${Matches.id} in (${sql.join(matches_sql_chunks)})
     `
+
     const result = await this.db.db
       .select({ match: Matches, player: Players, match_player: MatchPlayers })
       .from(Matches)
       .innerJoin(MatchPlayers, eq(Matches.id, MatchPlayers.match_id))
       .innerJoin(Players, eq(MatchPlayers.player_id, Players.id))
       .where(matches_sql)
+      .orderBy(asc(Matches.time_finished))
 
     const matches = new Map<
       number,

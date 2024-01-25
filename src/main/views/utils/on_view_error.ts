@@ -41,8 +41,7 @@ export const onViewError = (app: App) =>
       description = 'Unrecognized command or component'
     } else {
       title = 'Unexpected Error'
-
-      description = 'An error occurred'
+      description = e instanceof Error ? `${e.name}: \`${e.message}\`` : 'An error occured'
 
       if (app.config.features.DetailedErrorMessages) {
         description =

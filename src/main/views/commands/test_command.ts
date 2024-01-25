@@ -151,10 +151,9 @@ const helper_view = new MessageView({
 
 const helperView = (app: App) =>
   helper_view.onComponent(async ctx => {
-    const back_state = (await ViewState.fromCustomId(ctx.state.get('back_cid'), findView(app)))
-      .state
+    const back_state = (await ViewState.fromCustomId(ctx.state.get.back_cid(), findView(app))).state
 
-    back_state.save[ctx.state.get('back_counter_field')](ctx.state.data.counter)
+    back_state.save[ctx.state.get.back_counter_field()](ctx.state.data.counter)
 
     return {
       type: D.InteractionResponseType.UpdateMessage,

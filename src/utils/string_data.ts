@@ -8,10 +8,14 @@ export type StringDataSchema = {
 export class StringData<TSchema extends StringDataSchema> {
   readonly data = {} as { [K in keyof TSchema]?: TSchema[K]['read'] }
 
-  get<K extends keyof TSchema>(key: K): NonNullable<TSchema[K]['read']> {
-    if (this.data[key] === null || this.data[key] === undefined)
-      throw new Error(`Field ${key.toString()} is null or undefined`)
-    return this.data[key] as NonNullable<TSchema[K]['read']>
+  // get<K extends keyof TSchema>(key: K): NonNullable<TSchema[K]['read']> {
+  //   if (this.data[key] === null || this.data[key] === undefined)
+  //     throw new Error(`Field ${key.toString()} is null or undefined`)
+  //   return this.data[key] as NonNullable<TSchema[K]['read']>
+  // }
+
+  get = {} as {
+    [K in keyof TSchema]: () => NonNullable<TSchema[K]['read']>
   }
 
   is = {} as {
@@ -106,6 +110,12 @@ export class StringData<TSchema extends StringDataSchema> {
       }
 
       this.set[key] = value => this.copy().save[key](value)
+
+      this.get[key] = () => {
+        if (this.data[key] === null || this.data[key] === undefined)
+          throw new Error(`Field ${key.toString()} is null or undefined`)
+        return this.data[key] as NonNullable<TSchema[typeof key]['read']>
+      }
 
       this.is[key] = compare =>
         compare ? this.data[key] === this.validateKeyValue(key, compare) : !!this.data[key]

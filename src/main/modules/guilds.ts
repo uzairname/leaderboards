@@ -22,23 +22,13 @@ export async function communityEnabled(app: App, guild_id: string): Promise<bool
   return discord_guild.features.includes(D.GuildFeature.Community)
 }
 
-export async function guildMatchLogsChannelType(
-  app: App,
-  guild_id: string,
-): Promise<'forum' | 'text'> {
-  return (await communityEnabled(app, guild_id)) ? 'forum' : 'text'
-}
-
 export async function getMatchLogsChannel(
   app: App,
   guild_id: string,
 ): Promise<D.APIChannel | undefined> {
   const guild = await getOrAddGuild(app, guild_id)
-  const channel_id =
-    (await guildMatchLogsChannelType(app, guild_id)) == 'forum'
-      ? guild.data.match_results_forum_id
-      : guild.data.match_results_textchannel_id
-  if (channel_id)
+  const channel_id = guild.data.match_results_textchannel_id
+  if (channel_id) {
     try {
       return await app.bot.getChannel(channel_id)
     } catch (e) {
@@ -46,6 +36,7 @@ export async function getMatchLogsChannel(
         return undefined
       throw e
     }
+  }
 }
 
 export async function syncRankedCategory(

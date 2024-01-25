@@ -41,19 +41,19 @@ export const ranking_settings_page = new MessageView({
 
 export const rankingSettingsView = (app: App) =>
   ranking_settings_page.onComponent(async ctx => {
-    if (ctx.state.is.callback()) return ctx.state.get('callback')(app, ctx)
+    if (ctx.state.data.callback) return ctx.state.data.callback(app, ctx)
 
     return ctx.defer(
       {
         type: D.InteractionResponseType.DeferredMessageUpdate,
       },
       async ctx => {
-        const ranking = await app.db.rankings.get(ctx.state.get('ranking_id'))
+        const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
         return void (ctx.state.is.edit() ? ctx.edit : ctx.followup)(
           await guildRankingSettingsPage(app, {
             state: ranking_settings_page.newState({
               ranking_id: ranking.data.id,
-              guild_id: ctx.state.get('guild_id'),
+              guild_id: ctx.state.get.guild_id(),
               edit: true,
               ranking_name: ranking.data.name,
             }),
@@ -68,28 +68,28 @@ const setting_select_menu_options: Record<
   (
     app: App,
     guild_ranking: GuildRanking,
-  ) => Promise<{
+  ) => {
     name: string
     description: string
     callback: (
       app: App,
       ctx: ComponentContext<typeof ranking_settings_page>,
     ) => ChatInteractionResponse | Promise<ChatInteractionResponse>
-  }>
+  }
 > = {
-  rename: async () => ({
+  rename: () => ({
     name: '✏️Rename',
     description: 'Rename the ranking',
     callback: (_, ctx) => ({
       type: D.InteractionResponseType.Modal,
       data: {
         custom_id: ctx.state.set.callback(onRenameModalSubmit).cId(),
-        title: `Rename ${ctx.state.get('ranking_name')}`,
+        title: `Rename ${ctx.state.get.ranking_name()}`,
         components: [rankingNameTextInput()],
       },
     }),
   }),
-  leaderboard_msg: async () => ({
+  leaderboard_msg: () => ({
     name: '🏅Send Leaderboard',
     description: 'Send a live-updating leaderboard to a channel',
     callback: (app, ctx) => {
@@ -98,7 +98,6 @@ const setting_select_menu_options: Record<
           type: D.InteractionResponseType.DeferredMessageUpdate,
         },
         async ctx => {
-          // await ctx.edit(await guildRankingSettingsPage(app, ctx))
           await ctx.edit(
             await sendSelectChannelPage(app, ctx.interaction, {
               submit_cid: ctx.state.set.callback(onLbChannelSelect).cId(),
@@ -106,13 +105,11 @@ const setting_select_menu_options: Record<
               text_only: true,
             }),
           )
-          // return void Promise.all([
-          // ])
         },
       )
     },
   }),
-  queue_message: async () => ({
+  queue_message: () => ({
     name: '⚔️Send Queue Message',
     description: 'Send a queue message to a channel',
     callback: (app, ctx) => {
@@ -121,7 +118,6 @@ const setting_select_menu_options: Record<
           type: D.InteractionResponseType.DeferredMessageUpdate,
         },
         async ctx => {
-          // await ctx.edit(await guildRankingSettingsPage(app, ctx))
           await ctx.edit(
             await sendSelectChannelPage(app, ctx.interaction, {
               submit_cid: ctx.state.set.callback(onQueueChannelSelect).cId(),
@@ -129,15 +125,11 @@ const setting_select_menu_options: Record<
               text_only: true,
             }),
           )
-          // return void Promise.all([
-          //   ctx.followup(
-          //   ),
-          // ])
         },
       )
     },
   }),
-  match_logs: async (_, guild_ranking) => {
+  match_logs: (_, guild_ranking) => {
     return {
       name: guild_ranking.data.display_settings?.log_matches
         ? '📜Disable Match Logs'
@@ -151,9 +143,10 @@ const setting_select_menu_options: Record<
             type: D.InteractionResponseType.DeferredMessageUpdate,
           },
           async ctx => {
+            await ensureAdminPerms(app, ctx)
             const guild_ranking = await app.db.guild_rankings.get({
-              guild_id: ctx.state.get('guild_id'),
-              ranking_id: ctx.state.get('ranking_id'),
+              guild_id: ctx.state.get.guild_id(),
+              ranking_id: ctx.state.get.ranking_id(),
             })
 
             const display_settings = guild_ranking.data.display_settings ?? {}
@@ -171,7 +164,7 @@ const setting_select_menu_options: Record<
       },
     }
   },
-  delete: async () => ({
+  delete: () => ({
     name: '🗑️Delete',
     description: 'Delete this ranking',
     callback: async (app, ctx) => {
@@ -219,8 +212,8 @@ export async function guildRankingSettingsPage(
   ctx: StateContext<typeof ranking_settings_page>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const guild_ranking = await app.db.guild_rankings.get({
-    guild_id: ctx.state.get('guild_id'),
-    ranking_id: ctx.state.get('ranking_id'),
+    guild_id: ctx.state.get.guild_id(),
+    ranking_id: ctx.state.get.ranking_id(),
   })
 
   const embed: D.APIEmbed = {
@@ -235,9 +228,9 @@ export async function guildRankingSettingsPage(
     placeholder: `Select a setting`,
     options: await Promise.all(
       Object.entries(setting_select_menu_options).map(async ([value, option]) => ({
-        label: (await option(app, guild_ranking)).name,
+        label: option(app, guild_ranking).name,
         value,
-        description: (await option(app, guild_ranking)).description,
+        description: option(app, guild_ranking).description,
       })),
     ),
   }
@@ -264,10 +257,10 @@ async function onSettingSelect(
   const value = (ctx.interaction.data as D.APIMessageStringSelectInteractionData).values[0]
   if (!value) return { type: D.InteractionResponseType.DeferredMessageUpdate }
   const guild_ranking = await app.db.guild_rankings.get({
-    guild_id: ctx.state.get('guild_id'),
-    ranking_id: ctx.state.get('ranking_id'),
+    guild_id: ctx.state.get.guild_id(),
+    ranking_id: ctx.state.get.ranking_id(),
   })
-  return (await setting_select_menu_options[value](app, guild_ranking)).callback(app, ctx)
+  return setting_select_menu_options[value](app, guild_ranking).callback(app, ctx)
 }
 
 async function onRenameModalSubmit(
@@ -280,7 +273,7 @@ async function onRenameModalSubmit(
     },
     async ctx => {
       await ensureAdminPerms(app, ctx)
-      const ranking = await app.db.rankings.get(ctx.state.get('ranking_id'))
+      const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
       const old_name = ranking.data.name
       const name = validateRankingOptions({
         name: getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)['name'].value,
@@ -318,8 +311,8 @@ async function onLbChannelSelect(
       await ensureAdminPerms(app, ctx)
 
       const guild_ranking = await app.db.guild_rankings.get({
-        guild_id: ctx.state.get('guild_id'),
-        ranking_id: ctx.state.get('ranking_id'),
+        guild_id: ctx.state.get.guild_id(),
+        ranking_id: ctx.state.get.ranking_id(),
       })
 
       await guild_ranking.update({
@@ -330,8 +323,8 @@ async function onLbChannelSelect(
         },
       })
       await syncGuildRankingLbMessage(app, guild_ranking)
-
-      await ctx.edit({
+      await ctx.edit(await guildRankingSettingsPage(app, ctx))
+      await ctx.followup({
         embeds: [
           {
             title: `Leaderboard Created`,
@@ -364,13 +357,14 @@ async function onQueueChannelSelect(
         return void ctx.edit(await guildRankingSettingsPage(app, ctx))
       }
       const guild_ranking = await app.db.guild_rankings.get({
-        guild_id: ctx.state.get('guild_id'),
-        ranking_id: ctx.state.get('ranking_id'),
+        guild_id: ctx.state.get.guild_id(),
+        ranking_id: ctx.state.get.ranking_id(),
       })
 
       await ensureAdminPerms(app, ctx)
       const result = await sendGuildRankingQueueMessage(app, guild_ranking, queue_channel_id)
-      await ctx.edit({
+      await ctx.edit(await guildRankingSettingsPage(app, ctx))
+      await ctx.followup({
         embeds: [
           {
             title: `Queue Message Created`,
@@ -397,7 +391,7 @@ function onDeleteConfirmBtn(
       type: D.InteractionResponseType.DeferredMessageUpdate,
     },
     async ctx => {
-      const ranking = await app.db.rankings.get(ctx.state.get('ranking_id'))
+      const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
       await deleteRanking(app, ranking)
       return void ctx.edit({
         flags: D.MessageFlags.Ephemeral,

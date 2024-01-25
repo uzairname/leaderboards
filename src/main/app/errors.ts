@@ -13,6 +13,12 @@ export namespace AppErrors {
     }
   }
 
+  export class RescoreMatchesLimitExceeded extends AppError {
+    constructor() {
+      super('Rescoring too many matches at once')
+    }
+  }
+
   export class UserMissingPermissions extends AppError {}
 
   export class NotComponentOwner extends AppError {
@@ -26,6 +32,8 @@ export namespace AppErrors {
   }
 
   export class ValidationError extends AppError {}
+
+  export class InvalidInput extends AppError {}
 
   export class UnknownState extends AppError {
     constructor(state?: string) {

@@ -6,6 +6,7 @@ import {
   InteractionContext,
   ChatInteractionResponse,
 } from '../../../discord-framework'
+import { ViewState } from '../../../discord-framework/interactions/view_state'
 import { App } from '../../app/app'
 import { AppErrors } from '../../app/errors'
 import { getOrAddGuild, syncGuildAdminRole } from '../../modules/guilds'
@@ -33,34 +34,39 @@ const settingsCmd = (app: App) =>
     .onCommand(async ctx => {
       return {
         type: D.InteractionResponseType.ChannelMessageWithSource,
-        data: {
-          components: [
-            {
-              type: D.ComponentType.ActionRow,
-              components: [
-                {
-                  type: D.ComponentType.Button,
-                  label: '⭐ Rankings',
-                  style: D.ButtonStyle.Primary,
-                  custom_id: rankings_cmd_def.newState().cId(),
-                },
-                {
-                  type: D.ComponentType.Button,
-                  label: 'Admin Role',
-                  style: D.ButtonStyle.Primary,
-                  custom_id: ctx.state.set.callback(onAdminRoleBtn).cId(),
-                },
-              ],
-            },
-          ],
-          flags: D.MessageFlags.Ephemeral,
-        },
+        data: await settingsPage(app),
       }
     })
 
     .onComponent(async ctx => {
-      return await ctx.state.get('callback')(app, ctx)
+      return ctx.state.get.callback()(app, ctx)
     })
+
+async function settingsPage(app: App): Promise<D.APIInteractionResponseCallbackData> {
+  const state = settings_cmd_def.newState()
+  return {
+    components: [
+      {
+        type: D.ComponentType.ActionRow,
+        components: [
+          {
+            type: D.ComponentType.Button,
+            label: '⭐ Rankings',
+            style: D.ButtonStyle.Primary,
+            custom_id: rankings_cmd_def.newState().cId(),
+          },
+          {
+            type: D.ComponentType.Button,
+            label: 'Admin Role',
+            style: D.ButtonStyle.Primary,
+            custom_id: state.set.callback(onAdminRoleBtn).cId(),
+          },
+        ],
+      },
+    ],
+    flags: D.MessageFlags.Ephemeral,
+  }
+}
 
 async function onAdminRoleBtn(
   app: App,

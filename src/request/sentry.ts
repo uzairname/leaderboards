@@ -36,7 +36,7 @@ export class Sentry extends Toucan {
     this.request_name = `${this.request.method} ${new URL(this.request.url).pathname}`
 
     return new Promise<Response>((resolve, reject) => {
-      const timeout_ms = 10000
+      const timeout_ms = 20000
       setTimeout(() => {
         reject(new TimeoutError(`${this.request_name} timed out after ${timeout_ms} ms`))
       }, timeout_ms)
@@ -89,7 +89,7 @@ export class Sentry extends Toucan {
     // try executing callback. If it takes longer than 20 seconds, log a timeout error. If not, cancel the timeout and log the result
     this.request_args.execution_context.waitUntil(
       new Promise<void>((resolve, reject) => {
-        const timeout_ms = 10000
+        const timeout_ms = 20000
         setTimeout(() => {
           this.captureMessage(`${timeout_ms} ms`)
           reject(new TimeoutError(`"${request_name}" timed out after ${timeout_ms} ms`))

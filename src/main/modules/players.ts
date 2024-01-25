@@ -21,14 +21,13 @@ export async function getRegisterPlayer(
 
     const app_user = await app.db.users.getOrCreate({
       id: discord_user.id,
-      name: discord_user.username,
+      name: discord_user.global_name ?? discord_user.username,
     })
 
     ranking = typeof ranking == 'number' ? await app.db.rankings.get(ranking) : ranking
 
     player = await app.db.players.create(app_user, ranking, {
-      time_created: new Date(),
-      name: discord_user.global_name,
+      name: discord_user.global_name ?? discord_user.username,
       rating: nonNullable(ranking.data.elo_settings?.initial_rating, 'initial_rating'),
       rd: nonNullable(ranking.data.elo_settings?.initial_rd, 'initial_rd'),
     })

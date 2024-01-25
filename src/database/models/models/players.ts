@@ -1,5 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { Ranking, Team, User } from '..'
+import { sentry } from '../../../request/sentry'
 import { DbClient } from '../../client'
 import { DbErrors } from '../../errors'
 import { DbObject, DbObjectManager } from '../../managers'
@@ -9,6 +10,7 @@ import { PlayerInsert, PlayerSelect } from '../../types'
 export class Player extends DbObject<PlayerSelect> {
   constructor(data: PlayerSelect, db: DbClient) {
     super(data, db)
+    sentry.debug(`Created player with id ${data.id}, rating ${data.rating}`)
     db.cache.players_by_id[data.id] = this
     db.cache.players[data.ranking_id] ??= {}
     db.cache.players[data.ranking_id][data.user_id] = this
@@ -19,12 +21,12 @@ export class Player extends DbObject<PlayerSelect> {
       await this.db.db
         .update(Players)
         .set(data)
-        .where(and(
-          eq(Players.user_id, this.data.user_id), 
-          eq(Players.ranking_id, this.data.ranking_id)
-        ))
+        .where(
+          eq(Players.id, this.data.id),
+        )
         .returning()
     )[0] // prettier-ignore
+    sentry.debug(`Updated player ${this.data.id} rating to ${this.data.rating}`)
     return this
   }
 
@@ -107,6 +109,10 @@ export class PlayersManager extends DbObjectManager {
   }
 
   getPartial(id: number): Player {
+    if (this.db.cache.players_by_id[id]) {
+      // sentry.debug(`Using cached player ${id}. Rating is ${this.db.cache.players_by_id[id].data.rating}`)
+      return this.db.cache.players_by_id[id]
+    }
     return new Player(
       {
         id,

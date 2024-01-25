@@ -72,8 +72,22 @@ export async function updateRanking(app: App, ranking: Ranking, options: Ranking
 }
 
 export async function deleteRanking(app: App, ranking: Ranking): Promise<void> {
-  await onDeleteRanking(app, ranking)
+  const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
+  await Promise.all(
+    guild_rankings.map(async item => {
+      await app.bot.utils.deleteMessageIfExists(
+        item.guild_ranking.data.leaderboard_channel_id,
+        item.guild_ranking.data.leaderboard_message_id,
+      )
+    }),
+  )
   await ranking.delete()
+
+  await Promise.all(
+    guild_rankings.map(async item => {
+      await syncDiscordCommands(app, item.guild.data.id)
+    }),
+  )
 }
 
 export const default_num_teams = 2
@@ -118,18 +132,5 @@ export function validateRankingOptions<T extends Partial<RankingInsert>>(o: T): 
       )
   }
 
-  return o as T
-}
-
-async function onDeleteRanking(app: App, ranking: Ranking): Promise<void> {
-  const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
-  await Promise.all(
-    guild_rankings.map(async item => {
-      await syncDiscordCommands(app, item.guild.data.id)
-      await app.bot.utils.deleteMessageIfExists(
-        item.guild_ranking.data.leaderboard_channel_id,
-        item.guild_ranking.data.leaderboard_message_id,
-      )
-    }),
-  )
+  return o
 }

@@ -10,7 +10,7 @@ export function addRankingChannelsListeners(app: App) {
   app.events.RankingLeaderboardUpdated.on(async ranking => {
     await syncRankingLbMessages(app, ranking)
   })
-  app.events.MatchScored.on(async match => {
+  app.events.MatchCreatedOrUpdated.on(async match => {
     await app.events.RankingLeaderboardUpdated.emit(await match.ranking())
   })
 }
@@ -41,7 +41,7 @@ export async function syncGuildRankingLbMessage(
   const result = await app.bot.utils.syncChannelMessage({
     target_channel_id: guild_ranking.data.leaderboard_channel_id,
     target_message_id: guild_ranking.data.leaderboard_message_id,
-    messageData: () => leaderboardMessage(ranking),
+    messageData: await leaderboardMessage(ranking),
     channelData: create_channel_if_not_exists
       ? () => lbChannelData(app, guild, ranking)
       : undefined,

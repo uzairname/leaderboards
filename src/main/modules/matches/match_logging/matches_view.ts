@@ -1,10 +1,12 @@
 import * as D from 'discord-api-types/v10'
+import { TlsOptions_Version } from 'miniflare'
 import { MessageView, field } from '../../../../discord-framework'
 import { ViewState } from '../../../../discord-framework/interactions/view_state'
 import { App } from '../../../app/app'
 import { Colors } from '../../../messages/message_pieces'
 import { ViewModule, globalView, guildCommand } from '../../view_manager/view_module'
-import { matchSummaryEmbed } from './match_logging'
+import { matchSummaryEmbed } from './match_messages'
+import { matchView } from './match_view'
 import { matchesCommand, matchesCommandDef } from './matches_command'
 
 export const match_history_view_def = new MessageView({
@@ -12,14 +14,15 @@ export const match_history_view_def = new MessageView({
   name: 'match history',
   state_schema: {
     on_page: field.Bool(),
+    match_id: field.Int(),
     ranking_ids: field.Array(field.Int()),
     player_ids: field.Array(field.Int()),
     user_ids: field.Array(field.String()),
-    page: field.Int(),
+    page_num: field.Int(),
   },
 })
 
-export const matchHistoryView = (app: App) =>
+export const matchesView = (app: App) =>
   match_history_view_def.onComponent(async ctx => {
     return ctx.defer(
       {
@@ -40,15 +43,20 @@ export async function matchesPage(
 ): Promise<D.APIInteractionResponseCallbackData> {
   state = state ?? match_history_view_def.newState()
 
+  state.saveAll({
+    on_page: true,
+    page_num: state.data.page_num ?? 0,
+  })
+
   const matches_per_page = 5
 
   const matches = await Promise.all(
-    await app.db.matches.get({
+    await app.db.matches.getMany({
       player_ids: state.data.player_ids,
       user_ids: state.data.user_ids,
       ranking_ids: state.data.ranking_ids,
       limit_matches: matches_per_page,
-      offset: (state.data.page ?? 0) * matches_per_page,
+      offset: (state.data.page_num ?? 0) * matches_per_page,
     }),
   )
 
@@ -77,14 +85,14 @@ export async function matchesPage(
           {
             type: D.ComponentType.Button,
             style: D.ButtonStyle.Primary,
-            custom_id: state.set.page((state.data.page ?? 0) - 1).cId(),
+            custom_id: state.set.page_num((state.data.page_num ?? 0) - 1).cId(),
             label: 'Newer',
-            disabled: state.data.page === 0,
+            disabled: state.data.page_num === 0,
           },
           {
             type: D.ComponentType.Button,
             style: D.ButtonStyle.Primary,
-            custom_id: state.set.page((state.data.page ?? 0) + 1).cId(),
+            custom_id: state.set.page_num((state.data.page_num ?? 0) + 1).cId(),
             label: 'Older',
             disabled: matches.length < matches_per_page,
           },
@@ -94,7 +102,8 @@ export async function matchesPage(
   }
 }
 
-export const match_history_module = new ViewModule([
-  globalView(matchHistoryView, true),
-  guildCommand(matchesCommand, matchesCommandDef, true),
+export const matches_module = new ViewModule([
+  globalView(matchesView),
+  globalView(matchView),
+  guildCommand(matchesCommand, matchesCommandDef),
 ])

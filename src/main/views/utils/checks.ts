@@ -33,9 +33,7 @@ async function determineAdminPerms(app: App, ctx: InteractionContext<AnyView>) {
 
   const guild = await getOrAddGuild(app, interaction.guild_id)
   const member = interaction.member
-  let is_owner = (await app.db.settings.getOrUpdate()).data.config['owner_ids'].includes(
-    member.user.id,
-  )
+  let is_owner = app.config.OwnerIds.includes(member.user.id)
   let admin_role_id = guild.data.admin_role_id
   let has_admin_role = admin_role_id !== null && member.roles.includes(admin_role_id)
   let has_admin_perms =

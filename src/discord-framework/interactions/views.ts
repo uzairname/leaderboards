@@ -96,7 +96,12 @@ export abstract class View<TSchema extends StringDataSchema> {
               return args.bot.createFollowupMessage(args.interaction.token, response_data)
             },
             edit: async (data: D.RESTPatchAPIWebhookWithTokenMessageJSONBody) => {
-              await args.bot.editOriginalInteractionResponse(args.interaction.token, data)
+              await args.bot.editOriginalInteractionResponse(args.interaction.token, {
+                content: null,
+                embeds: null,
+                components: null,
+                ...data,
+              })
             },
             delete: async (message_id?: string) => {
               await args.bot.deleteInteractionResponse(args.interaction.token, message_id)

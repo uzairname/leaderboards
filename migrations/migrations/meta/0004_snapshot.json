@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "pg",
-  "id": "a67eb7dd-3606-404e-8263-904af626125b",
-  "prevId": "cb6a7381-9661-4cf9-98dd-388d86607f42",
+  "id": "315862f3-1893-4d66-8216-61015564147e",
+  "prevId": "a3ac305b-8d04-46a4-a2f8-8c475c20dffe",
   "tables": {
     "AccessTokens": {
       "name": "AccessTokens",

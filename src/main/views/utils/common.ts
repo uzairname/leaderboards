@@ -55,6 +55,10 @@ export function rankingsAutocomplete(
   }
 }
 
+/**
+ * Returns a non-empty array of slash command choices for each ranking in the guild.
+ *
+ */
 export async function guildRankingsOptionChoices(
   app: App,
   guild_id: string,
@@ -67,10 +71,17 @@ export async function guildRankingsOptionChoices(
     })),
   )
 
-  if (create_ranking_option || choices.length == 0) {
+  if (create_ranking_option) {
     choices.push({
       name: 'Create a new ranking',
       value: create_choice_value,
+    })
+  }
+
+  if (choices.length == 0) {
+    choices.push({
+      name: 'No rankings',
+      value: '0',
     })
   }
 

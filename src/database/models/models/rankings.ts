@@ -19,17 +19,17 @@ export class Ranking extends DbObject<Partial<RankingSelect> & { id: number }> {
    *
    * @returns The top players in this ranking, ordered by highest rating to lowest
    */
-  async getOrderedTopPlayers(): Promise<Player[]> {
-    sentry.debug('getting ordered top players')
-    const players = await this.db.db
+  async getOrderedTopPlayers(limit?: number): Promise<Player[]> {
+    const query = this.db.db
       .select()
       .from(Players)
       .where(eq(Players.ranking_id, this.data.id))
       .orderBy(desc(Players.rating))
-    // const players = await this.db.db.execute(
-    //   sql`select * from "Players" where "Players".ranking_id=${this.data.id} order by "Players".rating desc`,
-    // )
-    sentry.debug(`got players`, players)
+
+    if (limit) query.limit(limit)
+
+    const players = await query
+
     return players.map(item => {
       return new Player(item, this.db)
     })

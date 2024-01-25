@@ -146,7 +146,7 @@ export class DiscordAPIUtils {
   async syncChannelMessage(params: {
     target_channel_id?: string | null
     target_message_id?: string | null
-    messageData: () => Promise<MessageData>
+    messageData: MessageData
     channelData?: () => Promise<{
       guild_id: string
       data: GuildChannelData
@@ -158,28 +158,15 @@ export class DiscordAPIUtils {
   }> {
     let new_channel: D.APIChannel | undefined = undefined
     try {
-      if (params.target_channel_id && params.target_message_id) {
-        // Try to edit the message
-        sentry.debug(`getting message`)
-        const msg = await params.messageData()
-        sentry.debug(`editing message`)
-        let existing_message = await this.bot.editMessage(
-          params.target_channel_id,
-          params.target_message_id,
-          msg.patchdata,
-        ) // if this fails, either the channel or the message was not found.
-        sentry.debug(`edited message`)
-        return {
-          message: existing_message,
-          is_new_message: false,
-        }
-      } else if (!params.target_channel_id) {
-        if (!params.channelData) throw new Error('No Channel')
-        new_channel = (
-          await this.syncGuildChannel({
-            channelData: params.channelData,
-          })
-        ).channel
+      let existing_message = await this.bot.editMessage(
+        params.target_channel_id || '0',
+        params.target_message_id || '0',
+        params.messageData.patchdata,
+      )
+      // channel and message exist
+      return {
+        message: existing_message,
+        is_new_message: false,
       }
     } catch (e) {
       if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.UnknownChannel) {
@@ -197,14 +184,10 @@ export class DiscordAPIUtils {
       }
     }
     // channel exists, but message doesn't
-    sentry.debug(`channel exists, but message doesn't`)
-    const msg = await params.messageData()
-    sentry.debug(`creating message`)
     let new_message = await this.bot.createMessage(
       new_channel?.id || params.target_channel_id!,
-      msg.postdata,
+      params.messageData.postdata,
     )
-    sentry.debug(`created message`)
     return {
       message: new_message,
       is_new_message: true,
