@@ -29,7 +29,7 @@ export const apiRouter = (app: App) =>
       const result = {
         interactions: app.config.env.BASE_URL + '/interactions',
         linked_roles: app.config.env.BASE_URL + '/oauth' + app.config.OauthRoutes.LinkedRoles,
-        oauth_redirect: app.config.env.BASE_URL + '/oauth' + app.config.OauthRoutes.Redirect
+        oauth_redirect: app.config.env.BASE_URL + '/oauth' + app.config.OauthRoutes.Redirect,
       }
     })
     .all('*', () => new Response('Not found', { status: 404 }))

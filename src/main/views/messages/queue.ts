@@ -24,7 +24,7 @@ const queue_message_def = new MessageView({
   },
 })
 
-const queueView = (app: App) =>
+export const queueView = (app: App) =>
   queue_message_def.onComponent(async ctx => {
     const interaction = checkGuildInteraction(ctx.interaction)
     const ranking_id = ctx.state.get.ranking_id()

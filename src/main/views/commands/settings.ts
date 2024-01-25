@@ -9,11 +9,11 @@ import {
 import { ViewState } from '../../../discord-framework/interactions/view_state'
 import { App } from '../../app/app'
 import { AppErrors } from '../../app/errors'
+import { Colors } from '../../messages/message_pieces'
 import { getOrAddGuild, syncGuildAdminRole } from '../../modules/guilds'
 import { rankings_cmd_def } from '../../modules/rankings/rankings_commands/rankings_cmd'
 import { ViewModule, globalView } from '../../modules/view_manager/view_module'
 import { checkGuildInteraction, ensureAdminPerms } from '../utils/checks'
-import { Colors } from '../../messages/message_pieces'
 
 export const settings_cmd_def = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -51,7 +51,7 @@ async function settingsPage(app: App): Promise<D.APIInteractionResponseCallbackD
         title: 'Settings',
         description: ``,
         color: Colors.EmbedBackground,
-      }
+      },
     ],
     components: [
       {

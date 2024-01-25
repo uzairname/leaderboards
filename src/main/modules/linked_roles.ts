@@ -4,12 +4,14 @@ import { App } from '../app/app'
 export function getAppRoleConnectionsMetadata(
   app: App,
 ): D.RESTPutAPIApplicationRoleConnectionMetadataJSONBody {
-  return [{
-    type: D.ApplicationRoleConnectionMetadataType.IntegerGreaterThanOrEqual,
-    key: 'elo',
-    name: 'Elo Rating',
-    description: 'Display on profile if elo is at least (recommended value 0)',
-  }]
+  return [
+    {
+      type: D.ApplicationRoleConnectionMetadataType.IntegerGreaterThanOrEqual,
+      key: 'elo',
+      name: 'Elo Rating',
+      description: 'Display elo on profile',
+    },
+  ]
 }
 
 /**
@@ -33,5 +35,4 @@ export async function updateUserRoleConnectionData(
   }
 
   await app.bot.updateUserRoleConnection(access_token, body)
-
 }

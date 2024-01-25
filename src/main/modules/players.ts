@@ -2,8 +2,8 @@ import * as D from 'discord-api-types/v10'
 import { Player, Ranking } from '../../database/models'
 import { nonNullable } from '../../utils/utils'
 import { App } from '../app/app'
-import { updateUserRoleConnectionData } from './linked_roles'
 import { syncRankingLbMessages } from './leaderboard/leaderboard_messages'
+import { updateUserRoleConnectionData } from './linked_roles'
 import { getUserAccessToken, refreshAccessTokenIfExpired } from './oauth'
 
 export async function getRegisterPlayer(
@@ -39,27 +39,24 @@ export async function getRegisterPlayer(
   return player
 }
 
-export async function updatePlayerRating(
-  app: App,
-  player: Player,
-  rating: number,
-  rd: number,
-) {
+export async function updatePlayerRating(app: App, player: Player, rating: number, rd: number) {
   await player.update({
     rating,
     rd,
   })
 
   await Promise.all([
-    getUserAccessToken(app, player.data.user_id, [D.OAuth2Scopes.RoleConnectionsWrite]).then(async access_token => {
-      if (access_token) {
-        await updateUserRoleConnectionData(
-          app,
-          access_token,
-          rating,
-          (await player.ranking).data.name ?? "Unnamed Ranking"
-        )
-      }
-    }),
+    getUserAccessToken(app, player.data.user_id, [D.OAuth2Scopes.RoleConnectionsWrite]).then(
+      async access_token => {
+        if (access_token) {
+          await updateUserRoleConnectionData(
+            app,
+            access_token,
+            rating,
+            (await player.ranking).data.name ?? 'Unnamed Ranking',
+          )
+        }
+      },
+    ),
   ])
 }

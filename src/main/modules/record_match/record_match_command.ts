@@ -11,7 +11,7 @@ import {
   field,
 } from '../../../discord-framework'
 import { sentry } from '../../../request/sentry'
-import { assert, nonNullable, unflatten } from '../../../utils/utils'
+import { assert, nonNullable, snowflakeToDate, unflatten } from '../../../utils/utils'
 import { App } from '../../app/app'
 import { AppErrors, AppError } from '../../app/errors'
 import { Colors, relativeTimestamp } from '../../messages/message_pieces'
@@ -32,6 +32,7 @@ const optionnames = {
   ranking: 'for',
   winner: 'winner',
   loser: 'loser',
+  time_finished: 'when',
 }
 
 const record_match_command_def = new AppCommand({
@@ -70,8 +71,8 @@ const record_match_command_def = new AppCommand({
     match_requested_at: field.Date(),
     // user who originally requested the match
     requesting_player_id: field.String(),
-    // list of user ids who have confirmed the match, corresponding to flattened_team_users
-    // users_confirmed: field.Array(field.String()),
+
+    selected_time_finished: field.Date(),
   },
 })
 
@@ -93,6 +94,11 @@ const recordMatchCmdDef = async (app: App, guild_id?: string) => {
         description: 'Who lost (if applicable)',
         type: D.ApplicationCommandOptionType.User,
       },
+      {
+        name: optionnames.time_finished,
+        description: 'Snowflake or Unix timestamp of when the match was finished (default now)',
+        type: D.ApplicationCommandOptionType.String,
+      }
     ],
   })
 
@@ -125,8 +131,26 @@ export const recordMatchCmd = (app: App) =>
           | undefined
       )?.value
 
+      const selected_time_finished = (
+        interaction.data.options?.find(o => o.name === optionnames.time_finished) as
+          | D.APIApplicationCommandInteractionDataStringOption
+          | undefined
+      )?.value
+
       if (selected_ranking_id == 'create') {
         return createRankingModal(app, { state: create_ranking_view_def.newState({}) })
+      }
+
+      if (selected_time_finished && 
+        !isNaN(parseInt(selected_time_finished))) {
+        
+        if (selected_time_finished.length < 13) {
+          // assume it's a unix timestamp
+          ctx.state.save.selected_time_finished(new Date(parseInt(selected_time_finished) * 1000))
+        } else {
+          // assume it's a snowflake
+          ctx.state.save.selected_time_finished(snowflakeToDate(BigInt(selected_time_finished)))
+        }
       }
 
       return ctx.defer(
@@ -185,7 +209,7 @@ export const recordMatchCmd = (app: App) =>
                 const winner = await getRegisterPlayer(app, winner_id, ranking)
                 const loser = await getRegisterPlayer(app, loser_id, ranking)
 
-                await recordAndScoreNewMatch(app, ranking, [[winner], [loser]], [1, 0])
+                await recordAndScoreNewMatch(app, ranking, [[winner], [loser]], [1, 0], undefined, ctx.state.data.selected_time_finished)
                 return void ctx.edit({
                   content: `Recorded match`,
                   flags: D.MessageFlags.Ephemeral,
@@ -634,7 +658,7 @@ async function recordMatchFromSelectedTeams(
     }),
   )
 
-  const new_match = await recordAndScoreNewMatch(app, ranking, team_players, relative_scores)
+  const new_match = await recordAndScoreNewMatch(app, ranking, team_players, relative_scores, undefined, ctx.state.data.selected_time_finished)
 
   return {
     components: [],

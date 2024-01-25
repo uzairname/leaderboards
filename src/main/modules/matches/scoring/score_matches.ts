@@ -23,7 +23,8 @@ export async function recordAndScoreNewMatch(
   ranking: Ranking,
   players: Player[][],
   outcome: number[],
-  time_started: Date = new Date(),
+  time_started?: Date,
+  time_finished?: Date,
   metadata?: { [key: string]: any },
 ): Promise<Match> {
   // add match
@@ -34,6 +35,7 @@ export async function recordAndScoreNewMatch(
     outcome,
     metadata,
     time_started,
+    time_finished,
   })
 
   const match = await app.db.matches.create({
@@ -41,8 +43,8 @@ export async function recordAndScoreNewMatch(
     team_players: players,
     outcome: outcome,
     metadata: metadata,
-    time_started,
-    time_finished: new Date(),
+    time_started: time_started ?? time_finished ?? new Date(),
+    time_finished: time_finished ?? time_started ?? new Date(),
   })
 
   const player_ratings_before = players.map(t =>
@@ -66,8 +68,13 @@ export async function recordAndScoreNewMatch(
   await Promise.all(
     players.map(async (team, i) => {
       await Promise.all(
-        team.map(async (player, j) => 
-          updatePlayerRating(app, player, new_player_ratings[i][j].rating_after, new_player_ratings[i][j].rd_after)
+        team.map(async (player, j) =>
+          updatePlayerRating(
+            app,
+            player,
+            new_player_ratings[i][j].rating_after,
+            new_player_ratings[i][j].rd_after,
+          ),
         ),
       )
     }),
@@ -115,7 +122,12 @@ export function calculateMatchNewRatings(
   return result
 }
 
-export async function scoreRankingHistory(app: App, ranking: Ranking, on_or_after?: Date, affected_player_ratings: { [key: number]: { rating: number; rd: number } } = {}) {
+export async function scoreRankingHistory(
+  app: App,
+  ranking: Ranking,
+  on_or_after?: Date,
+  affected_player_ratings: { [key: number]: { rating: number; rd: number } } = {},
+) {
   /*
   update all players' score based on match history
   */

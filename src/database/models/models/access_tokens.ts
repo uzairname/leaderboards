@@ -28,11 +28,10 @@ export class AccessTokensManager extends DbObjectManager {
     return data.map(d => new AccessToken(d, this.db))
   }
 
-  async create(data: {user: User} & Omit<AccessTokenInsert, 'user_id'>) {
+  async create(data: { user: User } & Omit<AccessTokenInsert, 'user_id'>) {
     await this.db.db.insert(AccessTokens).values({
       user_id: data.user.data.id,
-      ...data
+      ...data,
     })
   }
-
 }
