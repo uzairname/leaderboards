@@ -27,7 +27,7 @@ export async function getMatchLogsChannel(
   guild_id: string,
 ): Promise<D.APIChannel | undefined> {
   const guild = await getOrAddGuild(app, guild_id)
-  const channel_id = guild.data.match_results_textchannel_id
+  const channel_id = guild.data.match_results_channel_id
   if (channel_id) {
     try {
       return await app.bot.getChannel(channel_id)

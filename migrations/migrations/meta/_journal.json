@@ -5,36 +5,8 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1702326698678,
-      "tag": "0000_absurd_ultron",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1702371346831,
-      "tag": "0001_greedy_sphinx",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1702374492921,
-      "tag": "0002_nifty_onslaught",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1706068779439,
-      "tag": "0003_spooky_bloodaxe",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1706068983826,
-      "tag": "0004_powerful_nick_fury",
+      "when": 1706180940865,
+      "tag": "0000_true_mandrill",
       "breakpoints": true
     }
   ]

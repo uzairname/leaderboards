@@ -1,8 +1,9 @@
 CREATE TABLE IF NOT EXISTS "AccessTokens" (
-	"id" text PRIMARY KEY NOT NULL,
+	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" text NOT NULL,
-	"data" jsonb,
-	"purpose" text
+	"data" jsonb NOT NULL,
+	"expires_at" timestamp NOT NULL,
+	"time_created" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "ActiveMatches" (
@@ -10,7 +11,7 @@ CREATE TABLE IF NOT EXISTS "ActiveMatches" (
 	"ranking_id" integer NOT NULL,
 	"time_created" timestamp DEFAULT now(),
 	"status" integer,
-	"team_users" jsonb,
+	"team_players" jsonb,
 	"team_votes" jsonb,
 	"channel_id" text,
 	"message_id" text
@@ -24,9 +25,7 @@ CREATE TABLE IF NOT EXISTS "GuildRankings" (
 	"leaderboard_channel_id" text,
 	"leaderboard_message_id" text,
 	"ongoing_matches_channel_id" text,
-	"match_results_channel_id" text,
-	"queue_channel_id" text,
-	"queue_message_id" text,
+	"display_settings" jsonb,
 	CONSTRAINT GuildRankings_guild_id_ranking_id PRIMARY KEY("guild_id","ranking_id")
 );
 --> statement-breakpoint
@@ -35,7 +34,8 @@ CREATE TABLE IF NOT EXISTS "Guilds" (
 	"name" text,
 	"time_created" timestamp DEFAULT now(),
 	"admin_role_id" text,
-	"category_id" text
+	"category_id" text,
+	"match_results_channel_id" text
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "MatchPlayers" (
@@ -51,7 +51,6 @@ CREATE TABLE IF NOT EXISTS "MatchPlayers" (
 CREATE TABLE IF NOT EXISTS "MatchSummaryMessages" (
 	"match_id" integer NOT NULL,
 	"guild_id" text NOT NULL,
-	"channel_id" text,
 	"message_id" text,
 	CONSTRAINT MatchSummaryMessages_match_id_guild_id PRIMARY KEY("match_id","guild_id")
 );
@@ -59,10 +58,10 @@ CREATE TABLE IF NOT EXISTS "MatchSummaryMessages" (
 CREATE TABLE IF NOT EXISTS "Matches" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"ranking_id" integer NOT NULL,
-	"time_created" timestamp DEFAULT now(),
-	"time_finished" timestamp,
 	"number" integer,
-	"team_users" jsonb,
+	"team_players" jsonb,
+	"time_started" timestamp,
+	"time_finished" timestamp,
 	"outcome" jsonb,
 	"metadata" jsonb
 );
@@ -93,8 +92,9 @@ CREATE TABLE IF NOT EXISTS "Rankings" (
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "Settings" (
-	"id" integer PRIMARY KEY DEFAULT 0 NOT NULL,
-	"last_deployed" timestamp DEFAULT now()
+	"id" integer PRIMARY KEY DEFAULT 1 NOT NULL,
+	"last_deployed" timestamp DEFAULT now(),
+	"config" jsonb
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "TeamPlayers" (
@@ -115,9 +115,11 @@ CREATE TABLE IF NOT EXISTS "Teams" (
 CREATE TABLE IF NOT EXISTS "Users" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text,
-	"time_created" timestamp DEFAULT now()
+	"time_created" timestamp DEFAULT now(),
+	"linked_roles_ranking_id" integer
 );
 --> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "match_ranking_id_index" ON "Matches" ("ranking_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "player_user_id_index" ON "Players" ("user_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "player_ranking_id_index" ON "Players" ("ranking_id");--> statement-breakpoint
 DO $$ BEGIN

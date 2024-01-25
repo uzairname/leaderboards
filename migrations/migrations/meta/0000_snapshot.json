@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "pg",
-  "id": "d00b8459-2493-4539-b5c3-c8aa34e6fd43",
+  "id": "a7fea04c-8d8b-4e50-b5b4-1ef934d6705f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "AccessTokens": {
@@ -10,7 +10,7 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "text",
+          "type": "serial",
           "primaryKey": true,
           "notNull": true
         },
@@ -24,13 +24,20 @@
           "name": "data",
           "type": "jsonb",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "purpose": {
-          "name": "purpose",
-          "type": "text",
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
+        },
+        "time_created": {
+          "name": "time_created",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
         }
       },
       "indexes": {},
@@ -81,8 +88,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "team_users": {
-          "name": "team_users",
+        "team_players": {
+          "name": "team_players",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
@@ -172,21 +179,9 @@
           "primaryKey": false,
           "notNull": false
         },
-        "match_results_channel_id": {
-          "name": "match_results_channel_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "queue_channel_id": {
-          "name": "queue_channel_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "queue_message_id": {
-          "name": "queue_message_id",
-          "type": "text",
+        "display_settings": {
+          "name": "display_settings",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         }
@@ -262,6 +257,12 @@
         },
         "category_id": {
           "name": "category_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "match_results_channel_id": {
+          "name": "match_results_channel_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -370,12 +371,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "channel_id": {
-          "name": "channel_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "message_id": {
           "name": "message_id",
           "type": "text",
@@ -439,28 +434,27 @@
           "primaryKey": false,
           "notNull": true
         },
-        "time_created": {
-          "name": "time_created",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "now()"
-        },
-        "time_finished": {
-          "name": "time_finished",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
         "number": {
           "name": "number",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
-        "team_users": {
-          "name": "team_users",
+        "team_players": {
+          "name": "team_players",
           "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_started": {
+          "name": "time_started",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_finished": {
+          "name": "time_finished",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false
         },
@@ -477,7 +471,15 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "match_ranking_id_index": {
+          "name": "match_ranking_id_index",
+          "columns": [
+            "ranking_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "Matches_ranking_id_Rankings_id_fk": {
           "name": "Matches_ranking_id_Rankings_id_fk",
@@ -690,7 +692,7 @@
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "default": 0
+          "default": 1
         },
         "last_deployed": {
           "name": "last_deployed",
@@ -698,6 +700,12 @@
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
+        },
+        "config": {
+          "name": "config",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -846,6 +854,12 @@
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
+        },
+        "linked_roles_ranking_id": {
+          "name": "linked_roles_ranking_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},

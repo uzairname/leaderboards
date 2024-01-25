@@ -5,7 +5,7 @@ import * as dotenv from 'dotenv'
 import { sql } from 'drizzle-orm'
 
 
-const matches_trigger_query = sql.raw(`
+export const matches_trigger_query = sql.raw(`
 CREATE OR REPLACE FUNCTION "Matches_number_trigger_function"()
 RETURNS TRIGGER AS $$
 BEGIN

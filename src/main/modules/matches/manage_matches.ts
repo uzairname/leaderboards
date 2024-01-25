@@ -47,7 +47,7 @@ export async function deleteMatch(app: App, match: Match): Promise<void> {
     guild_rankings.map(async guild_ranking => {
       const summary_message = await match.summaryMessage(guild_ranking.guild.data.id)
       if (!summary_message) return
-      const channel_id = guild_ranking.guild.data.match_results_textchannel_id
+      const channel_id = guild_ranking.guild.data.match_results_channel_id
       if (!channel_id || !summary_message.message_id) return
       try {
         await app.bot.deleteMessage(channel_id, summary_message.message_id)

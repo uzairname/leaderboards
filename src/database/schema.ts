@@ -30,8 +30,7 @@ export const Guilds = pgTable('Guilds', {
   time_created: timestamp('time_created').defaultNow(),
   admin_role_id: text('admin_role_id'),
   category_id: text('category_id'),
-  match_results_textchannel_id: text('match_results_textchannel_id'),
-  match_results_forum_id: text('match_results_forum_id'),
+  match_results_channel_id: text('match_results_channel_id'),
 })
 
 
@@ -112,7 +111,7 @@ export const ActiveMatches = pgTable('ActiveMatches', {
   time_created: timestamp('time_created').defaultNow(),
   status: integer('status'),
   team_players: jsonb('team_players').$type<number[][]>(),
-  team_votes: jsonb('team_votes').$type<number[]>(),
+  team_votes: jsonb('team_votes').$type<number[][]>(),
   channel_id: text('channel_id'),
   message_id: text('message_id'),
 })
@@ -135,7 +134,6 @@ export const Matches = pgTable('Matches', {
 export const MatchSummaryMessages = pgTable('MatchSummaryMessages', {
   match_id: integer('match_id').notNull().references(() => Matches.id, {onDelete: 'cascade'}),
   guild_id: text('guild_id').notNull().references(() => Guilds.id, {onDelete: 'cascade'}),
-  forum_thread_id: text('forum_thread_id'),
   message_id: text('message_id'),
 }, (table) => { return {
   cpk: primaryKey(table.match_id, table.guild_id),
