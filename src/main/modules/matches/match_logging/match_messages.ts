@@ -70,6 +70,7 @@ async function syncMatchSummaryMessageInGuild(
   }
 
   const existing_message = await match.summaryMessage(guild_ranking.data.guild_id)
+  sentry.debug(`existing message: ${existing_message}`)
 
   const sync_message_result = await app.bot.utils.syncChannelMessage({
     target_channel_id: sync_channel_result.channel.id,
@@ -194,7 +195,7 @@ export async function matchSummaryEmbed(
             const diff =
               new_ratings[team_num][player_num].rating_after -
               nonNullable(player.match_player.rating_before)
-            const diff_text = (parseInt(rating_after_text) > 0 ? '+' : '') + diff.toFixed(0)
+            const diff_text = (parseInt(diff.toFixed(0)) > 0 ? '+' : '') + diff.toFixed(0)
             return `<@${player.player.data.user_id}> ${rating_after_text} *(${diff_text})*`
           })
           .join('\n'),
@@ -221,8 +222,8 @@ async function matchLogsChannelDescriptionMessageData(
       {
         title: `Match Logs`,
         description:
-          `This channel is set up to record results ranked matches in this server.` +
-          `\nTo view or manage a specific match, run ${matches_cmd_mention} \`<id>\``,
+          `Ranked matches in this server are recorded in this channel.` +
+          `\nTo view or manage a specific match, use ${matches_cmd_mention} \`<id>\``,
         color: Colors.EmbedBackground,
       },
     ],

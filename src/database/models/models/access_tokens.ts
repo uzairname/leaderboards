@@ -3,7 +3,7 @@ import { User } from '..'
 import { DbClient } from '../../client'
 import { DbObject, DbObjectManager } from '../../managers'
 import { AccessTokens } from '../../schema'
-import { AccessTokenSelect, AccessTokenUpdate } from '../../types'
+import { AccessTokenInsert, AccessTokenSelect, AccessTokenUpdate } from '../../types'
 
 export class AccessToken extends DbObject<AccessTokenSelect> {
   async update(data: AccessTokenUpdate): Promise<this> {
@@ -27,4 +27,12 @@ export class AccessTokensManager extends DbObjectManager {
 
     return data.map(d => new AccessToken(d, this.db))
   }
+
+  async create(data: {user: User} & Omit<AccessTokenInsert, 'user_id'>) {
+    await this.db.db.insert(AccessTokens).values({
+      user_id: data.user.data.id,
+      ...data
+    })
+  }
+
 }

@@ -238,6 +238,7 @@ async function onRevertConfirm(
       type: D.InteractionResponseType.DeferredMessageUpdate,
     },
     async ctx => {
+      await ensureAdminPerms(app, ctx)
       await deleteMatch(app, match)
       return void ctx.edit({
         embeds: [

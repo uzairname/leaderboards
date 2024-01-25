@@ -4,30 +4,34 @@ import { App } from '../app/app'
 export function getAppRoleConnectionsMetadata(
   app: App,
 ): D.RESTPutAPIApplicationRoleConnectionMetadataJSONBody {
-  return []
+  return [{
+    type: D.ApplicationRoleConnectionMetadataType.IntegerGreaterThanOrEqual,
+    key: 'elo',
+    name: 'Elo Rating',
+    description: 'Display on profile if elo is at least (recommended value 0)',
+  }]
 }
 
 /**
  *
  * @param bot
  * @param access_token
- * @param score
- * @param platform_name Different for each user.
+ * @param elo
+ * @param platform_name Different for each user. Name of the ranking.
  */
 export async function updateUserRoleConnectionData(
   app: App,
   access_token: string,
-  score: number,
+  elo: number,
   platform_name: string,
 ): Promise<void> {
   const body: D.RESTPutAPICurrentUserApplicationRoleConnectionJSONBody = {
     platform_name,
     metadata: {
-      score: score,
+      elo: elo.toFixed(0),
     },
   }
 
-  if (app.config.features.RoleConnectionsMetadata) {
-    await app.bot.updateUserRoleConnection(access_token, body)
-  }
+  await app.bot.updateUserRoleConnection(access_token, body)
+
 }

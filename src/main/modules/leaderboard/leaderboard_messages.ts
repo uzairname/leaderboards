@@ -37,7 +37,6 @@ export async function syncGuildRankingLbMessage(
   const guild = await guild_ranking.guild
   const ranking = await guild_ranking.ranking
 
-  sentry.debug('syncing leaderboard message')
   const result = await app.bot.utils.syncChannelMessage({
     target_channel_id: guild_ranking.data.leaderboard_channel_id,
     target_message_id: guild_ranking.data.leaderboard_message_id,
@@ -46,7 +45,6 @@ export async function syncGuildRankingLbMessage(
       ? () => lbChannelData(app, guild, ranking)
       : undefined,
   })
-  sentry.debug('edited leaderboard message')
 
   if (result.is_new_message || result.new_channel) {
     await guild_ranking.update({

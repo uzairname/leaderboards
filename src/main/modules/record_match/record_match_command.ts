@@ -186,7 +186,6 @@ export const recordMatchCmd = (app: App) =>
                 const loser = await getRegisterPlayer(app, loser_id, ranking)
 
                 await recordAndScoreNewMatch(app, ranking, [[winner], [loser]], [1, 0])
-                sentry.captureMessage('recorded match')
                 return void ctx.edit({
                   content: `Recorded match`,
                   flags: D.MessageFlags.Ephemeral,
@@ -644,7 +643,7 @@ async function recordMatchFromSelectedTeams(
   }
 }
 
-const match_confirm_timeout_ms = 1000 * 60 * 1 // 10 minutes
+const match_confirm_timeout_ms = 1000 * 60 * 15 // minutes
 
 const placeholder_user_id = '0'
 

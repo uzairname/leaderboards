@@ -8,6 +8,7 @@ import {
   syncGuildRankingLbMessage,
   syncRankingLbMessages,
 } from '../../leaderboard/leaderboard_messages'
+import { updatePlayerRating } from '../../players'
 import { default_elo_settings } from '../../rankings/manage_rankings'
 import { validateMatch } from '../manage_matches'
 import { getNewRatings } from './trueskill'
@@ -65,15 +66,9 @@ export async function recordAndScoreNewMatch(
   await Promise.all(
     players.map(async (team, i) => {
       await Promise.all(
-        team.map(async (player, j) => {
-          sentry.debug(
-            `updating player ${player.data.id} rating to ${new_player_ratings[i][j].rating_after}`,
-          )
-          await player.update({
-            rating: new_player_ratings[i][j].rating_after,
-            rd: new_player_ratings[i][j].rd_after,
-          })
-        }),
+        team.map(async (player, j) => 
+          updatePlayerRating(app, player, new_player_ratings[i][j].rating_after, new_player_ratings[i][j].rd_after)
+        ),
       )
     }),
   )
@@ -120,7 +115,7 @@ export function calculateMatchNewRatings(
   return result
 }
 
-export async function scoreRankingHistory(app: App, ranking: Ranking, on_or_after?: Date) {
+export async function scoreRankingHistory(app: App, ranking: Ranking, on_or_after?: Date, affected_player_ratings: { [key: number]: { rating: number; rd: number } } = {}) {
   /*
   update all players' score based on match history
   */
@@ -137,10 +132,6 @@ export async function scoreRankingHistory(app: App, ranking: Ranking, on_or_afte
   if (matches.length > app.config.settings.MaxRescoreableMatches) {
     throw new AppErrors.RescoreMatchesLimitExceeded()
   }
-
-  const elo_settings = nonNullable(ranking.data.elo_settings, 'elo settings')
-
-  let affected_player_ratings: { [key: number]: { rating: number; rd: number } } = {}
 
   for (const match of matches) {
     // get player ratings before
@@ -190,7 +181,7 @@ export async function scoreRankingHistory(app: App, ranking: Ranking, on_or_afte
     const new_player_ratings = calculateMatchNewRatings(
       match.match,
       player_ratings_before,
-      elo_settings,
+      nonNullable(ranking.data.elo_settings, 'elo settings'),
     )
 
     // update current player ratings
@@ -211,7 +202,7 @@ export async function scoreRankingHistory(app: App, ranking: Ranking, on_or_afte
         sentry.debug(`updating player ${player_id} rating to ${rating}`)
         const player = app.db.players.getPartial(+player_id)
         sentry.debug(`player: ${player.data.id}`)
-        await player.update({ rating, rd })
+        await updatePlayerRating(app, player, rating, rd)
       }),
     ),
     // update leaderboard messages

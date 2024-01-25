@@ -5,7 +5,6 @@ export const features = (environment: string) => {
 
   return {
     RoleConnectionsMetadata: dev,
-    QueueMessage: dev,
     HelpReference: dev,
 
     ExperimentalViews: dev,

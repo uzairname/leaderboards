@@ -57,7 +57,7 @@ async function mainPage(
       },
       {
         name: `Version`,
-        value: `This bot was last updated on ${last_deployed_timestamp}`,
+        value: `${last_deployed_timestamp}`,
         inline: true,
       },
     ],

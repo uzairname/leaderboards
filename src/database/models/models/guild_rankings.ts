@@ -94,9 +94,10 @@ export class GuildRankingsManager extends DbObjectManager {
       const data = await this.db.db
         .select()
         .from(GuildRankings)
+        .where(eq(GuildRankings.guild_id, by.guild_id))
         .innerJoin(
           Rankings,
-          and(eq(GuildRankings.ranking_id, Rankings.id), eq(GuildRankings.guild_id, by.guild_id)),
+          eq(GuildRankings.ranking_id, Rankings.id),
         )
       return data.map(d => ({
         guild_ranking: new GuildRanking(d.GuildRankings, this.db),
@@ -106,9 +107,10 @@ export class GuildRankingsManager extends DbObjectManager {
       const data = await this.db.db
         .select()
         .from(GuildRankings)
+        .where(eq(GuildRankings.ranking_id, by.ranking_id))
         .innerJoin(
           Guilds,
-          and(eq(GuildRankings.guild_id, Guilds.id), eq(GuildRankings.ranking_id, by.ranking_id)),
+          eq(GuildRankings.guild_id, Guilds.id),
         )
       return data.map(d => ({
         guild_ranking: new GuildRanking(d.GuildRankings, this.db),

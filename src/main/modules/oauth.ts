@@ -7,6 +7,7 @@ import { sentry } from '../../request/sentry'
 import { nonNullable } from '../../utils/utils'
 import { App } from '../app/app'
 import { AppErrors } from '../app/errors'
+import { DiscordAPIError } from '@discordjs/rest'
 
 export const oauthRouter = (app: App) =>
   Router({ base: `/oauth` })
@@ -62,8 +63,10 @@ export async function oauthCallback(app: App, request: Request): Promise<Respons
       ),
     )
   } catch (e) {
-    sentry.setException(e)
-    return new Response('Invalid code', { status: 400 })
+    if (e instanceof DiscordAPIError) {
+      return new Response('Invalid code', { status: 400 })
+    }
+    throw e
   }
 
   return new Response(`Authorized. You may return to Discord`, {
@@ -76,8 +79,8 @@ export async function saveUserAccessToken(app: App, token: D.RESTPostOAuth2Acces
 
   if (me.user) {
     // save token
-    await app.db.db.insert(AccessTokens).values({
-      user_id: me.user.id,
+    await app.db.access_tokens.create({
+      user: await app.db.users.getOrCreate(me.user),
       data: token,
       expires_at: new Date(Date.now() + token.expires_in * 1000),
     })
@@ -100,14 +103,16 @@ export async function getUserAccessToken(
       })
     : all_tokens
 
+  if (scope_tokens.length == 0) return undefined
+
   // get the most recent token
   const token = scope_tokens.sort(
     (a, b) => b.data.expires_at.getTime() - a.data.expires_at.getTime(),
   )[0]
-  return refreshAccessToken(app.bot, token.data)
+  return refreshAccessTokenIfExpired(app.bot, token.data)
 }
 
-export async function refreshAccessToken(
+export async function refreshAccessTokenIfExpired(
   bot: DiscordAPIClient,
   token: AccessToken['data'],
 ): Promise<string> {

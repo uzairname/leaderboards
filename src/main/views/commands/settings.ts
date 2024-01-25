@@ -13,6 +13,7 @@ import { getOrAddGuild, syncGuildAdminRole } from '../../modules/guilds'
 import { rankings_cmd_def } from '../../modules/rankings/rankings_commands/rankings_cmd'
 import { ViewModule, globalView } from '../../modules/view_manager/view_module'
 import { checkGuildInteraction, ensureAdminPerms } from '../utils/checks'
+import { Colors } from '../../messages/message_pieces'
 
 export const settings_cmd_def = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -45,13 +46,20 @@ const settingsCmd = (app: App) =>
 async function settingsPage(app: App): Promise<D.APIInteractionResponseCallbackData> {
   const state = settings_cmd_def.newState()
   return {
+    embeds: [
+      {
+        title: 'Settings',
+        description: ``,
+        color: Colors.EmbedBackground,
+      }
+    ],
     components: [
       {
         type: D.ComponentType.ActionRow,
         components: [
           {
             type: D.ComponentType.Button,
-            label: '⭐ Rankings',
+            label: 'Manage Rankings',
             style: D.ButtonStyle.Primary,
             custom_id: rankings_cmd_def.newState().cId(),
           },
