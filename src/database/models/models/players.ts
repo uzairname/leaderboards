@@ -10,7 +10,6 @@ import { PlayerInsert, PlayerSelect } from '../../types'
 export class Player extends DbObject<PlayerSelect> {
   constructor(data: PlayerSelect, db: DbClient) {
     super(data, db)
-    sentry.debug(`Created player with id ${data.id}, rating ${data.rating}`)
     db.cache.players_by_id[data.id] = this
     db.cache.players[data.ranking_id] ??= {}
     db.cache.players[data.ranking_id][data.user_id] = this

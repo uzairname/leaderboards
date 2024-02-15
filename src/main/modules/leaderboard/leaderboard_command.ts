@@ -1,13 +1,11 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand, field } from '../../../discord-framework'
-import { nonNullable } from '../../../utils/utils'
 import { App } from '../../app/app'
 import { AppError } from '../../app/errors'
 import { checkGuildInteraction } from '../../views/utils/checks'
-import { guildRankingsOptionChoices, rankingsAutocomplete } from '../../views/utils/common'
-import { allGuildRankingsPage } from '../rankings/rankings_commands/all_rankings'
-import { rankings_cmd_def } from '../rankings/rankings_commands/rankings_cmd'
-import { ViewModule, guildCommand } from '../view_manager/view_module'
+import { guildRankingsOptionChoices } from '../../views/utils/common'
+import { allGuildRankingsPage } from '../rankings_commands/all_rankings'
+import { rankings_cmd_def } from '../rankings_commands/rankings_cmd'
 import { leaderboardMessage } from './leaderboard_messages'
 
 const optionnames = {
@@ -26,7 +24,7 @@ const leaderboard_cmd = new AppCommand({
   },
 })
 
-const leaderboardCmdDef = async (app: App, guild_id?: string) => {
+export const leaderboardCmdDef = async (app: App, guild_id?: string) => {
   if (guild_id) {
     const choices = await guildRankingsOptionChoices(app, guild_id, false)
     return new AppCommand({
@@ -49,7 +47,7 @@ const leaderboardCmdDef = async (app: App, guild_id?: string) => {
   }
 }
 
-export const leaderboardCmd = (app: App) =>
+export const leaderboardCmdCallback = (app: App) =>
   leaderboard_cmd.onCommand(async ctx => {
     return ctx.defer(
       {
@@ -91,5 +89,3 @@ export const leaderboardCmd = (app: App) =>
       },
     )
   })
-
-export const leaderboard = new ViewModule([guildCommand(leaderboardCmd, leaderboardCmdDef)])

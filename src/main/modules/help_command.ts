@@ -36,8 +36,6 @@ export const helpCmd = (app: App) =>
       return { type: D.InteractionResponseType.UpdateMessage, data }
     })
 
-export const help = new ViewModule([globalView(helpCmd)])
-
 async function mainPage(
   app: App,
   ctx: InteractionContext<typeof help_cmd>,

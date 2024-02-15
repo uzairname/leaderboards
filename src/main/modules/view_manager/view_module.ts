@@ -16,13 +16,13 @@ export function globalView(view: (app: App) => AnyView, experimental?: boolean):
       }
       return guild_id === undefined ? view(app) : undefined
     },
-    resolve: view,
+    resolveCallbacks: view,
   }
 }
 
 export function guildCommand(
-  viewCallbacks: (app: App) => AnyAppCommand,
-  viewDefinition: (app: App, guild_id?: string) => Promise<AnyAppCommand | undefined>,
+  resolveCallbacks: (app: App) => AnyAppCommand,
+  guildDefinition: (app: App, guild_id?: string) => Promise<AnyAppCommand | undefined>,
   experimental?: boolean,
 ): CustomView {
   return {
@@ -30,9 +30,9 @@ export function guildCommand(
       if (experimental && !app.config.features.ExperimentalViews) {
         return undefined
       }
-      return viewDefinition(app, guild_id)
+      return guildDefinition(app, guild_id)
     },
-    resolve: viewCallbacks,
+    resolveCallbacks,
   }
 }
 
@@ -40,5 +40,5 @@ export type CustomView = {
   // Get the view's definition to deploy application commands to a particular guild, or global.
   definition: (app: App, guild_id?: string) => Promise<AnyView | undefined>
   // Return the view with its interaction callbacks if the interaction corresponds to this view.
-  resolve: (app: App) => AnyView
+  resolveCallbacks: (app: App) => AnyView
 }

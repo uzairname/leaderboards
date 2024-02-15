@@ -8,7 +8,7 @@ import {
 } from '../../../discord-framework'
 import { App } from '../../app/app'
 import { Colors } from '../../messages/message_pieces'
-import { match_history_view_def } from '../../modules/matches/match_logging/matches_view'
+import { match_history_view_def } from '../../modules/match_logging/matches_view'
 import { ViewModule, globalView } from '../../modules/view_manager/view_module'
 import { checkGuildInteraction } from '../utils/checks'
 
@@ -130,5 +130,3 @@ async function mainPage(
     data: await mainPageData(app, ctx),
   }
 }
-
-export const stats_module = new ViewModule([globalView(statsCmd)])

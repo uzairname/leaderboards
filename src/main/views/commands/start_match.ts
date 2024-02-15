@@ -10,12 +10,12 @@ import {
 import { nonNullable } from '../../../utils/utils'
 import { App } from '../../app/app'
 import { AppError } from '../../app/errors'
-import { allGuildRankingsPage } from '../../modules/rankings/rankings_commands/all_rankings'
+import { allGuildRankingsPage } from '../../modules/rankings_commands/all_rankings'
 import {
   createRankingModal,
   create_ranking_view_def,
-} from '../../modules/rankings/rankings_commands/create_ranking'
-import { rankings_cmd_def } from '../../modules/rankings/rankings_commands/rankings_cmd'
+} from '../../modules/rankings_commands/create_ranking'
+import { rankings_cmd_def } from '../../modules/rankings_commands/rankings_cmd'
 import { checkGuildInteraction, ensureAdminPerms } from '../utils/checks'
 import { rankingsAutocomplete } from '../utils/common'
 

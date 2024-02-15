@@ -7,9 +7,7 @@ import { Colors, escapeMd, relativeTimestamp, space } from '../../messages/messa
 import { syncRankedCategory } from '../guilds'
 
 export function addRankingChannelsListeners(app: App) {
-  app.events.RankingLeaderboardUpdated.on(async ranking => {
-    await syncRankingLbMessages(app, ranking)
-  })
+  app.events.RankingLeaderboardUpdated.on(ranking => syncRankingLbMessages(app, ranking))
   app.events.MatchCreatedOrUpdated.on(async match => {
     await app.events.RankingLeaderboardUpdated.emit(await match.ranking())
   })

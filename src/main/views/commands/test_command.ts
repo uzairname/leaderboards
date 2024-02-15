@@ -149,7 +149,7 @@ const helper_view = new MessageView({
   },
 })
 
-const helperView = (app: App) =>
+export const helperView = (app: App) =>
   helper_view.onComponent(async ctx => {
     const back_state = (await ViewState.fromCustomId(ctx.state.get.back_cid(), findView(app))).state
 
@@ -180,11 +180,6 @@ const helperView = (app: App) =>
       },
     }
   })
-
-export const test_module = new ViewModule([
-  globalView(testCommand, true),
-  globalView(helperView, true),
-])
 
 const schema = {
   originalUserId: field.String(),

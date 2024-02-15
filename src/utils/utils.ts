@@ -51,8 +51,7 @@ export function maxIndex(arr: number[]): number {
   return max_repeated ? -1 : max_index
 }
 
-
 export function snowflakeToDate(snowflake: bigint) {
-  const dateBits = Number(BigInt.asUintN(64, snowflake) >> 22n);
-  return new Date(dateBits + 1420070400000);
+  const dateBits = Number(BigInt.asUintN(64, snowflake) >> 22n)
+  return new Date(dateBits + 1420070400000)
 }

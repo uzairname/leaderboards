@@ -1,5 +1,5 @@
 import { RESTPostOAuth2AccessTokenResult } from 'discord-api-types/v10'
-import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, uniqueIndex } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb } from 'drizzle-orm/pg-core'
 
 
 export const Settings = pgTable('Settings', {
@@ -16,6 +16,7 @@ export const Users = pgTable('Users', {
   linked_roles_ranking_id: integer('linked_roles_ranking_id')
 })
 
+
 export const AccessTokens = pgTable('AccessTokens', {
   id: serial('id').primaryKey(),
   user_id: text('user_id').notNull().references(() => Users.id, {onDelete: 'cascade'}),
@@ -23,6 +24,7 @@ export const AccessTokens = pgTable('AccessTokens', {
   expires_at: timestamp('expires_at').notNull(),
   time_created: timestamp('time_created').defaultNow(),
 })
+
 
 export const Guilds = pgTable('Guilds', {
   id: text('id').primaryKey(),
@@ -63,7 +65,6 @@ export const GuildRankings = pgTable('GuildRankings', {
 },(table) => { return {
   cpk: primaryKey(table.guild_id, table.ranking_id),
 }})
-
 
 
 export const Players = pgTable('Players', {
@@ -116,7 +117,6 @@ export const ActiveMatches = pgTable('ActiveMatches', {
   message_id: text('message_id'),
 })
 
-
 export const Matches = pgTable('Matches', {
   id: serial('id').primaryKey(),
   ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, {onDelete: 'cascade'}),
@@ -124,7 +124,14 @@ export const Matches = pgTable('Matches', {
   team_players: jsonb('team_players').$type<number[][]>(),
   time_started: timestamp('time_started'),
   time_finished: timestamp('time_finished'),
-  outcome: jsonb('outcome').$type<number[]>(),
+  outcome: jsonb('outcome').$type<{
+    best_of?: {
+      n: number,
+      winner: number,
+    }
+    rounds_won?: number[],
+    games_won?: number[],
+  }>(),
   metadata: jsonb('metadata'),
 }, (table) => { return {
   ranking_idx: index('match_ranking_id_index').on(table.ranking_id),

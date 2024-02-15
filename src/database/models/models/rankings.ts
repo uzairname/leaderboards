@@ -35,18 +35,21 @@ export class Ranking extends DbObject<Partial<RankingSelect> & { id: number }> {
     })
   }
 
-  async queueTeams(): Promise<{ [team_id: number]: { player_ids: number[] } }> {
+  async queueTeams(): Promise<{ [team_id: number]: { players: Player[] } }> {
     const result = await this.db.db
-      .select({ player: Players, team_id: TeamPlayers.team_id })
+      .select({ player: Players, team_player: TeamPlayers })
       .from(TeamPlayers)
       .innerJoin(QueueTeams, eq(TeamPlayers.team_id, QueueTeams.team_id))
       .innerJoin(Players, eq(TeamPlayers.player_id, Players.id))
       .where(eq(Players.ranking_id, this.data.id))
 
-    const teams: { [team_id: number]: { player_ids: number[] } } = {}
+    const teams: { [team_id: number]: { players: Player[] } } = {}
     result.forEach(item => {
-      if (!teams[item.team_id]) teams[item.team_id] = { player_ids: [] }
-      teams[item.team_id].player_ids.push(item.player.id)
+      if (!teams[item.team_player.team_id])
+        teams[item.team_player.team_id] = {
+          players: [],
+        }
+      teams[item.team_player.team_id].players.push(new Player(item.player, this.db))
     })
 
     return teams

@@ -53,7 +53,7 @@ export class Team extends DbObject<TeamSelect> {
     return this
   }
 
-  protected async updateRating(): Promise<void> {
+  protected async updateRatingFromPlayers(): Promise<void> {
     const players = await this.players()
     const ranking = await this.db.rankings.get(this.data.ranking_id)
     const rating = calculateTeamRating(players, ranking)
@@ -105,9 +105,14 @@ export class TeamsManager extends DbObjectManager {
       return new Team(data, this.db)
     }
   }
+
+  async removeFromQueue(id: number): Promise<void> {
+    await this.db.db.delete(QueueTeams).where(eq(QueueTeams.team_id, id))
+  }
+
 }
 
-function calculateTeamRating(players: Player[], ranking: Ranking): number {
+export function calculateTeamRating(players: Player[], ranking: Ranking): number {
   const initial_rating = nonNullable(ranking.data.elo_settings?.initial_rating, 'initial_rating')
   return players.length > 0
     ? players.reduce((acc, player) => {

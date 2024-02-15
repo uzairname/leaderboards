@@ -1,18 +1,9 @@
 import * as D from 'discord-api-types/v10'
-import {
-  $type,
-  InteractionContext,
-  MessageCreateContext,
-  MessageData,
-  MessageView,
-  _,
-  field,
-} from '../../../discord-framework'
+import { InteractionContext, MessageData, MessageView, _, field } from '../../../discord-framework'
 import { App } from '../../app/app'
 import { AppErrors } from '../../app/errors'
 import { Colors, escapeMd, relativeTimestamp } from '../../messages/message_pieces'
-import { userJoinQueue, userLeaveQueue } from '../../modules/matches/queue/queue'
-import { ViewModule, globalView } from '../../modules/view_manager/view_module'
+import { userJoinQueue, userLeaveQueue } from '../../modules/queue/queue'
 import { checkGuildInteraction } from '../utils/checks'
 
 const queue_message_def = new MessageView({
@@ -110,5 +101,3 @@ export async function queueMessage(
     ],
   })
 }
-
-export const queue_module = new ViewModule([globalView(queueView, true)])
