@@ -17,11 +17,11 @@ import {
   Teams,
   Users,
 } from '../database/schema'
-import { App } from '../main/app/app'
+import { App } from '../main/app-context/app-context'
 import { updateMatch } from '../main/modules/matches/manage_matches'
 import { recordAndScoreNewMatch } from '../main/modules/matches/scoring/score_matches'
 import { getRegisterPlayer } from '../main/modules/players'
-import { sentry } from '../request/sentry'
+import { sentry } from '../request/logging'
 import { nonNullable } from '../utils/utils'
 
 export async function runTests(app: App): Promise<Response> {

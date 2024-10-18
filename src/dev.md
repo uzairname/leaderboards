@@ -1,12 +1,8 @@
 # Hosting and developing
 
-> Reference for myself and maybe anyone else
-
 ## Deployment Setup
 
 ### Cloudflare Workers
-
-In the Cloudflare dashboard, save your api token as `CF_API_TOKEN`
 
 For each environment, create a cloudflare worker. Update the worker's name in `wrangler.toml`. The following variables should match in the worker's environment variables and in `wrangler.toml`
 
@@ -20,7 +16,7 @@ For each environment, create a Discord app. Save the `DISCORD_TOKEN`, `APPLICATI
 
 In the dev portal, set the _interactions endpoint url_, _linked roles verification url_, and the _oauth redirect URI_ to `https://<subdomain>.workers.dev/<endpoint>` according to the endpoints in `src/main/router.ts`
 
-### Database
+### Neon Database
 
 For each environment, create a Neon database. Save the pooled connection string as `POSTGRES_URL` or `POSTGRES_URL_TEST`
 
@@ -44,7 +40,7 @@ Set the following as repository secrets in GitHub Actions
 
 - `APP_KEY` to a random string. It's used to authenticate requests to the deploy and test endpoints
 
-- `CF_API_TOKEN` to the cloudflare api token
+- `CF_API_TOKEN` to your Cloudflare API token
 
 ### Workflow file
 

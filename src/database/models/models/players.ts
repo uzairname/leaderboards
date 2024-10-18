@@ -1,10 +1,10 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { Ranking, Team, User } from '..'
-import { sentry } from '../../../request/sentry'
+import { sentry } from '../../../request/logging'
 import { DbClient } from '../../client'
 import { DbErrors } from '../../errors'
 import { DbObject, DbObjectManager } from '../../managers'
-import { Players, QueueTeams, Rankings, TeamPlayers, Teams } from '../../schema'
+import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
 import { PlayerInsert, PlayerSelect } from '../../types'
 
 export class Player extends DbObject<PlayerSelect> {

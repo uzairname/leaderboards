@@ -1,5 +1,5 @@
 import { DiscordErrors } from '../../discord-framework'
-import { App } from '../app/app'
+import { App } from '../app-context/app-context'
 import { inviteUrl } from './message_pieces'
 
 export namespace Messages {

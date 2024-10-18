@@ -1,7 +1,7 @@
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
-import { sentry } from '../../request/sentry'
+import { sentry } from '../../request/logging'
 import { StringData, StringDataSchema } from '../../utils/string_data'
-import { findView_ } from './find_view'
+import { findView } from './find_view'
 import { AnyView, FindViewCallback } from './types'
 import { ViewErrors } from './utils/errors'
 import { View } from './views'
@@ -39,10 +39,10 @@ export class ViewState<TSchema extends StringDataSchema> extends StringData<TSch
     return new ViewState(view.state_schema, view.options.custom_id_prefix)
   }
 
-  static async fromCustomId(
+  static fromCustomId(
     custom_id: string,
     findViewCallback: FindViewCallback,
-  ): Promise<{ view: AnyView; state: ViewState<StringDataSchema> }> {
+  ): { view: AnyView; state: ViewState<StringDataSchema> } {
     sentry.addBreadcrumb({
       category: 'custom_id',
       level: 'info',
@@ -59,7 +59,7 @@ export class ViewState<TSchema extends StringDataSchema> extends StringData<TSch
     const [prefix, ...extra] = decompressed_custom_id.split('.')
     const encoded_data = extra.join('.')
 
-    let view = await findView_(findViewCallback, undefined, prefix)
+    let view = findView(findViewCallback, undefined, prefix)
     let state = ViewState.fromView(view)
     if (encoded_data) {
       state = state.decode(encoded_data)

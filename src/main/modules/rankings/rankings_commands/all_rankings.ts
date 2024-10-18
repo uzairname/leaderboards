@@ -1,14 +1,14 @@
 import * as D from 'discord-api-types/v10'
 import { GuildRanking } from '../../../../database/models'
 import { InteractionContext } from '../../../../discord-framework'
-import { sentry } from '../../../../request/sentry'
+import { sentry } from '../../../../request/logging'
 import { unflatten, nonNullable } from '../../../../utils/utils'
-import { App } from '../../../app/app'
+import { App } from '../../../app-context/app-context'
 import { escapeMd, Colors, messageLink, dateTimestamp } from '../../../messages/message_pieces'
 import { Messages } from '../../../messages/messages'
-import { checkGuildInteraction } from '../../../views/utils/checks'
+import { checkGuildInteraction } from '../../../utils/checks'
 import { getOrAddGuild, getMatchLogsChannel } from '../../guilds'
-import { create_ranking_view_def, createRankingModal } from './create_ranking'
+import { create_ranking_view_definition, createRankingModal } from './create_ranking'
 import { ranking_settings_page } from './ranking_settings'
 import { rankings_cmd_def } from './rankings_cmd'
 
@@ -80,7 +80,7 @@ export async function allGuildRankingsPage(
           {
             type: D.ComponentType.Button,
             style: D.ButtonStyle.Success,
-            custom_id: create_ranking_view_def.newState({ callback: createRankingModal }).cId(),
+            custom_id: create_ranking_view_definition.newState({ callback: createRankingModal }).cId(),
             label: 'Ranking',
             emoji: {
               name: '➕',

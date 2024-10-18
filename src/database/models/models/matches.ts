@@ -1,6 +1,6 @@
-import { and, eq, sql, desc, inArray, SQL, asc } from 'drizzle-orm'
+import { and, eq, sql, inArray, SQL, asc } from 'drizzle-orm'
 import { Player, Ranking } from '..'
-import { sentry } from '../../../request/sentry'
+import { sentry } from '../../../request/logging'
 import { nonNullable } from '../../../utils/utils'
 import { DbClient } from '../../client'
 import { DbErrors } from '../../errors'

@@ -1,6 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { AnyAppCommand, DiscordAPIClient } from '../../discord-framework'
-import { App } from '../app/app'
+import { App } from '../app-context/app-context'
 
 export class Colors {
   static Primary = 0xa1ffda
@@ -48,18 +48,11 @@ export function channelMention(channel_id?: string): string {
 }
 
 export async function commandMention(app: App, command: AnyAppCommand, guild_id?: string) {
-  return _commandMention(app, command.options.name, command.options.type, guild_id)
-}
-
-export async function _commandMention(
-  app: App,
-  name: string,
-  type: D.ApplicationCommandType = D.ApplicationCommandType.ChatInput,
-  guild_id?: string,
-): Promise<string> {
+  const name = command.options.name
+  const type = command.options.type
   let commands = (await app.bot.getAppCommands(guild_id)) as D.APIApplicationCommand[]
-  let command = commands.find(command => command.name === name && command.type === type)
-  return `</${name}:${command?.id || '0'}>`
+  let discord_command = commands.find(command => command.name === name && command.type === type)
+  return `</${name}:${discord_command?.id || '0'}>`
 }
 
 export function inviteUrl(app: App): string {

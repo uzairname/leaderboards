@@ -2,10 +2,10 @@ import { and, eq } from 'drizzle-orm'
 import { Guild, GuildRanking, Ranking } from '../../../database/models'
 import { GuildRankings, Rankings } from '../../../database/schema'
 import { GuildRankingInsert, RankingInsert } from '../../../database/types'
-import { App } from '../../app/app'
-import { AppError, AppErrors } from '../../app/errors'
+import { App } from '../../app-context/app-context'
+import { AppError, AppErrors } from '../../errors'
+import { syncDiscordCommands } from '../../view_manager/manage_views'
 import { syncGuildRankingLbMessage } from '../leaderboard/leaderboard_messages'
-import { syncDiscordCommands } from '../view_manager/manage_views'
 
 /**
  *
@@ -107,10 +107,10 @@ export const max_players_per_team = 12
 
 export function validateRankingOptions<T extends Partial<RankingInsert>>(o: T): T {
   if (o.name !== undefined) {
-    if (!o.name) throw new AppErrors.ValidationError(`Ranking name cannot be empty`)
+    if (!o.name) throw new AppError(`Ranking name cannot be empty`)
 
     if (o.name.length > max_ranking_name_length)
-      throw new AppErrors.ValidationError(
+      throw new AppError(
         `Ranking names must be ${max_ranking_name_length} characters or less`,
       )
   }

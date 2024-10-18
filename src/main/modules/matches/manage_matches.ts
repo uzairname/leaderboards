@@ -1,11 +1,10 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import { Match, Player } from '../../../database/models'
 import { MatchInsert } from '../../../database/types'
-import { sentry } from '../../../request/sentry'
+import { sentry } from '../../../request/logging'
 import { nonNullable } from '../../../utils/utils'
-import { App } from '../../app/app'
-import { AppErrors } from '../../app/errors'
-import { validate } from '../utils'
+import { App } from '../../app-context/app-context'
+import { validate } from '../../utils/checks'
 import { scoreRankingHistory } from './scoring/score_matches'
 
 export async function updateMatch(
@@ -26,12 +25,7 @@ export async function updateMatch(
   })
 
   if (outcome) {
-    sentry.debug('outcome')
-    try {
-      await scoreRankingHistory(app, await match.ranking(), match.data.time_finished ?? undefined)
-    } catch (e) {
-      if (!(e instanceof AppErrors.RescoreMatchesLimitExceeded)) throw e
-    }
+    await scoreRankingHistory(app, await match.ranking(), match.data.time_finished ?? undefined)
   }
 
   await app.events.MatchCreatedOrUpdated.emit(match)

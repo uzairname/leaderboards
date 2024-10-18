@@ -3,30 +3,30 @@ import {
   ChatInteractionResponse,
   CommandContext,
   CommandInteractionResponse,
-  AppCommand,
+  AppCommandDefinition,
   ComponentContext,
   StateContext,
   DeferContext,
   _,
   field,
 } from '../../../discord-framework'
-import { sentry } from '../../../request/sentry'
+import { sentry } from '../../../request/logging'
 import { assert, nonNullable, snowflakeToDate, unflatten } from '../../../utils/utils'
-import { App } from '../../app/app'
-import { AppErrors, AppError } from '../../app/errors'
+import { App } from '../../app-context/app-context'
+import { AppErrors, AppError } from '../../errors'
 import { Colors, relativeTimestamp } from '../../messages/message_pieces'
-import { checkGuildInteraction, hasAdminPerms } from '../../views/utils/checks'
-import { guildRankingsOptionChoices, rankingsAutocomplete } from '../../views/utils/common'
+import { guildCommand } from '../../view_manager/view_module'
+import { checkGuildInteraction, hasAdminPerms } from '../../utils/checks'
+import { guildRankingsOptionChoices, rankingsAutocomplete } from '../../utils/view_pieces'
 import { matchSummaryEmbed } from '../matches/match_logging/match_messages'
 import { recordAndScoreNewMatch } from '../matches/scoring/score_matches'
 import { getRegisterPlayer } from '../players'
 import { allGuildRankingsPage } from '../rankings/rankings_commands/all_rankings'
 import {
-  create_ranking_view_def,
+  create_ranking_view_definition,
   createRankingModal,
 } from '../rankings/rankings_commands/create_ranking'
 import { rankings_cmd_def } from '../rankings/rankings_commands/rankings_cmd'
-import { ViewModule, globalView, guildCommand } from '../view_manager/view_module'
 
 const optionnames = {
   ranking: 'for',
@@ -35,7 +35,7 @@ const optionnames = {
   time_finished: 'when',
 }
 
-const record_match_command_def = new AppCommand({
+const record_match_command_def = new AppCommandDefinition({
   type: D.ApplicationCommandType.ChatInput,
   name: 'record-match',
   description: 'record a match',
@@ -81,7 +81,7 @@ const recordMatchCmdDef = async (app: App, guild_id?: string) => {
 
   const ranking_choices = await guildRankingsOptionChoices(app, guild_id, false)
 
-  const cmd = new AppCommand({
+  const cmd = new AppCommandDefinition({
     ...record_match_command_def.options,
     options: [
       {
@@ -98,7 +98,7 @@ const recordMatchCmdDef = async (app: App, guild_id?: string) => {
         name: optionnames.time_finished,
         description: 'Snowflake or Unix timestamp of when the match was finished (default now)',
         type: D.ApplicationCommandOptionType.String,
-      }
+      },
     ],
   })
 
@@ -138,12 +138,10 @@ export const recordMatchCmd = (app: App) =>
       )?.value
 
       if (selected_ranking_id == 'create') {
-        return createRankingModal(app, { state: create_ranking_view_def.newState({}) })
+        return createRankingModal(app, { state: create_ranking_view_definition.newState({}) })
       }
 
-      if (selected_time_finished && 
-        !isNaN(parseInt(selected_time_finished))) {
-        
+      if (selected_time_finished && !isNaN(parseInt(selected_time_finished))) {
         if (selected_time_finished.length < 13) {
           // assume it's a unix timestamp
           ctx.state.save.selected_time_finished(new Date(parseInt(selected_time_finished) * 1000))
@@ -209,7 +207,14 @@ export const recordMatchCmd = (app: App) =>
                 const winner = await getRegisterPlayer(app, winner_id, ranking)
                 const loser = await getRegisterPlayer(app, loser_id, ranking)
 
-                await recordAndScoreNewMatch(app, ranking, [[winner], [loser]], [1, 0], undefined, ctx.state.data.selected_time_finished)
+                await recordAndScoreNewMatch(
+                  app,
+                  ranking,
+                  [[winner], [loser]],
+                  [1, 0],
+                  undefined,
+                  ctx.state.data.selected_time_finished,
+                )
                 return void ctx.edit({
                   content: `Recorded match`,
                   flags: D.MessageFlags.Ephemeral,
@@ -266,7 +271,7 @@ export const recordMatchCmd = (app: App) =>
       }
     })
 
-export const record_match = new ViewModule([guildCommand(recordMatchCmd, recordMatchCmdDef)])
+export const record_match = [guildCommand(recordMatchCmd, recordMatchCmdDef)]
 
 async function selectTeamPage(
   app: App,
@@ -658,7 +663,14 @@ async function recordMatchFromSelectedTeams(
     }),
   )
 
-  const new_match = await recordAndScoreNewMatch(app, ranking, team_players, relative_scores, undefined, ctx.state.data.selected_time_finished)
+  const new_match = await recordAndScoreNewMatch(
+    app,
+    ranking,
+    team_players,
+    relative_scores,
+    undefined,
+    ctx.state.data.selected_time_finished,
+  )
 
   return {
     components: [],

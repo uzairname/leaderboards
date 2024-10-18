@@ -1,13 +1,12 @@
-import { DiscordAPIError, REST, RequestData, RequestMethod } from '@discordjs/rest'
-import { I as InternalRequest } from '@discordjs/rest/dist/types-65527f29'
+import { DiscordAPIError, REST, RequestData, RequestMethod, InternalRequest } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { truncateString } from '../../main/messages/message_pieces'
 import { cache } from '../../request/cache'
-import { sentry } from '../../request/sentry'
+import { sentry } from '../../request/logging'
 import { DiscordCache } from './cache'
+import { DiscordAPIUtils } from './client_helpers'
 import { DiscordErrors } from './errors'
 import { RESTPostAPIGuildForumThreadsResult } from './types'
-import { DiscordAPIUtils } from './utils'
 
 export class DiscordAPIClient extends REST {
   readonly application_id: string

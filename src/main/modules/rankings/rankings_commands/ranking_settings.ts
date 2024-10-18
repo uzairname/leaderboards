@@ -9,10 +9,10 @@ import {
   StateContext,
   field,
 } from '../../../../discord-framework'
-import { App } from '../../../app/app'
+import { App } from '../../../app-context/app-context'
 import { Colors, escapeMd, messageLink } from '../../../messages/message_pieces'
-import { sendSelectChannelPage } from '../../../views/helpers/select_channel'
-import { ensureAdminPerms } from '../../../views/utils/checks'
+import { sendSelectChannelPage } from '../../../helpers/select_channel'
+import { ensureAdminPerms } from '../../../utils/checks'
 import { syncGuildRankingLbMessage } from '../../leaderboard/leaderboard_messages'
 import { sendGuildRankingQueueMessage } from '../../matches/queue/queue_messages'
 import { updateRanking, deleteRanking, validateRankingOptions } from '../manage_rankings'

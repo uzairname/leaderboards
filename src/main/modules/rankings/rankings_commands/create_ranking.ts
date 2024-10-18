@@ -8,14 +8,14 @@ import {
   MessageView,
   field,
   _,
-  AppCommand,
+  AppCommandDefinition,
   InteractionContext,
 } from '../../../../discord-framework'
-import { sentry } from '../../../../request/sentry'
+import { sentry } from '../../../../request/logging'
 import { nonNullable } from '../../../../utils/utils'
-import { App } from '../../../app/app'
+import { App } from '../../../app-context/app-context'
 import { Colors, escapeMd } from '../../../messages/message_pieces'
-import { checkGuildInteraction, ensureAdminPerms } from '../../../views/utils/checks'
+import { checkGuildInteraction, ensureAdminPerms } from '../../../utils/checks'
 import { communityEnabled, getMatchLogsChannel, getOrAddGuild } from '../../guilds'
 import { syncGuildRankingLbMessage } from '../../leaderboard/leaderboard_messages'
 import { sendGuildRankingQueueMessage } from '../../matches/queue/queue_messages'
@@ -25,7 +25,7 @@ import { createNewRankingInGuild, validateRankingOptions } from '../manage_ranki
 import { guildRankingSettingsPage, ranking_settings_page } from './ranking_settings'
 
 export const createRankingCmd = (app: App) =>
-  new AppCommand({
+  new AppCommandDefinition({
     name: 'create-ranking',
     type: D.ApplicationCommandType.ChatInput,
     description: 'Create a new ranking',
@@ -64,7 +64,7 @@ export const createRankingCmd = (app: App) =>
         return void ctx.followup(
           await createRankingPageData(app, {
             interaction: ctx.interaction,
-            state: create_ranking_view_def.newState({
+            state: create_ranking_view_definition.newState({
               input_name: options['name'],
               input_num_teams: options['num-teams'] ? parseInt(options['num-teams']) : undefined,
               input_players_per_team: options['players-per-team']
@@ -77,7 +77,7 @@ export const createRankingCmd = (app: App) =>
     )
   })
 
-export const create_ranking_view_def = new MessageView({
+export const create_ranking_view_definition = new MessageView({
   custom_id_prefix: 'cr',
   name: 'rankings',
   state_schema: {
@@ -100,7 +100,7 @@ export const create_ranking_view_def = new MessageView({
 })
 
 export const createRankingView = (app: App) =>
-  create_ranking_view_def.onComponent(async ctx => {
+  create_ranking_view_definition.onComponent(async ctx => {
     return ctx.state.get.callback()(app, ctx)
   })
 
@@ -145,7 +145,7 @@ export function createRankingModal(app: App, ctx: any): D.APIModalInteractionRes
 
 export function onCreateRankingModalSubmit(
   app: App,
-  ctx: ComponentContext<typeof create_ranking_view_def>,
+  ctx: ComponentContext<typeof create_ranking_view_definition>,
 ): Promise<ChatInteractionResponse> {
   const modal_input = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
   modal_input['name'].value && ctx.state.save.input_name(modal_input['name'].value)
@@ -159,7 +159,7 @@ export function onCreateRankingModalSubmit(
 
 export async function createRankingPage(
   app: App,
-  ctx: ComponentContext<typeof create_ranking_view_def>,
+  ctx: ComponentContext<typeof create_ranking_view_definition>,
 ): Promise<ChatInteractionResponse> {
   const type = ctx.state.is.from_page('creating_new')
     ? // already on creating new page. Update message
@@ -177,7 +177,7 @@ export async function createRankingPage(
 
 export async function createRankingPageData(
   app: App,
-  ctx: InteractionContext<typeof create_ranking_view_def>,
+  ctx: InteractionContext<typeof create_ranking_view_definition>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const guild = await getOrAddGuild(app, checkGuildInteraction(ctx.interaction).guild_id)
 
@@ -280,7 +280,7 @@ export async function createRankingPageData(
 
 export function onCreateConfirmBtn(
   app: App,
-  ctx: ComponentContext<typeof create_ranking_view_def>,
+  ctx: ComponentContext<typeof create_ranking_view_definition>,
 ): ChatInteractionResponse {
   return ctx.defer(
     {

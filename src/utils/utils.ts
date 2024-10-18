@@ -26,14 +26,28 @@ export type ModifyType<T, K extends keyof T, U> = Omit<T, K> & {
 export function cloneSimpleObj<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj))
 }
-export function unflatten<T>(arr: T[], dim_2_size: number, full_rows = true): T[][] {
+
+/**
+ * Unflattens a one-dimensional array into a two-dimensional array.
+ *
+ * @template T - The type of elements in the array.
+ * @param arr - The one-dimensional array to unflatten.
+ * @param dim_2_size - The size of the inner arrays (second dimension).
+ * @param full_rows - If true, ensures all inner arrays are of equal length.
+ *                    If false, the last inner array may be shorter.
+ * @returns {T[][]} A two-dimensional array.
+ */
+export function unflatten<T>(arr: T[], dim_2_size: number, full_rows: boolean = true): T[][] {
   return Array.from(
     { length: full_rows ? arr.length / dim_2_size : Math.ceil(arr.length / dim_2_size) },
     (_, i) => arr.slice(i * dim_2_size, (i + 1) * dim_2_size),
   )
 }
 
-// if greatest element is repeated, return undefined
+/**
+ * @returns The index of the maximum value in the array.
+ * If there are multiple maximum values, returns -1.
+ */
 export function maxIndex(arr: number[]): number {
   if (arr.length === 0) return -1
   let max = arr[0]
@@ -51,8 +65,11 @@ export function maxIndex(arr: number[]): number {
   return max_repeated ? -1 : max_index
 }
 
-
-export function snowflakeToDate(snowflake: bigint) {
-  const dateBits = Number(BigInt.asUintN(64, snowflake) >> 22n);
-  return new Date(dateBits + 1420070400000);
+/**
+ * @param snowflake The Discord snowflake to convert.
+ * @returns The date the snowflake was created.
+ */
+export function snowflakeToDate(snowflake: bigint): Date {
+  const dateBits = Number(BigInt.asUintN(64, snowflake) >> 22n)
+  return new Date(dateBits + 1420070400000)
 }

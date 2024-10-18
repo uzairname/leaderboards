@@ -1,9 +1,9 @@
 import { Match, Player, Ranking } from '../../../../database/models'
 import { MatchInsert } from '../../../../database/types'
-import { sentry } from '../../../../request/sentry'
+import { sentry } from '../../../../request/logging'
 import { nonNullable } from '../../../../utils/utils'
-import { App } from '../../../app/app'
-import { AppErrors } from '../../../app/errors'
+import { App } from '../../../app-context/app-context'
+import { AppErrors } from '../../../errors'
 import {
   syncGuildRankingLbMessage,
   syncRankingLbMessages,
@@ -139,11 +139,7 @@ export async function scoreRankingHistory(
     on_or_after,
   })
 
-  sentry.debug('scoring matches', matches.length)
-
-  if (matches.length > app.config.settings.MaxRescoreableMatches) {
-    throw new AppErrors.RescoreMatchesLimitExceeded()
-  }
+  sentry.debug('scoring this many matches', matches.length)
 
   for (const match of matches) {
     // get player ratings before

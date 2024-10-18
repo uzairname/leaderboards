@@ -1,8 +1,8 @@
 import * as D from 'discord-api-types/v10'
 import { json } from 'itty-router'
-import { sentry } from '../../request/sentry'
+import { Logger, sentry } from '../../request/logging'
 import { DiscordAPIClient } from '../rest/client'
-import { findView_ } from './find_view'
+import { findView } from './find_view'
 import {
   FindViewCallback,
   InteractionErrorCallback,
@@ -16,7 +16,7 @@ import { ViewState } from './view_state'
 export async function respondToInteraction(
   bot: DiscordAPIClient,
   request: Request,
-  findView: FindViewCallback,
+  findViewCallback: FindViewCallback,
   onError: InteractionErrorCallback,
 ): Promise<Response> {
   if (!(await verify(request, bot.public_key))) {
@@ -30,7 +30,7 @@ export async function respondToInteraction(
 
   const interaction = (await request.json()) as D.APIInteraction
 
-  const response = await respond(interaction, bot, findView, onError)
+  const response = await respond(interaction, bot, findViewCallback, onError)
     .then(res => res)
     .catch(e => onError(e))
 
@@ -54,7 +54,7 @@ export async function respondToInteraction(
 async function respond(
   interaction: D.APIInteraction,
   bot: DiscordAPIClient,
-  findView: FindViewCallback,
+  findViewCallback: FindViewCallback,
   onError: InteractionErrorCallback,
 ): Promise<D.APIInteractionResponse> {
   sentry.setUser({
@@ -69,7 +69,7 @@ async function respond(
     interaction.type === D.InteractionType.ApplicationCommand ||
     interaction.type === D.InteractionType.ApplicationCommandAutocomplete
   ) {
-    const view = await findView_(findView, interaction)
+    const view = findView(findViewCallback, interaction)
 
     if (interaction.type === D.InteractionType.ApplicationCommand) {
       if (viewIsAppCommand(view)) return view.respondToCommand(interaction, bot, onError)
@@ -82,6 +82,6 @@ async function respond(
     }
   }
 
-  const { view, state } = await ViewState.fromCustomId(interaction.data.custom_id, findView)
+  const { view, state } = ViewState.fromCustomId(interaction.data.custom_id, findViewCallback)
   return view.respondToComponent(interaction, state, bot, onError)
 }

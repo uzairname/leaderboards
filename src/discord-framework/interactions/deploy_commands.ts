@@ -1,7 +1,7 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
-import { AppError } from '../../main/app/errors'
-import { sentry } from '../../request/sentry'
+import { AppError } from '../../main/errors'
+import { sentry } from '../../request/logging'
 import type { DiscordAPIClient } from '../rest/client'
 import { AnyAppCommand, viewIsChatInputAppCommand } from './types'
 

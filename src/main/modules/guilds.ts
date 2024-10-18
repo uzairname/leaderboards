@@ -2,7 +2,7 @@ import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { Guild } from '../../database/models'
 import { GuildChannelData, RoleData } from '../../discord-framework'
-import { App } from '../app/app'
+import { App } from '../app-context/app-context'
 import { Colors } from '../messages/message_pieces'
 
 export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> {
@@ -39,7 +39,7 @@ export async function getMatchLogsChannel(
   }
 }
 
-export async function syncRankedCategory(
+export async function getOrUpdateRankedCategory(
   app: App,
   guild: Guild,
 ): Promise<{
@@ -54,7 +54,7 @@ export async function syncRankedCategory(
       return {
         guild_id: guild.data.id,
         data: new GuildChannelData({
-          name: 'RANKED',
+          name: 'Ranked',
           type: D.ChannelType.GuildCategory,
         }),
       }

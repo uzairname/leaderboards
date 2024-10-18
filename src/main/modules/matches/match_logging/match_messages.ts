@@ -1,12 +1,12 @@
 import * as D from 'discord-api-types/v10'
-import { type InferInsertModel, eq, and } from 'drizzle-orm'
-import { Guild, GuildRanking, Match, Player, Ranking } from '../../../../database/models'
+import { eq, and } from 'drizzle-orm'
+import type { Guild, GuildRanking, Match, Player } from '../../../../database/models'
 import { MatchSummaryMessages } from '../../../../database/schema'
-import { MatchPlayerSelect } from '../../../../database/types'
+import type { MatchPlayerSelect } from '../../../../database/types'
 import { GuildChannelData, MessageData } from '../../../../discord-framework'
-import { sentry } from '../../../../request/sentry'
+import { sentry } from '../../../../request/logging'
 import { maxIndex, nonNullable } from '../../../../utils/utils'
-import { App } from '../../../app/app'
+import { App } from '../../../app-context/app-context'
 import {
   Colors,
   commandMention,
@@ -14,7 +14,7 @@ import {
   escapeMd,
   relativeTimestamp,
 } from '../../../messages/message_pieces'
-import { syncRankedCategory } from '../../guilds'
+import { getOrUpdateRankedCategory } from '../../guilds'
 import { default_elo_settings } from '../../rankings/manage_rankings'
 import { calculateMatchNewRatings } from '../scoring/score_matches'
 import { matchesCommandDef, matches_command_def } from './matches_command'
@@ -239,7 +239,7 @@ async function matchLogsChannelData(
   guild_id: string
   data: GuildChannelData
 }> {
-  let category = (await syncRankedCategory(app, guild)).channel
+  let category = (await getOrUpdateRankedCategory(app, guild)).channel
   return {
     guild_id: guild.data.id,
     data: new GuildChannelData({

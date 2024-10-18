@@ -1,13 +1,10 @@
 import { desc, eq, sql } from 'drizzle-orm'
-import { SerialisableMatcherRegExps } from 'miniflare'
-import { Match, Player } from '..'
-import { getRegisterPlayer } from '../../../main/modules/players'
-import { sentry } from '../../../request/sentry'
+import { Player } from '..'
 import { DbClient } from '../../client'
 import { DbErrors } from '../../errors'
 import { DbObject, DbObjectManager } from '../../managers'
-import { Matches, Players, QueueTeams, Rankings, TeamPlayers, Teams } from '../../schema'
-import { RankingInsert, RankingSelect, TeamSelect } from '../../types'
+import { Players, QueueTeams, Rankings, TeamPlayers } from '../../schema'
+import { RankingInsert, RankingSelect } from '../../types'
 
 export class Ranking extends DbObject<Partial<RankingSelect> & { id: number }> {
   constructor(data: Partial<RankingSelect> & { id: number }, db: DbClient) {
