@@ -6,29 +6,29 @@
     "migrate": "npx tsc migratons/migrate.ts"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20231121.0",
+    "@cloudflare/workers-types": "^4.20241011.0",
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
-    "@typescript-eslint/eslint-plugin": "^6.7.5",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
     "drizzle-kit": "^0.19.13",
     "fast-csv": "^4.3.6",
     "madge": "^6.1.0",
     "miniflare": "^3.20231023.0",
-    "pg": "^8.11.3",
-    "prettier": "^3.0.3",
-    "typescript": "^5.2.2",
-    "wrangler": "^3.19.0"
+    "pg": "^8.13.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "wrangler": "^3.81.0"
   },
   "dependencies": {
-    "@discordjs/rest": "^2.0.1",
+    "@discordjs/rest": "^2.4.0",
     "@neondatabase/serverless": "^0.4.26",
-    "@sentry/tracing": "^7.52.1",
-    "discord-api-types": "^0.37.56",
-    "dotenv": "^16.3.1",
+    "@sentry/tracing": "^7.114.0",
+    "discord-api-types": "^0.37.102",
+    "dotenv": "^16.4.5",
     "drizzle-orm": "^0.28.6",
-    "itty-router": "^4.0.23",
+    "itty-router": "^4.2.2",
     "lz-string": "^1.5.0",
-    "postgres": "^3.4.0",
-    "toucan-js": "^3.1.0",
-    "ts-trueskill": "^5.0.0"
+    "postgres": "^3.4.4",
+    "toucan-js": "^3.4.0",
+    "ts-trueskill": "^5.0.1"
   }
 }

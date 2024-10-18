@@ -1,6 +1,6 @@
 import { NeonHttpDatabase } from 'drizzle-orm/neon-http'
 import { cache } from '../request/cache'
-import { Sentry } from '../request/sentry'
+import { Logger } from '../request/logging'
 import DbCache from './cache'
 import { connect } from './connect'
 import {
@@ -21,7 +21,7 @@ export class DbClient {
 
   public readonly cache: DbCache
 
-  constructor(postgres_url: string, sentry?: Sentry) {
+  constructor(postgres_url: string, sentry?: Logger) {
     this.db = connect(postgres_url, sentry)
 
     if (cache.db && cache.db instanceof DbCache) {

@@ -1,12 +1,12 @@
 import * as D from 'discord-api-types/v10'
-import { AppCommand } from '../../../discord-framework'
-import { App } from '../../app/app'
-import { checkGuildInteraction } from '../../views/utils/checks'
-import { guildRankingsOptionChoices } from '../../views/utils/common'
+import { AppCommandDefinition } from '../../../../discord-framework'
+import { App } from '../../../app-context/app-context'
+import { checkGuildInteraction } from '../../../utils/checks'
+import { guildRankingsOptionChoices } from '../../../utils/view_pieces'
 import { matchPage, matchView, match_view_def } from './match_view'
-import { match_history_view_def, matchesPage, matchesView } from './matches_view'
+import { match_history_view_definition, matchesPage, matchesView } from './matches_view'
 
-export const matches_command_def = new AppCommand({
+export const matches_command_def = new AppCommandDefinition({
   type: D.ApplicationCommandType.ChatInput,
   name: 'matches',
   description: 'View the match history',
@@ -20,7 +20,7 @@ const option_names = {
 
 export const matchesCommandDef = async (app: App, guild_id?: string) =>
   guild_id
-    ? new AppCommand({
+    ? new AppCommandDefinition({
         ...matches_command_def.options,
         options: [
           {
@@ -43,7 +43,7 @@ export const matchesCommandDef = async (app: App, guild_id?: string) =>
       })
     : undefined
 
-export const matchesCmdCallback = (app: App) =>
+export const matchesCommand = (app: App) =>
   matches_command_def.onCommand(async ctx => {
     const ranking_option_value =
       (
@@ -91,7 +91,7 @@ export const matchesCmdCallback = (app: App) =>
         await ctx.edit(
           await matchesPage(
             app,
-            match_history_view_def.newState({
+            match_history_view_definition.newState({
               ranking_ids,
               user_ids: user_option_value ? [user_option_value] : undefined,
             }),

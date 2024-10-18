@@ -1,22 +1,22 @@
 import * as D from 'discord-api-types/v10'
 import {
   ChatInteractionResponse,
-  AppCommand,
+  AppCommandDefinition,
   ComponentContext,
   InteractionContext,
   field,
-} from '../../../discord-framework'
-import { App } from '../../app/app'
-import { Colors } from '../../messages/message_pieces'
-import { match_history_view_def } from '../../modules/match_logging/matches_view'
-import { ViewModule, globalView } from '../../modules/view_manager/view_module'
+} from '../../discord-framework'
+import { App } from '../app-context/app-context'
+import { Colors } from '../messages/message_pieces'
+import { match_history_view_definition } from './matches/match_logging/matches_view'
+import { globalView } from '../view_manager/view_module'
 import { checkGuildInteraction } from '../utils/checks'
 
 const option_names = {
   user: 'user',
 }
 
-export const stats_cmd = new AppCommand({
+export const stats_cmd = new AppCommandDefinition({
   type: D.ApplicationCommandType.ChatInput,
   custom_id_prefix: 'st',
   name: 'stats',
@@ -106,7 +106,7 @@ async function mainPageData(
             type: D.ComponentType.Button,
             label: `Matches`,
             style: D.ButtonStyle.Primary,
-            custom_id: match_history_view_def
+            custom_id: match_history_view_definition
               .newState({
                 ranking_ids: ctx.state.data.selected_ranking_id
                   ? [ctx.state.data.selected_ranking_id]
@@ -130,3 +130,5 @@ async function mainPage(
     data: await mainPageData(app, ctx),
   }
 }
+
+export const stats_module = [globalView(statsCmd)]

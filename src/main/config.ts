@@ -33,14 +33,8 @@ export class Config {
   public readonly OauthRedirectURI: string
   readonly features: ReturnType<typeof features>
 
-  readonly settings = settings
-
   constructor(readonly env: Env) {
     this.OauthRedirectURI = env.BASE_URL + `/oauth` + this.OauthRoutes.Redirect
     this.features = features(env.ENVIRONMENT)
   }
-}
-
-const settings = {
-  MaxRescoreableMatches: 1500,
 }

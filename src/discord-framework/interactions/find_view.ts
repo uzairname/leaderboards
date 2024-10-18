@@ -1,15 +1,15 @@
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../request/sentry'
+import { sentry } from '../../request/logging'
 import { AnyView, FindViewCallback } from './types'
 import { ViewErrors } from './utils/errors'
 
-export async function findView_(
-  findView: FindViewCallback,
+export function findView(
+  findViewCallback: FindViewCallback,
   command_interaction?:
     | D.APIApplicationCommandInteraction
     | D.APIApplicationCommandAutocompleteInteraction,
   custom_id_prefix?: string,
-): Promise<AnyView> {
+): AnyView {
   sentry.addBreadcrumb({
     message: 'Received Interaction',
     category: 'discord',
@@ -24,7 +24,7 @@ export async function findView_(
     },
   })
 
-  const view = await findView(
+  const view = findViewCallback(
     command_interaction
       ? {
           name: command_interaction.data.name,

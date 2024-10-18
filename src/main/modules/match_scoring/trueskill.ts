@@ -3,8 +3,8 @@ import { Rating, TrueSkill } from 'ts-trueskill'
 export function getNewRatings(
   outcome: number[],
   players: {
-    rating_before?: number
-    rd_before?: number
+    rating_before: number
+    rd_before: number
   }[][],
   elo_settings: {
     initial_rating?: number

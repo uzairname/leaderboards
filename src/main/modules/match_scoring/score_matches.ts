@@ -1,16 +1,16 @@
-import { Match, Player, Ranking } from '../../../database/models'
-import { MatchInsert } from '../../../database/types'
-import { sentry } from '../../../request/sentry'
-import { nonNullable } from '../../../utils/utils'
-import { App } from '../../app/app'
-import { AppErrors } from '../../app/errors'
+import { Match, Player, Ranking } from '../../../../database/models'
+import { MatchInsert } from '../../../../database/types'
+import { sentry } from '../../../../request/logging'
+import { nonNullable } from '../../../../utils/utils'
+import { App } from '../../../app-context/app-context'
+import { AppErrors } from '../../../errors'
 import {
   syncGuildRankingLbMessage,
   syncRankingLbMessages,
-} from '../leaderboard/leaderboard_messages'
-import { updatePlayerRating } from '../players'
-import { default_elo_settings } from '../rankings'
-import { validateMatch } from '../matches'
+} from '../../leaderboard/leaderboard_messages'
+import { updatePlayerRating } from '../../players'
+import { default_elo_settings } from '../../rankings/manage_rankings'
+import { validateMatch } from '../manage_matches'
 import { getNewRatings } from './trueskill'
 
 /**
@@ -94,8 +94,8 @@ export function calculateMatchNewRatings(
   match: Match,
   players_before: {
     id: number
-    rating_before?: number
-    rd_before?: number
+    rating_before: number
+    rd_before: number
   }[][],
   elo_settings: { initial_rating?: number; initial_rd?: number },
 ): {
@@ -139,11 +139,7 @@ export async function scoreRankingHistory(
     on_or_after,
   })
 
-  sentry.debug('scoring matches', matches.length)
-
-  if (matches.length > app.config.settings.MaxRescoreableMatches) {
-    throw new AppErrors.RescoreMatchesLimitExceeded()
-  }
+  sentry.debug('scoring this many matches', matches.length)
 
   for (const match of matches) {
     // get player ratings before

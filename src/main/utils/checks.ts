@@ -1,14 +1,14 @@
 import * as D from 'discord-api-types/v10'
-import { AnyView, InteractionContext } from '../../../discord-framework'
-import { App } from '../../app/app'
-import { AppErrors } from '../../app/errors'
-import { getOrAddGuild } from '../../modules/guilds'
+import { AnyView, InteractionContext } from '../../discord-framework'
+import { App } from '../app-context/app-context'
+import { AppError, AppErrors } from '../errors'
+import { getOrAddGuild } from '../modules/guilds'
 
 export function checkGuildInteraction<T extends D.APIBaseInteraction<any, any>>(
   interaction: T,
 ): D.APIGuildInteractionWrapper<T> {
   if (!D.Utils.isGuildInteraction(interaction)) {
-    throw new AppErrors.InteractionNotGuild()
+    throw new AppError("Use this in a server")
   }
   return interaction as D.APIGuildInteractionWrapper<T>
 }
@@ -22,7 +22,7 @@ export async function ensureAdminPerms(app: App, ctx: InteractionContext<any>): 
   const { has_perms, admin_role_id } = await determineAdminPerms(app, ctx)
 
   if (!has_perms) {
-    throw new AppErrors.UserMissingPermissions(
+    throw new AppError(
       `You need${admin_role_id ? ` the <@&${admin_role_id}> role or` : ``} admin perms to do this`,
     )
   }
@@ -45,3 +45,11 @@ async function determineAdminPerms(app: App, ctx: InteractionContext<AnyView>) {
     admin_role_id,
   }
 }
+
+
+export function validate(condition: boolean, message: string): void {
+  if (!condition) {
+    throw new AppErrors.ValidationError(message)
+  }
+}
+

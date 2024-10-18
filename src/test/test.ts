@@ -1,7 +1,6 @@
 import { APIUser, ApplicationCommandPermissionType } from 'discord-api-types/v10'
 import { eq, sql } from 'drizzle-orm'
 import { DbClient } from '../database/client'
-import { Ranking } from '../database/models'
 import {
   AccessTokens,
   ActiveMatches,
@@ -18,15 +17,12 @@ import {
   Teams,
   Users,
 } from '../database/schema'
-import { App } from '../main/app/app'
-import { updateMatch } from '../main/modules/matches'
-import { recordAndScoreNewMatch } from '../main/modules/match_scoring/score_matches'
+import { App } from '../main/app-context/app-context'
+import { updateMatch } from '../main/modules/matches/manage_matches'
+import { recordAndScoreNewMatch } from '../main/modules/matches/scoring/score_matches'
 import { getRegisterPlayer } from '../main/modules/players'
-import { default_elo_settings, getRankingData } from '../main/modules/rankings'
-import { sentry } from '../request/sentry'
+import { sentry } from '../request/logging'
 import { nonNullable } from '../utils/utils'
-import { sendSelectChannelPage } from '../main/views/helpers/select_channel'
-import { calculateTeamRating } from '../database/models/models/teams'
 
 export async function runTests(app: App): Promise<Response> {
   await testDatabase(app)
@@ -38,83 +34,31 @@ async function testDatabase(app: App) {
   await resetDatabase(app.db)
   // await testMatches(app)
   // await testQueueTeams(app)
-  await testQueue(app)
-  // await testMatchScoring(app)
+  // await testQueue(app)
+  await testMatchScoring(app)
 }
 
 async function testQueue(app: App) {
   await addData(app)
-
   const ranking = (await getRankingInGuildByName(app, '98623457887', 'ranking 1')).ranking
 
   const player1 = nonNullable(await app.db.players.get('100', ranking.data.id), 'player 100')
   const player2 = nonNullable(await app.db.players.get('200', ranking.data.id), 'player 200')
   const player3 = nonNullable(await app.db.players.get('300', ranking.data.id), 'player 300')
 
-  // player 1 is in the queue
   const team = await app.db.teams.create(ranking, {}, [player1])
   await team.addToQueue()
 
-  sentry.debug("adding players 2 and 3")
-  // players 2 and 3 simultaneously join the queue
   await Promise.all([
     new Promise<void>(async resolve => {
       const team = await app.db.teams.create(ranking, {}, [player2])
       await team.addToQueue()
-      const teams = await findMatchFromQueue(ranking)
-      sentry.debug('matched teams', teams?.map(t => t.id).join(', '))
-      if (teams) {
-        // remove both teams from the queue
-        await Promise.all(teams.map(async (team) => {
-          await app.db.teams.removeFromQueue(team.id)
-        }))
-        sentry.debug('match starting with teams', teams.map(t => t.id).join(', '))
-      }
-      resolve()
     }),
     new Promise<void>(async resolve => {
-      await new Promise(resolve => setTimeout(resolve, 1000))
       const team = await app.db.teams.create(ranking, {}, [player3])
       await team.addToQueue()
-      const teams = await findMatchFromQueue(ranking)
-      sentry.debug('matched teams', teams?.map(t => t.id).join(', '))
-      if (teams) {
-        // remove both teams from the queue
-        await Promise.all(teams.map(async (team) => {
-          await app.db.teams.removeFromQueue(team.id)
-        }))
-        sentry.debug('match starting with teams', teams.map(t => t.id).join(', '))
-      }
-      resolve()
     }),
   ])
-
-  async function findMatchFromQueue(ranking: Ranking) {
-    // find two teams with the closest rating
-    // get all teams in the queue
-    const q_teams = await ranking.queueTeams()
-    // algorithm to find two teams whose rating is within 100 of each other
-    // sort teams by rating
-    // iterate through the teams and find two teams whose rating is within 100 of each other
-    const sorted_teams = Object.entries(q_teams).map(([team_id, team]) => 
-      ({
-        ...team,
-        id: parseInt(team_id),
-        rating: calculateTeamRating(team.players, ranking),
-      })
-    ).sort((a, b) => a.rating - b.rating)
-
-    for (let i = 0; i < sorted_teams.length - 1; i++) {
-      let team = sorted_teams[i]
-      let next_team = sorted_teams[i+1]
-
-      sentry.debug('ratings. ', `${team.rating} - ${next_team.rating}`)
-
-      if (team.rating && next_team.rating && Math.abs(team.rating - next_team.rating) < 20) {
-        return [team, next_team]
-      }
-    }
-  }
 }
 
 async function testMatches(app: App) {
@@ -134,11 +78,7 @@ async function testMatches(app: App) {
       [player100, player200],
       [player300, player400],
     ],
-    outcome: {
-      single: {
-        ranks: [2, 1],
-      }
-    },
+    outcome: [0, 1],
     metadata: {},
     time_started: new Date(),
     time_finished: new Date(),
@@ -150,11 +90,7 @@ async function testMatches(app: App) {
       [player100, player200],
       [player300, player400],
     ],
-    outcome: {
-      single: {
-        ranks: [2, 1],
-      }
-    },
+    outcome: [0, 1],
     metadata: {},
     time_started: new Date(),
     time_finished: new Date(),
@@ -166,11 +102,7 @@ async function testMatches(app: App) {
       [player100, player200],
       [player300, player400],
     ],
-    outcome: {
-      single: {
-        ranks: [2, 1],
-      }
-    },
+    outcome: [0, 1],
     metadata: {},
     time_started: new Date(),
     time_finished: new Date(),
@@ -313,10 +245,7 @@ async function resetDatabase(client: DbClient) {
 }
 
 async function addData(app: App) {
-
-  sentry.debug('adding guild')
   const guild1 = await app.db.guilds.create({ id: '98623457887' })
-
   await Promise.all([
     app.db.users.getOrCreate({ id: '100', name: 'one' }),
     app.db.users.getOrCreate({ id: '200', name: 'two' }),
@@ -347,7 +276,6 @@ async function addData(app: App) {
   const guild_ranking_1 = await app.db.guild_rankings.create(guild1, ranking1, { is_admin: true })
   const guild_ranking_2 = await app.db.guild_rankings.create(guild1, ranking2, { is_admin: true })
 
-  sentry.debug('adding players')
   await Promise.all([
     getRegisterPlayer(app, { id: '100', global_name: 'p100' } as APIUser, ranking1),
     getRegisterPlayer(app, { id: '200', global_name: 'p200' } as APIUser, ranking1),
@@ -358,9 +286,6 @@ async function addData(app: App) {
     getRegisterPlayer(app, { id: '300', global_name: 'p300' } as APIUser, ranking2),
     getRegisterPlayer(app, { id: '400', global_name: 'p400' } as APIUser, ranking2),
   ])
-
-  sentry.debug('added players')
-  sentry.debug('done adding data')
 }
 
 // runTests().then((res) => {

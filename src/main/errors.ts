@@ -7,19 +7,6 @@ export class AppError extends Error {
 
 // Errors that are expected and displayed to the user
 export namespace AppErrors {
-  export class InteractionNotGuild extends AppError {
-    constructor() {
-      super('Use this command in a server')
-    }
-  }
-
-  export class RescoreMatchesLimitExceeded extends AppError {
-    constructor() {
-      super('Rescoring too many matches at once')
-    }
-  }
-
-  export class UserMissingPermissions extends AppError {}
 
   export class NotComponentOwner extends AppError {
     constructor(owner_id?: string) {

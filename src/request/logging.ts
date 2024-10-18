@@ -1,36 +1,34 @@
 import { Toucan } from 'toucan-js'
 import { cache } from './cache'
-import { RequestArgs } from './request'
 
-export let sentry: Sentry
+export let sentry: Logger
 
-export function initSentry(ctx: RequestArgs) {
-  sentry = new Sentry(ctx)
+export function initSentry(request: Request, env: Env, execution_context: ExecutionContext) {
+  sentry = new Logger(request, env, execution_context)
   return sentry
 }
 
-export class Sentry extends Toucan {
+export class Logger extends Toucan {
   private time_received = Date.now()
   private caught_exception: unknown
-  private request: Request
 
   request_data: Record<string, unknown> = {}
   request_name: string
 
-  constructor(private request_args: RequestArgs) {
+  constructor(private request: Request, private env: Env, private execution_context: ExecutionContext) {
     super({
-      dsn: request_args.env.SENTRY_DSN,
+      dsn: env.SENTRY_DSN,
       release: '1.0.0',
-      environment: request_args.env.ENVIRONMENT,
-      context: request_args.execution_context,
-      request: request_args.request,
+      environment: env.ENVIRONMENT,
+      context: execution_context,
+      request: request,
     })
     this.request_name = 'Request'
     cache.request_num = typeof cache.request_num == 'number' ? cache.request_num + 1 : 1
-    this.request = request_args.request
+    this.request = request
   }
 
-  async handlerWrapper(handler: (request: Request) => Promise<Response>): Promise<Response> {
+  async withLogging(handler: (request: Request) => Promise<Response>): Promise<Response> {
     this.setTag('cold-start', `${cache.request_num == 1}`)
     this.debug(`Request #${cache.request_num}`)
     this.request_name = `${this.request.method} ${new URL(this.request.url).pathname}`
@@ -87,7 +85,7 @@ export class Sentry extends Toucan {
     }
 
     // try executing callback. If it takes longer than 20 seconds, log a timeout error. If not, cancel the timeout and log the result
-    this.request_args.execution_context.waitUntil(
+    this.execution_context.waitUntil(
       new Promise<void>((resolve, reject) => {
         const timeout_ms = 20000
         setTimeout(() => {

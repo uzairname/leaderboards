@@ -1,23 +1,23 @@
 import * as D from 'discord-api-types/v10'
-import { Ranking } from '../../../database/models'
+import { Ranking } from '../../database/models'
 import {
   CommandContext,
   CommandInteractionResponse,
-  AppCommand,
+  AppCommandDefinition,
   field,
   _,
-} from '../../../discord-framework'
-import { nonNullable } from '../../../utils/utils'
-import { App } from '../../app/app'
-import { AppError } from '../../app/errors'
-import { allGuildRankingsPage } from '../../modules/rankings_commands/all_rankings'
+} from '../../discord-framework'
+import { nonNullable } from '../../utils/utils'
+import { App } from '../app-context/app-context'
+import { AppError } from '../errors'
+import { allGuildRankingsPage } from './rankings/rankings_commands/all_rankings'
 import {
   createRankingModal,
-  create_ranking_view_def,
-} from '../../modules/rankings_commands/create_ranking'
-import { rankings_cmd_def } from '../../modules/rankings_commands/rankings_cmd'
+  create_ranking_view_definition,
+} from './rankings/rankings_commands/create_ranking'
+import { rankings_cmd_def } from './rankings/rankings_commands/rankings_cmd'
 import { checkGuildInteraction, ensureAdminPerms } from '../utils/checks'
-import { rankingsAutocomplete } from '../utils/common'
+import { rankingsAutocomplete } from '../utils/view_pieces'
 
 const optionnames = {
   ranking: 'for',
@@ -25,7 +25,7 @@ const optionnames = {
   player2: 'player-2',
 }
 
-const start_match_command = new AppCommand({
+const start_match_command = new AppCommandDefinition({
   type: D.ApplicationCommandType.ChatInput,
   name: 'startmatch',
   description: 'description',
@@ -79,7 +79,7 @@ async function onCommand(
   )?.value
 
   if (ranking_option_value == 'create') {
-    return createRankingModal(app, { state: create_ranking_view_def.newState({}) })
+    return createRankingModal(app, { state: create_ranking_view_definition.newState({}) })
   }
 
   await ensureAdminPerms(app, ctx)

@@ -1,12 +1,12 @@
 import { neon } from '@neondatabase/serverless'
-import { Logger } from 'drizzle-orm'
+import { Logger as BaseDrizzleLogger } from 'drizzle-orm'
 import { NeonHttpDatabase, drizzle } from 'drizzle-orm/neon-http'
-import { Sentry } from '../request/sentry'
+import { Logger } from '../request/logging'
 import * as schema from './schema'
 
 export function connect(
   connection_string: string,
-  sentry?: Sentry,
+  sentry?: Logger,
 ): NeonHttpDatabase<typeof schema> {
   const sql = neon(connection_string)
   const logger = new DrizzleLogger(sentry)
@@ -15,8 +15,8 @@ export function connect(
   })
 }
 
-class DrizzleLogger implements Logger {
-  constructor(private sentry?: Sentry) {
+class DrizzleLogger implements BaseDrizzleLogger {
+  constructor(private sentry?: Logger) {
     sentry && (sentry.request_data['queries'] = 0)
   }
 

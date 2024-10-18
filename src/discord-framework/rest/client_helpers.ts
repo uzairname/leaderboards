@@ -1,6 +1,6 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../request/sentry'
+import { sentry } from '../../request/logging'
 import { DiscordAPIClient } from './client'
 import { GuildChannelData, MessageData, RoleData } from './objects'
 import { RESTPostAPIGuildForumThreadsResult } from './types'

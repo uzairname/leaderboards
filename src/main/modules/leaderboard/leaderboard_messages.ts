@@ -1,13 +1,15 @@
 import * as D from 'discord-api-types/v10'
 import type { Guild, GuildRanking, Ranking } from '../../../database/models'
 import { GuildChannelData, MessageData } from '../../../discord-framework'
-import { sentry } from '../../../request/sentry'
-import { type App } from '../../app/app'
+import { sentry } from '../../../request/logging'
+import { type App } from '../../app-context/app-context'
 import { Colors, escapeMd, relativeTimestamp, space } from '../../messages/message_pieces'
-import { syncRankedCategory } from '../guilds'
+import { getOrUpdateRankedCategory } from '../guilds'
 
 export function addRankingChannelsListeners(app: App) {
-  app.events.RankingLeaderboardUpdated.on(ranking => syncRankingLbMessages(app, ranking))
+  app.events.RankingLeaderboardUpdated.on(async ranking => {
+    await syncRankingLbMessages(app, ranking)
+  })
   app.events.MatchCreatedOrUpdated.on(async match => {
     await app.events.RankingLeaderboardUpdated.emit(await match.ranking())
   })
@@ -61,7 +63,7 @@ export async function lbChannelData(
   data: GuildChannelData
   reason?: string
 }> {
-  let category = (await syncRankedCategory(app, guild)).channel
+  let category = (await getOrUpdateRankedCategory(app, guild)).channel
   return {
     guild_id: guild.data.id,
     data: new GuildChannelData({

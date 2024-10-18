@@ -1,13 +1,11 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { Router } from 'itty-router'
-import { AccessToken } from '../../database/models/models/access_tokens'
-import { AccessTokens } from '../../database/schema'
-import { DiscordAPIClient } from '../../discord-framework'
-import { sentry } from '../../request/sentry'
-import { nonNullable } from '../../utils/utils'
-import { App } from '../app/app'
-import { AppErrors } from '../app/errors'
+import { AccessToken } from '../database/models/models/access_tokens'
+import { DiscordAPIClient } from '../discord-framework'
+import { nonNullable } from '../utils/utils'
+import { App } from './app-context/app-context'
+import { AppErrors } from './errors'
 
 export const oauthRouter = (app: App) =>
   Router({ base: `/oauth` })

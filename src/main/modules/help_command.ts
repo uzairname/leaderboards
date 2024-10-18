@@ -1,12 +1,12 @@
 import * as D from 'discord-api-types/v10'
-import { InteractionContext, AppCommand, _, field, StateContext } from '../../discord-framework'
-import { App } from '../app/app'
-import { AppErrors } from '../app/errors'
+import { InteractionContext, AppCommandDefinition, _, field, StateContext } from '../../discord-framework'
+import { App } from '../app-context/app-context'
+import { AppErrors } from '../errors'
 import { Colors, botAndOauthUrl, dateTimestamp, inviteUrl } from '../messages/message_pieces'
 import { Messages } from '../messages/messages'
-import { ViewModule, globalView } from './view_manager/view_module'
+import { CustomView, globalView } from '../view_manager/view_module'
 
-export const help_cmd = new AppCommand({
+export const help_cmd = new AppCommandDefinition({
   type: D.ApplicationCommandType.ChatInput,
   custom_id_prefix: 'h',
   name: 'help',
@@ -35,6 +35,8 @@ export const helpCmd = (app: App) =>
       }
       return { type: D.InteractionResponseType.UpdateMessage, data }
     })
+
+export const help = [globalView(helpCmd)]
 
 async function mainPage(
   app: App,

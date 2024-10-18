@@ -1,13 +1,10 @@
 import { desc, eq, sql } from 'drizzle-orm'
-import { SerialisableMatcherRegExps } from 'miniflare'
-import { Match, Player } from '..'
-import { getRegisterPlayer } from '../../../main/modules/players'
-import { sentry } from '../../../request/sentry'
+import { Player } from '..'
 import { DbClient } from '../../client'
 import { DbErrors } from '../../errors'
 import { DbObject, DbObjectManager } from '../../managers'
-import { Matches, Players, QueueTeams, Rankings, TeamPlayers, Teams } from '../../schema'
-import { RankingInsert, RankingSelect, TeamSelect } from '../../types'
+import { Players, QueueTeams, Rankings, TeamPlayers } from '../../schema'
+import { RankingInsert, RankingSelect } from '../../types'
 
 export class Ranking extends DbObject<Partial<RankingSelect> & { id: number }> {
   constructor(data: Partial<RankingSelect> & { id: number }, db: DbClient) {
@@ -35,21 +32,18 @@ export class Ranking extends DbObject<Partial<RankingSelect> & { id: number }> {
     })
   }
 
-  async queueTeams(): Promise<{ [team_id: number]: { players: Player[] } }> {
+  async queueTeams(): Promise<{ [team_id: number]: { player_ids: number[] } }> {
     const result = await this.db.db
-      .select({ player: Players, team_player: TeamPlayers })
+      .select({ player: Players, team_id: TeamPlayers.team_id })
       .from(TeamPlayers)
       .innerJoin(QueueTeams, eq(TeamPlayers.team_id, QueueTeams.team_id))
       .innerJoin(Players, eq(TeamPlayers.player_id, Players.id))
       .where(eq(Players.ranking_id, this.data.id))
 
-    const teams: { [team_id: number]: { players: Player[] } } = {}
+    const teams: { [team_id: number]: { player_ids: number[] } } = {}
     result.forEach(item => {
-      if (!teams[item.team_player.team_id])
-        teams[item.team_player.team_id] = {
-          players: [],
-        }
-      teams[item.team_player.team_id].players.push(new Player(item.player, this.db))
+      if (!teams[item.team_id]) teams[item.team_id] = { player_ids: [] }
+      teams[item.team_id].player_ids.push(item.player.id)
     })
 
     return teams

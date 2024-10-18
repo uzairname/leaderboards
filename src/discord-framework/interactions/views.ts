@@ -1,6 +1,5 @@
 import * as D from 'discord-api-types/v10'
-import { registerAllowUnauthorizedDispatcher } from 'miniflare'
-import { sentry } from '../../request/sentry'
+import { sentry } from '../../request/logging'
 import type { StringDataSchema } from '../../utils/string_data'
 import type { DiscordAPIClient } from '../rest/client'
 import type { MessageData } from '../rest/objects'
@@ -156,7 +155,7 @@ export abstract class View<TSchema extends StringDataSchema> {
   }
 }
 
-export class AppCommand<
+export class AppCommandDefinition<
   TSchema extends StringDataSchema,
   CommandType extends D.ApplicationCommandType,
 > extends View<TSchema> {
@@ -164,10 +163,10 @@ export class AppCommand<
     public options: (CommandType extends D.ApplicationCommandType.ChatInput
       ? D.RESTPostAPIChatInputApplicationCommandsJSONBody
       : D.RESTPostAPIContextMenuApplicationCommandsJSONBody) & {
-      type: CommandType
-      state_schema?: TSchema
-      custom_id_prefix?: string
-    },
+        type: CommandType
+        state_schema?: TSchema
+        custom_id_prefix?: string
+      },
   ) {
     super(options, options.state_schema)
   }
@@ -222,6 +221,45 @@ export class AppCommand<
     return this.autocompleteCallback({ interaction })
   }
 }
+
+
+export class AppCommand<
+  TSchema extends StringDataSchema,
+  CommandType extends D.ApplicationCommandType,
+> extends View<TSchema> {
+
+  constructor(private definition: AppCommandDefinition<TSchema, CommandType>, 
+    private commandCallback: CommandCallback<typeof definition>) {
+    super(definition.options, definition.options.state_schema)
+  }
+
+  async respondToCommand(
+    interaction: AppCommandInteraction<CommandType>,
+    bot: DiscordAPIClient,
+    onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource,
+  ): Promise<CommandInteractionResponse> {
+    sentry.request_name = `${this.name} Command`
+
+    const state = this.newState()
+
+    return this.commandCallback({
+      interaction,
+      state,
+      defer: (response, callback) => {
+        this.deferResponse({
+          callback,
+          interaction,
+          state,
+          bot,
+          onError,
+        })
+        return response
+      },
+    })
+  }
+
+}
+
 
 export class MessageView<TSchema extends StringDataSchema, Params> extends View<TSchema> {
   private sendCallback: SendMessageCallback<this, Params> = async () => {

@@ -1,13 +1,13 @@
 import * as D from 'discord-api-types/v10'
-import type { AutocompleteContext, ViewAutocompleteCallback } from '../../../discord-framework'
-import type { App } from '../../app/app'
+import type { AutocompleteContext, ViewAutocompleteCallback } from '../../discord-framework'
+import type { App } from '../app-context/app-context'
 import { checkGuildInteraction } from './checks'
 
 export const create_choice_value = 'create'
 
 export function rankingsAutocomplete(
   app: App,
-  create_choice?: boolean,
+  create_ranking_choice?: boolean,
   ranking_option_name: string = 'ranking',
 ): ViewAutocompleteCallback<D.ApplicationCommandType.ChatInput> {
   return async function (ctx: AutocompleteContext) {
@@ -36,7 +36,7 @@ export function rankingsAutocomplete(
         value: lb.ranking.data.id.toString(),
       }))
 
-    if (create_choice || choices.length == 0) {
+    if (create_ranking_choice || choices.length == 0) {
       // Add a choice to create a new ranking.
       choices.push({
         name: 'Create a new ranking',

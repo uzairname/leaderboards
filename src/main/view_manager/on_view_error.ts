@@ -1,14 +1,13 @@
 import { DiscordAPIError, RateLimitError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
-import { DatabaseError } from '../../../database/errors'
-import { DiscordErrors } from '../../../discord-framework'
-import { ViewErrors } from '../../../discord-framework/interactions/utils/errors'
-import { sentry } from '../../../request/sentry'
-import { getEnumValue } from '../../../utils/utils'
-import { App } from '../../app/app'
-import { AppError } from '../../app/errors'
-import { Colors } from '../../messages/message_pieces'
-import { Messages } from '../../messages/messages'
+import { DatabaseError } from '../../database/errors'
+import { DiscordErrors } from '../../discord-framework'
+import { ViewErrors } from '../../discord-framework/interactions/utils/errors'
+import { sentry } from '../../request/logging'
+import { App } from '../app-context/app-context'
+import { AppError } from '../errors'
+import { Colors } from '../messages/message_pieces'
+import { Messages } from '../messages/messages'
 
 export const onViewError = (app: App) =>
   function (

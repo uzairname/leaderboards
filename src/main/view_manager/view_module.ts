@@ -1,9 +1,7 @@
-import { AnyAppCommand, AnyView, viewIsAppCommand } from '../../../discord-framework'
-import { App } from '../../app/app'
+import { AnyAppCommand, AnyView } from '../../discord-framework'
+import { App } from '../app-context/app-context'
 
-export class ViewModule {
-  constructor(public views: CustomView[]) {}
-}
+
 
 export function globalView(view: (app: App) => AnyView, experimental?: boolean): CustomView {
   return {
@@ -16,13 +14,13 @@ export function globalView(view: (app: App) => AnyView, experimental?: boolean):
       }
       return guild_id === undefined ? view(app) : undefined
     },
-    resolveCallbacks: view,
+    resolve: view,
   }
 }
 
 export function guildCommand(
-  resolveCallbacks: (app: App) => AnyAppCommand,
-  guildDefinition: (app: App, guild_id?: string) => Promise<AnyAppCommand | undefined>,
+  viewCallbacks: (app: App) => AnyAppCommand,
+  viewDefinition: (app: App, guild_id?: string) => Promise<AnyAppCommand | undefined>,
   experimental?: boolean,
 ): CustomView {
   return {
@@ -30,9 +28,9 @@ export function guildCommand(
       if (experimental && !app.config.features.ExperimentalViews) {
         return undefined
       }
-      return guildDefinition(app, guild_id)
+      return viewDefinition(app, guild_id)
     },
-    resolveCallbacks,
+    resolve: viewCallbacks,
   }
 }
 
@@ -40,5 +38,5 @@ export type CustomView = {
   // Get the view's definition to deploy application commands to a particular guild, or global.
   definition: (app: App, guild_id?: string) => Promise<AnyView | undefined>
   // Return the view with its interaction callbacks if the interaction corresponds to this view.
-  resolveCallbacks: (app: App) => AnyView
+  resolve: (app: App) => AnyView
 }

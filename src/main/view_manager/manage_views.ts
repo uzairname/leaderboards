@@ -4,32 +4,30 @@ import {
   viewIsAppCommand,
   type AnyAppCommand,
   overwriteDiscordCommandsWithViews,
-} from '../../../discord-framework'
-import { sentry } from '../../../request/sentry'
-import type { App } from '../../app/app'
-import { all_views } from './all_view_modules'
+} from '../../discord-framework'
+import type { App } from '../app-context/app-context'
+import { all_views } from './all_views'
 
-export async function getCommands(
+export async function getAllCommandDefinitions(
   app: App,
   guild_id: string | undefined,
 ): Promise<AnyAppCommand[]> {
-  const all_view_definitions: AnyAppCommand[] = []
-
-  for (const view_module of all_views) {
-    const view = await view_module.definition(app, guild_id)
-    if (view && viewIsAppCommand(view)) {
-      all_view_definitions.push(view)
-    }
-  }
-
-  return all_view_definitions
+  return (
+    await Promise.all(
+      all_views.map(async v => {
+        const view = await v.definition(app, guild_id)
+        return view && viewIsAppCommand(view) ? [view] : []
+      }),
+    )
+  ).flat()
 }
 
-export const findView =
+export const getFindViewCallback =
   (app: App): FindViewCallback =>
   (command?: { name: string; type: number; guild_id?: string }, custom_id_prefix?: string) =>
-    (function find(index: number): AnyView | undefined {
-      const v = all_views[index].resolveCallbacks(app)
+    (function find(index: number): AnyView | null {
+      if (index >= all_views.length) return null
+      const v = all_views[index].resolve(app)
       return (
         custom_id_prefix
           ? v.options.custom_id_prefix === custom_id_prefix
@@ -44,5 +42,9 @@ export const findView =
     })(0)
 
 export async function syncDiscordCommands(app: App, guild_id: string | undefined) {
-  await overwriteDiscordCommandsWithViews(app.bot, await getCommands(app, guild_id), guild_id)
+  await overwriteDiscordCommandsWithViews(
+    app.bot,
+    await getAllCommandDefinitions(app, guild_id),
+    guild_id,
+  )
 }

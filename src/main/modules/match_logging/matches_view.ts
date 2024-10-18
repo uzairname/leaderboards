@@ -1,19 +1,19 @@
 import * as D from 'discord-api-types/v10'
 import { TlsOptions_Version } from 'miniflare'
-import { MessageView, field } from '../../../discord-framework'
-import { ViewState } from '../../../discord-framework/interactions/view_state'
-import { App } from '../../app/app'
-import { Colors } from '../../messages/message_pieces'
-import { ViewModule, globalView, guildCommand } from '../view_manager/view_module'
+import { MessageView, field } from '../../../../discord-framework'
+import { ViewState } from '../../../../discord-framework/interactions/view_state'
+import { App } from '../../../app-context/app-context'
+import { Colors } from '../../../messages/message_pieces'
+import { globalView, guildCommand } from '../../../view_manager/view_module'
 import { matchSummaryEmbed } from './match_messages'
 import { matchView } from './match_view'
-import { matchesCmdCallback, matchesCommandDef } from './matches_command'
+import { matchesCommand, matchesCommandDef } from './matches_command'
 
-export const match_history_view_def = new MessageView({
+export const match_history_view_definition = new MessageView({
   custom_id_prefix: 'mh',
   name: 'match history',
   state_schema: {
-    on_page: field.Bool(),
+    message_sent: field.Bool(),
     match_id: field.Int(),
     ranking_ids: field.Array(field.Int()),
     player_ids: field.Array(field.Int()),
@@ -23,28 +23,27 @@ export const match_history_view_def = new MessageView({
 })
 
 export const matchesView = (app: App) =>
-  match_history_view_def.onComponent(async ctx => {
+  match_history_view_definition.onComponent(async ctx => {
     return ctx.defer(
       {
         type: D.InteractionResponseType.DeferredMessageUpdate,
       },
       async ctx => {
-        return void (ctx.state.data.on_page ? ctx.edit : ctx.followup)({
-          ...(await matchesPage(app, ctx.state.set.on_page(true))),
-          flags: D.MessageFlags.Ephemeral,
-        })
+        return void (ctx.state.data.message_sent ? ctx.edit : ctx.followup)(
+          await matchesPage(app, ctx.state.set.message_sent(true)),
+        )
       },
     )
   })
 
 export async function matchesPage(
   app: App,
-  state?: ViewState<typeof match_history_view_def.state_schema>,
+  state?: ViewState<typeof match_history_view_definition.state_schema>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  state = state ?? match_history_view_def.newState()
+  state = state ?? match_history_view_definition.newState()
 
   state.saveAll({
-    on_page: true,
+    message_sent: true,
     page_num: state.data.page_num ?? 0,
   })
 
@@ -99,5 +98,12 @@ export async function matchesPage(
         ],
       },
     ],
+    flags: D.MessageFlags.Ephemeral,
   }
 }
+
+export const matches_module = [
+  globalView(matchesView),
+  globalView(matchView),
+  guildCommand(matchesCommand, matchesCommandDef),
+]

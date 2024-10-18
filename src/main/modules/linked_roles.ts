@@ -1,5 +1,5 @@
 import * as D from 'discord-api-types/v10'
-import { App } from '../app/app'
+import { App } from '../app-context/app-context'
 
 export function getAppRoleConnectionsMetadata(
   app: App,

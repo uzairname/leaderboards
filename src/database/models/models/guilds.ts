@@ -1,8 +1,7 @@
 import { eq } from 'drizzle-orm'
-import { GuildRanking, Ranking } from '..'
 import { DbClient } from '../../client'
 import { DbObject, DbObjectManager } from '../../managers'
-import { GuildRankings, Guilds, Rankings } from '../../schema'
+import { Guilds } from '../../schema'
 import type { GuildInsert, GuildSelect } from '../../types'
 
 export class Guild extends DbObject<GuildSelect> {

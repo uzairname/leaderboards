@@ -3,31 +3,30 @@ import {
   ChatInteractionResponse,
   CommandContext,
   CommandInteractionResponse,
-  AppCommand,
+  AppCommandDefinition,
   ComponentContext,
   StateContext,
   DeferContext,
   _,
   field,
-} from '../../discord-framework'
-import { sentry } from '../../request/sentry'
-import { assert, nonNullable, snowflakeToDate, unflatten } from '../../utils/utils'
-import { App } from '../app/app'
-import { AppErrors, AppError } from '../app/errors'
-import { Colors, relativeTimestamp } from '../messages/message_pieces'
-import { checkGuildInteraction, hasAdminPerms } from '../views/utils/checks'
-import { guildRankingsOptionChoices, rankingsAutocomplete } from '../views/utils/common'
-import { matchSummaryEmbed } from './match_logging/match_messages'
-import { matchPage, match_view_def } from './match_logging/match_view'
-import { recordAndScoreNewMatch } from './match_scoring/score_matches'
-import { getRegisterPlayer } from './players'
-import { allGuildRankingsPage } from './rankings_commands/all_rankings'
+} from '../../../discord-framework'
+import { sentry } from '../../../request/logging'
+import { assert, nonNullable, snowflakeToDate, unflatten } from '../../../utils/utils'
+import { App } from '../../app-context/app-context'
+import { AppErrors, AppError } from '../../errors'
+import { Colors, relativeTimestamp } from '../../messages/message_pieces'
+import { guildCommand } from '../../view_manager/view_module'
+import { checkGuildInteraction, hasAdminPerms } from '../../utils/checks'
+import { guildRankingsOptionChoices, rankingsAutocomplete } from '../../utils/view_pieces'
+import { matchSummaryEmbed } from '../matches/match_logging/match_messages'
+import { recordAndScoreNewMatch } from '../matches/scoring/score_matches'
+import { getRegisterPlayer } from '../players'
+import { allGuildRankingsPage } from '../rankings/rankings_commands/all_rankings'
 import {
-  create_ranking_view_def,
+  create_ranking_view_definition,
   createRankingModal,
-} from './rankings_commands/create_ranking'
-import { rankings_cmd_def } from './rankings_commands/rankings_cmd'
-import { ViewModule, globalView, guildCommand } from './view_manager/view_module'
+} from '../rankings/rankings_commands/create_ranking'
+import { rankings_cmd_def } from '../rankings/rankings_commands/rankings_cmd'
 
 const optionnames = {
   ranking: 'for',
@@ -36,7 +35,7 @@ const optionnames = {
   time_finished: 'when',
 }
 
-const record_match_command_def = new AppCommand({
+const record_match_command_def = new AppCommandDefinition({
   type: D.ApplicationCommandType.ChatInput,
   name: 'record-match',
   description: 'record a match',
@@ -77,12 +76,12 @@ const record_match_command_def = new AppCommand({
   },
 })
 
-export const recordMatchCmdDef = async (app: App, guild_id?: string) => {
+const recordMatchCmdDef = async (app: App, guild_id?: string) => {
   if (!guild_id) return
 
   const ranking_choices = await guildRankingsOptionChoices(app, guild_id, false)
 
-  const cmd = new AppCommand({
+  const cmd = new AppCommandDefinition({
     ...record_match_command_def.options,
     options: [
       {
@@ -97,8 +96,8 @@ export const recordMatchCmdDef = async (app: App, guild_id?: string) => {
       },
       {
         name: optionnames.time_finished,
-        description: 'Unix timestamp or Discord ID from when the match was finished',
-        type: D.ApplicationCommandOptionType.Integer,
+        description: 'Snowflake or Unix timestamp of when the match was finished (default now)',
+        type: D.ApplicationCommandOptionType.String,
       },
     ],
   })
@@ -107,7 +106,7 @@ export const recordMatchCmdDef = async (app: App, guild_id?: string) => {
     cmd.options.options!.push({
       name: optionnames.ranking,
       type: D.ApplicationCommandOptionType.String,
-      choices: ranking_choices,
+      choices: await guildRankingsOptionChoices(app, guild_id, false),
       description: `Ranking to record the match for (Leave blank for default)`,
     })
   }
@@ -115,8 +114,9 @@ export const recordMatchCmdDef = async (app: App, guild_id?: string) => {
   return cmd
 }
 
-export const recordMatchCmdCallback = (app: App) =>
+export const recordMatchCmd = (app: App) =>
   record_match_command_def
+
     /**
      * If the ranking is 1v1 all the required options are provided, record the match.
      * If not, open a menu to select the teams
@@ -138,7 +138,7 @@ export const recordMatchCmdCallback = (app: App) =>
       )?.value
 
       if (selected_ranking_id == 'create') {
-        return createRankingModal(app, { state: create_ranking_view_def.newState({}) })
+        return createRankingModal(app, { state: create_ranking_view_definition.newState({}) })
       }
 
       if (selected_time_finished && !isNaN(parseInt(selected_time_finished))) {
@@ -270,6 +270,8 @@ export const recordMatchCmdCallback = (app: App) =>
         throw new AppErrors.UnknownState(ctx.state.data.clicked_component)
       }
     })
+
+export const record_match = [guildCommand(recordMatchCmd, recordMatchCmdDef)]
 
 async function selectTeamPage(
   app: App,
@@ -670,9 +672,11 @@ async function recordMatchFromSelectedTeams(
     ctx.state.data.selected_time_finished,
   )
 
-  return matchPage(app, {
-    state: match_view_def.newState({ match_id: new_match.data.id }),
-  })
+  return {
+    components: [],
+    embeds: [await matchSummaryEmbed(app, new_match, await new_match.teams(), { id: true })],
+    flags: D.MessageFlags.Ephemeral,
+  }
 }
 
 const match_confirm_timeout_ms = 1000 * 60 * 15 // minutes

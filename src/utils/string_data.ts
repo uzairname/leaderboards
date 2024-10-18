@@ -1,4 +1,4 @@
-import { sentry } from '../request/sentry'
+import { sentry } from '../request/logging'
 import { nonNullable } from './utils'
 
 export type StringDataSchema = {

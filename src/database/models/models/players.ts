@@ -1,15 +1,16 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { Ranking, Team, User } from '..'
-import { sentry } from '../../../request/sentry'
+import { sentry } from '../../../request/logging'
 import { DbClient } from '../../client'
 import { DbErrors } from '../../errors'
 import { DbObject, DbObjectManager } from '../../managers'
-import { Players, QueueTeams, Rankings, TeamPlayers, Teams } from '../../schema'
+import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
 import { PlayerInsert, PlayerSelect } from '../../types'
 
 export class Player extends DbObject<PlayerSelect> {
   constructor(data: PlayerSelect, db: DbClient) {
     super(data, db)
+    sentry.debug(`Created player with id ${data.id}, rating ${data.rating}`)
     db.cache.players_by_id[data.id] = this
     db.cache.players[data.ranking_id] ??= {}
     db.cache.players[data.ranking_id][data.user_id] = this

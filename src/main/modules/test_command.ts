@@ -1,18 +1,18 @@
 import * as D from 'discord-api-types/v10'
-import { AppCommand, _, field, MessageView, StateContext } from '../../../discord-framework'
-import { ViewState } from '../../../discord-framework/interactions/view_state'
-import { sentry } from '../../../request/sentry'
-import { maxIndex, nonNullable } from '../../../utils/utils'
-import { App } from '../../app/app'
-import { AppErrors } from '../../app/errors'
-import { Colors, escapeMd, relativeTimestamp } from '../../messages/message_pieces'
-import { leaderboardMessage } from '../../modules/leaderboard/leaderboard_messages'
-import { getRegisterPlayer } from '../../modules/players'
-import { findView } from '../../modules/view_manager/manage_views'
-import { ViewModule, globalView } from '../../modules/view_manager/view_module'
+import { AppCommandDefinition, _, field, MessageView, StateContext, AppCommand } from '../../discord-framework'
+import { ViewState } from '../../discord-framework/interactions/view_state'
+import { sentry } from '../../request/logging'
+import { maxIndex, nonNullable } from '../../utils/utils'
+import { App } from '../app-context/app-context'
+import { AppErrors } from '../errors'
+import { Colors, escapeMd, relativeTimestamp } from '../messages/message_pieces'
+import { leaderboardMessage } from './leaderboard/leaderboard_messages'
+import { getRegisterPlayer } from './players'
+import { getFindViewCallback } from '../view_manager/manage_views'
+import { globalView } from '../view_manager/view_module'
 import { checkGuildInteraction } from '../utils/checks'
 
-const test_command = new AppCommand({
+const test_command_definition = new AppCommandDefinition({
   type: D.ApplicationCommandType.ChatInput,
   name: 'test',
   description: 'Test command',
@@ -32,8 +32,16 @@ const test_command = new AppCommand({
   },
 })
 
+
+const test_command = new AppCommand(test_command_definition, 
+  async ctx => {
+    throw 1
+  }
+)
+
+
 export const testCommand = (app: App) =>
-  test_command
+  test_command_definition
     .onCommand(async ctx => {
       const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
       ctx.state.save.original_user(user_id)
@@ -94,7 +102,7 @@ export const testCommand = (app: App) =>
     })
 
 function testMessageData(
-  ctx: StateContext<typeof test_command>,
+  ctx: StateContext<typeof test_command_definition>,
   ephemeral: boolean = false,
 ): D.APIInteractionResponseCallbackData {
   return {
@@ -149,9 +157,12 @@ const helper_view = new MessageView({
   },
 })
 
-export const helperView = (app: App) =>
+const helperView = (app: App) =>
   helper_view.onComponent(async ctx => {
-    const back_state = (await ViewState.fromCustomId(ctx.state.get.back_cid(), findView(app))).state
+    const back_state = ViewState.fromCustomId(
+      ctx.state.get.back_cid(),
+      getFindViewCallback(app),
+    ).state
 
     back_state.save[ctx.state.get.back_counter_field()](ctx.state.data.counter)
 
@@ -180,6 +191,11 @@ export const helperView = (app: App) =>
       },
     }
   })
+
+export const test_module = [
+  globalView(testCommand, true),
+  globalView(helperView, true),
+]
 
 const schema = {
   originalUserId: field.String(),

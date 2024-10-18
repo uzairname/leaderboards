@@ -1,14 +1,14 @@
 import { DbClient } from '../../database/client'
 import { DiscordAPIClient } from '../../discord-framework'
-import { sentry } from '../../request/sentry'
-import { Config } from './config'
-import { addAllEventListeners, events } from './init/events'
+import { sentry } from '../../request/logging'
+import { Config } from '../config'
+import { addAllEventListeners, appEvents } from './events'
 
 export class App {
   public db: DbClient
   public bot: DiscordAPIClient
   public config: Config
-  public events = events()
+  public events = appEvents()
 
   constructor(env: Env) {
     this.config = new Config(env)
@@ -20,6 +20,7 @@ export class App {
       client_secret: this.config.env.CLIENT_SECRET,
       public_key: this.config.env.PUBLIC_KEY,
     })
+
     addAllEventListeners(this)
   }
 }

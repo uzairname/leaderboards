@@ -1,5 +1,5 @@
 import * as D from 'discord-api-types/v10'
-import { Match } from '../../../database/models'
+import { Match } from '../../../../database/models'
 import {
   ChatInteractionResponse,
   ComponentContext,
@@ -7,15 +7,15 @@ import {
   StateContext,
   field,
   getModalSubmitEntries,
-} from '../../../discord-framework'
-import { ViewState } from '../../../discord-framework/interactions/view_state'
-import { sentry } from '../../../request/sentry'
-import { nonNullable } from '../../../utils/utils'
-import { App } from '../../app/app'
-import { AppError, AppErrors } from '../../app/errors'
-import { Colors } from '../../messages/message_pieces'
-import { ensureAdminPerms } from '../../views/utils/checks'
-import { deleteMatch, updateMatch } from '../matches'
+} from '../../../../discord-framework'
+import { ViewState } from '../../../../discord-framework/interactions/view_state'
+import { sentry } from '../../../../request/logging'
+import { nonNullable } from '../../../../utils/utils'
+import { App } from '../../../app-context/app-context'
+import { AppError, AppErrors } from '../../../errors'
+import { Colors } from '../../../messages/message_pieces'
+import { ensureAdminPerms } from '../../../utils/checks'
+import { deleteMatch, updateMatch } from '../manage_matches'
 import { matchSummaryEmbed, matchSummaryMessageData } from './match_messages'
 
 export const match_view_def = new MessageView({
@@ -67,7 +67,7 @@ const setting_select_menu_options: Record<
   }),
   editOutcome: () => ({
     name: 'Edit Outcome',
-    description: 'Edit the outcome of this match and recalculate rankings',
+    description: 'Edit the outcome of this match and recalculates rankings',
     callback: matchOutcomeModal,
   }),
 }

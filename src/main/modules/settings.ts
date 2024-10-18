@@ -1,21 +1,21 @@
 import * as D from 'discord-api-types/v10'
 import {
-  AppCommand,
+  AppCommandDefinition,
   field,
   _,
   InteractionContext,
   ChatInteractionResponse,
-} from '../../../discord-framework'
-import { ViewState } from '../../../discord-framework/interactions/view_state'
-import { App } from '../../app/app'
-import { AppErrors } from '../../app/errors'
-import { Colors } from '../../messages/message_pieces'
-import { getOrAddGuild, syncGuildAdminRole } from '../../modules/guilds'
-import { rankings_cmd_def } from '../../modules/rankings_commands/rankings_cmd'
-import { ViewModule, globalView } from '../../modules/view_manager/view_module'
+} from '../../discord-framework'
+import { ViewState } from '../../discord-framework/interactions/view_state'
+import { App } from '../app-context/app-context'
+import { AppErrors } from '../errors'
+import { Colors } from '../messages/message_pieces'
+import { getOrAddGuild, syncGuildAdminRole } from './guilds'
+import { rankings_cmd_def } from './rankings/rankings_commands/rankings_cmd'
+import { globalView } from '../view_manager/view_module'
 import { checkGuildInteraction, ensureAdminPerms } from '../utils/checks'
 
-export const settings_cmd_def = new AppCommand({
+export const settings_cmd_def = new AppCommandDefinition({
   type: D.ApplicationCommandType.ChatInput,
 
   custom_id_prefix: 's',
@@ -30,7 +30,7 @@ export const settings_cmd_def = new AppCommand({
   },
 })
 
-export const settingsCmd = (app: App) =>
+const settingsCmd = (app: App) =>
   settings_cmd_def
     .onCommand(async ctx => {
       return {
@@ -100,9 +100,10 @@ async function onAdminRoleBtn(
         {
           title: 'Admin Role',
           description: `The role <@&${role_result.role.id}> can manage rankings and matches. You can rename, edit, and assign it to anyone`,
-          color: Colors.EmbedBackground,
         },
       ],
     },
   }
 }
+
+export const settings = [globalView(settingsCmd)]

@@ -1,6 +1,5 @@
 import { and, eq } from 'drizzle-orm'
 import { User } from '..'
-import { DbClient } from '../../client'
 import { DbObject, DbObjectManager } from '../../managers'
 import { AccessTokens } from '../../schema'
 import { AccessTokenInsert, AccessTokenSelect, AccessTokenUpdate } from '../../types'

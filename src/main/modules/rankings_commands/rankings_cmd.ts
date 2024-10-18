@@ -1,13 +1,24 @@
 import * as D from 'discord-api-types/v10'
-import { AppCommand, _ } from '../../../discord-framework'
-import { App } from '../../app/app'
-import { checkGuildInteraction } from '../../views/utils/checks'
-import { create_choice_value, guildRankingsOptionChoices } from '../../views/utils/common'
+import { AppCommandDefinition, _ } from '../../../../discord-framework'
+import { sentry } from '../../../../request/logging'
+import { App } from '../../../app-context/app-context'
+import { globalView, guildCommand } from '../../../view_manager/view_module'
+import { checkGuildInteraction } from '../../../utils/checks'
+import { create_choice_value, guildRankingsOptionChoices } from '../../../utils/view_pieces'
 import { allGuildRankingsPage } from './all_rankings'
-import { create_ranking_view_def, createRankingModal } from './create_ranking'
-import { guildRankingSettingsPage, ranking_settings_page } from './ranking_settings'
+import {
+  create_ranking_view_definition,
+  createRankingCmd,
+  createRankingModal,
+  createRankingView,
+} from './create_ranking'
+import {
+  guildRankingSettingsPage,
+  rankingSettingsView,
+  ranking_settings_page,
+} from './ranking_settings'
 
-export const rankings_cmd_def = new AppCommand({
+export const rankings_cmd_def = new AppCommandDefinition({
   type: D.ApplicationCommandType.ChatInput,
   custom_id_prefix: 'r',
   name: 'rankings',
@@ -16,9 +27,9 @@ export const rankings_cmd_def = new AppCommand({
 
 const ranking_option_name = 'ranking'
 
-export const rankingsCommandDef = async (app: App, guild_id?: string) =>
+const rankingsCommandDef = async (app: App, guild_id?: string) =>
   guild_id
-    ? new AppCommand({
+    ? new AppCommandDefinition({
         ...rankings_cmd_def.options,
         options: [
           {
@@ -31,7 +42,7 @@ export const rankingsCommandDef = async (app: App, guild_id?: string) =>
       })
     : undefined
 
-export const rankingsCmdCallback = (app: App) => {
+const rankingsCommand = (app: App) => {
   return rankings_cmd_def
     .onCommand(async ctx => {
       const ranking_option_value = (
@@ -41,7 +52,7 @@ export const rankingsCmdCallback = (app: App) => {
       )?.value
 
       if (ranking_option_value === create_choice_value) {
-        return createRankingModal(app, { state: create_ranking_view_def.newState() })
+        return createRankingModal(app, { state: create_ranking_view_definition.newState() })
       }
 
       if (ranking_option_value) {
@@ -85,3 +96,10 @@ export const rankingsCmdCallback = (app: App) => {
       )
     })
 }
+
+export const rankings = [
+  globalView(createRankingCmd),
+  globalView(createRankingView),
+  globalView(rankingSettingsView),
+  guildCommand(rankingsCommand, rankingsCommandDef),
+]

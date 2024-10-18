@@ -1,10 +1,10 @@
 import * as D from 'discord-api-types/v10'
 import { Player, Ranking } from '../../database/models'
 import { nonNullable } from '../../utils/utils'
-import { App } from '../app/app'
+import { App } from '../app-context/app-context'
 import { syncRankingLbMessages } from './leaderboard/leaderboard_messages'
 import { updateUserRoleConnectionData } from './linked_roles'
-import { getUserAccessToken, refreshAccessTokenIfExpired } from './oauth'
+import { getUserAccessToken, refreshAccessTokenIfExpired } from '../oauth'
 
 export async function getRegisterPlayer(
   app: App,

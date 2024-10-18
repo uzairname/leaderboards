@@ -1,14 +1,14 @@
 import * as D from 'discord-api-types/v10'
-import { AppCommand } from '../../../discord-framework'
-import { sentry } from '../../../request/sentry'
-import { nonNullable } from '../../../utils/utils'
-import { App } from '../../app/app'
-import { AppError } from '../../app/errors'
-import { getRegisterPlayer } from '../../modules/players'
+import { AppCommandDefinition } from '../../discord-framework'
+import { sentry } from '../../request/logging'
+import { nonNullable } from '../../utils/utils'
+import { App } from '../app-context/app-context'
+import { AppError } from '../errors'
+import { getRegisterPlayer } from './players'
 import { ensureAdminPerms } from '../utils/checks'
-import { guildRankingsOptionChoices, rankingsAutocomplete } from '../utils/common'
+import { guildRankingsOptionChoices, rankingsAutocomplete } from '../utils/view_pieces'
 
-const points_command = new AppCommand({
+const points_command = new AppCommandDefinition({
   type: D.ApplicationCommandType.ChatInput,
   name: 'points',
   description: 'Add or remove points from a user',
@@ -16,7 +16,7 @@ const points_command = new AppCommand({
 
 export const pointsCmdDef = async (app: App, guild_id?: string) =>
   guild_id
-    ? new AppCommand({
+    ? new AppCommandDefinition({
         ...points_command.options,
         options: [
           {

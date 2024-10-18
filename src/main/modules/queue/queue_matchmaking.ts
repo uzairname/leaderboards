@@ -1,7 +1,8 @@
-import { Player, Ranking } from '../../../database/models'
-import { AppErrors } from '../../app/errors'
+import { Player, Ranking } from '../../../../database/models'
+import { AppErrors } from '../../../errors'
 
 /**
+ *
  */
 async function findMatchFromQueue(ranking: Ranking): Promise<Array<Array<Player>>> {
   /*

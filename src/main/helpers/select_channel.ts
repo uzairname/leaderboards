@@ -4,17 +4,23 @@ import {
   ChatInteraction,
   ChatInteractionResponse,
   ComponentContext,
+  InitialInteractionContext,
   InteractionContext,
   MessageView,
+  StateContext,
+  StringDataSchema,
+  View,
   _,
   field,
-} from '../../../discord-framework'
-import { ViewState } from '../../../discord-framework/interactions/view_state'
-import { App } from '../../app/app'
-import { findView } from '../../modules/view_manager/manage_views'
+} from '../../discord-framework'
+import { ViewState } from '../../discord-framework/interactions/view_state'
+import { App } from '../app-context/app-context'
+import { AppErrors } from '../errors'
+import { getFindViewCallback } from '../view_manager/manage_views'
+import { CustomView, globalView } from '../view_manager/view_module'
 import { checkGuildInteraction } from '../utils/checks'
 
-export const select_channel_view_def = new MessageView({
+export const select_channel_view = new MessageView({
   name: 'select channel',
   custom_id_prefix: 'sc',
   state_schema: {
@@ -33,8 +39,8 @@ export const select_channel_view_def = new MessageView({
   },
 })
 
-export const selectChannelView = (app: App) =>
-  select_channel_view_def.onComponent(async ctx => {
+function selectChannelView(app: App) {
+  return select_channel_view.onComponent(async ctx => {
     if (ctx.state.data.callback) return ctx.state.data.callback(app, ctx)
 
     return ctx.defer(
@@ -46,18 +52,19 @@ export const selectChannelView = (app: App) =>
       },
     )
   })
+}
 
 export async function sendSelectChannelPage(
   app: App,
   interaction: ChatInteraction,
-  data: ViewState<typeof select_channel_view_def.state_schema>['data'],
+  data: ViewState<typeof select_channel_view.state_schema>['data'],
   message?: string,
 ): Promise<D.APIInteractionResponseCallbackData> {
   return await selectChannelPage(
     app,
     {
       interaction,
-      state: select_channel_view_def.newState(data),
+      state: select_channel_view.newState(data),
     },
     message,
   )
@@ -65,7 +72,7 @@ export async function sendSelectChannelPage(
 
 async function selectChannelPage(
   app: App,
-  ctx: InteractionContext<typeof select_channel_view_def>,
+  ctx: InteractionContext<typeof select_channel_view>,
   message?: string,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const channels = (
@@ -75,9 +82,9 @@ async function selectChannelPage(
   let btns: D.APIButtonComponent[] = [
     {
       type: D.ComponentType.Button,
-      custom_id: (
-        await ViewState.fromCustomId(ctx.state.get.submit_cid(), findView(app))
-      ).state.set[ctx.state.get.channel_id_field()](undefined).cId(),
+      custom_id: ViewState.fromCustomId(ctx.state.get.submit_cid(), getFindViewCallback(app))
+        .state.set[ctx.state.get.channel_id_field()](undefined)
+        .cId(),
       label: 'Cancel',
       style: D.ButtonStyle.Danger,
     },
@@ -87,9 +94,9 @@ async function selectChannelPage(
     btns = [
       {
         type: D.ComponentType.Button,
-        custom_id: (
-          await ViewState.fromCustomId(ctx.state.get.submit_cid(), findView(app))
-        ).state.set[ctx.state.get.channel_id_field()](ctx.state.data.selected_channel_id).cId(),
+        custom_id: ViewState.fromCustomId(ctx.state.get.submit_cid(), getFindViewCallback(app))
+          .state.set[ctx.state.get.channel_id_field()](ctx.state.data.selected_channel_id)
+          .cId(),
         label: 'Submit',
         style: D.ButtonStyle.Success,
       },
@@ -131,7 +138,7 @@ async function selectChannelPage(
 
 function onNextBtn(
   app: App,
-  ctx: ComponentContext<typeof select_channel_view_def>,
+  ctx: ComponentContext<typeof select_channel_view>,
 ): ChatInteractionResponse {
   return ctx.defer(
     {
@@ -143,7 +150,7 @@ function onNextBtn(
 
 function onPrevBtn(
   app: App,
-  ctx: ComponentContext<typeof select_channel_view_def>,
+  ctx: ComponentContext<typeof select_channel_view>,
 ): ChatInteractionResponse {
   return ctx.defer(
     {
@@ -155,7 +162,7 @@ function onPrevBtn(
 
 function onSelectChannel(
   app: App,
-  ctx: ComponentContext<typeof select_channel_view_def>,
+  ctx: ComponentContext<typeof select_channel_view>,
 ): ChatInteractionResponse {
   ctx.state.save.selected_channel_id(
     (ctx.interaction.data as D.APIMessageStringSelectInteractionData).values?.[0],
@@ -168,3 +175,5 @@ function onSelectChannel(
     async ctx => ctx.edit(await selectChannelPage(app, ctx)),
   )
 }
+
+export const utility_views: CustomView[] = [globalView(selectChannelView)]

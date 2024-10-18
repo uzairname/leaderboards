@@ -1,18 +1,20 @@
 import * as D from 'discord-api-types/v10'
-import { AppCommand, field } from '../../../discord-framework'
-import { App } from '../../app/app'
-import { AppError } from '../../app/errors'
-import { checkGuildInteraction } from '../../views/utils/checks'
-import { guildRankingsOptionChoices } from '../../views/utils/common'
-import { allGuildRankingsPage } from '../rankings_commands/all_rankings'
-import { rankings_cmd_def } from '../rankings_commands/rankings_cmd'
+import { AppCommandDefinition, field } from '../../../discord-framework'
+import { nonNullable } from '../../../utils/utils'
+import { App } from '../../app-context/app-context'
+import { AppError } from '../../errors'
+import { guildCommand } from '../../view_manager/view_module'
+import { checkGuildInteraction } from '../../utils/checks'
+import { guildRankingsOptionChoices, rankingsAutocomplete } from '../../utils/view_pieces'
+import { allGuildRankingsPage } from '../rankings/rankings_commands/all_rankings'
+import { rankings_cmd_def } from '../rankings/rankings_commands/rankings_cmd'
 import { leaderboardMessage } from './leaderboard_messages'
 
 const optionnames = {
   ranking: 'ranking',
 }
 
-const leaderboard_cmd = new AppCommand({
+const leaderboard_cmd = new AppCommandDefinition({
   type: D.ApplicationCommandType.ChatInput,
   custom_id_prefix: 'lb',
   name: 'leaderboard',
@@ -24,14 +26,11 @@ const leaderboard_cmd = new AppCommand({
   },
 })
 
-export const leaderboardCmdDef = async (app: App, guild_id?: string) => {
+const leaderboardCmdDef = async (app: App, guild_id?: string) => {
   if (guild_id) {
     const choices = await guildRankingsOptionChoices(app, guild_id, false)
-    return new AppCommand({
+    return new AppCommandDefinition({
       ...leaderboard_cmd.options,
-      /**
-       * If there's only one ranking in the guild, have no options.
-       */
       options:
         choices.length > 1
           ? [
@@ -42,12 +41,12 @@ export const leaderboardCmdDef = async (app: App, guild_id?: string) => {
                 choices: choices,
               },
             ]
-          : undefined,
+          : undefined, // If there's only one ranking in the guild, have no options.
     })
   }
 }
 
-export const leaderboardCmdCallback = (app: App) =>
+export const leaderboardCmd = (app: App) =>
   leaderboard_cmd.onCommand(async ctx => {
     return ctx.defer(
       {
@@ -89,3 +88,5 @@ export const leaderboardCmdCallback = (app: App) =>
       },
     )
   })
+
+export const leaderboard = [guildCommand(leaderboardCmd, leaderboardCmdDef)]
