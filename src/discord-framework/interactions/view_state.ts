@@ -1,9 +1,9 @@
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
-import { sentry } from '../../request/logging'
+import { sentry } from '../../logging'
 import { StringData, StringDataSchema } from '../../utils/string_data'
+import { ViewErrors } from './errors'
 import { findView } from './find_view'
 import { AnyView, FindViewCallback } from './types'
-import { ViewErrors } from './utils/errors'
 import { View } from './views'
 
 export class ViewState<TSchema extends StringDataSchema> extends StringData<TSchema> {
@@ -43,14 +43,6 @@ export class ViewState<TSchema extends StringDataSchema> extends StringData<TSch
     custom_id: string,
     findViewCallback: FindViewCallback,
   ): { view: AnyView; state: ViewState<StringDataSchema> } {
-    sentry.addBreadcrumb({
-      category: 'custom_id',
-      level: 'info',
-      data: {
-        custom_id,
-      },
-    })
-
     let decompressed_custom_id = decompressFromUTF16(custom_id)
 
     if (!decompressed_custom_id)

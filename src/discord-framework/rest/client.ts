@@ -1,8 +1,8 @@
-import { DiscordAPIError, REST, RequestData, RequestMethod, InternalRequest } from '@discordjs/rest'
+import { DiscordAPIError, InternalRequest, REST, RequestData, RequestMethod } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
-import { truncateString } from '../../main/messages/message_pieces'
-import { cache } from '../../request/cache'
-import { sentry } from '../../request/logging'
+import { sentry } from '../../logging'
+import { truncateString } from '../../main/bot/messages/message_pieces'
+import { cache } from '../../main/cache'
 import { DiscordCache } from './cache'
 import { DiscordAPIUtils } from './client_helpers'
 import { DiscordErrors } from './errors'
@@ -110,13 +110,10 @@ export class DiscordAPIClient extends REST {
   }
 
   async getGuildChannels(guild_id: string) {
-    if (!this.cache.guild_channels[guild_id]) {
-      this.cache.guild_channels[guild_id] = (await this.fetch(
-        RequestMethod.Get,
-        D.Routes.guildChannels(guild_id),
-      )) as D.RESTGetAPIGuildChannelsResult
-    }
-    return this.cache.guild_channels[guild_id]
+    return (await this.fetch(
+      RequestMethod.Get,
+      D.Routes.guildChannels(guild_id),
+    )) as D.RESTGetAPIGuildChannelsResult
   }
 
   @requiresBotPerms(D.PermissionFlagsBits.ManageChannels)

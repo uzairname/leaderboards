@@ -6,7 +6,7 @@ export default {
   semi: false,
   endOfLine: 'crlf',
   arrowParens: 'avoid',
-  plugins: ["@trivago/prettier-plugin-sort-imports"],
+  plugins: ["@trivago/prettier-plugin-sort-imports", "prettier-plugin-organize-imports"],
   importOrderParserPlugins: ["typescript", "decorators-legacy"],
   importOrder: ["^[./]"],
 }

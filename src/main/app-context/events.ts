@@ -1,7 +1,7 @@
-import type { GuildRanking, Match, Player, Ranking } from '../../database/models'
 import { Event } from '../../utils/events'
-import { addRankingChannelsListeners } from '../modules/leaderboard/leaderboard_messages'
-import { addMatchSummaryMessageListeners } from '../modules/matches/match_logging/match_messages'
+import { addRankingChannelsListeners } from '../bot/modules/leaderboard/leaderboard_messages'
+import { addMatchSummaryMessageListeners } from '../bot/modules/matches/match_logging/match_messages'
+import type { Match, Ranking } from '../database/models'
 import type { App } from './app-context'
 
 export function appEvents() {

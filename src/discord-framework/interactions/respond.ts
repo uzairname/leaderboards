@@ -1,16 +1,16 @@
 import * as D from 'discord-api-types/v10'
 import { json } from 'itty-router'
-import { Logger, sentry } from '../../request/logging'
+import { sentry } from '../../logging'
 import { DiscordAPIClient } from '../rest/client'
+import { ViewErrors } from './errors'
 import { findView } from './find_view'
 import {
   FindViewCallback,
   InteractionErrorCallback,
-  viewIsChatInputAppCommand,
   viewIsAppCommand,
+  viewIsChatInputAppCommand,
 } from './types'
-import { ViewErrors } from './utils/errors'
-import { verify } from './utils/verify'
+import { verify } from './verify'
 import { ViewState } from './view_state'
 
 export async function respondToInteraction(

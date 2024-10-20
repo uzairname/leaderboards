@@ -1,7 +1,7 @@
-import { DbClient } from '../../database/client'
 import { DiscordAPIClient } from '../../discord-framework'
-import { sentry } from '../../request/logging'
+import { sentry } from '../../logging'
 import { Config } from '../config'
+import { DbClient } from '../database/client'
 import { addAllEventListeners, appEvents } from './events'
 
 export class App {

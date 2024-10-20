@@ -7,7 +7,6 @@ export class AppError extends Error {
 
 // Errors that are expected and displayed to the user
 export namespace AppErrors {
-
   export class NotComponentOwner extends AppError {
     constructor(owner_id?: string) {
       super(

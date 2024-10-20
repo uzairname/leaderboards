@@ -1,31 +1,29 @@
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../request/logging'
+import { sentry } from '../../logging'
 import type { StringDataSchema } from '../../utils/string_data'
 import type { DiscordAPIClient } from '../rest/client'
 import type { MessageData } from '../rest/objects'
+import { ViewErrors } from './errors'
 import type {
   AnyContext,
+  AppCommandInteraction,
   ChatInteraction,
-  InteractionContext,
   ChatInteractionResponse,
+  CommandCallback,
   CommandContext,
   CommandInteractionResponse,
+  ComponentCallback,
   ComponentContext,
   ComponentInteraction,
-  StateContext,
+  DeferCallback,
   DeferContext,
   InitialInteractionContext,
+  InteractionContext,
   InteractionErrorCallback,
-} from './types'
-import type {
-  AppCommandInteraction,
-  CommandCallback,
-  ComponentCallback,
-  DeferCallback,
   SendMessageCallback,
+  StateContext,
   ViewAutocompleteCallback,
 } from './types'
-import { ViewErrors } from './utils/errors'
 import { ViewState } from './view_state'
 
 export abstract class View<TSchema extends StringDataSchema> {
@@ -155,7 +153,7 @@ export abstract class View<TSchema extends StringDataSchema> {
   }
 }
 
-export class AppCommandDefinition<
+export class AppCommand<
   TSchema extends StringDataSchema,
   CommandType extends D.ApplicationCommandType,
 > extends View<TSchema> {
@@ -163,10 +161,10 @@ export class AppCommandDefinition<
     public options: (CommandType extends D.ApplicationCommandType.ChatInput
       ? D.RESTPostAPIChatInputApplicationCommandsJSONBody
       : D.RESTPostAPIContextMenuApplicationCommandsJSONBody) & {
-        type: CommandType
-        state_schema?: TSchema
-        custom_id_prefix?: string
-      },
+      type: CommandType
+      state_schema?: TSchema
+      custom_id_prefix?: string
+    },
   ) {
     super(options, options.state_schema)
   }
@@ -222,50 +220,7 @@ export class AppCommandDefinition<
   }
 }
 
-
-export class AppCommand<
-  TSchema extends StringDataSchema,
-  CommandType extends D.ApplicationCommandType,
-> extends View<TSchema> {
-
-  constructor(private definition: AppCommandDefinition<TSchema, CommandType>, 
-    private commandCallback: CommandCallback<typeof definition>) {
-    super(definition.options, definition.options.state_schema)
-  }
-
-  async respondToCommand(
-    interaction: AppCommandInteraction<CommandType>,
-    bot: DiscordAPIClient,
-    onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource,
-  ): Promise<CommandInteractionResponse> {
-    sentry.request_name = `${this.name} Command`
-
-    const state = this.newState()
-
-    return this.commandCallback({
-      interaction,
-      state,
-      defer: (response, callback) => {
-        this.deferResponse({
-          callback,
-          interaction,
-          state,
-          bot,
-          onError,
-        })
-        return response
-      },
-    })
-  }
-
-}
-
-
 export class MessageView<TSchema extends StringDataSchema, Params> extends View<TSchema> {
-  private sendCallback: SendMessageCallback<this, Params> = async () => {
-    throw new ViewErrors.CallbackNotImplemented(`${this.name} has no send message callback`)
-  }
-
   constructor(
     public readonly options: {
       name?: string
@@ -282,6 +237,10 @@ export class MessageView<TSchema extends StringDataSchema, Params> extends View<
       state: this.newState(),
       ...args,
     })
+  }
+
+  private sendCallback: SendMessageCallback<this, Params> = async () => {
+    throw new ViewErrors.CallbackNotImplemented(`${this.name} has no send message callback`)
   }
 
   public onSend(callback: SendMessageCallback<this, Params>) {

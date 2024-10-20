@@ -1,4 +1,3 @@
-import { sentry } from '../request/logging'
 import { nonNullable } from './utils'
 
 export type StringDataSchema = {
@@ -7,12 +6,6 @@ export type StringDataSchema = {
 
 export class StringData<TSchema extends StringDataSchema> {
   readonly data = {} as { [K in keyof TSchema]?: TSchema[K]['read'] }
-
-  // get<K extends keyof TSchema>(key: K): NonNullable<TSchema[K]['read']> {
-  //   if (this.data[key] === null || this.data[key] === undefined)
-  //     throw new Error(`Field ${key.toString()} is null or undefined`)
-  //   return this.data[key] as NonNullable<TSchema[K]['read']>
-  // }
 
   get = {} as {
     [K in keyof TSchema]: () => NonNullable<TSchema[K]['read']>
@@ -47,15 +40,15 @@ export class StringData<TSchema extends StringDataSchema> {
   }
 
   encode(): string {
-    let i = -1
+    let i = 0
     let defined_fields = 0
     const data_list: string[] = []
     Object.keys(this.fields).forEach(key => {
-      i++
       if (this.data[key] !== undefined) {
         defined_fields |= 1 << i
         data_list.push(this.fields[key].compress(this.data[key]))
       }
+      i++
     })
     const encoded_defined_fields = (
       (1 << Object.keys(this.fields).length) -

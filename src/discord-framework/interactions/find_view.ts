@@ -1,7 +1,7 @@
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../request/logging'
+import { sentry } from '../../logging'
+import { ViewErrors } from './errors'
 import { AnyView, FindViewCallback } from './types'
-import { ViewErrors } from './utils/errors'
 
 export function findView(
   findViewCallback: FindViewCallback,
@@ -26,11 +26,7 @@ export function findView(
 
   const view = findViewCallback(
     command_interaction
-      ? {
-          name: command_interaction.data.name,
-          type: command_interaction.data.type,
-          guild_id: command_interaction.data.guild_id,
-        }
+      ? { name: command_interaction.data.name, type: command_interaction.data.type }
       : undefined,
     custom_id_prefix,
   )

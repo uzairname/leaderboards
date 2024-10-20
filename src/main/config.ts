@@ -1,15 +1,11 @@
 import * as D from 'discord-api-types/v10'
 
 export const features = (environment: string) => {
-  const dev = environment === 'development'
+  const is_dev = environment === 'development'
 
   return {
-    RoleConnectionsMetadata: dev,
-    HelpReference: dev,
-
-    ExperimentalViews: dev,
-    DevGuildCommands: dev,
-    DetailedErrorMessages: dev,
+    HelpReference: is_dev,
+    IsDev: is_dev,
   }
 }
 

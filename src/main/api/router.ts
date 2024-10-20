@@ -1,7 +1,6 @@
 import { json, Router } from 'itty-router'
-import { authorize } from "../.."
 import { App } from '../app-context/app-context'
-import { getAllCommandDefinitions } from '../view_manager/manage_views'
+import { getAllCommandSignatures } from '../bot/view_manager/manage_views'
 
 export const apiRouter = (app: App) =>
   Router({ base: '/api' })
@@ -10,7 +9,7 @@ export const apiRouter = (app: App) =>
     })
     .get('/commands', async request => {
       const result = {
-        'defined global commands': getAllCommandDefinitions(app, undefined),
+        'defined global commands': getAllCommandSignatures(app, undefined),
       }
       return json(result)
     })

@@ -1,8 +1,7 @@
 import * as D from 'discord-api-types/v10'
-import type { StringDataSchema } from '../../utils/string_data'
 import type { MessageData } from '../rest/objects'
 import type { ViewState } from './view_state'
-import { AppCommandDefinition, MessageView, View } from './views'
+import { AppCommand, MessageView, View } from './views'
 
 export type AppCommandInteraction<CommandType extends D.ApplicationCommandType> =
   CommandType extends D.ApplicationCommandType.ChatInput
@@ -38,14 +37,14 @@ type InteractionResponse<InteractionType extends ChatInteraction> =
 
 export type AnyView = View<any>
 
-export type AnyAppCommand = AppCommandDefinition<any, D.ApplicationCommandType>
+export type AnyAppCommand = AppCommand<any, D.ApplicationCommandType>
 
-export type ChatInputAppCommand = AppCommandDefinition<any, D.ApplicationCommandType.ChatInput>
+export type ChatInputAppCommand = AppCommand<any, D.ApplicationCommandType.ChatInput>
 
 export type AnyMessageView = MessageView<any, any>
 
 export function viewIsAppCommand(view: AnyView): view is AnyAppCommand {
-  return view instanceof AppCommandDefinition
+  return view instanceof AppCommand
 }
 
 export function viewIsChatInputAppCommand(view: AnyView): view is ChatInputAppCommand {
@@ -56,7 +55,6 @@ export type FindViewCallback = (
   command?: {
     name: string
     type: D.ApplicationCommandType
-    guild_id?: string
   },
   custom_id_prefix?: string,
 ) => AnyView | null

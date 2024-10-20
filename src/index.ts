@@ -1,17 +1,16 @@
 import { Router } from 'itty-router'
 import { respondToInteraction } from './discord-framework'
+import { initSentry, sentry } from './logging'
+import { oauthRouter } from './main/api/oauth'
 import { apiRouter } from './main/api/router'
+import { initRouter as updateRouter } from './main/api/update_app'
 import { App } from './main/app-context/app-context'
-import { initRouter } from './main/init_app'
-import { oauthRouter } from './main/oauth'
-import { getFindViewCallback } from './main/view_manager/manage_views'
-import { onViewError } from './main/view_manager/on_view_error'
-import { initSentry, sentry } from './request/logging'
-import { runTests } from './test/test'
+import { getFindViewCallback } from './main/bot/view_manager/manage_views'
+import { onViewError } from './main/bot/view_manager/on_view_error'
+import { runTests } from './main/test/test'
 
 export default {
-  fetch (request: Request, env: Env, execution_context: ExecutionContext) {
-
+  fetch(request: Request, env: Env, execution_context: ExecutionContext) {
     initSentry(request, env, execution_context)
 
     const app = new App(env)
@@ -25,7 +24,7 @@ export default {
 
       .all('/api/*', request => apiRouter(app).handle(request))
 
-      .post('/init/*', authorize(env), request => initRouter(app).handle(request))
+      .post('/update/*', authorize(env), request => updateRouter(app).handle(request))
 
       .post('/test/*', authorize(env), () => runTests(app))
 
@@ -34,7 +33,7 @@ export default {
       .all('*', () => new Response('Not Found', { status: 404 }))
 
     return sentry.withLogging(router.handle)
-  }
+  },
 }
 
 export const authorize = (env: Env) => (request: Request) => {
@@ -42,4 +41,3 @@ export const authorize = (env: Env) => (request: Request) => {
     return new Response('Unauthorized', { status: 401 })
   }
 }
-

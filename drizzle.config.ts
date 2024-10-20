@@ -4,7 +4,7 @@ import * as dotenv from 'dotenv'
 dotenv.config()
 
 export default {
-  schema: 'src/database/schema.ts',
+  schema: 'src/main/database/schema.ts',
   out: 'migrations/migrations',
   driver: 'pg',
   dbCredentials: {

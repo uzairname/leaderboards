@@ -70,6 +70,7 @@ export function maxIndex(arr: number[]): number {
  * @returns The date the snowflake was created.
  */
 export function snowflakeToDate(snowflake: bigint): Date {
+  const DISCORD_EPOCH = 1420070400000
   const dateBits = Number(BigInt.asUintN(64, snowflake) >> 22n)
-  return new Date(dateBits + 1420070400000)
+  return new Date(dateBits + DISCORD_EPOCH)
 }
