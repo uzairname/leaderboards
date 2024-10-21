@@ -1,7 +1,7 @@
 import * as D from 'discord-api-types/v10'
 import type { MessageData } from '../rest/objects'
 import type { ViewState } from './view_state'
-import { AppCommand, MessageView, View } from './views'
+import { AppCommand, BaseView, MessageView } from './views'
 
 export type AppCommandInteraction<CommandType extends D.ApplicationCommandType> =
   CommandType extends D.ApplicationCommandType.ChatInput
@@ -35,11 +35,11 @@ type InteractionResponse<InteractionType extends ChatInteraction> =
       ? ChatInteractionResponse
       : never
 
-export type AnyView = View<any>
+export type AnyView = BaseView<any>
 
 export type AnyAppCommand = AppCommand<any, D.ApplicationCommandType>
 
-export type ChatInputAppCommand = AppCommand<any, D.ApplicationCommandType.ChatInput>
+export type AnyChatInputAppCommand = AppCommand<any, D.ApplicationCommandType.ChatInput>
 
 export type AnyMessageView = MessageView<any, any>
 
@@ -47,7 +47,7 @@ export function viewIsAppCommand(view: AnyView): view is AnyAppCommand {
   return view instanceof AppCommand
 }
 
-export function viewIsChatInputAppCommand(view: AnyView): view is ChatInputAppCommand {
+export function viewIsChatInputAppCommand(view: AnyView): view is AnyChatInputAppCommand {
   return viewIsAppCommand(view) && view.options.type === D.ApplicationCommandType.ChatInput
 }
 

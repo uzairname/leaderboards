@@ -4,7 +4,7 @@ import { DbClient } from '../../client'
 import { DbErrors } from '../../errors'
 import { DbObject, DbObjectManager } from '../../managers'
 import { Players, QueueTeams, Rankings, TeamPlayers } from '../../schema'
-import { RankingInsert, RankingSelect } from '../../types'
+import { RankingInsert, RankingSelect } from '../types'
 
 export class Ranking extends DbObject<Partial<RankingSelect> & { id: number }> {
   constructor(data: Partial<RankingSelect> & { id: number }, db: DbClient) {

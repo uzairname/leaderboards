@@ -5,7 +5,7 @@ import { DbClient } from '../../client'
 import { DbErrors } from '../../errors'
 import { DbObject, DbObjectManager } from '../../managers'
 import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
-import { PlayerInsert, PlayerSelect } from '../../types'
+import { PlayerInsert, PlayerSelect } from '../types'
 
 export class Player extends DbObject<PlayerSelect> {
   constructor(data: PlayerSelect, db: DbClient) {

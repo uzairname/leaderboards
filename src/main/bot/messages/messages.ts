@@ -1,6 +1,6 @@
 import { DiscordErrors } from '../../../discord-framework'
-import { App } from '../../app-context/app-context'
-import { inviteUrl } from './message_pieces'
+import { App } from '../../context/app_context'
+import { inviteUrl } from '../utils/converters'
 
 export namespace Messages {
   export const concise_description =

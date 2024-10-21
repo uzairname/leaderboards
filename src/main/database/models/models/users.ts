@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { DbClient } from '../../client'
 import { DbObject, DbObjectManager } from '../../managers'
 import { Users } from '../../schema'
-import { UserInsert, UserSelect } from '../../types'
+import { UserInsert, UserSelect } from '../types'
 
 export class User extends DbObject<UserSelect> {
   constructor(data: UserSelect, db: DbClient) {

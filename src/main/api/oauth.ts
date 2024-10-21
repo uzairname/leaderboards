@@ -3,9 +3,8 @@ import * as D from 'discord-api-types/v10'
 import { Router } from 'itty-router'
 import { DiscordAPIClient } from '../../discord-framework'
 import { nonNullable } from '../../utils/utils'
-import { App } from '../app-context/app-context'
+import { App } from '../context/app_context'
 import { AccessToken } from '../database/models/models/access_tokens'
-import { AppErrors } from '../errors'
 
 export const oauthRouter = (app: App) =>
   Router({ base: `/oauth` })
@@ -83,7 +82,7 @@ export async function saveUserAccessToken(app: App, token: D.RESTPostOAuth2Acces
       expires_at: new Date(Date.now() + token.expires_in * 1000),
     })
   } else {
-    throw new AppErrors.MissingIdentifyScope()
+    throw new Error("Can't save oauth token: No identify scope")
   }
 }
 

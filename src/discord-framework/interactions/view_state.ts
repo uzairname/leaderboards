@@ -3,8 +3,8 @@ import { sentry } from '../../logging'
 import { StringData, StringDataSchema } from '../../utils/string_data'
 import { ViewErrors } from './errors'
 import { findView } from './find_view'
-import { AnyView, FindViewCallback } from './types'
-import { View } from './views'
+import { AnyView } from './types'
+import { BaseView } from './views'
 
 export class ViewState<TSchema extends StringDataSchema> extends StringData<TSchema> {
   set = {} as {
@@ -35,13 +35,13 @@ export class ViewState<TSchema extends StringDataSchema> extends StringData<TSch
     }
   }
 
-  static fromView<T extends StringDataSchema>(view: View<T>): ViewState<T> {
+  static fromView<T extends StringDataSchema>(view: BaseView<T>): ViewState<T> {
     return new ViewState(view.state_schema, view.options.custom_id_prefix)
   }
 
   static fromCustomId(
     custom_id: string,
-    findViewCallback: FindViewCallback,
+    findViewCallback: any,
   ): { view: AnyView; state: ViewState<StringDataSchema> } {
     let decompressed_custom_id = decompressFromUTF16(custom_id)
 

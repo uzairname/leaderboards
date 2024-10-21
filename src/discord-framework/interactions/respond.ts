@@ -38,8 +38,7 @@ export async function respondToInteraction(
 
   if (direct_response) {
     sentry.addBreadcrumb({
-      category: 'response',
-      message: 'Sending direct interaction response',
+      category: 'Interaction response',
       level: 'info',
       data: { response: JSON.stringify(response) },
     })

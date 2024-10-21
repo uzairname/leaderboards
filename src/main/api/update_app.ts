@@ -1,9 +1,9 @@
 import { Router } from 'itty-router'
-import { App } from '../app-context/app-context'
 import { getAppRoleConnectionsMetadata } from '../bot/modules/linked_roles'
-import { syncDiscordCommands } from '../bot/view_manager/manage_views'
+import { syncDiscordCommands } from '../bot/manage-views/manage_views'
+import { App } from '../context/app_context'
 
-export const initRouter = (app: App) =>
+export const updateRouter = (app: App) =>
   Router({ base: '/update' })
     .post('/', async () => {
       await Promise.all([

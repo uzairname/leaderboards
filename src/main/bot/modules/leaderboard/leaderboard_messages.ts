@@ -1,9 +1,9 @@
 import * as D from 'discord-api-types/v10'
 import { GuildChannelData, MessageData } from '../../../../discord-framework'
 import { sentry } from '../../../../logging'
-import { type App } from '../../../app-context/app-context'
+import { type App } from '../../../context/app_context'
 import type { Guild, GuildRanking, Ranking } from '../../../database/models'
-import { Colors, escapeMd, relativeTimestamp, space } from '../../messages/message_pieces'
+import { Colors, escapeMd, relativeTimestamp, space } from '../../utils/converters'
 import { getOrUpdateRankedCategory } from '../guilds'
 
 export function addRankingChannelsListeners(app: App) {

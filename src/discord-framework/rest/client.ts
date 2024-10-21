@@ -1,7 +1,7 @@
 import { DiscordAPIError, InternalRequest, REST, RequestData, RequestMethod } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging'
-import { truncateString } from '../../main/bot/messages/message_pieces'
+import { truncateString } from '../../main/bot/utils/converters'
 import { cache } from '../../main/cache'
 import { DiscordCache } from './cache'
 import { DiscordAPIUtils } from './client_helpers'
@@ -464,10 +464,10 @@ export class DiscordAPIClient extends REST {
         level: error ? 'error' : 'info',
         data: {
           route: `Route: ${method?.toString()} ${route}`,
+          'time taken': `${Date.now() - start_time}ms`,
           options: JSON.stringify(options),
           response: truncateString(JSON.stringify(response) ?? '', 1500),
           error: JSON.stringify(error),
-          'time taken': `${Date.now() - start_time}ms`,
         },
       })
     }

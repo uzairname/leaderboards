@@ -26,7 +26,7 @@ import type {
 } from './types'
 import { ViewState } from './view_state'
 
-export abstract class View<TSchema extends StringDataSchema> {
+export abstract class BaseView<TSchema extends StringDataSchema> {
   name: string
   protected constructor(
     public options: {
@@ -156,7 +156,7 @@ export abstract class View<TSchema extends StringDataSchema> {
 export class AppCommand<
   TSchema extends StringDataSchema,
   CommandType extends D.ApplicationCommandType,
-> extends View<TSchema> {
+> extends BaseView<TSchema> {
   constructor(
     public options: (CommandType extends D.ApplicationCommandType.ChatInput
       ? D.RESTPostAPIChatInputApplicationCommandsJSONBody
@@ -220,7 +220,7 @@ export class AppCommand<
   }
 }
 
-export class MessageView<TSchema extends StringDataSchema, Params> extends View<TSchema> {
+export class MessageView<TSchema extends StringDataSchema, Params> extends BaseView<TSchema> {
   constructor(
     public readonly options: {
       name?: string

@@ -35,6 +35,7 @@ export class Logger extends Toucan {
 
   addBreadcrumb(breadcrumb: object): void {
     console.log(JSON.stringify(breadcrumb))
+    super.addBreadcrumb(breadcrumb)
   }
 
   async withLogging(handler: (request: Request) => Promise<Response>): Promise<Response> {

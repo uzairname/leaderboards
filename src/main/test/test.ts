@@ -1,11 +1,11 @@
 import { APIUser } from 'discord-api-types/v10'
 import { sql } from 'drizzle-orm'
 import { sentry } from '../../logging'
-import { nonNullable } from '../../utils/utils'
-import { App } from '../app-context/app-context'
-import { updateMatch } from '../bot/modules/matches/manage_matches'
-import { recordAndScoreNewMatch } from '../bot/modules/matches/scoring/score_matches'
-import { getRegisterPlayer } from '../bot/modules/players'
+import { assert, nonNullable } from '../../utils/utils'
+import { updateMatch } from '../bot/modules/matches/recording/manage_matches'
+import { recordAndScoreNewMatch } from '../bot/modules/matches/recording/score_matches'
+import { getRegisterPlayer } from '../bot/modules/players/players'
+import { App } from '../context/app_context'
 import { DbClient } from '../database/client'
 import {
   AccessTokens,
@@ -291,9 +291,3 @@ async function addData(app: App) {
 // runTests().then((res) => {
 //   process.exit(0)
 // })
-
-function assert(condition: boolean, msg?: string): asserts condition {
-  if (!condition) {
-    throw new Error(msg ?? 'Assertion failed')
-  }
-}

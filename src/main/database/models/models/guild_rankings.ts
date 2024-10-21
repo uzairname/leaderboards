@@ -4,7 +4,7 @@ import { DbClient } from '../../client'
 import { DbErrors } from '../../errors'
 import { DbObject, DbObjectManager } from '../../managers'
 import { GuildRankings, Guilds, Rankings } from '../../schema'
-import { GuildRankingInsert, GuildRankingSelect } from '../../types'
+import { GuildRankingInsert, GuildRankingSelect } from '../types'
 
 export class GuildRanking extends DbObject<GuildRankingSelect> {
   constructor(data: GuildRankingSelect, db: DbClient) {

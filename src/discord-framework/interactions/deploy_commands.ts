@@ -25,10 +25,12 @@ export async function overwriteDiscordCommandsWithViews(
 
   sentry.addBreadcrumb({
     category: 'discord',
-    message: 'Overwrote commands in discord',
+    message:
+      `Successfully overwrote application commands` +
+      (guild_id ? ` in guild ${guild_id}` : ' globally'),
     level: 'info',
     data: {
-      commands,
+      commands: commands.map(c => c.options.name),
       guild_id,
     },
   })

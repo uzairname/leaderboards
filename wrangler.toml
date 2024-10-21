@@ -12,3 +12,7 @@ vars = { ENVIRONMENT = "staging", BASE_URL = "https://leaderboards-staging.5r.wo
 [env.production]
 name = "leaderboards"
 vars = { ENVIRONMENT = "production", BASE_URL = "https://leaderboards.5r.workers.dev" }
+
+[observability]
+enabled = true
+head_sampling_rate = 1

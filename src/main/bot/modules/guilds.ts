@@ -1,9 +1,9 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { GuildChannelData, RoleData } from '../../../discord-framework'
-import { App } from '../../app-context/app-context'
+import { App } from '../../context/app_context'
 import { Guild } from '../../database/models'
-import { Colors } from '../messages/message_pieces'
+import { Colors } from '../utils/converters'
 
 export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> {
   let app_guild = await app.db.guilds.get(guild_id)

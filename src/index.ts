@@ -1,13 +1,12 @@
 import { Router } from 'itty-router'
-import { respondToInteraction } from './discord-framework'
 import { initSentry, sentry } from './logging'
+import { apiRouter } from './main/api/api_router'
+import { authorize } from './main/api/authorize'
 import { oauthRouter } from './main/api/oauth'
-import { apiRouter } from './main/api/router'
-import { initRouter as updateRouter } from './main/api/update_app'
-import { App } from './main/app-context/app-context'
-import { getFindViewCallback } from './main/bot/view_manager/manage_views'
-import { onViewError } from './main/bot/view_manager/on_view_error'
+import { updateRouter } from './main/api/update_app'
+import { App } from './main/context/app_context'
 import { runTests } from './main/test/test'
+import { handleInteractionRequest } from './main/bot/manage-views/manage_views'
 
 export default {
   fetch(request: Request, env: Env, execution_context: ExecutionContext) {
@@ -15,10 +14,10 @@ export default {
 
     const app = new App(env)
 
+    console.log('app', app)
+
     const router = Router()
-      .post('/interactions', request =>
-        respondToInteraction(app.bot, request, getFindViewCallback(app), onViewError(app)),
-      )
+      .post('/interactions', request => handleInteractionRequest(app, request))
 
       .get(`/oauth/*`, request => oauthRouter(app).handle(request))
 
@@ -34,10 +33,4 @@ export default {
 
     return sentry.withLogging(router.handle)
   },
-}
-
-export const authorize = (env: Env) => (request: Request) => {
-  if (request.headers.get('Authorization') !== env.APP_KEY) {
-    return new Response('Unauthorized', { status: 401 })
-  }
 }

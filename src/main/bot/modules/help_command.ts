@@ -1,10 +1,9 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand, InteractionContext, StateContext, _, field } from '../../../discord-framework'
-import { App } from '../../app-context/app-context'
-import { AppErrors } from '../../errors'
-import { Colors, botAndOauthUrl, dateTimestamp } from '../messages/message_pieces'
+import { App } from '../../context/app_context'
 import { Messages } from '../messages/messages'
-import { CustomView } from '../view_manager/view_module'
+import { Colors, botAndOauthUrl, dateTimestamp } from '../utils/converters'
+import { AppView } from '../utils/view_module'
 
 export const help_cmd = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -31,12 +30,12 @@ export const helpCmd = (app: App) =>
       } else if (ctx.state.is.page('reference')) {
         data = await referencePage(app, ctx)
       } else {
-        throw new AppErrors.UnknownState(ctx.state.data.page)
+        throw new Error(`Unknown state ${ctx.state.data.page}`)
       }
       return { type: D.InteractionResponseType.UpdateMessage, data }
     })
 
-export const help_view = new CustomView(helpCmd)
+export default new AppView(helpCmd)
 
 async function mainPage(
   app: App,
@@ -52,12 +51,12 @@ async function mainPage(
     fields: [
       {
         name: `Source Code`,
-        value: `[Source Code](${Messages.github_url})`,
+        value: `This bot is open source! [Source Code](${Messages.github_url})`,
         inline: true,
       },
       {
         name: `Version`,
-        value: `${last_deployed_timestamp}`,
+        value: `The bot was last updated on ${last_deployed_timestamp}`,
         inline: true,
       },
     ],

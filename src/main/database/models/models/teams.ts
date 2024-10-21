@@ -4,7 +4,7 @@ import { nonNullable } from '../../../../utils/utils'
 import { DbClient } from '../../client'
 import { DbObject, DbObjectManager } from '../../managers'
 import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
-import { TeamInsert, TeamSelect, TeamUpdate } from '../../types'
+import { TeamInsert, TeamSelect, TeamUpdate } from '../types'
 
 export class Team extends DbObject<TeamSelect> {
   constructor(data: TeamSelect, db: DbClient) {

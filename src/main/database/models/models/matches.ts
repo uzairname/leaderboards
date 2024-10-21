@@ -12,7 +12,7 @@ import {
   MatchSelect,
   MatchSummaryMessageSelect,
   MatchUpdate,
-} from '../../types'
+} from '../types'
 
 export class Match extends DbObject<MatchSelect> {
   constructor(data: MatchSelect, db: DbClient) {
@@ -46,7 +46,7 @@ export class Match extends DbObject<MatchSelect> {
     return player_teams
   }
 
-  async summaryMessage(guild_id: string): Promise<MatchSummaryMessageSelect | undefined> {
+  async getSummaryMessage(guild_id: string): Promise<MatchSummaryMessageSelect | undefined> {
     const data = (
       await this.db.db
         .select()

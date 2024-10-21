@@ -1,10 +1,10 @@
 import { and, eq } from 'drizzle-orm'
-import { App } from '../../../app-context/app-context'
+import { App } from '../../../context/app_context'
 import { Guild, GuildRanking, Ranking } from '../../../database/models'
+import { GuildRankingInsert, RankingInsert } from '../../../database/models/types'
 import { GuildRankings, Rankings } from '../../../database/schema'
-import { GuildRankingInsert, RankingInsert } from '../../../database/types'
-import { AppError, AppErrors } from '../../../errors'
-import { syncDiscordCommands } from '../../view_manager/manage_views'
+import { UserError, UserErrors } from '../../utils/user-facing-errors'
+import { syncDiscordCommands } from '../../manage-views/manage_views'
 import { syncGuildRankingLbMessage } from '../leaderboard/leaderboard_messages'
 
 /**
@@ -39,7 +39,7 @@ export async function createNewRankingInGuild(
       .where(and(eq(GuildRankings.guild_id, guild.data.id), eq(Rankings.name, options.name)))
   )[0]
   if (same_name_ranking) {
-    throw new AppError(`You already have a ranking named \`${options.name}\``)
+    throw new UserError(`You already have a ranking named \`${options.name}\``)
   }
 
   const new_ranking = await app.db.rankings.create({
@@ -107,25 +107,25 @@ export const max_players_per_team = 12
 
 export function validateRankingOptions<T extends Partial<RankingInsert>>(o: T): T {
   if (o.name !== undefined) {
-    if (!o.name) throw new AppError(`Ranking name cannot be empty`)
+    if (!o.name) throw new UserError(`Ranking name cannot be empty`)
 
     if (o.name.length > max_ranking_name_length)
-      throw new AppError(`Ranking names must be ${max_ranking_name_length} characters or less`)
+      throw new UserError(`Ranking names must be ${max_ranking_name_length} characters or less`)
   }
 
   if (o.num_teams !== undefined) {
     if (!o.num_teams || isNaN(o.num_teams))
-      throw new AppErrors.ValidationError(`Number of teams must be a number`)
+      throw new UserErrors.ValidationError(`Number of teams must be a number`)
 
     if (o.num_teams < 2 || o.num_teams > max_num_teams)
-      throw new AppErrors.ValidationError(`Number of teams must be between 2 and ${max_num_teams}`)
+      throw new UserErrors.ValidationError(`Number of teams must be between 2 and ${max_num_teams}`)
   }
 
   if (o.players_per_team !== undefined) {
     if (!o.players_per_team || isNaN(o.players_per_team))
-      throw new AppErrors.ValidationError(`Players per team must be a number`)
+      throw new UserErrors.ValidationError(`Players per team must be a number`)
     if (o.players_per_team < 1 || o.players_per_team > max_players_per_team)
-      throw new AppErrors.ValidationError(
+      throw new UserErrors.ValidationError(
         `Players per team must be between 1 and ${max_players_per_team}`,
       )
   }
