@@ -4,6 +4,7 @@ import { cache } from '../cache'
 import DbCache from './cache'
 import { connect } from './connect'
 import {
+  AccessTokensManager,
   GuildRankingsManager,
   GuildsManager,
   MatchesManager,
@@ -13,7 +14,6 @@ import {
   TeamsManager,
   UsersManager,
 } from './models'
-import { AccessTokensManager } from './models/models/access_tokens'
 import * as schema from './schema'
 
 export class DbClient {

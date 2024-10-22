@@ -1,17 +1,23 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand } from '../../../../../../../discord-framework'
+import { nonNullable } from '../../../../../../../utils/utils'
 import { App } from '../../../../../../context/app_context'
-import { AppView } from '../../../../../utils/view_module'
+import { checkGuildInteraction } from '../../../../../utils/perms'
+import { AppView } from '../../../../../utils/ViewModule'
+import { getOrCreatePlayer } from '../../../../players/players'
 import { guildRankingsOption, withSelectedRanking } from '../../../../utils/ranking_command_option'
+import { challenge_message_signature, challengeMessage } from '../pages/challenge'
+
+const optionnames = {
+  opponent: 'opponent',
+  ranking: 'ranking',
+}
 
 const challenge_cmd_signature = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
-  custom_id_prefix: 'c',
-  name: 'challenge',
-  description: 'challenge someone to a 1v1',
+  name: `1v1`,
+  description: 'Challenge someone to a 1v1',
 })
-
-const ranking_option_name = 'ranking'
 
 const challengeCommandInGuild = async (app: App, guild_id: string) => {
   let options: D.APIApplicationCommandOption[] = [
@@ -19,10 +25,11 @@ const challengeCommandInGuild = async (app: App, guild_id: string) => {
       type: D.ApplicationCommandOptionType.User,
       name: 'opponent',
       description: 'Who to challenge',
+      required: true,
     },
   ]
 
-  options = options.concat(await guildRankingsOption(app, guild_id, ranking_option_name, false))
+  options = options.concat(await guildRankingsOption(app, guild_id, optionnames.ranking, {}))
 
   return new AppCommand({
     ...challenge_cmd_signature.options,
@@ -32,14 +39,40 @@ const challengeCommandInGuild = async (app: App, guild_id: string) => {
 
 const challengeCommand = (app: App) =>
   challenge_cmd_signature.onCommand(async ctx =>
-    withSelectedRanking(app, ctx, ranking_option_name, async ranking =>
+    withSelectedRanking(app, ctx, optionnames.ranking, async ranking =>
       ctx.defer(
         {
-          type: D.InteractionResponseType.DeferredChannelMessageWithSource,
-          data: { flags: D.MessageFlags.Ephemeral },
+          type: D.InteractionResponseType.ChannelMessageWithSource,
+          data: {
+            content: 'Challenge sent',
+            flags: D.MessageFlags.Ephemeral,
+          },
         },
         async ctx => {
-          await app.bot.createMessage(ctx.interaction.channel.id, {})
+          const interaction = checkGuildInteraction(ctx.interaction)
+          const initiator = await getOrCreatePlayer(app, interaction.member.user.id, ranking)
+
+          const opponent_id = nonNullable(
+            ctx.interaction.data.options?.find(
+              o => o.name === optionnames.opponent,
+            ) as D.APIApplicationCommandInteractionDataUserOption,
+            'opponent option',
+          ).value
+
+          await app.bot.createMessage(
+            ctx.interaction.channel.id,
+            (
+              await challengeMessage(app, {
+                interaction: ctx.interaction,
+                state: challenge_message_signature.newState({
+                  time_started: new Date(),
+                  initiator_id: initiator.data.user_id,
+                  opponent_id,
+                  ranking_id: ranking.data.id,
+                }),
+              })
+            ).as_post,
+          )
         },
       ),
     ),

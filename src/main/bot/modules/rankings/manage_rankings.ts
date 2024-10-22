@@ -1,10 +1,11 @@
 import { and, eq } from 'drizzle-orm'
 import { App } from '../../../context/app_context'
 import { Guild, GuildRanking, Ranking } from '../../../database/models'
-import { GuildRankingInsert, RankingInsert } from '../../../database/models/types'
+import { GuildRankingInsert } from '../../../database/models/guild_rankings'
+import { RankingInsert } from '../../../database/models/rankings'
 import { GuildRankings, Rankings } from '../../../database/schema'
-import { UserError, UserErrors } from '../../utils/user-facing-errors'
-import { syncDiscordCommands } from '../../manage-views/manage_views'
+import { syncDiscordCommands } from '../../manage-views/sync_discord_commands'
+import { UserError, UserErrors } from '../../utils/UserError'
 import { syncGuildRankingLbMessage } from '../leaderboard/leaderboard_messages'
 
 /**
@@ -31,7 +32,7 @@ export async function createNewRankingInGuild(
   options = validateRankingOptions(options)
 
   // make sure a ranking from this guild with the same name doesn't already exist
-  let same_name_ranking = (
+  const same_name_ranking = (
     await app.db.db
       .select()
       .from(GuildRankings)
@@ -101,7 +102,7 @@ export const default_display_settings = {
   leaderboard_message: true,
 }
 
-export const max_ranking_name_length = 32
+export const max_ranking_name_length = 48
 export const max_num_teams = 4
 export const max_players_per_team = 12
 

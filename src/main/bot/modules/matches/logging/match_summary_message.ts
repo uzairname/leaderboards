@@ -1,23 +1,17 @@
 import * as D from 'discord-api-types/v10'
 import { and, eq } from 'drizzle-orm'
-import { GuildChannelData, MessageData } from '../../../../../discord-framework'
+import { MessageData } from '../../../../../discord-framework'
 import { sentry } from '../../../../../logging'
 import { maxIndex, nonNullable } from '../../../../../utils/utils'
 import { App } from '../../../../context/app_context'
-import type { Guild, GuildRanking, Match, Player } from '../../../../database/models'
-import type { MatchPlayerSelect } from '../../../../database/models/types'
+import { GuildRanking, Match } from '../../../../database/models'
+import { MatchTeamPlayer } from '../../../../database/models/matches'
 import { MatchSummaryMessages } from '../../../../database/schema'
-import {
-  Colors,
-  commandMention,
-  emojis,
-  escapeMd,
-  relativeTimestamp,
-} from '../../../utils/converters'
-import { getOrUpdateRankedCategory } from '../../guilds'
+import { Colors } from '../../../common/constants'
+import { emojis, escapeMd, relativeTimestamp } from '../../../common/strings'
 import { default_elo_settings } from '../../rankings/manage_rankings'
-import { calculateMatchNewRatings } from '../recording/score_matches'
-import { matches_command_signature } from './views/commands/match_history_command'
+import { syncMatchesChannel } from '../matches_channel'
+import { calculateMatchNewRatings } from '../recording/trueskill'
 
 export function addMatchSummaryMessageListeners(app: App): void {
   app.events.MatchCreatedOrUpdated.on(async match => {
@@ -51,28 +45,13 @@ async function syncMatchSummaryMessage(
 
   const guild = await guild_ranking.guild
 
-  const sync_channel_result = await app.bot.utils.syncGuildChannel({
-    target_channel_id: guild.data.match_results_channel_id,
-    channelData: async () => matchLogsChannelData(app, guild),
-  })
-
-  if (sync_channel_result.is_new_channel) {
-    await Promise.all([
-      app.bot.createMessage(
-        sync_channel_result.channel.id,
-        (await matchLogsChannelDescriptionMessageData(app, guild)).postdata,
-      ),
-      guild.update({
-        match_results_channel_id: sync_channel_result.channel.id,
-      }),
-    ])
-  }
+  const match_logs_channel = await syncMatchesChannel(app, guild)
 
   const existing_message = await match.getSummaryMessage(guild_ranking.data.guild_id)
   sentry.debug(`existing message: ${existing_message}`)
 
   const sync_message_result = await app.bot.utils.syncChannelMessage({
-    target_channel_id: sync_channel_result.channel.id,
+    target_channel_id: match_logs_channel.id,
     target_message_id: existing_message?.message_id,
     messageData: await matchSummaryMessageData(app, match),
   })
@@ -103,7 +82,7 @@ async function syncMatchSummaryMessage(
 export async function matchSummaryMessageData(app: App, match: Match): Promise<MessageData> {
   return new MessageData({
     embeds: [
-      await matchSummaryEmbed(app, match, await match.teams(), {
+      await matchSummaryEmbed(app, match, await match.teamPlayers(), {
         ranking_name: true,
         id: true,
         time_finished: true,
@@ -115,7 +94,7 @@ export async function matchSummaryMessageData(app: App, match: Match): Promise<M
 export async function matchSummaryEmbed(
   app: App,
   match: Match,
-  team_players: { player: Player; match_player: MatchPlayerSelect }[][],
+  team_players: MatchTeamPlayer[][],
   options?: {
     ranking_name?: boolean
     id?: boolean
@@ -123,37 +102,14 @@ export async function matchSummaryEmbed(
     include_outcome_num?: boolean
   },
 ): Promise<D.APIEmbed> {
-  sentry.debug(
-    'team players,',
-    JSON.stringify(
-      team_players.map(t =>
-        t.map(p => {
-          return {
-            id: nonNullable(p.player.data.id, 'player id'),
-            rating: nonNullable(p.match_player.rating_before, 'rating before'),
-            rd: nonNullable(p.match_player.rd_before, 'rd before'),
-          }
-        }),
-      ),
-    ),
-    match.data.id,
-  )
-
+  const ranking = await match.ranking()
   const new_ratings = calculateMatchNewRatings(
     match,
-    team_players.map(t =>
-      t.map(p => {
-        return {
-          id: nonNullable(p.player.data.id, 'player id'),
-          rating_before: nonNullable(p.match_player.rating_before, 'rating before'),
-          rd_before: nonNullable(p.match_player.rd_before, 'rd before'),
-        }
-      }),
-    ),
-    (await match.ranking()).data.elo_settings ?? default_elo_settings,
+    team_players,
+    ranking.data.elo_settings ?? default_elo_settings,
   )
 
-  let details: string = options?.id ? `id: \`${match.data.id}\`` : ''
+  let details: string = options?.id ? `-# id: \`${match.data.id}\`` : ''
 
   const time_finished_str =
     options?.time_finished && match.data.time_finished
@@ -164,7 +120,7 @@ export async function matchSummaryEmbed(
   const is_draw = winning_team_index === -1
 
   const embed = {
-    title: (options?.ranking_name ? `${escapeMd((await match.ranking()).data.name)} ` : '') 
+    title: (options?.ranking_name ? `${escapeMd(ranking.data.name)} ` : '') 
       + `Match ${match.data.number}`
       // If details only contains the time finished, put it in the title 
       // of the embed instead of a separate field.
@@ -190,10 +146,10 @@ export async function matchSummaryEmbed(
         value: team
           .map((player, player_num) => {
             const rating_after_text =
-              new_ratings[team_num][player_num].rating_after.toFixed(0)
+              new_ratings[team_num][player_num].new_rating.toFixed(0)
             const diff =
-              new_ratings[team_num][player_num].rating_after -
-              nonNullable(player.match_player.rating_before)
+              new_ratings[team_num][player_num].new_rating -
+              player.rating_before
             const diff_text = (parseInt(diff.toFixed(0)) > 0 ? '+' : '') + diff.toFixed(0)
             return `<@${player.player.data.user_id}> ${rating_after_text} *(${diff_text})*`
           })
@@ -208,75 +164,4 @@ export async function matchSummaryEmbed(
   } // prettier-ignore
 
   return embed
-}
-
-async function matchLogsChannelDescriptionMessageData(
-  app: App,
-  guild: Guild,
-): Promise<MessageData> {
-  const matches_cmd_mention = await commandMention(app, matches_command_signature, guild.data.id)
-
-  const msg = new MessageData({
-    embeds: [
-      {
-        title: `Match Logs`,
-        description:
-          `Ranked matches in this server are recorded in this channel.` +
-          `\nTo view or manage a specific match, use ${matches_cmd_mention} \`<id>\``,
-        color: Colors.EmbedBackground,
-      },
-    ],
-  })
-
-  return msg
-}
-
-async function matchLogsChannelData(
-  app: App,
-  guild: Guild,
-): Promise<{
-  guild_id: string
-  data: GuildChannelData
-}> {
-  let category = (await getOrUpdateRankedCategory(app, guild)).channel
-  return {
-    guild_id: guild.data.id,
-    data: new GuildChannelData({
-      type: D.ChannelType.GuildText,
-      parent_id: category.id,
-      name: `Match Log`,
-      topic: `Ranked matches in this server are recorded here`,
-      permission_overwrites: matchLogsChannelPermissionOverwrites(app, guild.data.id),
-    }),
-  }
-}
-
-function matchLogsChannelPermissionOverwrites(
-  app: App,
-  guild_id: string,
-): D.APIChannelPatchOverwrite[] {
-  return [
-    {
-      // @everyone can't send messages or make threads
-      id: guild_id,
-      type: 0, // role
-      deny: (
-        D.PermissionFlagsBits.SendMessages |
-        D.PermissionFlagsBits.SendMessagesInThreads |
-        D.PermissionFlagsBits.CreatePublicThreads |
-        D.PermissionFlagsBits.CreatePrivateThreads
-      ).toString(),
-    },
-    {
-      // the bot can send messages and make public threads
-      id: app.bot.application_id,
-      type: 1, // user
-      allow: (
-        D.PermissionFlagsBits.SendMessages |
-        D.PermissionFlagsBits.SendMessagesInThreads |
-        D.PermissionFlagsBits.CreatePublicThreads |
-        D.PermissionFlagsBits.CreatePrivateThreads
-      ).toString(),
-    },
-  ]
 }

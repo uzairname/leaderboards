@@ -5,9 +5,9 @@ import { ViewErrors } from '../../../discord-framework/interactions/errors'
 import { sentry } from '../../../logging'
 import { App } from '../../context/app_context'
 import { DatabaseError } from '../../database/errors'
-import { Messages } from '../messages/messages'
-import { Colors } from '../utils/converters'
-import { UserError } from '../utils/user-facing-errors'
+import { Colors } from '../common/constants'
+import { botPermisssionsErrorMessage } from '../common/strings'
+import { UserError } from '../utils/UserError'
 
 export const onViewError = (app: App) =>
   function (
@@ -18,7 +18,7 @@ export const onViewError = (app: App) =>
     let title: string
     if (e instanceof DiscordErrors.BotPermissions) {
       title = 'Missing permissions'
-      description = Messages.botPermisssionsError(app, e)
+      description = botPermisssionsErrorMessage(app, e)
     } else if (e instanceof DiscordAPIError) {
       title = `Error: ${e.message}`
       description = e.message

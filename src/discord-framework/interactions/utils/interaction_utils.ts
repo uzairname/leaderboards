@@ -1,7 +1,7 @@
 import * as D from 'discord-api-types/v10'
 
 export function getModalSubmitEntries(interaction: D.APIModalSubmitInteraction): {
-  [k: string]: { value: string; type: D.ComponentType }
+  [k: string]: { value: string; type: D.ComponentType } | undefined
 } {
   return Object.fromEntries(
     interaction.data.components

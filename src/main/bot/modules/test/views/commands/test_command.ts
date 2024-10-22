@@ -8,8 +8,8 @@ import {
 } from '../../../../../../discord-framework'
 import { ViewState } from '../../../../../../discord-framework/interactions/view_state'
 import { App } from '../../../../../context/app_context'
-import { UserErrors } from '../../../../utils/user-facing-errors'
-import { AppView, ViewModule } from '../../../../utils/view_module'
+import { UserErrors } from '../../../../utils/UserError'
+import { AppView, ViewModule } from '../../../../utils/ViewModule'
 
 const test_cmd_signature = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -37,6 +37,8 @@ export const testCommand = (app: App) =>
       const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
       ctx.state.save.original_user(user_id)
       ctx.state.save.counter(0)
+
+      await app.bot.getMessage('', '')
 
       const user =
         (
@@ -197,7 +199,7 @@ const schema = {
     'button: rename confirm': null,
   }),
   messages: field.Array(field.String()),
-  isAdmin: field.Bool(),
+  isAdmin: field.Boolean(),
   counter: field.Int(),
 }
 

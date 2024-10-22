@@ -1,7 +1,9 @@
-import { eq, not } from 'drizzle-orm'
-import { DbObject, DbObjectManager } from '../../managers'
-import { Settings } from '../../schema'
-import { SettingSelect, SettingUpdate } from '../types'
+import { eq, InferSelectModel, not } from 'drizzle-orm'
+import { DbObject, DbObjectManager } from '../managers'
+import { Settings } from '../schema'
+
+export type SettingSelect = InferSelectModel<typeof Settings>
+export type SettingUpdate = Partial<Omit<SettingSelect, 'id'>>
 
 export class Setting extends DbObject<SettingSelect> {}
 
@@ -35,3 +37,5 @@ export class SettingsManager extends DbObjectManager {
     await this.db.db.delete(Settings).where(not(eq(Settings.id, 1)))
   }
 }
+// Types for each model, for each type of query.
+// The "Update" type of each model is the insert type without primary/foreign keys.

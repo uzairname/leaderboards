@@ -6,6 +6,10 @@ export const features = (environment: string) => {
   return {
     HelpReference: is_dev,
     IsDev: is_dev,
+    ExperimentalCommands: is_dev,
+    QueueMessage: false,
+    DisableLogMatchesOption: false,
+    MultipleTeamsPlayers: false,
   }
 }
 
@@ -17,17 +21,21 @@ export class Config {
     Bot: '/invite',
   }
 
+  readonly OauthRedirectURI: string
+
   readonly DevGuildId = '1041458052055978024'
 
   readonly OwnerIds = ['991398096565182467', '375438205253713933']
 
   readonly RequiredBotPermissions =
     D.PermissionFlagsBits.ManageChannels |
+    D.PermissionFlagsBits.ManageMessages |
     D.PermissionFlagsBits.ManageThreads |
     D.PermissionFlagsBits.ManageRoles
 
-  public readonly OauthRedirectURI: string
   readonly features: ReturnType<typeof features>
+
+  readonly ChallengeTimeoutMs = 1000 * 60 * 10
 
   constructor(readonly env: Env) {
     this.OauthRedirectURI = env.BASE_URL + `/oauth` + this.OauthRoutes.Redirect

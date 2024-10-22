@@ -1,16 +1,17 @@
-import { and, eq, sql } from 'drizzle-orm'
-import { Ranking, Team, User } from '..'
-import { sentry } from '../../../../logging'
-import { DbClient } from '../../client'
-import { DbErrors } from '../../errors'
-import { DbObject, DbObjectManager } from '../../managers'
-import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
-import { PlayerInsert, PlayerSelect } from '../types'
+import { and, eq, InferInsertModel, InferSelectModel, sql } from 'drizzle-orm'
+import { Ranking, Team, User } from '.'
+import { sentry } from '../../../logging'
+import { DbClient } from '../client'
+import { DbErrors } from '../errors'
+import { DbObject, DbObjectManager } from '../managers'
+import { Players, QueueTeams, TeamPlayers, Teams } from '../schema'
+
+export type PlayerSelect = InferSelectModel<typeof Players>
+export type PlayerInsert = Omit<InferInsertModel<typeof Players>, 'id'>
 
 export class Player extends DbObject<PlayerSelect> {
   constructor(data: PlayerSelect, db: DbClient) {
     super(data, db)
-    sentry.debug(`Created player with id ${data.id}, rating ${data.rating}`)
     db.cache.players_by_id[data.id] = this
     db.cache.players[data.ranking_id] ??= {}
     db.cache.players[data.ranking_id][data.user_id] = this
@@ -69,7 +70,7 @@ export class PlayersManager extends DbObjectManager {
   async create(
     user: User,
     ranking: Ranking,
-    data?: Omit<PlayerInsert, 'user_id' | 'ranking_id'>,
+    data: Omit<PlayerInsert, 'user_id' | 'ranking_id'>,
   ): Promise<Player> {
     const new_data = (
       await this.db.db
@@ -106,25 +107,5 @@ export class PlayersManager extends DbObjectManager {
   async getByUser(user_id: string): Promise<Player[]> {
     const data = await this.db.db.select().from(Players).where(eq(Players.user_id, user_id))
     return data.map(data => new Player(data, this.db))
-  }
-
-  getPartial(id: number): Player {
-    if (this.db.cache.players_by_id[id]) {
-      // sentry.debug(`Using cached player ${id}. Rating is ${this.db.cache.players_by_id[id].data.rating}`)
-      return this.db.cache.players_by_id[id]
-    }
-    return new Player(
-      {
-        id,
-        user_id: '',
-        ranking_id: 0,
-        name: null,
-        time_created: null,
-        rating: null,
-        rd: null,
-        stats: null,
-      },
-      this.db,
-    )
   }
 }

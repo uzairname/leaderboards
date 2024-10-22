@@ -1,6 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../../../context/app_context'
-import { getRegisterPlayer } from '../../../players/players'
+import { getOrCreatePlayer } from '../../../players/players'
 
 /**
  * When a user uses a command or button to join a global queue for a ranking.
@@ -14,12 +14,13 @@ export async function userJoinQueue(
   rejoined: boolean
 }> {
   const ranking = await app.db.rankings.get(ranking_id)
-  const player = await getRegisterPlayer(app, user, ranking)
+  const player = await getOrCreatePlayer(app, user, ranking)
   const player_queue_teams = await player.teams()
 
   if (player_queue_teams.length == 0) {
     // the player is not in a team. create a new team with the player and add it to the queue
-    ;(await app.db.teams.create(ranking, {}, [player])).addToQueue()
+    const new_team = await app.db.teams.create(ranking, {}, [player])
+    await new_team.addToQueue()
     return { rejoined: false }
   } else if (player_queue_teams.every(team => !team.in_queue)) {
     // the player is in at least one team, but none are in the queue.

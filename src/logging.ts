@@ -33,11 +33,6 @@ export class Logger extends Toucan {
     this.request = request
   }
 
-  addBreadcrumb(breadcrumb: object): void {
-    console.log(JSON.stringify(breadcrumb))
-    super.addBreadcrumb(breadcrumb)
-  }
-
   async withLogging(handler: (request: Request) => Promise<Response>): Promise<Response> {
     this.setTag('cold-start', `${cache.request_num == 1}`)
     this.debug(`Request #${cache.request_num}`)
@@ -67,7 +62,7 @@ export class Logger extends Toucan {
       })
       .catch(e => {
         this.captureException(e)
-        return new Response('Internal Server Error', { status: 500 })
+        return new Response(`Internal Server Error ${e}`, { status: 500 })
       })
   }
 
@@ -99,7 +94,6 @@ export class Logger extends Toucan {
       new Promise<void>((resolve, reject) => {
         const timeout_ms = 20000
         setTimeout(() => {
-          this.captureMessage(`${timeout_ms} ms`)
           reject(new TimeoutError(`"${request_name}" timed out after ${timeout_ms} ms`))
         }, timeout_ms)
 
@@ -115,7 +109,6 @@ export class Logger extends Toucan {
           }
         })
         .catch(e => {
-          this.captureMessage('catch')
           this.captureException(e)
         }),
     )

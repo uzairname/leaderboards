@@ -5,7 +5,7 @@ import { App } from '../../../context/app_context'
 import { Player, Ranking } from '../../../database/models'
 import { updateUserRoleConnectionData } from '../linked_roles'
 
-export async function getRegisterPlayer(
+export async function getOrCreatePlayer(
   app: App,
   discord_user: D.APIUser | string,
   ranking: Ranking | number,
@@ -39,10 +39,7 @@ export async function getRegisterPlayer(
 }
 
 export async function updatePlayerRating(app: App, player: Player, rating: number, rd: number) {
-  await player.update({
-    rating,
-    rd,
-  })
+  await player.update({ rating, rd })
 
   await Promise.all([
     getUserAccessToken(app, player.data.user_id, [D.OAuth2Scopes.RoleConnectionsWrite]).then(

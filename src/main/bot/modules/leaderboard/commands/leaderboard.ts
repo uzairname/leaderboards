@@ -1,7 +1,7 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand, field } from '../../../../../discord-framework'
 import { App } from '../../../../context/app_context'
-import { AppView } from '../../../utils/view_module'
+import { AppView } from '../../../utils/ViewModule'
 import { guildRankingsOption, withSelectedRanking } from '../../utils/ranking_command_option'
 import { leaderboardMessage } from '../leaderboard_messages'
 
@@ -24,7 +24,7 @@ const leaderboard_cmd = new AppCommand({
 const leaderboardCmdDef = async (app: App, guild_id: string) =>
   new AppCommand({
     ...leaderboard_cmd.options,
-    options: [(await guildRankingsOption(app, guild_id, optionnames.ranking, false)) || []].flat(),
+    options: [(await guildRankingsOption(app, guild_id, optionnames.ranking)) || []].flat(),
   })
 
 export const leaderboardCmd = (app: App) =>
@@ -37,7 +37,7 @@ export const leaderboardCmd = (app: App) =>
         },
         async ctx => {
           ctx.state.save.ranking_id(ranking.data.id)
-          await ctx.edit((await leaderboardMessage(ranking)).responsedata)
+          await ctx.edit((await leaderboardMessage(ranking)).as_response)
         },
       )
     }),

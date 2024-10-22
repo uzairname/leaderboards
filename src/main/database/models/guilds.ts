@@ -1,8 +1,10 @@
-import { eq } from 'drizzle-orm'
-import { DbClient } from '../../client'
-import { DbObject, DbObjectManager } from '../../managers'
-import { Guilds } from '../../schema'
-import type { GuildInsert, GuildSelect } from '../types'
+import { eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
+import { DbClient } from '../client'
+import { DbObject, DbObjectManager } from '../managers'
+import { Guilds } from '../schema'
+
+export type GuildSelect = InferSelectModel<typeof Guilds>
+export type GuildInsert = InferInsertModel<typeof Guilds>
 
 export class Guild extends DbObject<GuildSelect> {
   constructor(data: GuildSelect, db: DbClient) {

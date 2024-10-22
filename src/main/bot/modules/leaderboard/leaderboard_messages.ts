@@ -3,7 +3,8 @@ import { GuildChannelData, MessageData } from '../../../../discord-framework'
 import { sentry } from '../../../../logging'
 import { type App } from '../../../context/app_context'
 import type { Guild, GuildRanking, Ranking } from '../../../database/models'
-import { Colors, escapeMd, relativeTimestamp, space } from '../../utils/converters'
+import { Colors } from '../../common/constants'
+import { escapeMd, relativeTimestamp, space } from '../../common/strings'
 import { getOrUpdateRankedCategory } from '../guilds'
 
 export function addRankingChannelsListeners(app: App) {
@@ -63,7 +64,7 @@ export async function lbChannelData(
   data: GuildChannelData
   reason?: string
 }> {
-  let category = (await getOrUpdateRankedCategory(app, guild)).channel
+  const category = (await getOrUpdateRankedCategory(app, guild)).channel
   return {
     guild_id: guild.data.id,
     data: new GuildChannelData({
@@ -100,11 +101,11 @@ export async function leaderboardMessage(ranking: Ranking): Promise<MessageData>
     })
     .join('\n\n')
 
-  let embed: D.APIEmbed = {
+  const embed: D.APIEmbed = {
     title: `${escapeMd(ranking.data.name)} Leaderboard`,
     description: 
       (players_text || 'No players yet') 
-      + `\n\nLast updated ${relativeTimestamp(new Date())}`, //prettier-ignore
+      + `\n\n-# Last updated ${relativeTimestamp(new Date())}`, //prettier-ignore
     color: Colors.EmbedBackground,
   }
 

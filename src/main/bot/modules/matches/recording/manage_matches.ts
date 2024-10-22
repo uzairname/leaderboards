@@ -1,7 +1,6 @@
-import { nonNullable } from '../../../../../utils/utils'
 import { App } from '../../../../context/app_context'
-import { Match, Player } from '../../../../database/models'
-import { MatchInsert } from '../../../../database/models/types'
+import { Match } from '../../../../database/models'
+import { MatchInsert, MatchMetadata, MatchTeamPlayer } from '../../../../database/models/matches'
 import { validate } from '../../../utils/validate'
 import { scoreRankingHistory } from './score_matches'
 
@@ -9,9 +8,9 @@ export async function updateMatch(
   app: App,
   match: Match,
   outcome?: number[],
-  metadata?: { [key: string]: unknown },
+  metadata?: MatchMetadata,
 ) {
-  validateMatch({
+  validateMatchData({
     ...match.data,
     outcome,
     metadata,
@@ -36,7 +35,7 @@ export async function deleteMatch(app: App, match: Match): Promise<void> {
     guild_rankings.map(async guild_ranking => {
       const summary_message = await match.getSummaryMessage(guild_ranking.guild.data.id)
       await app.bot.utils.deleteMessageIfExists(
-        guild_ranking.guild.data.match_results_channel_id,
+        guild_ranking.guild.data.matches_channel_id,
         summary_message?.message_id,
       )
     }),
@@ -44,13 +43,13 @@ export async function deleteMatch(app: App, match: Match): Promise<void> {
 
   // get player ratings before deleting match
   const player_ratings_before = Object.fromEntries(
-    (await match.teams())
+    (await match.teamPlayers())
       .map(t =>
         t.map(p => [
           p.player.data.id,
           {
-            rating: nonNullable(p.match_player.rating_before, 'rating before'),
-            rd: nonNullable(p.match_player.rd_before, 'rd before'),
+            rating: p.rating_before,
+            rd: p.rd_before,
           },
         ]),
       )
@@ -68,7 +67,9 @@ export async function deleteMatch(app: App, match: Match): Promise<void> {
   )
 }
 
-export function validateMatch<T extends Partial<{ players: Player[][] } & MatchInsert>>(o: T): T {
+export function validateMatchData<
+  T extends Partial<{ team_players: MatchTeamPlayer[][] } & MatchInsert>,
+>(o: T): T {
   if (o.outcome) {
     if (o.team_players) {
       validate(
@@ -76,20 +77,16 @@ export function validateMatch<T extends Partial<{ players: Player[][] } & MatchI
         `Match outcome and players length must match`,
       )
     }
-    if (o.players) {
-      validate(
-        o.outcome!.length === o.players!.length,
-        `Match outcome and players length must match`,
-      )
-    }
   }
-  if (o.players) {
+
+  if (o.team_players) {
+    const team_player_ids = o.team_players.map(team => team.map(p => p.player.data.id))
     validate(
-      o.players.flat().length === new Set(o.players.flat()).size,
+      team_player_ids.flat().length === new Set(team_player_ids.flat()).size,
       `Duplicate players in a match`,
     )
     validate(
-      o.players.flat().every(p => p.data.ranking_id === o.ranking_id),
+      new Set(o.team_players.flat().map(p => p.player.data.ranking_id)).size === 1,
       `Players must be from the same ranking`,
     )
   }

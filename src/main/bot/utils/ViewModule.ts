@@ -42,7 +42,7 @@ export class ViewModule {
   async getAllCommandSignatures(app: App, guild_id?: string): Promise<AnyAppCommand[]> {
     return Promise.all(
       this.getAllViews(app).map(async v => {
-        if (v.is_experimental && !app.config.features.IsDev) {
+        if (v.is_experimental && !app.config.features.ExperimentalCommands) {
           return []
         }
         if (guild_id) {

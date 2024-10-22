@@ -1,10 +1,9 @@
-import { and, eq } from 'drizzle-orm'
-import { Guild, Ranking } from '..'
-import { DbClient } from '../../client'
-import { DbErrors } from '../../errors'
-import { DbObject, DbObjectManager } from '../../managers'
-import { GuildRankings, Guilds, Rankings } from '../../schema'
-import { GuildRankingInsert, GuildRankingSelect } from '../types'
+import { and, eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
+import { Guild, Ranking } from '.'
+import { DbClient } from '../client'
+import { DbErrors } from '../errors'
+import { DbObject, DbObjectManager } from '../managers'
+import { GuildRankings, Guilds, Rankings } from '../schema'
 
 export class GuildRanking extends DbObject<GuildRankingSelect> {
   constructor(data: GuildRankingSelect, db: DbClient) {
@@ -115,3 +114,5 @@ export class GuildRankingsManager extends DbObjectManager {
     }
   }
 }
+export type GuildRankingSelect = InferSelectModel<typeof GuildRankings>
+export type GuildRankingInsert = InferInsertModel<typeof GuildRankings>

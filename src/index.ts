@@ -4,17 +4,15 @@ import { apiRouter } from './main/api/api_router'
 import { authorize } from './main/api/authorize'
 import { oauthRouter } from './main/api/oauth'
 import { updateRouter } from './main/api/update_app'
+import { handleInteractionRequest } from './main/bot/manage-views/handle_interaction_request'
 import { App } from './main/context/app_context'
 import { runTests } from './main/test/test'
-import { handleInteractionRequest } from './main/bot/manage-views/manage_views'
 
 export default {
   fetch(request: Request, env: Env, execution_context: ExecutionContext) {
     initSentry(request, env, execution_context)
 
     const app = new App(env)
-
-    console.log('app', app)
 
     const router = Router()
       .post('/interactions', request => handleInteractionRequest(app, request))

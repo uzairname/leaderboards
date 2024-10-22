@@ -3,9 +3,10 @@ import { AppCommand } from '../../../../../../discord-framework'
 import { nonNullable } from '../../../../../../utils/utils'
 import { App } from '../../../../../context/app_context'
 import { ensureAdminPerms } from '../../../../utils/perms'
-import { UserError } from '../../../../utils/user-facing-errors'
+import { UserError } from '../../../../utils/UserError'
 import { guildRankingsOption } from '../../../utils/ranking_command_option'
-import { getRegisterPlayer } from '../../players'
+import { getOrCreatePlayer } from '../../players'
+import { AppView } from '../../../../utils/ViewModule'
 
 const points_cmd_signature = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -13,7 +14,7 @@ const points_cmd_signature = new AppCommand({
   description: 'Add or remove points from a user',
 })
 
-export const pointsCmdDef = async (app: App, guild_id: string) => {
+export const pointsCmdInGuild = async (app: App, guild_id: string) => {
   let options: D.APIApplicationCommandOption[] = [
     {
       name: 'user',
@@ -30,7 +31,7 @@ export const pointsCmdDef = async (app: App, guild_id: string) => {
   ]
 
   options = options.concat(
-    await guildRankingsOption(app, guild_id, 'ranking', false, 'Ranking in which to add points'),
+    await guildRankingsOption(app, guild_id, 'ranking', {}, 'Ranking in which to add points'),
   )
 
   return new AppCommand({
@@ -65,14 +66,14 @@ export const pointsCmd = (app: App) =>
         }
 
         // Get the selected ranking
-        let ranking = await app.db.rankings.get(parseInt(option_names['ranking']))
+        const ranking = await app.db.rankings.get(parseInt(option_names['ranking']))
 
         // Get the selected player in the ranking
         const user = nonNullable(
           ctx.interaction.data.resolved?.users?.[option_names.user],
           'interaction data user',
         )
-        let player = await getRegisterPlayer(app, user, ranking)
+        const player = await getOrCreatePlayer(app, user, ranking)
 
         // add points to player
         await player.update({
@@ -92,3 +93,5 @@ export const pointsCmd = (app: App) =>
       },
     )
   })
+
+export default new AppView(pointsCmd, pointsCmdInGuild).experimental()

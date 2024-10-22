@@ -1,14 +1,15 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { GuildChannelData, RoleData } from '../../../discord-framework'
+import { sentry } from '../../../logging'
 import { App } from '../../context/app_context'
 import { Guild } from '../../database/models'
-import { Colors } from '../utils/converters'
+import { Colors } from '../common/constants'
 
 export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> {
   let app_guild = await app.db.guilds.get(guild_id)
   if (!app_guild) {
-    let discord_guild = await app.bot.getGuild(guild_id)
+    const discord_guild = await app.bot.getGuild(guild_id)
     app_guild = await app.db.guilds.create({
       id: discord_guild.id,
       name: discord_guild.name,
@@ -24,10 +25,9 @@ export async function communityEnabled(app: App, guild_id: string): Promise<bool
 
 export async function getMatchLogsChannel(
   app: App,
-  guild_id: string,
+  guild: Guild,
 ): Promise<D.APIChannel | undefined> {
-  const guild = await getOrAddGuild(app, guild_id)
-  const channel_id = guild.data.match_results_channel_id
+  const channel_id = guild.data.matches_channel_id
   if (channel_id) {
     try {
       return await app.bot.getChannel(channel_id)
@@ -46,9 +46,11 @@ export async function getOrUpdateRankedCategory(
   channel: D.APIChannel
   is_new_channel: boolean
 }> {
-  let category_id = guild.data.category_id
+  const category_id = guild.data.category_id
 
-  let result = await app.bot.utils.syncGuildChannel({
+  sentry.debug(`category_id ${category_id}`)
+
+  const result = await app.bot.utils.syncGuildChannel({
     target_channel_id: category_id,
     channelData: async () => {
       return {
@@ -60,6 +62,8 @@ export async function getOrUpdateRankedCategory(
       }
     },
   })
+
+  sentry.debug(`result ${JSON.stringify(result)}`)
 
   if (result.is_new_channel) {
     await guild.update({ category_id: result.channel.id })
@@ -75,7 +79,7 @@ export async function syncGuildAdminRole(
   role: D.APIRole
   is_new_role: boolean
 }> {
-  let result = await app.bot.utils.syncRole({
+  const result = await app.bot.utils.syncRole({
     guild_id: guild.data.id,
     target_role_id: guild.data.admin_role_id,
     roleData: async () => {

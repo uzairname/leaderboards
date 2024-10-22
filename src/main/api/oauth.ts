@@ -4,7 +4,7 @@ import { Router } from 'itty-router'
 import { DiscordAPIClient } from '../../discord-framework'
 import { nonNullable } from '../../utils/utils'
 import { App } from '../context/app_context'
-import { AccessToken } from '../database/models/models/access_tokens'
+import { AccessToken } from '../database/models/access_tokens'
 
 export const oauthRouter = (app: App) =>
   Router({ base: `/oauth` })

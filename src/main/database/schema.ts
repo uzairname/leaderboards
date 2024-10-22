@@ -1,5 +1,8 @@
 import { RESTPostOAuth2AccessTokenResult } from 'discord-api-types/v10'
 import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, uniqueIndex } from 'drizzle-orm/pg-core'
+import { MatchStatus } from './models/matches'
+import { Vote } from './models/matches'
+import { MatchMetadata } from './models/matches'
 
 
 export const Settings = pgTable('Settings', {
@@ -32,7 +35,7 @@ export const Guilds = pgTable('Guilds', {
   time_created: timestamp('time_created').defaultNow(),
   admin_role_id: text('admin_role_id'),
   category_id: text('category_id'),
-  match_results_channel_id: text('match_results_channel_id'),
+  matches_channel_id: text('matches_channel_id'),
 })
 
 
@@ -46,7 +49,6 @@ export const Rankings = pgTable('Rankings', {
     initial_rating: number
     initial_rd: number
   }>(),
-  // match_settings: jsonb('match_settings'),
 })
 
 
@@ -57,7 +59,6 @@ export const GuildRankings = pgTable('GuildRankings', {
   is_admin: boolean('is_admin'),
   leaderboard_channel_id: text('leaderboard_channel_id'),
   leaderboard_message_id: text('leaderboard_message_id'),
-  ongoing_matches_channel_id: text('ongoing_matches_channel_id'),
   display_settings: jsonb('display_settings').$type<{
     leaderboard_message?: boolean
     log_matches?: boolean
@@ -73,8 +74,8 @@ export const Players = pgTable('Players', {
   ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, { onDelete: 'cascade' }),
   time_created: timestamp('time_created').defaultNow(),
   name: text('name'),
-  rating: real('rating'),
-  rd: real('rd'),
+  rating: real('rating').notNull(),
+  rd: real('rd').notNull(),
   stats: jsonb('stats'),
 }, (table) => { return {
   user_idx: index('player_user_id_index').on(table.user_id),
@@ -106,27 +107,17 @@ export const QueueTeams = pgTable('QueueTeams', {
 })
 
 
-export const ActiveMatches = pgTable('ActiveMatches', {
-  id: serial('id').primaryKey(),
-  ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, {onDelete: 'cascade'}),
-  time_created: timestamp('time_created').defaultNow(),
-  status: integer('status'),
-  team_players: jsonb('team_players').$type<number[][]>(),
-  team_votes: jsonb('team_votes').$type<number[][]>(),
-  channel_id: text('channel_id'),
-  message_id: text('message_id'),
-})
-
-
 export const Matches = pgTable('Matches', {
   id: serial('id').primaryKey(),
   ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, {onDelete: 'cascade'}),
   number: integer('number'),
-  team_players: jsonb('team_players').$type<number[][]>(),
   time_started: timestamp('time_started'),
+  status: integer('status').notNull().$type<MatchStatus>(),
+  team_votes: jsonb('team_votes').$type<Vote[]>(),
+  ongoing_match_channel_id: text('ongoing_match_channel_id'),
   time_finished: timestamp('time_finished'),
   outcome: jsonb('outcome').$type<number[]>(),
-  metadata: jsonb('metadata'),
+  metadata: jsonb('metadata').$type<MatchMetadata>(),
 }, (table) => { return {
   ranking_idx: index('match_ranking_id_index').on(table.ranking_id),
 }})
@@ -144,10 +135,9 @@ export const MatchSummaryMessages = pgTable('MatchSummaryMessages', {
 export const MatchPlayers = pgTable('MatchPlayers', {
   match_id: integer('match_id').notNull().references(() => Matches.id, { onDelete: 'cascade' }),
   player_id: integer('player_id').notNull().references(() => Players.id, { onDelete: 'cascade' }),
-  team_num: integer('team_num'),
-  rating_before: real('rating_before'),
-  rd_before: real('rd_before'),
-  time_created: timestamp('time_created').defaultNow(),
+  team_num: integer('team_num').notNull(),
+  rating_before: real('rating_before').notNull(),
+  rd_before: real('rd_before').notNull(),
 }, (table) => { return {
   cpk: primaryKey(table.match_id, table.player_id),
 }})

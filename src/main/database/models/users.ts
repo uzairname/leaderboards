@@ -1,8 +1,11 @@
-import { eq } from 'drizzle-orm'
-import { DbClient } from '../../client'
-import { DbObject, DbObjectManager } from '../../managers'
-import { Users } from '../../schema'
-import { UserInsert, UserSelect } from '../types'
+import { eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
+import { DbClient } from '../client'
+import { DbObject, DbObjectManager } from '../managers'
+import { Users } from '../schema'
+
+export type UserSelect = InferSelectModel<typeof Users>
+export type UserInsert = InferInsertModel<typeof Users>
+export type UserUpdate = Partial<Omit<UserInsert, 'id'>>
 
 export class User extends DbObject<UserSelect> {
   constructor(data: UserSelect, db: DbClient) {

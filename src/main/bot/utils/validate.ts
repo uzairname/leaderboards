@@ -1,4 +1,4 @@
-import { UserErrors } from './user-facing-errors'
+import { UserErrors } from './UserError'
 
 export function validate(condition: boolean, message?: string): asserts condition {
   if (!condition) {

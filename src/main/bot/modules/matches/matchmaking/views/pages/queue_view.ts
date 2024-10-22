@@ -7,9 +7,10 @@ import {
   field,
 } from '../../../../../../../discord-framework'
 import { App } from '../../../../../../context/app_context'
-import { Colors, escapeMd, relativeTimestamp } from '../../../../../utils/converters'
+import { Colors } from '../../../../../common/constants'
+import { escapeMd, relativeTimestamp } from '../../../../../common/strings'
 import { checkGuildInteraction } from '../../../../../utils/perms'
-import { AppView } from '../../../../../utils/view_module'
+import { AppView } from '../../../../../utils/ViewModule'
 import { userJoinQueue, userLeaveQueue } from '../../queue/queue_join_leave'
 
 const queue_message_def = new MessageView({
@@ -40,7 +41,7 @@ export default new AppView((app: App) =>
             app.bot.editMessage(
               interaction.channel!.id,
               interaction.message!.id,
-              (await queueMessage(app, ranking_id, ctx)).patchdata,
+              (await queueMessage(app, ranking_id, ctx)).as_patch,
             ),
             ctx.edit({
               content: 'You joined the queue',

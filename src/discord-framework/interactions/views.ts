@@ -1,6 +1,5 @@
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging'
-import type { StringDataSchema } from '../../utils/string_data'
 import type { DiscordAPIClient } from '../rest/client'
 import type { MessageData } from '../rest/objects'
 import { ViewErrors } from './errors'
@@ -24,6 +23,7 @@ import type {
   StateContext,
   ViewAutocompleteCallback,
 } from './types'
+import type { StringDataSchema } from './utils/string_data'
 import { ViewState } from './view_state'
 
 export abstract class BaseView<TSchema extends StringDataSchema> {

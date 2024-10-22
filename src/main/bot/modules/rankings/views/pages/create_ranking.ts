@@ -4,18 +4,20 @@ import {
   ComponentContext,
   InteractionContext,
   MessageView,
+  StateContext,
   _,
   field,
   getModalSubmitEntries,
 } from '../../../../../../discord-framework'
-import { sentry } from '../../../../../../logging'
 import { nonNullable } from '../../../../../../utils/utils'
 import { App } from '../../../../../context/app_context'
-import { Colors, escapeMd } from '../../../../utils/converters'
+import { Colors } from '../../../../common/constants'
+import { commandMention, escapeMd } from '../../../../common/strings'
 import { checkGuildInteraction, ensureAdminPerms } from '../../../../utils/perms'
-import { AppView } from '../../../../utils/view_module'
+import { AppView } from '../../../../utils/ViewModule'
 import { getMatchLogsChannel, getOrAddGuild } from '../../../guilds'
 import { syncGuildRankingLbMessage } from '../../../leaderboard/leaderboard_messages'
+import { syncMatchesChannel } from '../../../matches/matches_channel'
 import { sendGuildRankingQueueMessage } from '../../../matches/matchmaking/queue/queue_messages'
 import {
   createNewRankingInGuild,
@@ -24,6 +26,7 @@ import {
   max_ranking_name_length,
   validateRankingOptions,
 } from '../../manage_rankings'
+import { rankings_cmd_signature } from '../commands/rankings'
 import { guildRankingSettingsPage, ranking_settings_view } from './ranking_settings'
 
 export const create_ranking_view = new MessageView({
@@ -42,9 +45,9 @@ export const create_ranking_view = new MessageView({
     input_name: field.String(),
     input_players_per_team: field.Int(),
     input_num_teams: field.Int(),
-    leaderboard_message: field.Bool(),
-    queue_message: field.Bool(),
-    log_matches: field.Bool(),
+    leaderboard_message: field.Boolean(),
+    queue_message: field.Boolean(),
+    log_matches: field.Boolean(),
   },
 })
 
@@ -90,34 +93,70 @@ export async function createRankingPageResponseData(
   const queue_message = ctx.state.data.queue_message ?? true
   const log_matches = ctx.state.data.log_matches ?? true
 
-  const match_results_channel_id = (await getMatchLogsChannel(app, guild.data.id))?.id
+  const guild_match_results_channel_id = (await getMatchLogsChannel(app, guild))?.id
 
-  const description = `## Creating a New Ranking: **${escapeMd(name)}**`
-    + `\nClick "Confirm" to create a new ranking with the following settings. Use the buttons below to toggle these settings.\n`
-    + `\n- **Matches**: Matches are **`
-      + new Array(num_teams).fill(players_per_team).join('v') + `s**`
-      + ` (${num_teams} teams and ${players_per_team} player` 
-      + (players_per_team === 1 ? '' : 's') + ` per team)`
-    + `\n- **Live Leaderboard: **` + (leaderboard_message
-      ? `A **new channel** will be created where the leaderboard is displayed live`
-      : `Disabled for now. You can create one later via /rankings .`)
-    + (log_matches
-      ? `\n- ` + (match_results_channel_id
-        ? `Matches in this ranking will be logged in <#${match_results_channel_id}>`
-        : `A new channel will be created where matches in this ranking are logged`)
+  const description =
+    `### Settings:`
+    + `\nYou're making a new ranking with the following settings.`
+    + ` Modify the settings with the buttons below, and click Confirm to create the ranking.`
+    + (app.config.features.MultipleTeamsPlayers
+      ? `\n- **Teams**: Matches in this ranking are **${new Array(num_teams).fill(players_per_team).join('v')}s**`
+          + ` (${num_teams} teams and ${players_per_team} player${(players_per_team === 1 ? '' : 's')} per team)`
       : ``)
-    + (queue_message
-      ? `\n- ` + (leaderboard_message
-        ? `A message will be posted where players can join a matchmaking queue`
-        : `A message will be posted in <#${nonNullable(ctx.interaction.channel, 'interaction channel').id}>`
-          + ` where players can join a matchmaking queue`)
-      : ``
-    + `\nUse the buttons to modify these settings`) // prettier-ignore
+    + (leaderboard_message
+      ? `\n- **Live Leaderboard**: A new channel will be created where the leaderboard is displayed and updated live`
+      : ``)
+    + (log_matches
+      ? `\n- **Match Logging**:`
+        + (guild_match_results_channel_id
+          ? ` Matches in this ranking will be logged in <#${guild_match_results_channel_id}>`
+          : ` A new channel will be created where matches in this ranking are logged`)
+      : ``)
+    + (app.config.features.QueueMessage && queue_message
+      ? `\n- **Matchmaking Queue** A message will be sent where players can join the matchmaking queue.`
+      : ``)
+    + `\n-# You can edit these settings later by running`
+    + ` ${await commandMention(app, rankings_cmd_signature, guild.data.id)} **${escapeMd(name)}**`
+    + `` // prettier-ignore
+
+  let components: D.APIMessageActionRowComponent[] = [
+    {
+      type: D.ComponentType.Button,
+      style: D.ButtonStyle.Primary,
+      custom_id: ctx.state.set.callback(createRankingModal).cId(),
+      label: 'Rename',
+    },
+    {
+      type: D.ComponentType.Button,
+      style: leaderboard_message ? D.ButtonStyle.Primary : D.ButtonStyle.Secondary,
+      label: leaderboard_message ? `Disable Leaderboard` : `Enable Leaderboard`,
+      custom_id: ctx.state.set.leaderboard_message(!leaderboard_message).cId(),
+    },
+  ]
+
+  if (app.config.features.DisableLogMatchesOption) {
+    components = components.concat({
+      type: D.ComponentType.Button,
+      style: log_matches ? D.ButtonStyle.Primary : D.ButtonStyle.Secondary,
+      label: log_matches ? `Don't Log Matches` : `Log Matches`,
+      custom_id: ctx.state.set.log_matches(!log_matches).cId(),
+    })
+  }
+
+  if (app.config.features.QueueMessage) {
+    components = components.concat({
+      type: D.ComponentType.Button,
+      style: queue_message ? D.ButtonStyle.Primary : D.ButtonStyle.Secondary,
+      label: queue_message ? `Disable Queue Message` : `Enable Queue Message`,
+      custom_id: ctx.state.set.queue_message(!queue_message).cId(),
+    })
+  }
 
   const response: D.APIInteractionResponseCallbackData = {
     flags: D.MessageFlags.Ephemeral,
     embeds: [
       {
+        title: `Setting up a new ranking: **"${escapeMd(name)}"**`,
         description,
         color: Colors.EmbedBackground,
       },
@@ -125,32 +164,7 @@ export async function createRankingPageResponseData(
     components: [
       {
         type: D.ComponentType.ActionRow,
-        components: [
-          {
-            type: D.ComponentType.Button,
-            style: D.ButtonStyle.Primary,
-            custom_id: ctx.state.set.callback(createRankingModal).cId(),
-            label: 'Edit Name & Teams',
-          },
-          {
-            type: D.ComponentType.Button,
-            style: leaderboard_message ? D.ButtonStyle.Primary : D.ButtonStyle.Secondary,
-            label: leaderboard_message ? `Leaderboard: Enabled` : `Leaderboard: Enabled`,
-            custom_id: ctx.state.set.leaderboard_message(!leaderboard_message).cId(),
-          },
-          {
-            type: D.ComponentType.Button,
-            style: log_matches ? D.ButtonStyle.Primary : D.ButtonStyle.Secondary,
-            label: log_matches ? `Don't Log Matches` : `Log Matches`,
-            custom_id: ctx.state.set.log_matches(!log_matches).cId(),
-          },
-          {
-            type: D.ComponentType.Button,
-            style: queue_message ? D.ButtonStyle.Primary : D.ButtonStyle.Secondary,
-            label: (queue_message ? `Don't Create` : `Create`) + ` Queue Message`,
-            custom_id: ctx.state.set.queue_message(!queue_message).cId(),
-          },
-        ],
+        components,
       },
       {
         type: D.ComponentType.ActionRow,
@@ -175,41 +189,46 @@ export async function createRankingPageResponseData(
   return response
 }
 
-export function createRankingModal(app: App, ctx: any): D.APIModalInteractionResponse {
+export function createRankingModal(app: App, ctx: StateContext<typeof create_ranking_view>): D.APIModalInteractionResponse {
+  let components = [rankingNameTextInput(ctx.state.data.input_name)]
+
+  if (app.config.features.MultipleTeamsPlayers) {
+    components = components.concat([
+      {
+        type: D.ComponentType.ActionRow,
+        components: [
+          {
+            type: D.ComponentType.TextInput,
+            style: D.TextInputStyle.Short,
+            custom_id: 'num_teams',
+            label: 'Number of teams per match',
+            placeholder: `${ctx.state.data.input_num_teams ?? default_num_teams}`,
+            required: false,
+          },
+        ],
+      },
+      {
+        type: D.ComponentType.ActionRow,
+        components: [
+          {
+            type: D.ComponentType.TextInput,
+            style: D.TextInputStyle.Short,
+            custom_id: 'players_per_team',
+            label: 'Players per team',
+            placeholder: `${ctx.state.data.input_players_per_team ?? default_players_per_team}`,
+            required: false,
+          },
+        ],
+      },
+    ])
+  }
+
   return {
     type: D.InteractionResponseType.Modal,
     data: {
       custom_id: ctx.state.set.callback(onCreateRankingModalSubmit).cId(),
       title: 'Create a new ranking',
-      components: [
-        rankingNameTextInput(ctx.state.data.input_name),
-        {
-          type: D.ComponentType.ActionRow,
-          components: [
-            {
-              type: D.ComponentType.TextInput,
-              style: D.TextInputStyle.Short,
-              custom_id: 'num_teams',
-              label: 'Number of teams per match',
-              placeholder: `${ctx.state.data.input_num_teams ?? default_num_teams}`,
-              required: false,
-            },
-          ],
-        },
-        {
-          type: D.ComponentType.ActionRow,
-          components: [
-            {
-              type: D.ComponentType.TextInput,
-              style: D.TextInputStyle.Short,
-              custom_id: 'players_per_team',
-              label: 'Players per team',
-              placeholder: `${ctx.state.data.input_players_per_team ?? default_players_per_team}`,
-              required: false,
-            },
-          ],
-        },
-      ],
+      components,
     },
   }
 }
@@ -219,10 +238,10 @@ export function onCreateRankingModalSubmit(
   ctx: ComponentContext<typeof create_ranking_view>,
 ): Promise<ChatInteractionResponse> {
   const modal_input = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
-  modal_input['name'].value && ctx.state.save.input_name(modal_input['name'].value)
-  modal_input['num_teams'].value &&
+  modal_input['name']?.value && ctx.state.save.input_name(modal_input['name'].value)
+  modal_input['num_teams']?.value &&
     ctx.state.save.input_num_teams(parseInt(modal_input['num_teams'].value))
-  modal_input['players_per_team'].value &&
+  modal_input['players_per_team']?.value &&
     ctx.state.save.input_players_per_team(parseInt(modal_input['players_per_team'].value))
 
   return createRankingPage(app, ctx)
@@ -238,8 +257,9 @@ export function onCreateConfirmBtn(
     },
     async ctx => {
       await ensureAdminPerms(app, ctx)
+
       const guild = await getOrAddGuild(app, checkGuildInteraction(ctx.interaction).guild_id)
-      sentry.debug('ctx.state.data.leaderboard_message', ctx.state.data.leaderboard_message)
+
       const result = await createNewRankingInGuild(app, guild, {
         name: ctx.state.get.input_name(),
         num_teams: ctx.state.data.input_num_teams,
@@ -249,8 +269,14 @@ export function onCreateConfirmBtn(
           leaderboard_message: ctx.state.data.leaderboard_message,
         },
       })
+
       await syncGuildRankingLbMessage(app, result.new_guild_ranking, true)
-      if (ctx.state.data.queue_message) {
+
+      if (result.new_guild_ranking.data.display_settings?.log_matches) {
+        await syncMatchesChannel(app, guild)
+      }
+
+      if (ctx.state.data.queue_message && app.config.features.QueueMessage) {
         await sendGuildRankingQueueMessage(
           app,
           result.new_guild_ranking,

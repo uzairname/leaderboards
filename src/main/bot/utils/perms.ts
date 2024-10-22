@@ -2,7 +2,7 @@ import * as D from 'discord-api-types/v10'
 import { AnyView, InteractionContext } from '../../../discord-framework'
 import { App } from '../../context/app_context'
 import { getOrAddGuild } from '../modules/guilds'
-import { UserError } from './user-facing-errors'
+import { UserError } from './UserError'
 
 export function checkGuildInteraction<T extends D.APIBaseInteraction<any, any>>(
   interaction: T,
@@ -33,10 +33,10 @@ async function determineAdminPerms(app: App, ctx: InteractionContext<AnyView>) {
 
   const guild = await getOrAddGuild(app, interaction.guild_id)
   const member = interaction.member
-  let is_owner = app.config.OwnerIds.includes(member.user.id)
-  let admin_role_id = guild.data.admin_role_id
-  let has_admin_role = admin_role_id !== null && member.roles.includes(admin_role_id)
-  let has_admin_perms =
+  const is_owner = app.config.OwnerIds.includes(member.user.id)
+  const admin_role_id = guild.data.admin_role_id
+  const has_admin_role = admin_role_id !== null && member.roles.includes(admin_role_id)
+  const has_admin_perms =
     (BigInt(member.permissions) & D.PermissionFlagsBits.Administrator) ===
     D.PermissionFlagsBits.Administrator
 

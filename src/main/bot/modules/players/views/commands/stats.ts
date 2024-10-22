@@ -7,9 +7,9 @@ import {
   field,
 } from '../../../../../../discord-framework'
 import { App } from '../../../../../context/app_context'
-import { Colors } from '../../../../utils/converters'
+import { Colors } from '../../../../common/constants'
 import { checkGuildInteraction } from '../../../../utils/perms'
-import { AppView } from '../../../../utils/view_module'
+import { AppView } from '../../../../utils/ViewModule'
 import { matches_view } from '../../../matches/logging/views/pages/matches_view'
 
 const option_names = {
@@ -131,4 +131,4 @@ async function mainPage(
   }
 }
 
-export default new AppView(statsCmd)
+export default new AppView(statsCmd).experimental()

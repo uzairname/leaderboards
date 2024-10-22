@@ -1,9 +1,10 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand, InteractionContext, StateContext, _, field } from '../../../discord-framework'
 import { App } from '../../context/app_context'
-import { Messages } from '../messages/messages'
-import { Colors, botAndOauthUrl, dateTimestamp } from '../utils/converters'
-import { AppView } from '../utils/view_module'
+import { Colors } from '../common/constants'
+import { AppMessages } from '../common/messages'
+import { botAndOauthUrl, dateTimestamp, github_url } from '../common/strings'
+import { AppView } from '../utils/ViewModule'
 
 export const help_cmd = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -43,20 +44,20 @@ async function mainPage(
 ): Promise<D.APIInteractionResponseCallbackData> {
   const last_deployed = (await app.db.settings.getOrUpdate()).data.last_deployed
 
-  let last_deployed_timestamp = last_deployed ? dateTimestamp(last_deployed) : 'unknown'
+  const last_deployed_timestamp = last_deployed ? dateTimestamp(last_deployed) : 'unknown'
 
   const embed: D.APIEmbed = {
     title: '🏅 Leaderboards',
-    description: Messages.concise_description,
+    description: AppMessages.concise_description,
     fields: [
       {
         name: `Source Code`,
-        value: `This bot is open source! [Source Code](${Messages.github_url})`,
+        value: `This bot is open source! [Source Code](${github_url})`,
         inline: true,
       },
       {
         name: `Version`,
-        value: `The bot was last updated on ${last_deployed_timestamp}`,
+        value: `Last updated on ${last_deployed_timestamp}`,
         inline: true,
       },
     ],
@@ -92,7 +93,7 @@ async function helpComponents(
   ctx: StateContext<typeof help_cmd>,
 ): Promise<D.APIActionRowComponent<D.APIMessageActionRowComponent>[]> {
   let components: D.APIButtonComponent[] = []
-  let action_rows: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = [
+  const action_rows: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = [
     {
       type: D.ComponentType.ActionRow,
       components,

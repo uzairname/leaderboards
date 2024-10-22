@@ -59,7 +59,6 @@ async function migrate_database() {
   }
 }
 
-
 dotenv.config()
 
 migrate_database().then(() => {

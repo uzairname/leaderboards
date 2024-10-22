@@ -9,9 +9,10 @@ import {
 } from '../../../../../../discord-framework'
 import { App } from '../../../../../context/app_context'
 import { GuildRanking } from '../../../../../database/models'
-import { Colors, escapeMd, messageLink } from '../../../../utils/converters'
+import { Colors } from '../../../../common/constants'
+import { escapeMd, messageLink } from '../../../../common/strings'
 import { ensureAdminPerms } from '../../../../utils/perms'
-import { AppView } from '../../../../utils/view_module'
+import { AppView } from '../../../../utils/ViewModule'
 import { syncGuildRankingLbMessage } from '../../../leaderboard/leaderboard_messages'
 import { sendGuildRankingQueueMessage } from '../../../matches/matchmaking/queue/queue_messages'
 import { sendSelectChannelPage } from '../../../utils/views/pages/select_channel'
@@ -26,12 +27,12 @@ export const ranking_settings_view = new MessageView({
     guild_id: field.String(),
     ranking_id: field.Int(),
     ranking_name: field.String(),
-    edit: field.Bool(),
+    edit: field.Boolean(),
     callback: field.Choice({
       onSettingSelect,
       onLbChannelSelect,
       onRenameModalSubmit,
-      onQueueChannelSelect,
+      onQueueMessageSelect,
       onDeleteConfirmBtn,
       eloSettingsPage,
     }),
@@ -65,24 +66,20 @@ export const rankingSettingsView = (app: App) =>
 
 export default new AppView(rankingSettingsView)
 
-const setting_select_menu_options: Record<
+const setting_select_menu_options: (app: App) => Record<
   string,
-  (
-    app: App,
-    guild_ranking: GuildRanking,
-  ) => {
+  (guild_ranking: GuildRanking) => {
     name: string
     description: string
     onSelect: (
-      app: App,
       ctx: ComponentContext<typeof ranking_settings_view>,
-    ) => ChatInteractionResponse | Promise<ChatInteractionResponse>
+    ) => Promise<ChatInteractionResponse>
   }
-> = {
+> = (app: App) => ({
   rename: () => ({
     name: '✏️Rename',
     description: 'Rename the ranking',
-    onSelect: (_, ctx) => ({
+    onSelect: async ctx => ({
       type: D.InteractionResponseType.Modal,
       data: {
         custom_id: ctx.state.set.callback(onRenameModalSubmit).cId(),
@@ -94,7 +91,7 @@ const setting_select_menu_options: Record<
   leaderboard_msg: () => ({
     name: '🏅Send Leaderboard',
     description: 'Send a live-updating leaderboard to a channel',
-    onSelect: (app, ctx) => {
+    onSelect: async ctx => {
       return ctx.defer(
         {
           type: D.InteractionResponseType.DeferredMessageUpdate,
@@ -114,24 +111,23 @@ const setting_select_menu_options: Record<
   queue_message: () => ({
     name: '⚔️Send Queue Message',
     description: 'Send a queue message to a channel',
-    onSelect: (app, ctx) => {
-      return ctx.defer(
+    onSelect: async ctx =>
+      ctx.defer(
         {
           type: D.InteractionResponseType.DeferredMessageUpdate,
         },
         async ctx => {
           await ctx.edit(
             await sendSelectChannelPage(app, ctx.interaction, {
-              submit_cid: ctx.state.set.callback(onQueueChannelSelect).cId(),
+              submit_cid: ctx.state.set.callback(onQueueMessageSelect).cId(),
               channel_id_field: 'selected_channel_id',
               text_only: true,
             }),
           )
         },
-      )
-    },
+      ),
   }),
-  match_logs: (_, guild_ranking) => {
+  match_logs: guild_ranking => {
     return {
       name: guild_ranking.data.display_settings?.log_matches
         ? '📜Disable Match Logs'
@@ -139,8 +135,8 @@ const setting_select_menu_options: Record<
       description: guild_ranking.data.display_settings?.log_matches
         ? `Stop logging matches from this ranking to the chosen channel`
         : `Log the results of matches to a channel`,
-      onSelect: async (app, ctx) => {
-        return ctx.defer(
+      onSelect: async ctx =>
+        ctx.defer(
           {
             type: D.InteractionResponseType.DeferredMessageUpdate,
           },
@@ -162,14 +158,13 @@ const setting_select_menu_options: Record<
             })
             await ctx.edit(await guildRankingSettingsPage(app, ctx))
           },
-        )
-      },
+        ),
     }
   },
   delete: () => ({
     name: '🗑️Delete',
     description: 'Delete this ranking',
-    onSelect: async (app, ctx) => {
+    onSelect: async ctx => {
       await ensureAdminPerms(app, ctx)
       return {
         type: D.InteractionResponseType.UpdateMessage,
@@ -207,7 +202,7 @@ const setting_select_menu_options: Record<
       }
     },
   }),
-}
+})
 
 export async function guildRankingSettingsPage(
   app: App,
@@ -220,7 +215,7 @@ export async function guildRankingSettingsPage(
 
   const embed: D.APIEmbed = {
     title: `${escapeMd(ctx.state.data.ranking_name)}`,
-    description: await guildRankingDetails(app, guild_ranking, { queue_teams: true }),
+    description: await guildRankingDetails(app, guild_ranking),
     color: Colors.EmbedBackground,
   }
 
@@ -228,13 +223,23 @@ export async function guildRankingSettingsPage(
     type: D.ComponentType.StringSelect,
     custom_id: ctx.state.set.callback(onSettingSelect).cId(),
     placeholder: `Select a setting`,
-    options: await Promise.all(
-      Object.entries(setting_select_menu_options).map(async ([value, option]) => ({
-        label: option(app, guild_ranking).name,
-        value,
-        description: option(app, guild_ranking).description,
-      })),
-    ),
+    options: Object.entries(setting_select_menu_options(app))
+      .map(([value, option]) => {
+        const { name, description } = option(guild_ranking)
+        if (value == 'queue_message' && !app.config.features.QueueMessage) {
+          return null
+        }
+        if (value == 'match_logs' && !app.config.features.DisableLogMatchesOption) {
+          return null
+        }
+
+        return {
+          label: name,
+          value,
+          description: description,
+        }
+      })
+      .filter(option => !!option),
   }
 
   const components: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = [
@@ -262,7 +267,7 @@ async function onSettingSelect(
     guild_id: ctx.state.get.guild_id(),
     ranking_id: ctx.state.get.ranking_id(),
   })
-  return setting_select_menu_options[value](app, guild_ranking).onSelect(app, ctx)
+  return setting_select_menu_options(app)[value](guild_ranking).onSelect(ctx)
 }
 
 async function onRenameModalSubmit(
@@ -278,7 +283,7 @@ async function onRenameModalSubmit(
       const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
       const old_name = ranking.data.name
       const name = validateRankingOptions({
-        name: getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)['name'].value,
+        name: getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)['name']?.value,
       }).name
 
       const res = await ctx.followup({
@@ -344,7 +349,7 @@ async function onLbChannelSelect(
   )
 }
 
-async function onQueueChannelSelect(
+async function onQueueMessageSelect(
   app: App,
   ctx: ComponentContext<typeof ranking_settings_view>,
 ): Promise<ChatInteractionResponse> {
@@ -355,7 +360,7 @@ async function onQueueChannelSelect(
     async ctx => {
       const queue_channel_id = ctx.state.data.selected_channel_id
 
-      if (!queue_channel_id) {
+      if (!queue_channel_id || !app.config.features.QueueMessage) {
         return void ctx.edit(await guildRankingSettingsPage(app, ctx))
       }
       const guild_ranking = await app.db.guild_rankings.get({

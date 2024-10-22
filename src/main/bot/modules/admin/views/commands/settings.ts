@@ -6,11 +6,11 @@ import {
   InteractionContext,
 } from '../../../../../../discord-framework'
 import { App } from '../../../../../context/app_context'
-import { Colors } from '../../../../utils/converters'
+import { Colors } from '../../../../common/constants'
 import { checkGuildInteraction, ensureAdminPerms } from '../../../../utils/perms'
-import { AppView } from '../../../../utils/view_module'
+import { AppView } from '../../../../utils/ViewModule'
 import { getOrAddGuild, syncGuildAdminRole } from '../../../guilds'
-import { rankings_cmd_base } from '../../../rankings/views/commands/rankings'
+import { rankings_cmd_signature } from '../../../rankings/views/commands/rankings'
 
 export const settings_cmd_def = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -59,7 +59,7 @@ export async function settingsPage(app: App): Promise<D.APIInteractionResponseCa
             type: D.ComponentType.Button,
             label: 'Manage Rankings',
             style: D.ButtonStyle.Primary,
-            custom_id: rankings_cmd_base.newState().cId(),
+            custom_id: rankings_cmd_signature.newState({}).cId(),
           },
           {
             type: D.ComponentType.Button,

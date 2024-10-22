@@ -2,7 +2,7 @@ import * as D from 'discord-api-types/v10'
 import { AppCommand } from '../../../../../../../discord-framework'
 import { App } from '../../../../../../context/app_context'
 import { checkGuildInteraction } from '../../../../../utils/perms'
-import { AppView } from '../../../../../utils/view_module'
+import { AppView } from '../../../../../utils/ViewModule'
 import { guildRankingsOption } from '../../../../utils/ranking_command_option'
 import { match_view_def, matchPage } from '../pages/match_view'
 import { matches_view, matchesPage } from '../pages/matches_view'
@@ -34,13 +34,7 @@ const matchesCommandInGuild = async (app: App, guild_id: string) => {
   ]
 
   options = options.concat(
-    await guildRankingsOption(
-      app,
-      guild_id,
-      option_names.ranking,
-      false,
-      'filter matches by ranking',
-    ),
+    await guildRankingsOption(app, guild_id, option_names.ranking, {}, 'filter matches by ranking'),
   )
 
   return new AppCommand({

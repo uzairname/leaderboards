@@ -1,9 +1,9 @@
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
 import { sentry } from '../../logging'
-import { StringData, StringDataSchema } from '../../utils/string_data'
 import { ViewErrors } from './errors'
 import { findView } from './find_view'
 import { AnyView } from './types'
+import { StringData, StringDataSchema } from './utils/string_data'
 import { BaseView } from './views'
 
 export class ViewState<TSchema extends StringDataSchema> extends StringData<TSchema> {
@@ -43,7 +43,7 @@ export class ViewState<TSchema extends StringDataSchema> extends StringData<TSch
     custom_id: string,
     findViewCallback: any,
   ): { view: AnyView; state: ViewState<StringDataSchema> } {
-    let decompressed_custom_id = decompressFromUTF16(custom_id)
+    const decompressed_custom_id = decompressFromUTF16(custom_id)
 
     if (!decompressed_custom_id)
       throw new ViewErrors.InvalidEncodedCustomId(`Unable to decode custom id ${custom_id}`)
@@ -51,11 +51,9 @@ export class ViewState<TSchema extends StringDataSchema> extends StringData<TSch
     const [prefix, ...extra] = decompressed_custom_id.split('.')
     const encoded_data = extra.join('.')
 
-    let view = findView(findViewCallback, undefined, prefix)
-    let state = ViewState.fromView(view)
-    if (encoded_data) {
-      state = state.decode(encoded_data)
-    }
+    const view = findView(findViewCallback, undefined, prefix)
+    const blank_state = ViewState.fromView(view)
+    const state = encoded_data ? blank_state.decode(encoded_data) : blank_state
 
     sentry.addBreadcrumb({
       category: 'decoded custom_id',

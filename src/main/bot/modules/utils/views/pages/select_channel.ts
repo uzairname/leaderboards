@@ -9,9 +9,9 @@ import {
 } from '../../../../../../discord-framework'
 import { ViewState } from '../../../../../../discord-framework/interactions/view_state'
 import { App } from '../../../../../context/app_context'
-import { checkGuildInteraction } from '../../../../utils/perms'
-import { AppView } from '../../../../utils/view_module'
 import views from '../../../../manage-views/all_views'
+import { checkGuildInteraction } from '../../../../utils/perms'
+import { AppView } from '../../../../utils/ViewModule'
 
 export const select_channel_view = new MessageView({
   name: 'select channel',
@@ -20,7 +20,7 @@ export const select_channel_view = new MessageView({
     submit_cid: field.String(),
     channel_id_field: field.String(),
 
-    text_only: field.Bool(),
+    text_only: field.Boolean(),
 
     selected_channel_id: field.String(),
     page: field.Int(),
@@ -87,7 +87,10 @@ async function selectChannelPage(
     btns = [
       {
         type: D.ComponentType.Button,
-        custom_id: ViewState.fromCustomId(ctx.state.get.submit_cid(), views.getFindViewCallback(app))
+        custom_id: ViewState.fromCustomId(
+          ctx.state.get.submit_cid(),
+          views.getFindViewCallback(app),
+        )
           .state.set[ctx.state.get.channel_id_field()](ctx.state.data.selected_channel_id)
           .cId(),
         label: 'Submit',

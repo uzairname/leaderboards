@@ -7,23 +7,23 @@ import * as D from 'discord-api-types/v10'
  */
 export class MessageData {
   constructor(body: D.RESTPatchAPIChannelMessageJSONBody) {
-    this.patchdata = {
+    this.as_patch = {
       content: body.content ?? null,
       embeds: body.embeds ?? null,
       components: body.components ?? null,
       ...body,
     }
-    this.postdata = body as D.RESTPostAPIChannelMessageJSONBody
-    this.responsedata = {
+    this.as_post = body as D.RESTPostAPIChannelMessageJSONBody
+    this.as_response = {
       content: body.content ?? undefined,
       embeds: body.embeds ?? undefined,
       components: body.components ?? undefined,
     }
   }
 
-  patchdata: D.RESTPatchAPIChannelMessageJSONBody
-  postdata: D.RESTPostAPIChannelMessageJSONBody
-  responsedata: D.APIInteractionResponseCallbackData
+  as_patch: D.RESTPatchAPIChannelMessageJSONBody
+  as_post: D.RESTPostAPIChannelMessageJSONBody
+  as_response: D.APIInteractionResponseCallbackData
 }
 
 export class RoleData {

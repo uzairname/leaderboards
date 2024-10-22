@@ -1,6 +1,6 @@
 import { Router } from 'itty-router'
+import { syncDiscordCommands } from '../bot/manage-views/sync_discord_commands'
 import { getAppRoleConnectionsMetadata } from '../bot/modules/linked_roles'
-import { syncDiscordCommands } from '../bot/manage-views/manage_views'
 import { App } from '../context/app_context'
 
 export const updateRouter = (app: App) =>

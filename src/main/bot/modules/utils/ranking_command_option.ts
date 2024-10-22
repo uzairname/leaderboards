@@ -7,10 +7,9 @@ import type {
 import type { App } from '../../../context/app_context'
 import { Ranking } from '../../../database/models'
 import { checkGuildInteraction } from '../../utils/perms'
-import { UserError } from '../../utils/user-facing-errors'
-import { rankings_cmd_base } from '../rankings/views/commands/rankings'
+import { UserError } from '../../utils/UserError'
+import { getOrAddGuild } from '../guilds'
 import { allGuildRankingsPage } from '../rankings/views/pages/all_rankings'
-import { create_ranking_view, createRankingModal } from '../rankings/views/pages/create_ranking'
 
 export const create_ranking_choice_value = 'create'
 
@@ -21,14 +20,14 @@ export async function guildRankingsOption(
   app: App,
   guild_id: string,
   ranking_option_name = 'ranking',
-  include_create_ranking_choice?: boolean,
-  description: string = include_create_ranking_choice
-    ? 'Select a ranking or create a new one'
-    : 'Select a ranking',
+  options?: {
+    allow_single_ranking?: boolean
+  },
+  description: string = 'Select a ranking',
 ): Promise<D.APIApplicationCommandOption[]> {
   const guild_rankings = await app.db.guild_rankings.get({ guild_id })
 
-  if (guild_rankings.length == 1) {
+  if (guild_rankings.length == 1 && !options?.allow_single_ranking) {
     return []
   }
 
@@ -36,13 +35,6 @@ export async function guildRankingsOption(
     name: item.ranking.data.name ?? 'Unnamed Ranking',
     value: item.ranking.data.id.toString(),
   }))
-
-  if (include_create_ranking_choice) {
-    choices.push({
-      name: 'Create a new ranking',
-      value: create_ranking_choice_value,
-    })
-  }
 
   if (choices.length == 0) {
     return []
@@ -72,10 +64,6 @@ export async function withSelectedRanking(
       | undefined
   )?.value
 
-  if (ranking_option_value == create_ranking_choice_value) {
-    return createRankingModal(app, { state: create_ranking_view.newState({}) })
-  }
-
   if (ranking_option_value && parseInt(ranking_option_value)) {
     var ranking = await app.db.rankings.get(parseInt(ranking_option_value))
   } else {
@@ -85,12 +73,10 @@ export async function withSelectedRanking(
     if (guild_rankings.length == 1) {
       ranking = guild_rankings[0].ranking
     } else if (guild_rankings.length == 0) {
+      const guild = await getOrAddGuild(app, interaction.guild_id)
       return {
         type: D.InteractionResponseType.ChannelMessageWithSource,
-        data: await allGuildRankingsPage(app, {
-          interaction,
-          state: rankings_cmd_base.newState(),
-        }),
+        data: await allGuildRankingsPage(app, guild),
       }
     } else {
       throw new UserError('Please specify a ranking to record the match for')

@@ -10,14 +10,15 @@ import {
 } from '../../../../../../../discord-framework'
 import { assert, nonNullable, snowflakeToDate } from '../../../../../../../utils/utils'
 import { App } from '../../../../../../context/app_context'
-import { Colors, relativeTimestamp } from '../../../../../utils/converters'
+import { Colors } from '../../../../../common/constants'
+import { relativeTimestamp } from '../../../../../common/strings'
 import { checkGuildInteraction, hasAdminPerms } from '../../../../../utils/perms'
-import { UserError } from '../../../../../utils/user-facing-errors'
-import { AppView } from '../../../../../utils/view_module'
-import { getRegisterPlayer } from '../../../../players/players'
+import { UserError } from '../../../../../utils/UserError'
+import { AppView } from '../../../../../utils/ViewModule'
+import { getOrCreatePlayer } from '../../../../players/players'
 import { guildRankingsOption, withSelectedRanking } from '../../../../utils/ranking_command_option'
-import { matchSummaryEmbed } from '../../../logging/summary_message'
-import { recordAndScoreNewMatch } from '../../score_matches'
+import { matchSummaryEmbed } from '../../../logging/match_summary_message'
+import { createAndScoreMatch } from '../../../recording/score_matches'
 
 const record_match_cmd_signature = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -26,7 +27,7 @@ const record_match_cmd_signature = new AppCommand({
   custom_id_prefix: 'rm',
   state_schema: {
     // whether the user can record a match on their own
-    admin: field.Bool(),
+    admin: field.Boolean(),
     clicked_component: field.Enum({
       'select team': _,
       'confirm teams': _,
@@ -93,7 +94,7 @@ const getRecordMatchCommandSignatureInGuild = async (app: App, guild_id: string)
         app,
         guild_id,
         optionnames.ranking,
-        false,
+        {},
         'Which ranking should this match belong to',
       ),
     ),
@@ -164,13 +165,19 @@ const recordMatchCmd = (app: App) =>
               if (winner_id && loser_id) {
                 if (ctx.state.is.admin()) {
                   // record the match
-                  const winner = await getRegisterPlayer(app, winner_id, ranking)
-                  const loser = await getRegisterPlayer(app, loser_id, ranking)
+                  const winner = await getOrCreatePlayer(app, winner_id, ranking)
+                  const loser = await getOrCreatePlayer(app, loser_id, ranking)
 
-                  await recordAndScoreNewMatch(
+                  await createAndScoreMatch(
                     app,
                     ranking,
-                    [[winner], [loser]],
+                    [[winner], [loser]].map(team =>
+                      team.map(p => ({
+                        player: p,
+                        rating_before: p.data.rating,
+                        rd_before: p.data.rd,
+                      })),
+                    ),
                     [1, 0],
                     undefined,
                     ctx.state.data.selected_time_finished,
@@ -232,7 +239,6 @@ const recordMatchCmd = (app: App) =>
       }
     })
 
-// export const record_match = [guildCommand(recordMatchCmd, getRecordMatchCommandSignatureInGuild)]
 
 export default new AppView(recordMatchCmd, getRecordMatchCommandSignatureInGuild)
 
@@ -530,7 +536,7 @@ async function onPlayerConfirmOrCancelBtn(
   if (time_since_match_requested > match_confirm_timeout_ms) {
     ctx.interaction.channel?.id &&
       ctx.interaction.message?.id &&
-      (await app.bot.deleteMessage(ctx.interaction.channel.id, ctx.interaction.message.id))
+      (await app.bot.deleteMessageIfExists(ctx.interaction.channel.id, ctx.interaction.message.id))
     return {
       type: D.InteractionResponseType.ChannelMessageWithSource,
       data: {
@@ -588,7 +594,7 @@ async function onPlayerConfirmOrCancelBtn(
           flags: D.MessageFlags.Ephemeral,
         })
         await ctx.edit(await recordMatchFromSelectedTeams(app, ctx))
-        return void app.bot.deleteMessage(followup.channel_id, followup.id)
+        return void app.bot.deleteMessageIfExists(followup.channel_id, followup.id)
       },
     )
   }
@@ -616,13 +622,15 @@ async function recordMatchFromSelectedTeams(
 
   const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
   // register all the players
-  const team_players = await Promise.all(
-    players.map(async user_ids => {
-      return Promise.all(user_ids.map(p => getRegisterPlayer(app, p.user_id!, ranking)))
-    }),
-  )
+  const team_players = (
+    await Promise.all(
+      players.map(async user_ids => {
+        return Promise.all(user_ids.map(p => getOrCreatePlayer(app, p.user_id!, ranking)))
+      }),
+    )
+  ).map(team => team.map(p => ({ player: p, rating_before: p.data.rating, rd_before: p.data.rd })))
 
-  const new_match = await recordAndScoreNewMatch(
+  const new_match = await createAndScoreMatch(
     app,
     ranking,
     team_players,
@@ -633,7 +641,7 @@ async function recordMatchFromSelectedTeams(
 
   return {
     components: [],
-    embeds: [await matchSummaryEmbed(app, new_match, await new_match.teams(), { id: true })],
+    embeds: [await matchSummaryEmbed(app, new_match, await new_match.teamPlayers(), { id: true })],
     flags: D.MessageFlags.Ephemeral,
   }
 }

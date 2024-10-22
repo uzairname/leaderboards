@@ -1,10 +1,13 @@
-import { and, eq } from 'drizzle-orm'
-import { Player, Ranking } from '..'
-import { nonNullable } from '../../../../utils/utils'
-import { DbClient } from '../../client'
-import { DbObject, DbObjectManager } from '../../managers'
-import { Players, QueueTeams, TeamPlayers, Teams } from '../../schema'
-import { TeamInsert, TeamSelect, TeamUpdate } from '../types'
+import { and, eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
+import { Player, Ranking } from '.'
+import { nonNullable } from '../../../utils/utils'
+import { DbClient } from '../client'
+import { DbObject, DbObjectManager } from '../managers'
+import { Players, QueueTeams, TeamPlayers, Teams } from '../schema'
+
+export type TeamSelect = InferSelectModel<typeof Teams>
+export type TeamInsert = Omit<InferInsertModel<typeof Teams>, 'id'>
+export type TeamUpdate = Partial<Omit<TeamInsert, 'ranking_id'>>
 
 export class Team extends DbObject<TeamSelect> {
   constructor(data: TeamSelect, db: DbClient) {

@@ -11,18 +11,18 @@ import { sentry } from '../../../../../../../logging'
 import { nonNullable } from '../../../../../../../utils/utils'
 import { App } from '../../../../../../context/app_context'
 import { Match } from '../../../../../../database/models'
-import { Colors } from '../../../../../utils/converters'
+import { Colors } from '../../../../../common/constants'
 import { ensureAdminPerms } from '../../../../../utils/perms'
-import { UserError } from '../../../../../utils/user-facing-errors'
-import { AppView } from '../../../../../utils/view_module'
+import { UserError } from '../../../../../utils/UserError'
+import { AppView } from '../../../../../utils/ViewModule'
 import { deleteMatch, updateMatch } from '../../../recording/manage_matches'
-import { matchSummaryEmbed } from '../../summary_message'
+import { matchSummaryEmbed } from '../../match_summary_message'
 
 export const match_view_def = new MessageView({
   custom_id_prefix: 'm',
   name: 'match',
   state_schema: {
-    on_page: field.Bool(),
+    on_page: field.Boolean(),
     match_id: field.Int(),
     callback: field.Choice({
       onSettingSelect,
@@ -80,7 +80,7 @@ export async function matchPage(
 ): Promise<D.APIInteractionResponseCallbackData> {
   const match_id = ctx.state.get.match_id()
   const match = await app.db.matches.get(match_id)
-  const embed = await matchSummaryEmbed(app, match, await match.teams(), {
+  const embed = await matchSummaryEmbed(app, match, await match.teamPlayers(), {
     ranking_name: true,
     time_finished: true,
     id: true,
@@ -125,7 +125,7 @@ async function matchOutcomeModal(
   ctx: ComponentContext<typeof match_view_def>,
 ): Promise<D.APIModalInteractionResponse> {
   const match = await app.db.matches.get(ctx.state.get.match_id())
-  const teams = await match.teams()
+  const teams = await match.teamPlayers()
   return {
     type: D.InteractionResponseType.Modal,
     data: {
@@ -177,7 +177,7 @@ async function onMatchOutcomeModalSubmit(
       for (const [k, v] of Object.entries(modal_inputs)) {
         const team_num = parseInt(k)
 
-        const score = parseFloat(v.value)
+        const score = parseFloat(v?.value ?? '')
         if (isNaN(score)) {
           throw new UserError(`Enter a number for each team's relative score`)
         }

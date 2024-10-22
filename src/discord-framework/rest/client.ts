@@ -1,7 +1,7 @@
 import { DiscordAPIError, InternalRequest, REST, RequestData, RequestMethod } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging'
-import { truncateString } from '../../main/bot/utils/converters'
+import { truncateString } from '../../main/bot/common/strings'
 import { cache } from '../../main/cache'
 import { DiscordCache } from './cache'
 import { DiscordAPIUtils } from './client_helpers'
@@ -181,14 +181,12 @@ export class DiscordAPIClient extends REST {
 
   @requiresBotPerms(D.PermissionFlagsBits.SendMessages)
   async createMessage(channel_id: string, body: D.RESTPostAPIChannelMessageJSONBody) {
-    sentry.debug(`Creating message in channel ${channel_id}`)
     return (await this.fetch(RequestMethod.Post, D.Routes.channelMessages(channel_id), {
       body,
     })) as D.RESTPostAPIChannelMessageResult
   }
 
   async getMessage(channel_id: string, message_id: string) {
-    sentry.debug(`Getting message ${message_id} in channel ${channel_id}`)
     return (await this.fetch(
       RequestMethod.Get,
       D.Routes.channelMessage(channel_id, message_id),
@@ -207,8 +205,10 @@ export class DiscordAPIClient extends REST {
     })) as D.RESTPatchAPIChannelMessageResult
   }
 
+  // @requiresBotPerms_(D.PermissionFlagsBits.ManageMessages)
   @requiresBotPerms(D.PermissionFlagsBits.ManageMessages)
   async pinMessage(channel_id: string, message_id: string) {
+    sentry.debug(`Pinning message ${message_id} in channel ${channel_id}`)
     return (await this.fetch(
       RequestMethod.Put,
       D.Routes.channelPin(channel_id, message_id),
@@ -216,7 +216,8 @@ export class DiscordAPIClient extends REST {
   }
 
   @requiresBotPerms(D.PermissionFlagsBits.ManageMessages)
-  async deleteMessage(channel_id: string, message_id: string) {
+  async deleteMessageIfExists(channel_id?: string, message_id?: string) {
+    if (!channel_id || !message_id) return
     return (await this.fetch(
       RequestMethod.Delete,
       D.Routes.channelMessage(channel_id, message_id),
@@ -365,7 +366,7 @@ export class DiscordAPIClient extends REST {
       permissions: permissions?.toString() ?? '',
       scope: 'bot',
     })
-    let url = new URL(D.OAuth2Routes.authorizationURL)
+    const url = new URL(D.OAuth2Routes.authorizationURL)
     url.search = params.toString()
     return url
   }
@@ -384,7 +385,7 @@ export class DiscordAPIClient extends REST {
       state: state,
       permissions: permissions?.toString() ?? '',
     })
-    let url = new URL(D.OAuth2Routes.authorizationURL)
+    const url = new URL(D.OAuth2Routes.authorizationURL)
     url.search = params.toString()
     return url
   }
@@ -485,12 +486,29 @@ export class DiscordAPIClient extends REST {
   }
 }
 
+function catchError(x: bigint) {
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    const originalMethod = descriptor.value
+
+    descriptor.value = async function (...args: any[]) {
+      try {
+        await originalMethod.apply(this, args)
+        return 'success'
+      } catch (error) {
+        sentry.debug('Caught error', x)
+      }
+    }
+
+    return descriptor
+  }
+}
+
 function requiresBotPerms(permissions: bigint) {
   return function (target: Object, propertyKey: string, descriptor: PropertyDescriptor) {
     const original_method = descriptor.value
-    descriptor.value = async function (this: DiscordAPIClient, ...args: unknown[]) {
+    descriptor.value = async function (...args: unknown[]) {
       try {
-        return original_method.apply(this, args)
+        return await original_method.apply(this, args)
       } catch (e) {
         if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.MissingPermissions) {
           throw new DiscordErrors.BotPermissions(permissions)
@@ -498,5 +516,6 @@ function requiresBotPerms(permissions: bigint) {
         throw e
       }
     }
+    return descriptor
   }
 }

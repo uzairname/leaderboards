@@ -1,4 +1,4 @@
-import { nonNullable } from './utils'
+import { nonNullable } from '../../../utils/utils'
 
 export type StringDataSchema = {
   [k: string]: Field<unknown>
@@ -201,7 +201,7 @@ class EnumField<T extends { [key: string]: null }> extends Field<keyof T> {
   decompress = (value: string) => this.id_keys[value]
 }
 
-export class ChoiceField<T extends { [key: string]: any }> extends Field<T[keyof T], T[keyof T]> {
+class ChoiceField<T extends { [key: string]: any }> extends Field<T[keyof T], T[keyof T]> {
   private id_keys = {} as { [key: string]: keyof T }
   private key_ids = {} as { [K in keyof T]: string }
   constructor(private values: T) {
@@ -222,7 +222,7 @@ export class ChoiceField<T extends { [key: string]: any }> extends Field<T[keyof
   decompress = (value: string) => this.values[this.id_keys[value]]
 }
 
-export class ListValueField<T> extends Field<T> {
+class ListValueField<T> extends Field<T> {
   constructor(private values: T[]) {
     super()
   }
@@ -315,7 +315,7 @@ export namespace field {
   export function Float(precision?: number) {
     return new FloatField(precision)
   }
-  export function Bool() {
+  export function Boolean() {
     return new BooleanField()
   }
   export function Date() {

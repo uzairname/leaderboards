@@ -2,15 +2,17 @@ import * as D from 'discord-api-types/v10'
 import { MessageView, field } from '../../../../../../../discord-framework'
 import { ViewState } from '../../../../../../../discord-framework/interactions/view_state'
 import { App } from '../../../../../../context/app_context'
-import { Colors } from '../../../../../utils/converters'
-import { AppView } from '../../../../../utils/view_module'
-import { matchSummaryEmbed } from '../../summary_message'
+import { Colors } from '../../../../../common/constants'
+import { AppView } from '../../../../../utils/ViewModule'
+import { matchSummaryEmbed } from '../../match_summary_message'
+import { MatchPlayers } from '../../../../../../database/schema'
+import { MatchStatus } from '../../../../../../database/models/matches'
 
 export const matches_view = new MessageView({
   custom_id_prefix: 'mh',
   name: 'match history',
   state_schema: {
-    message_sent: field.Bool(),
+    message_sent: field.Boolean(),
     match_id: field.Int(),
     ranking_ids: field.Array(field.Int()),
     player_ids: field.Array(field.Int()),
@@ -52,8 +54,9 @@ export async function matchesPage(
       player_ids: state.data.player_ids,
       user_ids: state.data.user_ids,
       ranking_ids: state.data.ranking_ids,
-      limit_matches: matches_per_page,
+      limit: matches_per_page,
       offset: (state.data.page_num ?? 0) * matches_per_page,
+      status: MatchStatus.Finished,
     }),
   )
 
@@ -63,7 +66,7 @@ export async function matchesPage(
         ? await Promise.all(
             matches.map(
               async match =>
-                await matchSummaryEmbed(app, match.match, match.teams, {
+                await matchSummaryEmbed(app, match.match, match.team_players, {
                   ranking_name: true,
                   time_finished: true,
                 }),

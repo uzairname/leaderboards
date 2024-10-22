@@ -18,6 +18,7 @@ export async function respondToInteraction(
   request: Request,
   findViewCallback: FindViewCallback,
   onError: InteractionErrorCallback,
+  direct_response = true,
 ): Promise<Response> {
   if (!(await verify(request, bot.public_key))) {
     sentry.addBreadcrumb({
@@ -34,18 +35,14 @@ export async function respondToInteraction(
     .then(res => res)
     .catch(e => onError(e))
 
-  const direct_response = true
-
   if (direct_response) {
-    sentry.addBreadcrumb({
-      category: 'Interaction response',
-      level: 'info',
-      data: { response: JSON.stringify(response) },
-    })
-
     return json(response)
   }
 
+  sentry.addBreadcrumb({
+    category: 'Sending interaction response',
+    data: { response: JSON.stringify(response) },
+  })
   await bot.createInteractionResponse(interaction.id, interaction.token, response)
   return new Response('OK', { status: 200 })
 }

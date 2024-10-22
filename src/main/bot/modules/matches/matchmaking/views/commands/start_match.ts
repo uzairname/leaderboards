@@ -1,26 +1,24 @@
 import * as D from 'discord-api-types/v10'
-import { AppCommand, _, field } from '../../../../../../../discord-framework'
+import { AppCommand, field } from '../../../../../../../discord-framework'
 import { nonNullable } from '../../../../../../../utils/utils'
 import { App } from '../../../../../../context/app_context'
+import { channelMention } from '../../../../../common/strings'
 import { checkGuildInteraction, ensureAdminPerms } from '../../../../../utils/perms'
-import { AppView } from '../../../../../utils/view_module'
+import { UserError } from '../../../../../utils/UserError'
+import { AppView } from '../../../../../utils/ViewModule'
+import { getOrCreatePlayer } from '../../../../players/players'
 import { guildRankingsOption, withSelectedRanking } from '../../../../utils/ranking_command_option'
+import { start1v1MatchAndThread } from '../../../ongoing-matches/start_match'
 
 const start_match_command = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
-  name: 'startmatch',
-  description: 'description',
+  name: 'start-match',
+  description: 'Start a match between players',
   custom_id_prefix: 'sm',
   state_schema: {
     ranking_id: field.Int(),
-    component: field.Enum({
-      'select:team': _,
-      'btn:confirm teams': _,
-    }),
     num_teams: field.Int(),
     players_per_team: field.Int(),
-    // index of the team being selected (0-indexed)
-    selected_team_idx: field.Int(),
   },
 })
 
@@ -34,12 +32,12 @@ const startMatchCommandInGuild = async (app: App, guild_id: string) => {
   let options: D.APIApplicationCommandOption[] = [
     {
       name: optionnames.player1,
-      description: `Player 1 (Optional)`,
+      description: `Player 1`,
       type: D.ApplicationCommandOptionType.User,
     },
     {
       name: optionnames.player2,
-      description: `Player 2 (Optional)`,
+      description: `Player 2`,
       type: D.ApplicationCommandOptionType.User,
     },
   ]
@@ -49,7 +47,7 @@ const startMatchCommandInGuild = async (app: App, guild_id: string) => {
       app,
       guild_id,
       optionnames.ranking,
-      false,
+      {},
       'Which ranking should this match belong to',
     ),
   )
@@ -59,6 +57,7 @@ const startMatchCommandInGuild = async (app: App, guild_id: string) => {
     options,
   })
 }
+
 const startMatchCommand = (app: App) =>
   start_match_command.onCommand(async ctx =>
     withSelectedRanking(app, ctx, optionnames.ranking, async ranking =>
@@ -94,16 +93,35 @@ const startMatchCommand = (app: App) =>
 
             if (p1_id && p2_id) {
               // start a match
+
+              const guild_ranking = await app.db.guild_rankings.get({
+                guild_id: interaction.guild_id,
+                ranking_id: ranking.data.id,
+              })
+
+              const team_players = await Promise.all(
+                [[p1_id], [p2_id]].map(async team => {
+                  return Promise.all(team.map(id => getOrCreatePlayer(app, id, ranking)))
+                }),
+              )
+
+              const { match, thread } = await start1v1MatchAndThread(
+                app,
+                guild_ranking,
+                team_players,
+              )
+
               return void (await ctx.edit({
-                content: `Starting match between <@${p1_id}> and <@${p2_id}> for ${ranking.data.name}...`,
+                content: `Match started. A private thread has been created: ${channelMention(thread.id)}`,
                 flags: D.MessageFlags.Ephemeral,
               }))
             }
           }
-          // Otherwise, select teams
+
+          throw new UserError('Select the players for the match')
         },
       ),
     ),
   )
 
-export default new AppView(startMatchCommand, startMatchCommandInGuild)
+export default new AppView(startMatchCommand, startMatchCommandInGuild).experimental()
