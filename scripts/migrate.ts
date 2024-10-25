@@ -7,12 +7,7 @@ import { nonNullable } from '../src/utils/utils'
 
 const args = process.argv.slice(2)
 
-if (args.length !== 1) {
-  console.error('Usage: migrate.ts <path-to-env-file>')
-  process.exit(1)
-}
-
-const envPath = args[0]
+const envPath = args.length == 1 ? args[0] : undefined
 
 dotenv.config({
   path: envPath
