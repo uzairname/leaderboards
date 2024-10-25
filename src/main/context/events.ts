@@ -1,5 +1,5 @@
 import { Event } from '../../utils/events'
-import { addRankingChannelsListeners } from '../bot/modules/leaderboard/leaderboard_messages'
+import { addRankingChannelsListeners } from '../bot/modules/leaderboard/leaderboard_message'
 import { addMatchSummaryMessageListeners } from '../bot/modules/matches/logging/match_summary_message'
 import type { Match, Ranking } from '../database/models'
 import type { App } from './app_context'

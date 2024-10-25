@@ -9,6 +9,10 @@ import { Players, QueueTeams, TeamPlayers, Teams } from '../schema'
 export type PlayerSelect = InferSelectModel<typeof Players>
 export type PlayerInsert = Omit<InferInsertModel<typeof Players>, 'id'>
 
+export type PlayerStats = {
+  
+}
+
 export class Player extends DbObject<PlayerSelect> {
   constructor(data: PlayerSelect, db: DbClient) {
     super(data, db)

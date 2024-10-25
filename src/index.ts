@@ -23,7 +23,7 @@ export default {
 
       .post('/update/*', authorize(env), request => updateRouter(app).handle(request))
 
-      .post('/test/*', authorize(env), () => runTests(app))
+      .all('/test/*', () => runTests(app))
 
       .get('*', () => new Response(`👀`))
 

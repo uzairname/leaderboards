@@ -1,4 +1,3 @@
-import * as D from 'discord-api-types/v10'
 import type { AnyAppCommand, DiscordErrors } from '../../../discord-framework'
 import type { App } from '../../context/app_context'
 
@@ -21,7 +20,7 @@ export const emojis = {
   red_triangle: `<:red_triangle:1198069664153079878>`,
 }
 
-export function botAndOauthUrl(app: App): string {
+export function inviteAndRoleConnectionsUrl(app: App): string {
   return app.config.env.BASE_URL + `/oauth` + app.config.OauthRoutes.BotAndRoleConnections
 }
 
@@ -37,9 +36,9 @@ export function inviteUrl(app: App): string {
 }
 
 export async function commandMention(app: App, command: AnyAppCommand, guild_id?: string) {
-  const name = command.options.name
-  const type = command.options.type
-  const commands = (await app.bot.getAppCommands(guild_id)) as D.APIApplicationCommand[]
+  const name = command.signature.name
+  const type = command.signature.type
+  const commands = await app.bot.getAppCommands(guild_id)
   const discord_command = commands.find(command => command.name === name && command.type === type)
   return `</${name}:${discord_command?.id || '0'}>`
 }

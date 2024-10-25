@@ -336,8 +336,8 @@ dist
 
 # wrangler project
 
+*.env
 .dev.vars
 .wrangler/
-deploy.sh
 test.sh
 test.ts

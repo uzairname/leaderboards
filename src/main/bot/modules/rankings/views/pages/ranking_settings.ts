@@ -13,14 +13,15 @@ import { Colors } from '../../../../common/constants'
 import { escapeMd, messageLink } from '../../../../common/strings'
 import { ensureAdminPerms } from '../../../../utils/perms'
 import { AppView } from '../../../../utils/ViewModule'
-import { syncGuildRankingLbMessage } from '../../../leaderboard/leaderboard_messages'
+import { syncGuildRankingLbMessage } from '../../../leaderboard/leaderboard_message'
 import { sendGuildRankingQueueMessage } from '../../../matches/matchmaking/queue/queue_messages'
 import { sendSelectChannelPage } from '../../../utils/views/pages/select_channel'
 import { deleteRanking, updateRanking, validateRankingOptions } from '../../manage_rankings'
 import { guildRankingDetails } from './all_rankings'
 import { rankingNameTextInput } from './create_ranking'
+import { nonNullable } from '../../../../../../utils/utils'
 
-export const ranking_settings_view = new MessageView({
+export const ranking_settings_view_signature = new MessageView({
   name: 'ranking settings',
   custom_id_prefix: 'rs',
   state_schema: {
@@ -40,8 +41,8 @@ export const ranking_settings_view = new MessageView({
   },
 })
 
-export const rankingSettingsView = (app: App) =>
-  ranking_settings_view.onComponent(async ctx => {
+export default new AppView(ranking_settings_view_signature, app =>
+  ranking_settings_view_signature.onComponent(async ctx => {
     if (ctx.state.data.callback) return ctx.state.data.callback(app, ctx)
 
     return ctx.defer(
@@ -52,7 +53,7 @@ export const rankingSettingsView = (app: App) =>
         const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
         return void (ctx.state.is.edit() ? ctx.edit : ctx.followup)(
           await guildRankingSettingsPage(app, {
-            state: ranking_settings_view.newState({
+            state: ranking_settings_view_signature.createState({
               ranking_id: ranking.data.id,
               guild_id: ctx.state.get.guild_id(),
               edit: true,
@@ -62,9 +63,8 @@ export const rankingSettingsView = (app: App) =>
         )
       },
     )
-  })
-
-export default new AppView(rankingSettingsView)
+  }),
+)
 
 const setting_select_menu_options: (app: App) => Record<
   string,
@@ -72,7 +72,7 @@ const setting_select_menu_options: (app: App) => Record<
     name: string
     description: string
     onSelect: (
-      ctx: ComponentContext<typeof ranking_settings_view>,
+      ctx: ComponentContext<typeof ranking_settings_view_signature>,
     ) => Promise<ChatInteractionResponse>
   }
 > = (app: App) => ({
@@ -206,7 +206,7 @@ const setting_select_menu_options: (app: App) => Record<
 
 export async function guildRankingSettingsPage(
   app: App,
-  ctx: StateContext<typeof ranking_settings_view>,
+  ctx: StateContext<typeof ranking_settings_view_signature>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const guild_ranking = await app.db.guild_rankings.get({
     guild_id: ctx.state.get.guild_id(),
@@ -259,7 +259,7 @@ export async function guildRankingSettingsPage(
 
 async function onSettingSelect(
   app: App,
-  ctx: ComponentContext<typeof ranking_settings_view>,
+  ctx: ComponentContext<typeof ranking_settings_view_signature>,
 ): Promise<ChatInteractionResponse> {
   const value = (ctx.interaction.data as D.APIMessageStringSelectInteractionData).values[0]
   if (!value) return { type: D.InteractionResponseType.DeferredMessageUpdate }
@@ -272,7 +272,7 @@ async function onSettingSelect(
 
 async function onRenameModalSubmit(
   app: App,
-  ctx: ComponentContext<typeof ranking_settings_view>,
+  ctx: ComponentContext<typeof ranking_settings_view_signature>,
 ): Promise<ChatInteractionResponse> {
   return ctx.defer(
     {
@@ -282,9 +282,9 @@ async function onRenameModalSubmit(
       await ensureAdminPerms(app, ctx)
       const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
       const old_name = ranking.data.name
-      const name = validateRankingOptions({
-        name: getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)['name']?.value,
-      }).name
+      const name = nonNullable(getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)['name']?.value, 'input name')
+      
+      validateRankingOptions({ name })
 
       const res = await ctx.followup({
         content: `Renaming ${escapeMd(old_name)} to ${escapeMd(name)}`,
@@ -302,7 +302,7 @@ async function onRenameModalSubmit(
 
 async function onLbChannelSelect(
   app: App,
-  ctx: ComponentContext<typeof ranking_settings_view>,
+  ctx: ComponentContext<typeof ranking_settings_view_signature>,
 ): Promise<ChatInteractionResponse> {
   // send leaderboard message
   return ctx.defer(
@@ -351,7 +351,7 @@ async function onLbChannelSelect(
 
 async function onQueueMessageSelect(
   app: App,
-  ctx: ComponentContext<typeof ranking_settings_view>,
+  ctx: ComponentContext<typeof ranking_settings_view_signature>,
 ): Promise<ChatInteractionResponse> {
   return ctx.defer(
     {
@@ -391,7 +391,7 @@ async function onQueueMessageSelect(
 
 function onDeleteConfirmBtn(
   app: App,
-  ctx: ComponentContext<typeof ranking_settings_view>,
+  ctx: ComponentContext<typeof ranking_settings_view_signature>,
 ): ChatInteractionResponse {
   return ctx.defer(
     {
@@ -414,7 +414,7 @@ function onDeleteConfirmBtn(
 
 async function eloSettingsPage(
   app: App,
-  ctx: ComponentContext<typeof ranking_settings_view>,
+  ctx: ComponentContext<typeof ranking_settings_view_signature>,
 ): Promise<ChatInteractionResponse> {
   return {
     type: D.InteractionResponseType.UpdateMessage,

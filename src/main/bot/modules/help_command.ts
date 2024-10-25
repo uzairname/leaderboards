@@ -1,46 +1,45 @@
 import * as D from 'discord-api-types/v10'
-import { AppCommand, InteractionContext, StateContext, _, field } from '../../../discord-framework'
+import { AppCommand, InteractionContext, StateContext, field } from '../../../discord-framework'
 import { App } from '../../context/app_context'
 import { Colors } from '../common/constants'
 import { AppMessages } from '../common/messages'
-import { botAndOauthUrl, dateTimestamp, github_url } from '../common/strings'
+import { dateTimestamp, github_url, inviteUrl } from '../common/strings'
 import { AppView } from '../utils/ViewModule'
+import { getOrAddGuild } from './guilds'
 
-export const help_cmd = new AppCommand({
+export const help_cmd_signature = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
   custom_id_prefix: 'h',
   name: 'help',
   description: 'All about this bot',
   state_schema: {
-    page: field.Enum({ main: _, reference: _ }),
+    page: field.Choice({
+      mainPage,
+      howtousePage,
+    }),
   },
 })
 
-export const helpCmd = (app: App) =>
-  help_cmd
+export default new AppView(help_cmd_signature, app =>
+  help_cmd_signature
     .onCommand(async ctx => {
-      ctx.state.save.page('main')
+      ctx.state.save.page(mainPage)
       return {
         type: D.InteractionResponseType.ChannelMessageWithSource,
         data: await mainPage(app, ctx),
       }
     })
     .onComponent(async ctx => {
-      if (ctx.state.is.page('main')) {
-        var data = await mainPage(app, ctx)
-      } else if (ctx.state.is.page('reference')) {
-        data = await referencePage(app, ctx)
-      } else {
-        throw new Error(`Unknown state ${ctx.state.data.page}`)
+      return {
+        type: D.InteractionResponseType.UpdateMessage,
+        data: await ctx.state.get.page()(app, ctx),
       }
-      return { type: D.InteractionResponseType.UpdateMessage, data }
-    })
-
-export default new AppView(helpCmd)
+    }),
+)
 
 async function mainPage(
   app: App,
-  ctx: InteractionContext<typeof help_cmd>,
+  ctx: InteractionContext<typeof help_cmd_signature>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const last_deployed = (await app.db.settings.getOrUpdate()).data.last_deployed
 
@@ -71,18 +70,16 @@ async function mainPage(
   }
 }
 
-async function referencePage(
+export async function howtousePage(
   app: App,
-  ctx: InteractionContext<typeof help_cmd>,
+  ctx: InteractionContext<typeof help_cmd_signature>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  const embed: D.APIEmbed = {
-    title: 'Help',
-    description: `reference`,
-    color: Colors.EmbedBackground,
-  }
+  const guild = ctx.interaction.guild_id
+    ? await getOrAddGuild(app, ctx.interaction.guild_id)
+    : undefined
 
   return {
-    embeds: [embed],
+    embeds: [await AppMessages.howtouse(app, guild)],
     components: await helpComponents(app, ctx),
     flags: D.MessageFlags.Ephemeral,
   }
@@ -90,9 +87,27 @@ async function referencePage(
 
 async function helpComponents(
   app: App,
-  ctx: StateContext<typeof help_cmd>,
+  ctx: StateContext<typeof help_cmd_signature>,
 ): Promise<D.APIActionRowComponent<D.APIMessageActionRowComponent>[]> {
   let components: D.APIButtonComponent[] = []
+
+  components = components.concat([
+    {
+      type: D.ComponentType.Button,
+      custom_id: ctx.state.set.page(mainPage).cId(),
+      label: 'About',
+      style: D.ButtonStyle.Secondary,
+      disabled: ctx.state.is.page(mainPage),
+    },
+    {
+      type: D.ComponentType.Button,
+      custom_id: ctx.state.set.page(howtousePage).cId(),
+      label: 'How to Use',
+      style: D.ButtonStyle.Primary,
+      disabled: ctx.state.is.page(howtousePage),
+    },
+  ])
+
   const action_rows: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = [
     {
       type: D.ComponentType.ActionRow,
@@ -100,35 +115,14 @@ async function helpComponents(
     },
   ]
 
-  components.push({
-    type: D.ComponentType.Button,
-    custom_id: ctx.state.set.page('main').cId(),
-    label: 'About',
-    style: ctx.state.is.page('main') ? D.ButtonStyle.Primary : D.ButtonStyle.Secondary,
-    disabled: ctx.state.is.page('main'),
-  })
-
-  if (app.config.features.HelpReference) {
-    components = components.concat([
-      {
-        type: D.ComponentType.Button,
-        custom_id: ctx.state.set.page('reference').cId(),
-        label: 'Reference',
-        style: ctx.state.is.page('reference') ? D.ButtonStyle.Primary : D.ButtonStyle.Secondary,
-        disabled: ctx.state.is.page('reference'),
-      },
-    ])
-  }
-
-  if (ctx.state.is.page('main')) {
+  if (ctx.state.is.page(mainPage)) {
     action_rows.push({
       type: D.ComponentType.ActionRow,
       components: [
         {
           type: D.ComponentType.Button,
-          // url: inviteUrl(app.bot),
-          url: botAndOauthUrl(app),
-          label: 'Invite',
+          url: inviteUrl(app),
+          label: 'Invite to Server',
           style: D.ButtonStyle.Link,
         },
       ],

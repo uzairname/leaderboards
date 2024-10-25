@@ -7,7 +7,10 @@ import {
   MessageView,
   field,
 } from '../../../../../../discord-framework'
-import { ViewState } from '../../../../../../discord-framework/interactions/view_state'
+import {
+  ViewState,
+  ViewStateFactory,
+} from '../../../../../../discord-framework/interactions/view_state'
 import { App } from '../../../../../context/app_context'
 import views from '../../../../manage-views/all_views'
 import { checkGuildInteraction } from '../../../../utils/perms'
@@ -57,7 +60,7 @@ export async function sendSelectChannelPage(
     app,
     {
       interaction,
-      state: select_channel_view.newState(data),
+      state: select_channel_view.createState(data),
     },
     message,
   )
@@ -75,7 +78,10 @@ async function selectChannelPage(
   let btns: D.APIButtonComponent[] = [
     {
       type: D.ComponentType.Button,
-      custom_id: ViewState.fromCustomId(ctx.state.get.submit_cid(), views.getFindViewCallback(app))
+      custom_id: ViewStateFactory.fromCustomId(
+        ctx.state.get.submit_cid(),
+        views.findViewSignatureFromCustomId(),
+      )
         .state.set[ctx.state.get.channel_id_field()](undefined)
         .cId(),
       label: 'Cancel',
@@ -87,9 +93,9 @@ async function selectChannelPage(
     btns = [
       {
         type: D.ComponentType.Button,
-        custom_id: ViewState.fromCustomId(
+        custom_id: ViewStateFactory.fromCustomId(
           ctx.state.get.submit_cid(),
-          views.getFindViewCallback(app),
+          views.findViewSignatureFromCustomId(),
         )
           .state.set[ctx.state.get.channel_id_field()](ctx.state.data.selected_channel_id)
           .cId(),
@@ -172,4 +178,4 @@ function onSelectChannel(
   )
 }
 
-export default new AppView(selectChannelView)
+export default new AppView(select_channel_view, selectChannelView)

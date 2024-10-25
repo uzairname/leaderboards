@@ -1,15 +1,18 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand } from '../../../../../../discord-framework'
-import { App } from '../../../../../context/app_context'
 import { AppView } from '../../../../utils/ViewModule'
 import { default_num_teams, default_players_per_team } from '../../manage_rankings'
 import { create_ranking_view, createRankingPageResponseData } from '../pages/create_ranking'
 
-export default new AppView((app: App) =>
+export const create_ranking_cmd_signature = new AppCommand({
+  name: 'create-ranking',
+  type: D.ApplicationCommandType.ChatInput,
+  description: 'Create a new ranking',
+})
+
+export default new AppView(create_ranking_cmd_signature, app =>
   new AppCommand({
-    name: 'create-ranking',
-    type: D.ApplicationCommandType.ChatInput,
-    description: 'Create a new ranking',
+    ...create_ranking_cmd_signature.signature,
     options: (
       [
         {
@@ -53,7 +56,7 @@ export default new AppView((app: App) =>
         return void ctx.followup(
           await createRankingPageResponseData(app, {
             interaction: ctx.interaction,
-            state: create_ranking_view.newState({
+            state: create_ranking_view.createState({
               input_name: options['name'],
               input_num_teams: options['num-teams'] ? parseInt(options['num-teams']) : undefined,
               input_players_per_team: options['players-per-team']

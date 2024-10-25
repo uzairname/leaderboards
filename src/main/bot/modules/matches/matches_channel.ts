@@ -4,8 +4,8 @@ import { App } from '../../../context/app_context'
 import type { Guild } from '../../../database/models'
 import { Colors } from '../../common/constants'
 import { commandMention } from '../../common/strings'
-import { getOrUpdateRankedCategory } from '../guilds'
-import { matches_command_signature } from './logging/views/commands/match_history_command'
+import { syncRankedCategory } from '../guilds'
+import { matches_command_signature } from './logging/views/commands/matches'
 
 export async function syncMatchesChannel(app: App, guild: Guild): Promise<D.APIChannel> {
   const sync_channel_result = await app.bot.utils.syncGuildChannel({
@@ -52,7 +52,7 @@ async function matchLogsChannelData(
   guild_id: string
   data: GuildChannelData
 }> {
-  const category = (await getOrUpdateRankedCategory(app, guild)).channel
+  const category = (await syncRankedCategory(app, guild)).channel
   return {
     guild_id: guild.data.id,
     data: new GuildChannelData({
@@ -61,6 +61,7 @@ async function matchLogsChannelData(
       name: `Match Logs`,
       topic: `Ranked matches in this server are recorded here`,
       permission_overwrites: matchLogsChannelPermissionOverwrites(app, guild.data.id),
+      default_auto_archive_duration: D.ThreadAutoArchiveDuration.OneHour,
     }),
   }
 }
@@ -71,19 +72,16 @@ function matchLogsChannelPermissionOverwrites(
 ): D.RESTAPIChannelPatchOverwrite[] {
   return [
     {
-      // @everyone can't send messages or make threads
-      id: guild_id,
+      id: guild_id, //@everyone
       type: 0, // role
       deny: (
         D.PermissionFlagsBits.SendMessages |
-        D.PermissionFlagsBits.SendMessagesInThreads |
         D.PermissionFlagsBits.CreatePublicThreads |
         D.PermissionFlagsBits.CreatePrivateThreads
       ).toString(),
     },
     {
-      // the bot can send messages and make public threads
-      id: app.bot.application_id,
+      id: app.bot.application_id, // bot
       type: 1, // user
       allow: (
         D.PermissionFlagsBits.SendMessages |

@@ -6,8 +6,9 @@ import {
   MessageView,
   StateContext,
 } from '../../../../../../discord-framework'
-import { ViewState } from '../../../../../../discord-framework/interactions/view_state'
+import { ViewStateFactory } from '../../../../../../discord-framework/interactions/view_state'
 import { App } from '../../../../../context/app_context'
+import all_views from '../../../../manage-views/all_views'
 import { UserErrors } from '../../../../utils/UserError'
 import { AppView, ViewModule } from '../../../../utils/ViewModule'
 
@@ -37,8 +38,6 @@ export const testCommand = (app: App) =>
       const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
       ctx.state.save.original_user(user_id)
       ctx.state.save.counter(0)
-
-      await app.bot.getMessage('', '')
 
       const user =
         (
@@ -118,8 +117,8 @@ function testMessageData(
           {
             type: D.ComponentType.Button,
             label: 'Input',
-            custom_id: helper_view
-              .newState({
+            custom_id: helper_view_signature
+              .createState({
                 back_cid: ctx.state.set.clicked_btn('one').cId(),
                 back_counter_field: 'counter',
                 counter: ctx.state.data.counter ?? 0,
@@ -134,7 +133,7 @@ function testMessageData(
   }
 }
 
-const helper_view = new MessageView({
+const helper_view_signature = new MessageView({
   name: 'test helper',
   custom_id_prefix: 'th',
   state_schema: {
@@ -151,8 +150,13 @@ const helper_view = new MessageView({
 })
 
 const helperView = (app: App) =>
-  helper_view.onComponent(async ctx => {
-    const back_state = ViewState.fromCustomId(ctx.state.get.back_cid(), helper_view).state
+  helper_view_signature.onComponent(async ctx => {
+    const x = all_views.getFindViewCallback(app)
+
+    const { state: back_state } = ViewStateFactory.fromCustomId(
+      ctx.state.get.back_cid(),
+      all_views.findViewSignatureFromCustomId(),
+    )
 
     back_state.save[ctx.state.get.back_counter_field()](ctx.state.data.counter)
 
@@ -179,10 +183,13 @@ const helperView = (app: App) =>
           },
         ],
       },
-    }
+    } as any
   })
 
-export default new ViewModule([new AppView(testCommand), new AppView(helperView)])
+export default new ViewModule([
+  new AppView(test_cmd_signature, testCommand),
+  new AppView(helper_view_signature, helperView),
+])
 
 const schema = {
   originalUserId: field.String(),

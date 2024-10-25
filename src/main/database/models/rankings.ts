@@ -1,5 +1,6 @@
 import { desc, eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { Player } from '.'
+import { sentry } from '../../../logging'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
 import { DbObject, DbObjectManager } from '../managers'
@@ -7,11 +8,14 @@ import { Players, QueueTeams, Rankings, TeamPlayers } from '../schema'
 
 export type RankingSelect = InferSelectModel<typeof Rankings>
 export type RankingInsert = Omit<InferInsertModel<typeof Rankings>, 'id'>
+export type RankingUpdate = Partial<RankingInsert>
 
 export class Ranking extends DbObject<Partial<RankingSelect> & { id: number }> {
   constructor(data: Partial<RankingSelect> & { id: number }, db: DbClient) {
     super(data, db)
+    sentry.debug(`this ${this}`)
     db.cache.rankings[data.id] = this
+    sentry.debug(db.cache.rankings)
   }
 
   /**
@@ -51,7 +55,7 @@ export class Ranking extends DbObject<Partial<RankingSelect> & { id: number }> {
     return teams
   }
 
-  async update(data: RankingInsert): Promise<this> {
+  async update(data: RankingUpdate): Promise<this> {
     this.data = (
       await this.db.db.update(Rankings).set(data).where(eq(Rankings.id, this.data.id)).returning()
     )[0]
@@ -72,7 +76,10 @@ export class RankingsManager extends DbObjectManager {
 
   async get(ranking_id: number): Promise<Ranking> {
     const cached_ranking = this.db.cache.rankings[ranking_id]
-    if (cached_ranking) return cached_ranking
+    if (cached_ranking) {
+      sentry.debug(`cache hit for ranking ${ranking_id}`)
+      return cached_ranking
+    }
 
     const data = (await this.db.db.select().from(Rankings).where(eq(Rankings.id, ranking_id)))[0]
     if (!data) {

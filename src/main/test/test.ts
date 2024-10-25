@@ -2,9 +2,9 @@ import { APIUser } from 'discord-api-types/v10'
 import { sql } from 'drizzle-orm'
 import { sentry } from '../../logging'
 import { assert, nonNullable } from '../../utils/utils'
-import { updateMatch } from '../bot/modules/matches/recording/manage_matches'
-import { createAndScoreMatch } from '../bot/modules/matches/recording/score_matches'
-import { getOrCreatePlayer } from '../bot/modules/players/players'
+import { updateMatch } from '../bot/modules/matches/management/manage_matches'
+import { createAndScoreMatch } from '../bot/modules/matches/management/score_matches'
+import { getOrCreatePlayer } from '../bot/modules/players/manage_players'
 import { App } from '../context/app_context'
 import { DbClient } from '../database/client'
 import {
@@ -38,13 +38,13 @@ class Test {
 function catchError(x: number) {
   return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value
-  
+
     descriptor.value = async function (...args: any[]) {
-        try {
-            return await originalMethod.apply(this, args)
-        } catch (error) {
-            throw x
-        }
+      try {
+        return await originalMethod.apply(this, args)
+      } catch (error) {
+        throw x
+      }
     }
     return descriptor
   }
@@ -53,14 +53,74 @@ function catchError(x: number) {
 
 export async function runTests(app: App): Promise<Response> {
 
-  const x = new Test()
+  console.log('running tests')
 
-  const result = await x.test()
+  testTs()
 
   // await testDatabase(app)
   // sentry.debug(`Tested Leaderboards app (${app.config.env.ENVIRONMENT})`)
-  return new Response(`Successfully tested Leaderboards app :${result}`, { status: 200 })
+  return new Response(`Successfully tested Leaderboards app`, { status: 200 })
 }
+
+import { Rating, TrueSkill } from 'ts-trueskill'
+import { Gaussian } from 'ts-gaussian'
+
+function testTs() {
+
+  function getAdjustedBeta(baseBeta: number, best_of: number): number {
+    // Reduce the uncertainty for longer series
+    return 7 * baseBeta / best_of;
+  }
+
+  const outcome = [0, 1]
+  const best_of = 3
+
+  const team_ranks = outcome.map(score => 1 - score)
+
+  const elo_settings = {
+    initial_rating: 50,
+    initial_rd: 50 / 3,
+  }
+
+  const env = new TrueSkill(elo_settings.initial_rating, elo_settings.initial_rd)
+  
+  console.log(`Trueskill default beta: ${env.beta}, ${best_of}`)
+
+  env.beta = getAdjustedBeta(env.beta, best_of ?? 1)
+  // env.beta = env.beta * 2
+
+  /*
+  beta         (mu, sigma) after 1 win -> (mu, sigma) after 2 wins
+  beta 999                (50.2, 16.7) -> (50.3, 16.7)
+  beta 2*default                       -> (61.4, 14.2)
+  beta default:           (58.8, 14.3) -> (62.4, 13.0)
+  beta*1/sqrt(5)          (59.4, 13.9) -> (62.5, 12.5)
+  beta 0:                 (59.4, 13.8) -> (62.3, 12.4)
+  */
+
+
+  console.log(getAdjustedBeta(env.beta, best_of ?? 1))
+
+  console.log(`Trueskill beta: ${env.beta}`)
+
+  const players = [[undefined], [undefined]]
+
+  const old_player_ratings = players.map(team => {
+    return team.map(player => {
+      return player ?? env.createRating()
+    })
+  })
+
+  console.log(old_player_ratings.map(t => t.map(r => ({ mu: r.mu, sigma: r.sigma }))))
+
+  let new_player_ratings: Rating[][] = env.rate(old_player_ratings, team_ranks)
+  new_player_ratings = env.rate(new_player_ratings, team_ranks)
+  new_player_ratings = env.rate(new_player_ratings, team_ranks)
+
+  console.log(new_player_ratings.map(t => t.map(r => ({ mu: r.mu, sigma: r.sigma }))))
+
+}
+
 
 async function testDatabase(app: App) {
   await resetDatabase(app.db)

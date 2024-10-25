@@ -16,7 +16,7 @@ import { commandMention, escapeMd } from '../../../../common/strings'
 import { checkGuildInteraction, ensureAdminPerms } from '../../../../utils/perms'
 import { AppView } from '../../../../utils/ViewModule'
 import { getMatchLogsChannel, getOrAddGuild } from '../../../guilds'
-import { syncGuildRankingLbMessage } from '../../../leaderboard/leaderboard_messages'
+import { syncGuildRankingLbMessage } from '../../../leaderboard/leaderboard_message'
 import { syncMatchesChannel } from '../../../matches/matches_channel'
 import { sendGuildRankingQueueMessage } from '../../../matches/matchmaking/queue/queue_messages'
 import {
@@ -27,7 +27,7 @@ import {
   validateRankingOptions,
 } from '../../manage_rankings'
 import { rankings_cmd_signature } from '../commands/rankings'
-import { guildRankingSettingsPage, ranking_settings_view } from './ranking_settings'
+import { guildRankingSettingsPage, ranking_settings_view_signature } from './ranking_settings'
 
 export const create_ranking_view = new MessageView({
   custom_id_prefix: 'cr',
@@ -51,7 +51,7 @@ export const create_ranking_view = new MessageView({
   },
 })
 
-export default new AppView((app: App) =>
+export default new AppView(create_ranking_view, (app: App) =>
   create_ranking_view.onComponent(async ctx => {
     return ctx.state.get.callback()(app, ctx)
   }),
@@ -189,7 +189,10 @@ export async function createRankingPageResponseData(
   return response
 }
 
-export function createRankingModal(app: App, ctx: StateContext<typeof create_ranking_view>): D.APIModalInteractionResponse {
+export function createRankingModal(
+  app: App,
+  ctx: StateContext<typeof create_ranking_view>,
+): D.APIModalInteractionResponse {
   let components = [rankingNameTextInput(ctx.state.data.input_name)]
 
   if (app.config.features.MultipleTeamsPlayers) {
@@ -287,7 +290,7 @@ export function onCreateConfirmBtn(
 
       return ctx.edit(
         await guildRankingSettingsPage(app, {
-          state: ranking_settings_view.newState({
+          state: ranking_settings_view_signature.createState({
             ranking_id: result.new_ranking.data.id,
             guild_id: guild.data.id,
             edit: true,
@@ -310,7 +313,7 @@ export function rankingNameTextInput(
         style: D.TextInputStyle.Short,
         custom_id: 'name',
         label: 'Name',
-        placeholder: existing_name ?? `e.g. Ping Pong 1v1`,
+        placeholder: existing_name ?? `e.g. 1v1 boosts only`,
         max_length: max_ranking_name_length,
         required: !existing_name,
       },

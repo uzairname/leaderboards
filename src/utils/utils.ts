@@ -46,14 +46,13 @@ export function unflatten<T>(arr: T[], dim_2_size: number, full_rows: boolean = 
 
 /**
  * @returns The index of the maximum value in the array.
- * If there are multiple maximum values, returns -1.
+ * If there are multiple maximum values or the array is empty, returns -1.
  */
 export function maxIndex(arr: number[]): number {
-  if (arr.length === 0) return -1
-  let max = arr[0]
-  let max_index = 0
+  let max = -Infinity
+  let max_index = -1
   let max_repeated = false
-  for (let i = 1; i < arr.length; i++) {
+  for (let i = 0; i < arr.length; i++) {
     if (arr[i] > max) {
       max = arr[i]
       max_index = i

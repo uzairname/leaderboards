@@ -1,11 +1,13 @@
 import { Config } from 'drizzle-kit'
 import * as dotenv from 'dotenv'
 
-dotenv.config()
+dotenv.config({
+  path: '.prod.env'
+})
 
 export default {
   schema: 'src/main/database/schema.ts',
-  out: 'migrations/migrations',
+  out: 'scripts/migrations',
   driver: 'pg',
   dbCredentials: {
     connectionString: process.env['POSTGRES_URL'] + '?sslmode=require',

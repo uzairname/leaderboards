@@ -4,9 +4,9 @@ import { nonNullable } from '../../../../../../utils/utils'
 import { App } from '../../../../../context/app_context'
 import { ensureAdminPerms } from '../../../../utils/perms'
 import { UserError } from '../../../../utils/UserError'
-import { guildRankingsOption } from '../../../utils/ranking_command_option'
-import { getOrCreatePlayer } from '../../players'
 import { AppView } from '../../../../utils/ViewModule'
+import { guildRankingsOption } from '../../../utils/ranking_command_option'
+import { getOrCreatePlayer } from '../../manage_players'
 
 const points_cmd_signature = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -35,7 +35,7 @@ export const pointsCmdInGuild = async (app: App, guild_id: string) => {
   )
 
   return new AppCommand({
-    ...points_cmd_signature.options,
+    ...points_cmd_signature.signature,
     options,
   })
 }
@@ -53,24 +53,24 @@ export const pointsCmd = (app: App) =>
         await ensureAdminPerms(app, ctx)
 
         // get the points to add
-        const option_names: { [key: string]: string } = {}
+        const optionnames: { [key: string]: string } = {}
         ;(
           ctx.interaction.data.options as D.APIApplicationCommandInteractionDataStringOption[]
         )?.forEach(o => {
-          option_names[o.name] = o.value
+          optionnames[o.name] = o.value
         })
 
-        const points = parseInt(option_names.points)
+        const points = parseInt(optionnames.points)
         if (isNaN(points)) {
           throw new UserError('Points must be a number')
         }
 
         // Get the selected ranking
-        const ranking = await app.db.rankings.get(parseInt(option_names['ranking']))
+        const ranking = await app.db.rankings.get(parseInt(optionnames['ranking']))
 
         // Get the selected player in the ranking
         const user = nonNullable(
-          ctx.interaction.data.resolved?.users?.[option_names.user],
+          ctx.interaction.data.resolved?.users?.[optionnames.user],
           'interaction data user',
         )
         const player = await getOrCreatePlayer(app, user, ranking)
@@ -94,4 +94,4 @@ export const pointsCmd = (app: App) =>
     )
   })
 
-export default new AppView(pointsCmd, pointsCmdInGuild).experimental()
+export default new AppView(points_cmd_signature, pointsCmd, pointsCmdInGuild)

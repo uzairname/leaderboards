@@ -72,7 +72,7 @@ Set `POSTGRES_URL` and optionally `POSTGRES_URL_TEST` in `.env`
 Migrate database
 
 ```bash
-tsx migrations/migrate.ts
+tsx scripts/migrate.ts
 ```
 
 ### 3. Deploy worker

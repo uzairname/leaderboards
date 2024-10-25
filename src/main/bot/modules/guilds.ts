@@ -1,7 +1,6 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { GuildChannelData, RoleData } from '../../../discord-framework'
-import { sentry } from '../../../logging'
 import { App } from '../../context/app_context'
 import { Guild } from '../../database/models'
 import { Colors } from '../common/constants'
@@ -14,6 +13,7 @@ export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> 
       id: discord_guild.id,
       name: discord_guild.name,
     })
+    await syncGuildAdminRole(app, app_guild)
   }
   return app_guild
 }
@@ -39,7 +39,7 @@ export async function getMatchLogsChannel(
   }
 }
 
-export async function getOrUpdateRankedCategory(
+export async function syncRankedCategory(
   app: App,
   guild: Guild,
 ): Promise<{
@@ -47,8 +47,6 @@ export async function getOrUpdateRankedCategory(
   is_new_channel: boolean
 }> {
   const category_id = guild.data.category_id
-
-  sentry.debug(`category_id ${category_id}`)
 
   const result = await app.bot.utils.syncGuildChannel({
     target_channel_id: category_id,
@@ -62,8 +60,6 @@ export async function getOrUpdateRankedCategory(
       }
     },
   })
-
-  sentry.debug(`result ${JSON.stringify(result)}`)
 
   if (result.is_new_channel) {
     await guild.update({ category_id: result.channel.id })

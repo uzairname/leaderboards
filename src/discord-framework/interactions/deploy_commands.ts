@@ -30,18 +30,18 @@ export async function overwriteDiscordCommandsWithViews(
       (guild_id ? ` in guild ${guild_id}` : ' globally'),
     level: 'info',
     data: {
-      commands: commands.map(c => c.options.name),
+      commands: commands.map(c => c.signature.name),
       guild_id,
     },
   })
 }
 
 function appCommandToJSONBody(view: AnyAppCommand): D.RESTPostAPIApplicationGuildCommandsJSONBody {
-  if (viewIsChatInputAppCommand(view) && view.options.description.length > 100) {
-    throw new Error(`Description for command ${view.options.custom_id_prefix} > 100 characters`)
+  if (viewIsChatInputAppCommand(view) && view.signature.description.length > 100) {
+    throw new Error(`Description for command ${view.signature.custom_id_prefix} > 100 characters`)
   }
 
   return {
-    ...view.options,
+    ...view.signature,
   } as D.RESTPostAPIApplicationGuildCommandsJSONBody
 }

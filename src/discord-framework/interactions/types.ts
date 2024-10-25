@@ -41,14 +41,14 @@ export type AnyAppCommand = AppCommand<any, D.ApplicationCommandType>
 
 export type AnyChatInputAppCommand = AppCommand<any, D.ApplicationCommandType.ChatInput>
 
-export type AnyMessageView = MessageView<any, any>
+export type AnyMessageView = MessageView<any>
 
 export function viewIsAppCommand(view: AnyView): view is AnyAppCommand {
   return view instanceof AppCommand
 }
 
 export function viewIsChatInputAppCommand(view: AnyView): view is AnyChatInputAppCommand {
-  return viewIsAppCommand(view) && view.options.type === D.ApplicationCommandType.ChatInput
+  return viewIsAppCommand(view) && view.signature.type === D.ApplicationCommandType.ChatInput
 }
 
 export type FindViewCallback = (
@@ -116,7 +116,7 @@ export interface InitialInteractionContext<
 export interface CommandContext<
   View extends AnyView,
   Type extends D.ApplicationCommandType = View extends AnyAppCommand
-    ? View['options']['type']
+    ? View['signature']['type']
     : D.ApplicationCommandType,
 > extends InitialInteractionContext<View, AppCommandInteraction<Type>> {}
 
@@ -145,7 +145,7 @@ export type ViewAutocompleteCallback<Type extends D.ApplicationCommandType> = (
 
 // Command
 export type CommandCallback<View extends AnyAppCommand> = (
-  ctx: CommandContext<View, View['options']['type']>,
+  ctx: CommandContext<View, View['signature']['type']>,
 ) => Promise<CommandInteractionResponse>
 
 // Component

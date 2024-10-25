@@ -1,7 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging'
 import type { DiscordAPIClient } from '../rest/client'
-import type { MessageData } from '../rest/objects'
 import { ViewErrors } from './errors'
 import type {
   AnyContext,
@@ -19,26 +18,27 @@ import type {
   InitialInteractionContext,
   InteractionContext,
   InteractionErrorCallback,
-  SendMessageCallback,
   StateContext,
   ViewAutocompleteCallback,
 } from './types'
 import type { StringDataSchema } from './utils/string_data'
-import { ViewState } from './view_state'
+import { ViewState, ViewStateFactory } from './view_state'
 
-export abstract class BaseView<TSchema extends StringDataSchema> {
+export abstract class BaseView<TSchema extends StringDataSchema = {}> {
   name: string
+  state_schema: TSchema
   protected constructor(
-    public options: {
+    public signature: {
       custom_id_prefix?: string
       name?: string
+      state_schema?: TSchema
     },
-    public state_schema = {} as TSchema,
   ) {
-    this.name = this.options.name ?? this.options.custom_id_prefix ?? 'Unnamed View'
-    if (options.custom_id_prefix?.includes('.')) {
+    this.state_schema = signature.state_schema ?? ({} as TSchema)
+    this.name = this.signature.name ?? this.signature.custom_id_prefix ?? 'Unnamed View'
+    if (signature.custom_id_prefix?.includes('.')) {
       throw new ViewErrors.InvalidCustomId(
-        `Custom id prefix contains delimiter: ${options.custom_id_prefix}`,
+        `Custom id prefix contains delimiter: ${signature.custom_id_prefix}`,
       )
     }
   }
@@ -113,13 +113,17 @@ export abstract class BaseView<TSchema extends StringDataSchema> {
     )
   }
 
-  newState(data: { [K in keyof TSchema]?: TSchema[K]['write'] | null } = {}): ViewState<TSchema> {
-    return ViewState.fromView(this).setAll(data)
+  createState(
+    data: { [K in keyof TSchema]?: TSchema[K]['write'] | null } = {},
+  ): ViewState<TSchema> {
+    return ViewStateFactory.fromViewSignature(this).setAll(data)
   }
 
   isStateCtx(ctx: StateContext<this>): ctx is StateContext<this> {
     try {
-      return JSON.stringify(this.newState(ctx.state.data).data) === JSON.stringify(ctx.state.data)
+      return (
+        JSON.stringify(this.createState(ctx.state.data).data) === JSON.stringify(ctx.state.data)
+      )
     } catch {
       return false
     }
@@ -158,7 +162,7 @@ export class AppCommand<
   CommandType extends D.ApplicationCommandType,
 > extends BaseView<TSchema> {
   constructor(
-    public options: (CommandType extends D.ApplicationCommandType.ChatInput
+    public signature: (CommandType extends D.ApplicationCommandType.ChatInput
       ? D.RESTPostAPIChatInputApplicationCommandsJSONBody
       : D.RESTPostAPIContextMenuApplicationCommandsJSONBody) & {
       type: CommandType
@@ -166,7 +170,7 @@ export class AppCommand<
       custom_id_prefix?: string
     },
   ) {
-    super(options, options.state_schema)
+    super(signature)
   }
 
   onCommand(callback: CommandCallback<this>) {
@@ -185,7 +189,7 @@ export class AppCommand<
   ): Promise<CommandInteractionResponse> {
     sentry.request_name = `${this.name} Command`
 
-    const state = this.newState()
+    const state = this.createState()
 
     return this.commandCallback({
       interaction,
@@ -220,31 +224,14 @@ export class AppCommand<
   }
 }
 
-export class MessageView<TSchema extends StringDataSchema, Params> extends BaseView<TSchema> {
-  constructor(
-    public readonly options: {
-      name?: string
-      state_schema?: TSchema
-      custom_id_prefix?: string
-      param?: () => Params
-    },
-  ) {
-    super(options, options.state_schema)
-  }
+export type MessageViewSignature<TSchema extends StringDataSchema> = {
+  name?: string
+  state_schema?: TSchema
+  custom_id_prefix?: string
+}
 
-  async send(args: Params): Promise<MessageData> {
-    return this.sendCallback({
-      state: this.newState(),
-      ...args,
-    })
-  }
-
-  private sendCallback: SendMessageCallback<this, Params> = async () => {
-    throw new ViewErrors.CallbackNotImplemented(`${this.name} has no send message callback`)
-  }
-
-  public onSend(callback: SendMessageCallback<this, Params>) {
-    this.sendCallback = callback
-    return this
+export class MessageView<TSchema extends StringDataSchema> extends BaseView<TSchema> {
+  constructor(public readonly signature: MessageViewSignature<TSchema>) {
+    super(signature)
   }
 }

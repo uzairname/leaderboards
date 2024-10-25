@@ -1,0 +1,34 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1706180940865,
+      "tag": "0000_true_mandrill",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1729554871121,
+      "tag": "0001_elite_mister_fear",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1729579415192,
+      "tag": "0002_nervous_skrulls",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1729885498323,
+      "tag": "0003_supreme_la_nuit",
+      "breakpoints": true
+    }
+  ]
+}

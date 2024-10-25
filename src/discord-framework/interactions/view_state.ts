@@ -1,21 +1,20 @@
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
 import { sentry } from '../../logging'
 import { ViewErrors } from './errors'
-import { findView } from './find_view'
 import { AnyView } from './types'
 import { StringData, StringDataSchema } from './utils/string_data'
 import { BaseView } from './views'
 
-export class ViewState<TSchema extends StringDataSchema> extends StringData<TSchema> {
+export class ViewState<T extends StringDataSchema> extends StringData<T> {
   set = {} as {
-    [K in keyof TSchema]: (value: TSchema[K]['write'] | null | undefined) => ViewState<TSchema>
+    [K in keyof T]: (value: T[K]['write'] | null | undefined) => ViewState<T>
   }
 
-  setAll(data: { [K in keyof TSchema]?: TSchema[K]['write'] | null }): ViewState<TSchema> {
+  setAll(data: { [K in keyof T]?: T[K]['write'] | null }): ViewState<T> {
     return this.copy().saveAll(data)
   }
 
-  copy(): ViewState<TSchema> {
+  copy(): ViewState<T> {
     return new ViewState(this.schema, this.view_id).decode(this.encode())
   }
 
@@ -25,8 +24,8 @@ export class ViewState<TSchema extends StringDataSchema> extends StringData<TSch
     return encoded
   }
 
-  private constructor(
-    protected schema: TSchema,
+  protected constructor(
+    protected schema: T,
     private view_id: string | undefined,
   ) {
     super(schema)
@@ -34,31 +33,39 @@ export class ViewState<TSchema extends StringDataSchema> extends StringData<TSch
       this.set[key] = value => this.copy().save[key](value)
     }
   }
+}
 
-  static fromView<T extends StringDataSchema>(view: BaseView<T>): ViewState<T> {
-    return new ViewState(view.state_schema, view.options.custom_id_prefix)
+export abstract class ViewStateFactory<T extends StringDataSchema> extends ViewState<T> {
+  static fromViewSignature<T extends StringDataSchema>(view: BaseView<T>): ViewState<T> {
+    return new ViewState(view.state_schema, view.signature.custom_id_prefix)
+  }
+
+  static splitCustomId(custom_id: string): [string, string] {
+    const decompressed_custom_id = decompressFromUTF16(custom_id)
+
+    if (!decompressed_custom_id)
+      throw new ViewErrors.InvalidEncodedCustomId(`Unable to decompress custom id ${custom_id}`)
+
+    const [prefix, ...rest] = decompressed_custom_id.split('.')
+    const encoded_data = rest.join('.')
+
+    return [prefix, encoded_data]
   }
 
   static fromCustomId(
     custom_id: string,
-    findViewCallback: any,
+    customIdPrefixToViewHandlers: (custom_id_prefix: string) => AnyView,
   ): { view: AnyView; state: ViewState<StringDataSchema> } {
-    const decompressed_custom_id = decompressFromUTF16(custom_id)
-
-    if (!decompressed_custom_id)
-      throw new ViewErrors.InvalidEncodedCustomId(`Unable to decode custom id ${custom_id}`)
-
-    const [prefix, ...extra] = decompressed_custom_id.split('.')
-    const encoded_data = extra.join('.')
-
-    const view = findView(findViewCallback, undefined, prefix)
-    const blank_state = ViewState.fromView(view)
+    const [prefix, encoded_data] = ViewStateFactory.splitCustomId(custom_id)
+    const view = customIdPrefixToViewHandlers(prefix)
+    const blank_state = ViewStateFactory.fromViewSignature(view)
     const state = encoded_data ? blank_state.decode(encoded_data) : blank_state
 
     sentry.addBreadcrumb({
       category: 'decoded custom_id',
       level: 'info',
       data: {
+        view_name: view.name,
         encoded_data,
         prefix,
         data: state.data,

@@ -1,5 +1,4 @@
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../../../../../logging'
 import { nonNullable, unflatten } from '../../../../../../utils/utils'
 import { App } from '../../../../../context/app_context'
 import { Guild, GuildRanking } from '../../../../../database/models'
@@ -7,10 +6,10 @@ import { Colors } from '../../../../common/constants'
 import { AppMessages } from '../../../../common/messages'
 import { dateTimestamp, escapeMd, messageLink } from '../../../../common/strings'
 import { getMatchLogsChannel } from '../../../guilds'
+import { help_cmd_signature, howtousePage } from '../../../help_command'
 import { create_ranking_view, createRankingModal } from './create_ranking'
-import { ranking_settings_view } from './ranking_settings'
+import { ranking_settings_view_signature } from './ranking_settings'
 
-// Rankings command for any guild, with callbacks
 
 export async function allGuildRankingsPage(
   app: App,
@@ -21,10 +20,11 @@ export async function allGuildRankingsPage(
   const embeds: D.APIEmbed[] = [
     {
       title: `${escapeMd(guild.data.name)}'s Rankings`,
-      description: (guild_rankings.length === 0
-        ? AppMessages.no_rankings_description
-        : `You have **${guild_rankings.length}** ranking${guild_rankings.length === 1 ? `` : `s`}`
-        + ` in this server`), //prettier-ignore
+      description:
+        guild_rankings.length === 0
+          ? AppMessages.no_rankings_description
+          : `This server has **${guild_rankings.length}** ranking${guild_rankings.length === 1 ? `` : `s`}` +
+            ``,
       fields: await Promise.all(
         guild_rankings.map(async item => {
           return {
@@ -43,8 +43,8 @@ export async function allGuildRankingsPage(
       type: D.ComponentType.Button,
       label: item.ranking.data.name || 'Unnamed Ranking',
       style: D.ButtonStyle.Primary,
-      custom_id: ranking_settings_view
-        .newState({
+      custom_id: ranking_settings_view_signature
+        .createState({
           ranking_id: item.ranking.data.id,
           guild_id: item.guild_ranking.data.guild_id,
         })
@@ -57,7 +57,6 @@ export async function allGuildRankingsPage(
     5,
     false,
   ).map(btns => {
-    sentry.debug(`btns ${JSON.stringify(btns)}`)
     return {
       type: D.ComponentType.ActionRow,
       components: btns,
@@ -76,10 +75,19 @@ export async function allGuildRankingsPage(
           {
             type: D.ComponentType.Button,
             style: D.ButtonStyle.Success,
-            custom_id: create_ranking_view.newState({ callback: createRankingModal }).cId(),
+            custom_id: create_ranking_view.createState({ callback: createRankingModal }).cId(),
             label: 'New Ranking',
             emoji: {
               name: '➕',
+            },
+          },
+          {
+            type: D.ComponentType.Button,
+            style: D.ButtonStyle.Secondary,
+            custom_id: help_cmd_signature.createState({ page: howtousePage }).cId(),
+            label: 'Help',
+            emoji: {
+              name: '❓',
             },
           },
         ],
@@ -89,8 +97,6 @@ export async function allGuildRankingsPage(
 }
 
 export async function guildRankingDetails(app: App, guild_ranking: GuildRanking): Promise<string> {
-  sentry.debug(`guildRankingDetails guild_ranking ${JSON.stringify(guild_ranking.data)}`)
-
   guild_ranking = await app.db.guild_rankings.get({
     guild_id: guild_ranking.data.guild_id,
     ranking_id: guild_ranking.data.ranking_id,
@@ -99,8 +105,8 @@ export async function guildRankingDetails(app: App, guild_ranking: GuildRanking)
   const ranking = await guild_ranking.ranking
   const time_created = ranking.data.time_created
 
-  const num_teams = nonNullable(ranking.data.num_teams, 'num_teams')
-  const players_per_team = nonNullable(ranking.data.players_per_team, 'players_per_team')
+  const num_teams = ranking.data.num_teams
+  const players_per_team = ranking.data.players_per_team
   const match_logs_channel_id = guild_ranking.data.display_settings?.log_matches
     ? (await getMatchLogsChannel(app, await guild_ranking.guild))?.id
     : undefined

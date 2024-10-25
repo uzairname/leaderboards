@@ -1,6 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../../../context/app_context'
-import { getOrCreatePlayer } from '../../../players/players'
+import { getOrCreatePlayer } from '../../../players/manage_players'
 
 /**
  * When a user uses a command or button to join a global queue for a ranking.

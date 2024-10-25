@@ -1,10 +1,9 @@
-import DbCache from './cache'
 import { DbClient } from './client'
 
 export abstract class DbObjectManager {
-  cache: any = {}
+  // cache: {[key: string | number]: any} = {}
   constructor(protected db: DbClient) {
-    this.cache = new DbCache()
+    // this.cache = new DbCache()
   }
 }
 

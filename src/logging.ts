@@ -18,7 +18,7 @@ export class Logger extends Toucan {
 
   constructor(
     private request: Request,
-    private env: Env,
+    env: Env,
     private execution_context: ExecutionContext,
   ) {
     super({

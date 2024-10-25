@@ -1,26 +1,24 @@
 import settings_command from '../modules/admin/views/commands/settings'
-import test_module from '../modules/test/views/commands/test_command'
 import help_command from '../modules/help_command'
 import leaderboard_command from '../modules/leaderboard/commands/leaderboard'
-import match_history_module from '../modules/matches/logging/views'
+import matches_module from '../modules/matches/logging/views'
 import matchmaking_module from '../modules/matches/matchmaking/views'
-import ongoing_matches_module from '../modules/matches/ongoing-matches/views'
-import record_match_command from '../modules/matches/matchmaking/views/commands/record_match_command'
-import stats_command from '../modules/players/views/commands/stats'
+import ongoing_series_module from '../modules/matches/ongoing-series/views'
+import players_module from '../modules/players/views'
 import rankings_module from '../modules/rankings/views'
-import util_views from '../modules/utils/views'
+import test_module from '../modules/test/views/commands/test_command'
+import util_module from '../modules/utils/views'
 import { ViewModule } from '../utils/ViewModule'
 
 export default new ViewModule([
   rankings_module,
-  match_history_module,
+  matches_module,
   matchmaking_module,
-  util_views,
+  util_module,
   help_command,
-  stats_command,
+  players_module,
   leaderboard_command,
   settings_command,
   test_module,
-  record_match_command,
-  ongoing_matches_module,
+  ongoing_series_module,
 ])

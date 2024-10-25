@@ -1,6 +1,5 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../logging'
 import { DiscordAPIClient } from './client'
 import { GuildChannelData, MessageData, RoleData } from './objects'
 import { RESTPostAPIGuildForumThreadsResult } from './types'
@@ -68,11 +67,9 @@ export class DiscordAPIUtils {
     channel: D.APIChannel
     is_new_channel: boolean
   }> {
-    sentry.debug(`a`)
     try {
       if (params.channelData && params.target_channel_id) {
         // try to edit the channel
-        sentry.debug(`b`)
         const { data } = await params.channelData()
 
         const channel = (await this.bot.editChannel(
@@ -84,7 +81,6 @@ export class DiscordAPIUtils {
           is_new_channel: false,
         }
       } else if (params.target_channel_id) {
-        sentry.debug(`c`)
         // don't edit the channel. Return if it exists.
         const channel = await this.bot.getChannel(params.target_channel_id)
         return {
@@ -92,11 +88,9 @@ export class DiscordAPIUtils {
           is_new_channel: false,
         }
       } else {
-        sentry.debug(`d`)
         // existing channel unspecified
       }
     } catch (e) {
-      sentry.debug(`e`)
       if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.UnknownChannel) {
         // channel doesn't exist
       } else {
@@ -104,9 +98,7 @@ export class DiscordAPIUtils {
       }
     }
 
-    sentry.debug(`f`)
     const { guild_id, data, create_reason: reason } = await params.channelData()
-    sentry.debug(`g`)
     return {
       channel: await this.bot.createGuildChannel(guild_id, data.postdata, reason),
       is_new_channel: true,
@@ -130,14 +122,8 @@ export class DiscordAPIUtils {
   ): Promise<D.APIMessage | void> {
     try {
       if (!target_message_id || !target_channel_id) return
-      sentry.debug('deleting message')
       return await this.bot.deleteMessageIfExists(target_channel_id, target_message_id)
     } catch (e) {
-      sentry.debug(
-        e,
-        (e as any).code === D.RESTJSONErrorCodes.UnknownChannel,
-        e instanceof DiscordAPIError,
-      )
       if (
         !(
           e instanceof DiscordAPIError &&

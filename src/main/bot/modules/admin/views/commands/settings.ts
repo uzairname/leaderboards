@@ -7,6 +7,7 @@ import {
 } from '../../../../../../discord-framework'
 import { App } from '../../../../../context/app_context'
 import { Colors } from '../../../../common/constants'
+import { syncDiscordCommands } from '../../../../manage-views/sync_discord_commands'
 import { checkGuildInteraction, ensureAdminPerms } from '../../../../utils/perms'
 import { AppView } from '../../../../utils/ViewModule'
 import { getOrAddGuild, syncGuildAdminRole } from '../../../guilds'
@@ -27,9 +28,10 @@ export const settings_cmd_def = new AppCommand({
   },
 })
 
-export default new AppView((app: App) =>
+export default new AppView(settings_cmd_def, (app: App) =>
   settings_cmd_def
     .onCommand(async ctx => {
+      await syncDiscordCommands(app, ctx.interaction.guild_id)
       return {
         type: D.InteractionResponseType.ChannelMessageWithSource,
         data: await settingsPage(app),
@@ -42,13 +44,13 @@ export default new AppView((app: App) =>
 )
 
 export async function settingsPage(app: App): Promise<D.APIInteractionResponseCallbackData> {
-  const state = settings_cmd_def.newState()
+  const state = settings_cmd_def.createState()
   return {
     embeds: [
       {
         title: 'Settings',
         description: ``,
-        color: Colors.EmbedBackground,
+        color: Colors.Primary,
       },
     ],
     components: [
@@ -59,7 +61,7 @@ export async function settingsPage(app: App): Promise<D.APIInteractionResponseCa
             type: D.ComponentType.Button,
             label: 'Manage Rankings',
             style: D.ButtonStyle.Primary,
-            custom_id: rankings_cmd_signature.newState({}).cId(),
+            custom_id: rankings_cmd_signature.createState({}).cId(),
           },
           {
             type: D.ComponentType.Button,
@@ -98,6 +100,7 @@ async function onAdminRoleBtn(
         {
           title: 'Admin Role',
           description: `The role <@&${role_result.role.id}> can manage rankings and matches. You can rename, edit, and assign it to anyone`,
+          color: Colors.Primary,
         },
       ],
     },

@@ -11,7 +11,7 @@ import {
   viewIsChatInputAppCommand,
 } from './types'
 import { verify } from './verify'
-import { ViewState } from './view_state'
+import { ViewStateFactory } from './view_state'
 
 export async function respondToInteraction(
   bot: DiscordAPIClient,
@@ -53,13 +53,9 @@ async function respond(
   findViewCallback: FindViewCallback,
   onError: InteractionErrorCallback,
 ): Promise<D.APIInteractionResponse> {
-  sentry.setUser({
-    id: interaction.user?.id ?? interaction.member?.user.id,
-    username: interaction.user?.username ?? interaction.member?.user.username,
-    guild: interaction.guild_id,
-  })
-
   if (interaction.type === D.InteractionType.Ping) return { type: D.InteractionResponseType.Pong }
+
+  logInteraction(interaction)
 
   if (
     interaction.type === D.InteractionType.ApplicationCommand ||
@@ -78,6 +74,43 @@ async function respond(
     }
   }
 
-  const { view, state } = ViewState.fromCustomId(interaction.data.custom_id, findViewCallback)
+  const { view, state } = ViewStateFactory.fromCustomId(
+    interaction.data.custom_id,
+    (custom_id_prefix: string) => {
+      return findView(findViewCallback, undefined, custom_id_prefix)
+    },
+  )
+
   return view.respondToComponent(interaction, state, bot, onError)
+}
+
+function logInteraction(interaction: D.APIInteraction) {
+  sentry.setUser({
+    id: interaction.user?.id ?? interaction.member?.user.id,
+    username: interaction.user?.username ?? interaction.member?.user.username,
+    guild: interaction.guild_id,
+  })
+
+  const data: Record<string, unknown> = {}
+
+  if (interaction.type === D.InteractionType.ApplicationCommand) {
+    data['command_interaction'] = {
+      name: interaction.data.name,
+      type: interaction.data.type,
+      guild_id: interaction.guild_id,
+    }
+  } else if (
+    interaction.type === D.InteractionType.MessageComponent ||
+    interaction.type === D.InteractionType.ModalSubmit
+  ) {
+    data['custom_id'] = interaction.data.custom_id
+    data['custom_id_length'] = interaction.data.custom_id.length
+  }
+
+  sentry.addBreadcrumb({
+    message: 'Received Interaction',
+    category: 'discord',
+    level: 'info',
+    data,
+  })
 }

@@ -2,11 +2,11 @@ import { and, eq } from 'drizzle-orm'
 import { App } from '../../../context/app_context'
 import { Guild, GuildRanking, Ranking } from '../../../database/models'
 import { GuildRankingInsert } from '../../../database/models/guild_rankings'
-import { RankingInsert } from '../../../database/models/rankings'
+import { RankingInsert, RankingUpdate } from '../../../database/models/rankings'
 import { GuildRankings, Rankings } from '../../../database/schema'
 import { syncDiscordCommands } from '../../manage-views/sync_discord_commands'
 import { UserError, UserErrors } from '../../utils/UserError'
-import { syncGuildRankingLbMessage } from '../leaderboard/leaderboard_messages'
+import { syncGuildRankingLbMessage } from '../leaderboard/leaderboard_message'
 
 /**
  *
@@ -62,7 +62,7 @@ export async function createNewRankingInGuild(
   return { new_guild_ranking, new_ranking }
 }
 
-export async function updateRanking(app: App, ranking: Ranking, options: RankingInsert) {
+export async function updateRanking(app: App, ranking: Ranking, options: RankingUpdate): Promise<void> {
   await ranking.update(options)
   const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
   await Promise.all(

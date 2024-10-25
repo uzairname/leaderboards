@@ -7,10 +7,25 @@ export const apiRouter = (app: App) =>
     .get('/', async () => {
       return new Response('API')
     })
-    .get('/commands', async request => {
+    .get('/commands', () => {
       const result = {
-        'defined global commands': views.getAllCommandSignatures(app),
+        'defined commands': views.all_views
+          .map(c => {
+            return {
+              cid_prefix: `${c.base_signature.signature.custom_id_prefix}`,
+              name: `${c.base_signature.signature.name}`,
+              is_guild_command: !!c.resolveGuildSignature,
+              experimental: c.is_dev,
+            }
+          })
+          .sort((a, b) => {
+            // first by experimental, then by cid_prefix
+            if (a.experimental && !b.experimental) return -1
+            if (!a.experimental && b.experimental) return 1
+            return a.cid_prefix.localeCompare(b.cid_prefix)
+          }),
       }
+      // format json
       return json(result)
     })
     .get('/endpoints', async request => {

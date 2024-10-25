@@ -92,7 +92,31 @@ export class Match extends DbObject<MatchSelect> {
     return data
   }
 
-  async update(data: Partial<{ team_players: MatchTeamPlayer[][] } & MatchUpdate>): Promise<this> {
+  async updateSummaryMessage(guild_id: string, message_id: string): Promise<void> {
+    try {
+      // try to insert
+      await this.db.db.insert(MatchSummaryMessages).values({
+        match_id: this.data.id,
+        guild_id: guild_id,
+        message_id: message_id,
+      })
+    } catch (e) {
+      // duplicate key. update
+      await this.db.db
+        .update(MatchSummaryMessages)
+        .set({
+          message_id,
+        })
+        .where(
+          and(
+            eq(MatchSummaryMessages.match_id, this.data.id),
+            eq(MatchSummaryMessages.guild_id, guild_id),
+          ),
+        )
+    }
+  }
+
+  async update(data: MatchUpdate): Promise<this> {
     this.data = (
       await this.db.db
         .update(Matches)
@@ -103,17 +127,12 @@ export class Match extends DbObject<MatchSelect> {
         .returning()
     )[0]
 
-    // update all match players' ratings and rd before
-    if (data.team_players) {
-      await this.updatePlayers(data.team_players)
-    }
-
     this.db.cache.matches[this.data.id] = this
 
     return this
   }
 
-  async updatePlayers(team_players: MatchTeamPlayer[][]): Promise<this> {
+  async updatePlayerRatingsBefore(team_players: MatchTeamPlayer[][]): Promise<this> {
     await Promise.all(
       team_players.flat().map(player =>
         this.db.db
@@ -207,7 +226,7 @@ export class MatchesManager extends DbObjectManager {
     player_ids?: number[]
     user_ids?: string[]
     ranking_ids?: number[]
-    on_or_after?: Date
+    finished_on_or_after?: Date
     limit?: number
     offset?: number
     status?: MatchStatus
@@ -233,8 +252,8 @@ export class MatchesManager extends DbObjectManager {
       where_sql_chunks.push(inArray(Matches.ranking_id, filters.ranking_ids))
     }
 
-    if (filters.on_or_after) {
-      where_sql_chunks.push(sql`${Matches.time_started} >= ${filters.on_or_after}`)
+    if (filters.finished_on_or_after) {
+      where_sql_chunks.push(sql`${Matches.time_finished} >= ${filters.finished_on_or_after}`)
     }
 
     if (filters.status !== undefined) {
@@ -291,6 +310,10 @@ export class MatchesManager extends DbObjectManager {
         rating_before: row.match_player.rating_before,
         rd_before: row.match_player.rd_before,
       })
+    })
+
+    matches.forEach(match => {
+      this.db.cache.match_team_players[match.match.data.id] = match.team_players
     })
 
     return Array.from(matches.values())

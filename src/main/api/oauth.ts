@@ -1,10 +1,10 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { Router } from 'itty-router'
-import { DiscordAPIClient } from '../../discord-framework'
+import type { DiscordAPIClient } from '../../discord-framework'
 import { nonNullable } from '../../utils/utils'
-import { App } from '../context/app_context'
-import { AccessToken } from '../database/models/access_tokens'
+import type { App } from '../context/app_context'
+import type { AccessToken } from '../database/models/access_tokens'
 
 export const oauthRouter = (app: App) =>
   Router({ base: `/oauth` })
@@ -77,7 +77,10 @@ export async function saveUserAccessToken(app: App, token: D.RESTPostOAuth2Acces
   if (me.user) {
     // save token
     await app.db.access_tokens.create({
-      user: await app.db.users.getOrCreate(me.user),
+      user: await app.db.users.getOrCreate({
+        id: me.user.id,
+        name: me.user.global_name ?? me.user.username,
+      }),
       data: token,
       expires_at: new Date(Date.now() + token.expires_in * 1000),
     })

@@ -50,11 +50,36 @@ export async function guildRankingsOption(
   ]
 }
 
+export async function withOptionalSelectedRanking(
+  app: App,
+  ctx: InteractionContext<AnyAppCommand, D.APIChatInputApplicationCommandInteraction>,
+  ranking_option_name: string,
+  callback: (ranking: Ranking | undefined) => Promise<CommandInteractionResponse>,
+): Promise<CommandInteractionResponse> {
+  return _withSelectedRanking(app, ctx, ranking_option_name, callback, true)
+}
+
 export async function withSelectedRanking(
   app: App,
   ctx: InteractionContext<AnyAppCommand, D.APIChatInputApplicationCommandInteraction>,
   ranking_option_name: string,
   callback: (ranking: Ranking) => Promise<CommandInteractionResponse>,
+): Promise<CommandInteractionResponse> {
+  return _withSelectedRanking(
+    app,
+    ctx,
+    ranking_option_name,
+    async ranking => callback(ranking!),
+    false,
+  )
+}
+
+async function _withSelectedRanking(
+  app: App,
+  ctx: InteractionContext<AnyAppCommand, D.APIChatInputApplicationCommandInteraction>,
+  ranking_option_name: string,
+  callback: (ranking: Ranking | undefined) => Promise<CommandInteractionResponse>,
+  required = false,
 ): Promise<CommandInteractionResponse> {
   const interaction = checkGuildInteraction(ctx.interaction)
 
@@ -67,6 +92,9 @@ export async function withSelectedRanking(
   if (ranking_option_value && parseInt(ranking_option_value)) {
     var ranking = await app.db.rankings.get(parseInt(ranking_option_value))
   } else {
+    if (required) {
+      return callback(undefined)
+    }
     const guild_rankings = await app.db.guild_rankings.get({
       guild_id: interaction.guild_id,
     })
@@ -79,7 +107,7 @@ export async function withSelectedRanking(
         data: await allGuildRankingsPage(app, guild),
       }
     } else {
-      throw new UserError('Please specify a ranking to record the match for')
+      throw new UserError('Please specify a ranking')
     }
   }
 

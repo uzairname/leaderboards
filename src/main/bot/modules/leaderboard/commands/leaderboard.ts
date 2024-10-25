@@ -3,13 +3,13 @@ import { AppCommand, field } from '../../../../../discord-framework'
 import { App } from '../../../../context/app_context'
 import { AppView } from '../../../utils/ViewModule'
 import { guildRankingsOption, withSelectedRanking } from '../../utils/ranking_command_option'
-import { leaderboardMessage } from '../leaderboard_messages'
+import { leaderboardMessage } from '../leaderboard_message'
 
 const optionnames = {
   ranking: 'ranking',
 }
 
-const leaderboard_cmd = new AppCommand({
+const leaderboard_cmd_signature = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
   custom_id_prefix: 'lb',
   name: 'leaderboard',
@@ -21,14 +21,14 @@ const leaderboard_cmd = new AppCommand({
   },
 })
 
-const leaderboardCmdDef = async (app: App, guild_id: string) =>
+const leaderboardCmdGuildSignature = async (app: App, guild_id: string) =>
   new AppCommand({
-    ...leaderboard_cmd.options,
+    ...leaderboard_cmd_signature.signature,
     options: [(await guildRankingsOption(app, guild_id, optionnames.ranking)) || []].flat(),
   })
 
 export const leaderboardCmd = (app: App) =>
-  leaderboard_cmd.onCommand(async ctx =>
+  leaderboard_cmd_signature.onCommand(async ctx =>
     withSelectedRanking(app, ctx, optionnames.ranking, async ranking => {
       return ctx.defer(
         {
@@ -43,4 +43,4 @@ export const leaderboardCmd = (app: App) =>
     }),
   )
 
-export default new AppView(leaderboardCmd, leaderboardCmdDef)
+export default new AppView(leaderboard_cmd_signature, leaderboardCmd, leaderboardCmdGuildSignature)

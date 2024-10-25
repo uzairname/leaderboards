@@ -41,15 +41,25 @@ export class DiscordAPIClient extends REST {
 
   async getAppCommands(guild_id?: string) {
     if (guild_id) {
-      return (await this.fetch(
+      if (this.cache.guild_app_commands[guild_id]) {
+        return this.cache.guild_app_commands[guild_id]
+      }
+      const result = (await this.fetch(
         RequestMethod.Get,
         D.Routes.applicationGuildCommands(this.application_id, guild_id),
       )) as D.RESTGetAPIApplicationGuildCommandResult[]
+      this.cache.guild_app_commands[guild_id] = result
+      return result
     } else {
-      return (await this.fetch(
+      if (this.cache.app_commands) {
+        return this.cache.app_commands
+      }
+      const result = (await this.fetch(
         RequestMethod.Get,
         D.Routes.applicationCommands(this.application_id),
-      )) as D.RESTGetAPIApplicationCommandsResult[]
+      )) as D.RESTGetAPIApplicationCommandsResult
+      this.cache.app_commands = result
+      return result
     }
   }
 
@@ -85,7 +95,6 @@ export class DiscordAPIClient extends REST {
     reason?: string,
   ) {
     try {
-      sentry.debug(`Creating channel in guild ${guild_id} with reason ${reason}`)
       return (await this.fetch(RequestMethod.Post, D.Routes.guildChannels(guild_id), {
         body,
         reason,
@@ -118,7 +127,6 @@ export class DiscordAPIClient extends REST {
 
   @requiresBotPerms(D.PermissionFlagsBits.ManageChannels)
   async editChannel(channel_id: string, body: D.RESTPatchAPIChannelJSONBody) {
-    sentry.debug(`Editing channel ${channel_id}`)
     return (await this.fetch(RequestMethod.Patch, D.Routes.channel(channel_id), {
       body,
     })) as D.RESTPatchAPIChannelResult
@@ -199,7 +207,6 @@ export class DiscordAPIClient extends REST {
     message_id: string,
     body: D.RESTPatchAPIChannelMessageJSONBody,
   ) {
-    sentry.debug(`Editing message ${message_id} in channel ${channel_id}`)
     return (await this.fetch(RequestMethod.Patch, D.Routes.channelMessage(channel_id, message_id), {
       body,
     })) as D.RESTPatchAPIChannelMessageResult
@@ -208,7 +215,6 @@ export class DiscordAPIClient extends REST {
   // @requiresBotPerms_(D.PermissionFlagsBits.ManageMessages)
   @requiresBotPerms(D.PermissionFlagsBits.ManageMessages)
   async pinMessage(channel_id: string, message_id: string) {
-    sentry.debug(`Pinning message ${message_id} in channel ${channel_id}`)
     return (await this.fetch(
       RequestMethod.Put,
       D.Routes.channelPin(channel_id, message_id),
@@ -483,23 +489,6 @@ export class DiscordAPIClient extends REST {
           .setToken(bearer_token)
           .request(options)
       : super.request(options)
-  }
-}
-
-function catchError(x: bigint) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    const originalMethod = descriptor.value
-
-    descriptor.value = async function (...args: any[]) {
-      try {
-        await originalMethod.apply(this, args)
-        return 'success'
-      } catch (error) {
-        sentry.debug('Caught error', x)
-      }
-    }
-
-    return descriptor
   }
 }
 
