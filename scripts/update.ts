@@ -15,15 +15,15 @@ dotenv.config({
 })
 
 export async function updateApp() {
-  await fetch(`${nonNullable(process.env.BASE_URL, 'base url')}/update`, {
+  const response = await fetch(`${nonNullable(process.env.BASE_URL, 'base url')}/update`, {
     method: 'POST',
     headers: {
       'Authorization': `${nonNullable(process.env.APP_KEY, 'app key')}`
     },
   })
+  console.log(await response.text())
 }
 
 updateApp().then(() => {
-  console.log('Successfully updated app')
   process.exit(0)
 })

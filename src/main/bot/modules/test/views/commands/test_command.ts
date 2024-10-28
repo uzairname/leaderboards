@@ -7,10 +7,9 @@ import {
   StateContext,
 } from '../../../../../../discord-framework'
 import { ViewStateFactory } from '../../../../../../discord-framework/interactions/view_state'
-import { App } from '../../../../../context/app_context'
-import all_views from '../../../../manage-views/all_views'
-import { UserErrors } from '../../../../utils/UserError'
-import { AppView, ViewModule } from '../../../../utils/ViewModule'
+import { AppView, ViewModule } from '../../../../../app/ViewModule'
+import { UserErrors } from '../../../../errors/UserError'
+import all_views from '../../../all_views'
 
 const test_cmd_signature = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -31,67 +30,6 @@ const test_cmd_signature = new AppCommand({
     input_date: field.Date(),
   },
 })
-
-export const testCommand = (app: App) =>
-  test_cmd_signature
-    .onCommand(async ctx => {
-      const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
-      ctx.state.save.original_user(user_id)
-      ctx.state.save.counter(0)
-
-      const user =
-        (
-          ctx.interaction.data.options?.find(o => o.name === 'user') as
-            | D.APIApplicationCommandInteractionDataUserOption
-            | undefined
-        )?.value ?? true
-
-      // const ephemeral = true
-      return {
-        type: D.InteractionResponseType.ChannelMessageWithSource,
-        data: testMessageData(ctx, true),
-      }
-    })
-    .onComponent(async ctx => {
-      const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
-
-      if (ctx.state.data.original_user !== user_id) {
-        throw new UserErrors.NotComponentOwner(ctx.state.data.original_user)
-      }
-
-      if (ctx.state.is.clicked_btn('wait')) {
-        return ctx.defer(
-          {
-            type: D.InteractionResponseType.ChannelMessageWithSource,
-            data: {
-              content: `waiting`,
-              flags: D.MessageFlags.Ephemeral,
-            },
-          },
-          async ctx => {
-            const seconds = ctx.state.data.counter ?? 0
-
-            await ctx.edit({
-              content: `waiting....`,
-            })
-
-            await new Promise(r => setTimeout(r, seconds * 1000))
-
-            return void ctx.followup({
-              content: `waited ${seconds} seconds.`,
-              flags: D.MessageFlags.Ephemeral,
-            })
-          },
-        )
-      } else if (ctx.state.is.clicked_btn('increment')) {
-        ctx.state.save.counter((ctx.state.data.counter ?? 0) + 1)
-      }
-
-      return {
-        type: D.InteractionResponseType.UpdateMessage,
-        data: testMessageData(ctx),
-      }
-    })
 
 function testMessageData(
   ctx: StateContext<typeof test_cmd_signature>,
@@ -149,46 +87,105 @@ const helper_view_signature = new MessageView({
   },
 })
 
-const helperView = (app: App) =>
-  helper_view_signature.onComponent(async ctx => {
-    const x = all_views.getFindViewCallback(app)
-
-    const { state: back_state } = ViewStateFactory.fromCustomId(
-      ctx.state.get.back_cid(),
-      all_views.findViewSignatureFromCustomId(),
-    )
-
-    back_state.save[ctx.state.get.back_counter_field()](ctx.state.data.counter)
-
-    return {
-      type: D.InteractionResponseType.UpdateMessage,
-      data: {
-        components: [
-          {
-            type: D.ComponentType.ActionRow,
-            components: [
-              {
-                type: D.ComponentType.Button,
-                label: 'halve',
-                custom_id: ctx.state.set.counter((ctx.state.data.counter ?? 0) / 2).cId(),
-                style: D.ButtonStyle.Secondary,
-              },
-              {
-                type: D.ComponentType.Button,
-                label: `Submit: ${ctx.state.data.counter}`,
-                custom_id: back_state.cId(),
-                style: D.ButtonStyle.Secondary,
-              },
-            ],
-          },
-        ],
-      },
-    } as any
-  })
-
 export default new ViewModule([
-  new AppView(test_cmd_signature, testCommand),
-  new AppView(helper_view_signature, helperView),
+  new AppView(test_cmd_signature, app =>
+    test_cmd_signature
+      .onCommand(async ctx => {
+        const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
+        ctx.state.save.original_user(user_id)
+        ctx.state.save.counter(0)
+
+        const user =
+          (
+            ctx.interaction.data.options?.find(o => o.name === 'user') as
+              | D.APIApplicationCommandInteractionDataUserOption
+              | undefined
+          )?.value ?? true
+
+        // const ephemeral = true
+        return {
+          type: D.InteractionResponseType.ChannelMessageWithSource,
+          data: testMessageData(ctx, true),
+        }
+      })
+      .onComponent(async ctx => {
+        const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
+
+        if (ctx.state.data.original_user !== user_id) {
+          throw new UserErrors.NotComponentOwner(ctx.state.data.original_user)
+        }
+
+        if (ctx.state.is.clicked_btn('wait')) {
+          return ctx.defer(
+            {
+              type: D.InteractionResponseType.ChannelMessageWithSource,
+              data: {
+                content: `waiting`,
+                flags: D.MessageFlags.Ephemeral,
+              },
+            },
+            async ctx => {
+              const seconds = ctx.state.data.counter ?? 0
+
+              await ctx.edit({
+                content: `waiting....`,
+              })
+
+              await new Promise(r => setTimeout(r, seconds * 1000))
+
+              return void ctx.followup({
+                content: `waited ${seconds} seconds.`,
+                flags: D.MessageFlags.Ephemeral,
+              })
+            },
+          )
+        } else if (ctx.state.is.clicked_btn('increment')) {
+          ctx.state.save.counter((ctx.state.data.counter ?? 0) + 1)
+        }
+
+        return {
+          type: D.InteractionResponseType.UpdateMessage,
+          data: testMessageData(ctx),
+        }
+      }),
+  ),
+  new AppView(helper_view_signature, app =>
+    helper_view_signature.onComponent(async ctx => {
+      const x = all_views.getFindViewCallback(app)
+
+      const { state: back_state } = ViewStateFactory.fromCustomId(
+        ctx.state.get.back_cid(),
+        all_views.findViewSignatureFromCustomId(),
+      )
+
+      back_state.save[ctx.state.get.back_counter_field()](ctx.state.data.counter)
+
+      return {
+        type: D.InteractionResponseType.UpdateMessage,
+        data: {
+          components: [
+            {
+              type: D.ComponentType.ActionRow,
+              components: [
+                {
+                  type: D.ComponentType.Button,
+                  label: 'halve',
+                  custom_id: ctx.state.set.counter((ctx.state.data.counter ?? 0) / 2).cId(),
+                  style: D.ButtonStyle.Secondary,
+                },
+                {
+                  type: D.ComponentType.Button,
+                  label: `Submit: ${ctx.state.data.counter}`,
+                  custom_id: back_state.cId(),
+                  style: D.ButtonStyle.Secondary,
+                },
+              ],
+            },
+          ],
+        },
+      } as any
+    }),
+  ),
 ])
 
 const schema = {

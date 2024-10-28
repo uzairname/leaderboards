@@ -1,4 +1,4 @@
-import { ViewModule } from '../../../utils/ViewModule'
+import { ViewModule } from '../../../../app/ViewModule'
 import create_ranking_command from './commands/create_ranking'
 import all_rankings_command from './commands/rankings'
 import create_ranking_page from './pages/create_ranking'

@@ -3,8 +3,8 @@ import * as D from 'discord-api-types/v10'
 import { Router } from 'itty-router'
 import type { DiscordAPIClient } from '../../discord-framework'
 import { nonNullable } from '../../utils/utils'
-import type { App } from '../context/app_context'
-import type { AccessToken } from '../database/models/access_tokens'
+import type { App } from '../app/App'
+import type { AccessToken } from '../../database/models/access_tokens'
 
 export const oauthRouter = (app: App) =>
   Router({ base: `/oauth` })

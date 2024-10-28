@@ -9,14 +9,17 @@ import {
   StateContext,
 } from '../../../../../../../discord-framework'
 import { assert, nonNullable, snowflakeToDate } from '../../../../../../../utils/utils'
-import { App } from '../../../../../../context/app_context'
-import { Colors } from '../../../../../common/constants'
-import { relativeTimestamp } from '../../../../../common/strings'
-import { checkGuildInteraction, hasAdminPerms } from '../../../../../utils/perms'
-import { UserError } from '../../../../../utils/UserError'
-import { AppView } from '../../../../../utils/ViewModule'
+import { App } from '../../../../../../app/App'
+import { GuildCommandView } from '../../../../../../app/ViewModule'
+import { UserError } from '../../../../../errors/UserError'
+import { Colors } from '../../../../../helpers/constants'
+import { checkGuildInteraction, hasAdminPerms } from '../../../../../helpers/perms'
+import {
+  guildRankingsOption,
+  withSelectedRanking,
+} from '../../../../../helpers/ranking_command_option'
+import { relativeTimestamp } from '../../../../../helpers/strings'
 import { getOrCreatePlayer } from '../../../../players/manage_players'
-import { guildRankingsOption, withSelectedRanking } from '../../../../utils/ranking_command_option'
 import { matchSummaryEmbed } from '../../../logging/match_summary_message'
 import { createAndScoreMatch } from '../../score_matches'
 
@@ -68,178 +71,174 @@ const optionnames = {
   time_finished: 'when',
 }
 
-const getRecordMatchCommandSignatureInGuild = async (app: App, guild_id: string) => {
-  const options: D.APIApplicationCommandOption[] = [
-    {
-      name: optionnames.winner,
-      description: 'Who won (if applicable)',
-      type: D.ApplicationCommandOptionType.User,
-    },
-    {
-      name: optionnames.loser,
-      description: 'Who lost (if applicable)',
-      type: D.ApplicationCommandOptionType.User,
-    },
-    {
-      name: optionnames.time_finished,
-      description: 'Snowflake or Unix timestamp of when the match was finished (default now)',
-      type: D.ApplicationCommandOptionType.String,
-    },
-  ]
-
-  return new AppCommand({
-    ...record_match_cmd_signature.signature,
-    options: options.concat(
-      await guildRankingsOption(
-        app,
-        guild_id,
-        optionnames.ranking,
-        {},
-        'Which ranking should this match belong to',
-      ),
-    ),
-  })
-}
-
-const recordMatchCmd = (app: App) =>
-  record_match_cmd_signature
-    /**
-     * If the ranking is 1v1 all the required options are provided, record the match.
-     * If not, open a menu to select the teams
-     *
-     * If the user is admin, skip the confirmation step
-     */
-    .onCommand(async ctx =>
-      withSelectedRanking(app, ctx, optionnames.ranking, async ranking =>
-        ctx.defer(
-          {
-            type: D.InteractionResponseType.DeferredChannelMessageWithSource,
-            data: { flags: D.MessageFlags.Ephemeral },
-          },
-          async ctx => {
-            const interaction = checkGuildInteraction(ctx.interaction)
-            const selected_time_finished = (
-              interaction.data.options?.find(o => o.name === optionnames.time_finished) as
-                | D.APIApplicationCommandInteractionDataStringOption
-                | undefined
-            )?.value
-
-            if (selected_time_finished && !isNaN(parseInt(selected_time_finished))) {
-              if (selected_time_finished.length < 13) {
-                // assume it's a unix timestamp
-                ctx.state.save.selected_time_finished(
-                  new Date(parseInt(selected_time_finished) * 1000),
-                )
-              } else {
-                // assume it's a snowflake
-                ctx.state.save.selected_time_finished(
-                  snowflakeToDate(BigInt(selected_time_finished)),
-                )
-              }
-            }
-
-            if (await hasAdminPerms(app, ctx)) {
-              ctx.state.save.admin(true)
-            }
-
-            ctx.state.save.ranking_id(ranking.data.id)
-            ctx.state.save.players_per_team(ranking.data.players_per_team)
-            ctx.state.save.num_teams(ranking.data.num_teams)
-
-            if (ctx.state.is.players_per_team(1) && ctx.state.is.num_teams(2)) {
-              // If this is a 1v1 ranking, check if the winner and loser were specified
-
-              const winner_id = (
-                interaction.data.options?.find(o => o.name === optionnames.winner) as
-                  | D.APIApplicationCommandInteractionDataUserOption
-                  | undefined
-              )?.value
-              const loser_id = (
-                interaction.data.options?.find(o => o.name === optionnames.loser) as
-                  | D.APIApplicationCommandInteractionDataUserOption
+export default new GuildCommandView(
+  record_match_cmd_signature,
+  app =>
+    record_match_cmd_signature
+      /**
+       * If the ranking is 1v1 all the required options are provided, record the match.
+       * If not, open a menu to select the teams
+       *
+       * If the user is admin, skip the confirmation step
+       */
+      .onCommand(async ctx =>
+        withSelectedRanking(app, ctx, optionnames.ranking, async ranking =>
+          ctx.defer(
+            {
+              type: D.InteractionResponseType.DeferredChannelMessageWithSource,
+              data: { flags: D.MessageFlags.Ephemeral },
+            },
+            async ctx => {
+              const interaction = checkGuildInteraction(ctx.interaction)
+              const selected_time_finished = (
+                interaction.data.options?.find(o => o.name === optionnames.time_finished) as
+                  | D.APIApplicationCommandInteractionDataStringOption
                   | undefined
               )?.value
 
-              if (winner_id && loser_id) {
-                if (ctx.state.is.admin()) {
-                  // record the match
-                  const winner = await getOrCreatePlayer(app, winner_id, ranking)
-                  const loser = await getOrCreatePlayer(app, loser_id, ranking)
-
-                  await createAndScoreMatch(
-                    app,
-                    ranking,
-                    [[winner], [loser]].map(team =>
-                      team.map(p => ({
-                        player: p,
-                        rating_before: p.data.rating,
-                        rd_before: p.data.rd,
-                      })),
-                    ),
-                    [1, 0],
-                    undefined,
-                    ctx.state.data.selected_time_finished,
+              if (selected_time_finished && !isNaN(parseInt(selected_time_finished))) {
+                if (selected_time_finished.length < 13) {
+                  // assume it's a unix timestamp
+                  ctx.state.save.selected_time_finished(
+                    new Date(parseInt(selected_time_finished) * 1000),
                   )
-                  return void ctx.edit({
-                    content: `Recorded match`,
-                    flags: D.MessageFlags.Ephemeral,
-                  })
                 } else {
-                  // store the selected users to state
-                  ctx.state.save.players([[{ user_id: winner_id }], [{ user_id: loser_id }]])
-                  ctx.state.save.selected_winning_team_index(0)
-                  // prompt all users involved to confirm the match
-                  await ctx.edit({
-                    content: `All players involved in this match must agree to the results`,
-                  })
-                  return void sendPlayersConfirmingMatchPage(app, ctx)
+                  // assume it's a snowflake
+                  ctx.state.save.selected_time_finished(
+                    snowflakeToDate(BigInt(selected_time_finished)),
+                  )
                 }
               }
-            }
 
-            // Otherwise, select teams
-            return void ctx.edit(await selectTeamPage(app, ctx))
-          },
+              if (await hasAdminPerms(app, ctx)) {
+                ctx.state.save.admin(true)
+              }
+
+              ctx.state.save.ranking_id(ranking.data.id)
+              ctx.state.save.players_per_team(ranking.data.players_per_team)
+              ctx.state.save.num_teams(ranking.data.num_teams)
+
+              if (ctx.state.is.players_per_team(1) && ctx.state.is.num_teams(2)) {
+                // If this is a 1v1 ranking, check if the winner and loser were specified
+
+                const winner_id = (
+                  interaction.data.options?.find(o => o.name === optionnames.winner) as
+                    | D.APIApplicationCommandInteractionDataUserOption
+                    | undefined
+                )?.value
+                const loser_id = (
+                  interaction.data.options?.find(o => o.name === optionnames.loser) as
+                    | D.APIApplicationCommandInteractionDataUserOption
+                    | undefined
+                )?.value
+
+                if (winner_id && loser_id) {
+                  if (ctx.state.is.admin()) {
+                    // record the match
+                    const winner = await getOrCreatePlayer(app, winner_id, ranking)
+                    const loser = await getOrCreatePlayer(app, loser_id, ranking)
+
+                    await createAndScoreMatch(
+                      app,
+                      ranking,
+                      [[winner], [loser]].map(team =>
+                        team.map(p => ({
+                          player: p,
+                          rating_before: p.data.rating,
+                          rd_before: p.data.rd,
+                        })),
+                      ),
+                      [1, 0],
+                      undefined,
+                      ctx.state.data.selected_time_finished,
+                    )
+                    return void ctx.edit({
+                      content: `Recorded match`,
+                      flags: D.MessageFlags.Ephemeral,
+                    })
+                  } else {
+                    // store the selected users to state
+                    ctx.state.save.players([[{ user_id: winner_id }], [{ user_id: loser_id }]])
+                    ctx.state.save.selected_winning_team_index(0)
+                    // prompt all users involved to confirm the match
+                    await ctx.edit({
+                      content: `All players involved in this match must agree to the results`,
+                    })
+                    return void sendPlayersConfirmingMatchPage(app, ctx)
+                  }
+                }
+              }
+
+              // Otherwise, select teams
+              return void ctx.edit(await selectTeamPage(app, ctx))
+            },
+          ),
+        ),
+      )
+
+      .onComponent(async ctx => {
+        if (ctx.state.is.clicked_component('select team')) {
+          return onSelectTeam(app, ctx)
+        } //
+        else if (ctx.state.is.clicked_component('confirm teams')) {
+          return {
+            type: D.InteractionResponseType.UpdateMessage,
+            data: await selectAndConfirmOutcomePage(app, ctx),
+          }
+        } //
+        else if (ctx.state.is.clicked_component('select winner')) {
+          const data = ctx.interaction.data as unknown as D.APIMessageStringSelectInteractionData
+          ctx.state.save.selected_winning_team_index(parseInt(data.values[0]))
+          return {
+            type: D.InteractionResponseType.UpdateMessage,
+            data: await selectAndConfirmOutcomePage(app, ctx),
+          }
+        } //
+        else if (ctx.state.is.clicked_component('confirm outcome')) {
+          return onConfirmOutcomeBtn(app, ctx)
+        } //
+        else if (ctx.state.is.clicked_component('match user confirm')) {
+          return onPlayerConfirmOrCancelBtn(app, ctx)
+        } //
+        else if (ctx.state.is.clicked_component('match user cancel')) {
+          return onPlayerConfirmOrCancelBtn(app, ctx)
+        } //
+        else {
+          throw new UserError(`Unknown state ${ctx.state.data.clicked_component}`)
+        }
+      }),
+  async (app, guild_id) => {
+    const options: D.APIApplicationCommandOption[] = [
+      {
+        name: optionnames.winner,
+        description: 'Who won (if applicable)',
+        type: D.ApplicationCommandOptionType.User,
+      },
+      {
+        name: optionnames.loser,
+        description: 'Who lost (if applicable)',
+        type: D.ApplicationCommandOptionType.User,
+      },
+      {
+        name: optionnames.time_finished,
+        description: 'Snowflake or Unix timestamp of when the match was finished (default now)',
+        type: D.ApplicationCommandOptionType.String,
+      },
+    ]
+
+    return new AppCommand({
+      ...record_match_cmd_signature.signature,
+      options: options.concat(
+        await guildRankingsOption(
+          app,
+          guild_id,
+          optionnames.ranking,
+          {},
+          'Which ranking should this match belong to',
         ),
       ),
-    )
-
-    .onComponent(async ctx => {
-      if (ctx.state.is.clicked_component('select team')) {
-        return onSelectTeam(app, ctx)
-      } //
-      else if (ctx.state.is.clicked_component('confirm teams')) {
-        return {
-          type: D.InteractionResponseType.UpdateMessage,
-          data: await selectAndConfirmOutcomePage(app, ctx),
-        }
-      } //
-      else if (ctx.state.is.clicked_component('select winner')) {
-        const data = ctx.interaction.data as unknown as D.APIMessageStringSelectInteractionData
-        ctx.state.save.selected_winning_team_index(parseInt(data.values[0]))
-        return {
-          type: D.InteractionResponseType.UpdateMessage,
-          data: await selectAndConfirmOutcomePage(app, ctx),
-        }
-      } //
-      else if (ctx.state.is.clicked_component('confirm outcome')) {
-        return onConfirmOutcomeBtn(app, ctx)
-      } //
-      else if (ctx.state.is.clicked_component('match user confirm')) {
-        return onPlayerConfirmOrCancelBtn(app, ctx)
-      } //
-      else if (ctx.state.is.clicked_component('match user cancel')) {
-        return onPlayerConfirmOrCancelBtn(app, ctx)
-      } //
-      else {
-        throw new UserError(`Unknown state ${ctx.state.data.clicked_component}`)
-      }
     })
-
-export default new AppView(
-  record_match_cmd_signature,
-  recordMatchCmd,
-  getRecordMatchCommandSignatureInGuild,
+  },
 )
 
 async function selectTeamPage(

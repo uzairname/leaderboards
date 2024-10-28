@@ -7,11 +7,11 @@ import {
   MessageData,
   MessageView,
 } from '../../../../../../../discord-framework'
-import { App } from '../../../../../../context/app_context'
-import { Colors } from '../../../../../common/constants'
-import { channelMention, relativeTimestamp } from '../../../../../common/strings'
-import { checkGuildInteraction } from '../../../../../utils/perms'
-import { AppView } from '../../../../../utils/ViewModule'
+import { App } from '../../../../../../app/App'
+import { AppView } from '../../../../../../app/ViewModule'
+import { Colors } from '../../../../../helpers/constants'
+import { checkGuildInteraction } from '../../../../../helpers/perms'
+import { channelMention, relativeTimestamp } from '../../../../../helpers/strings'
 import { getOrCreatePlayer } from '../../../../players/manage_players'
 import { start1v1SeriesThread } from '../../../ongoing-series/start_series'
 

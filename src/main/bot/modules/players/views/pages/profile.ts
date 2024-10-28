@@ -1,11 +1,10 @@
 import * as D from 'discord-api-types/v10'
-import { field, InteractionContext, MessageView } from "../../../../../../discord-framework";
-import { App } from '../../../../../context/app_context';
-import { Colors } from '../../../../common/constants';
-import { checkGuildInteraction } from '../../../../utils/perms';
-import { matches_view } from '../../../matches/logging/views/pages/matches';
-import { AppView } from '../../../../utils/ViewModule';
-
+import { field, InteractionContext, MessageView } from '../../../../../../discord-framework'
+import { App } from '../../../../../app/App'
+import { AppView } from '../../../../../app/ViewModule'
+import { Colors } from '../../../../helpers/constants'
+import { checkGuildInteraction } from '../../../../helpers/perms'
+import { matches_view } from '../../../matches/logging/views/pages/matches'
 
 export const profile_page_signature = new MessageView({
   name: 'Profile page',
@@ -16,19 +15,17 @@ export const profile_page_signature = new MessageView({
     }),
     user_id: field.String(),
     selected_ranking_id: field.Int(),
-  }
+  },
 })
 
-
-export default new AppView(profile_page_signature,
-  app => profile_page_signature.onComponent(async ctx => {
+export default new AppView(profile_page_signature, app =>
+  profile_page_signature.onComponent(async ctx => {
     return {
       type: D.InteractionResponseType.UpdateMessage,
-      data: await ctx.state.get.callback()(app, ctx)
+      data: await ctx.state.get.callback()(app, ctx),
     }
-  })
+  }),
 )
-
 
 export async function profileOverviewPage(
   app: App,
@@ -44,8 +41,6 @@ export async function profileOverviewPage(
   const players = (await app.db.players.getByUser(user_id)).filter(p =>
     guild_rankings.some(r => r.ranking.data.id === p.data.ranking_id),
   )
-
-
 
   const embed: D.APIEmbed = {
     title: `${discord_user.global_name ?? discord_user.username}'s Stats`,

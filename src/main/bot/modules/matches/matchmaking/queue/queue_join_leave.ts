@@ -1,5 +1,5 @@
 import * as D from 'discord-api-types/v10'
-import { App } from '../../../../../context/app_context'
+import { App } from '../../../../../app/App'
 import { getOrCreatePlayer } from '../../../players/manage_players'
 
 /**
@@ -14,7 +14,7 @@ export async function userJoinQueue(
   rejoined: boolean
 }> {
   const ranking = await app.db.rankings.get(ranking_id)
-  const player = await getOrCreatePlayer(app, user, ranking)
+  const player = await getOrCreatePlayer(app, user, ranking_id)
   const player_queue_teams = await player.teams()
 
   if (player_queue_teams.length == 0) {

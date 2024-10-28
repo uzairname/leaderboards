@@ -341,3 +341,4 @@ dist
 .wrangler/
 test.sh
 test.ts
+commit.txt

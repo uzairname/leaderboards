@@ -1,6 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { json } from 'itty-router'
-import { sentry } from '../../logging'
+import { sentry } from '../../logging/sentry'
 import { DiscordAPIClient } from '../rest/client'
 import { ViewErrors } from './errors'
 import { findView } from './find_view'

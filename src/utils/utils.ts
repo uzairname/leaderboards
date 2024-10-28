@@ -19,9 +19,7 @@ export function getEnumValue<T extends Record<string, string | number>>(
   return null
 }
 
-export type ModifyType<T, K extends keyof T, U> = Omit<T, K> & {
-  [P in K]: U
-}
+export type ModifyType<T, TNew> = Omit<T, keyof TNew> & TNew
 
 export function cloneSimpleObj<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj))
@@ -72,4 +70,8 @@ export function snowflakeToDate(snowflake: bigint): Date {
   const DISCORD_EPOCH = 1420070400000
   const dateBits = Number(BigInt.asUintN(64, snowflake) >> 22n)
   return new Date(dateBits + DISCORD_EPOCH)
+}
+
+export function isInt(value: unknown): value is number {
+  return typeof value === 'number' && isFinite(value) && Math.floor(value) === value
 }

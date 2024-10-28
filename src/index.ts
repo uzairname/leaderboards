@@ -1,21 +1,20 @@
 import { Router } from 'itty-router'
-import { initSentry, sentry } from './logging'
+import { initSentry, sentry } from './logging/sentry'
 import { apiRouter } from './main/api/api_router'
 import { authorize } from './main/api/authorize'
 import { oauthRouter } from './main/api/oauth'
 import { updateRouter } from './main/api/update_app'
-import { handleInteractionRequest } from './main/bot/manage-views/handle_interaction_request'
-import { App } from './main/context/app_context'
+import initApp from './main/initApp'
 import { runTests } from './main/test/test'
 
 export default {
   fetch(request: Request, env: Env, execution_context: ExecutionContext) {
     initSentry(request, env, execution_context)
 
-    const app = new App(env)
+    const app = initApp(env)
 
     const router = Router()
-      .post('/interactions', request => handleInteractionRequest(app, request))
+      .post('/interactions', request => app.handleInteractionRequest(request))
 
       .get(`/oauth/*`, request => oauthRouter(app).handle(request))
 
@@ -31,4 +30,16 @@ export default {
 
     return sentry.withLogging(router.handle)
   },
+}
+
+export interface Env {
+  ENVIRONMENT: string
+  BASE_URL: string
+  DISCORD_TOKEN: string
+  PUBLIC_KEY: string
+  APPLICATION_ID: string
+  CLIENT_SECRET: string
+  SENTRY_DSN: string
+  APP_KEY: string
+  POSTGRES_URL: string
 }

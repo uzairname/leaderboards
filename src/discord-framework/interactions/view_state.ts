@@ -1,5 +1,5 @@
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
-import { sentry } from '../../logging'
+import { sentry } from '../../logging/sentry'
 import { ViewErrors } from './errors'
 import { AnyView } from './types'
 import { StringData, StringDataSchema } from './utils/string_data'

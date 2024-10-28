@@ -1,14 +1,13 @@
-import { App } from '../../../../context/app_context'
-import { GuildRanking, Match } from '../../../../database/models'
+import { App } from '../../../../app/App'
+import { GuildRanking, Match } from '../../../../../database/models'
 import {
   MatchInsert,
   MatchMetadata,
   MatchStatus,
   MatchTeamPlayer,
   Vote,
-} from '../../../../database/models/matches'
-import { UserError } from '../../../utils/UserError'
-import { validate } from '../../../utils/validate'
+} from '../../../../../database/models/matches'
+import { UserError } from '../../../errors/UserError'
 import { scoreRankingHistory } from './score_matches'
 
 export async function startNewMatch(
@@ -110,23 +109,17 @@ export function validateMatchData<
 >(o: T): T {
   if (o.outcome) {
     if (o.team_players) {
-      validate(
-        o.outcome!.length === o.team_players!.length,
-        `Match outcome and players length must match`,
-      )
+      if (o.outcome!.length !== o.team_players!.length)
+        throw new UserError(`Match outcome and players length must match`)
     }
   }
 
   if (o.team_players) {
     const team_player_ids = o.team_players.map(team => team.map(p => p.player.data.id))
-    validate(
-      team_player_ids.flat().length === new Set(team_player_ids.flat()).size,
-      `Duplicate players in a match`,
-    )
-    validate(
-      new Set(o.team_players.flat().map(p => p.player.data.ranking_id)).size === 1,
-      `Players must be from the same ranking`,
-    )
+    if (team_player_ids.flat().length !== new Set(team_player_ids.flat()).size)
+      throw new UserError(`Duplicate players in a match`)
+    if (new Set(o.team_players.flat().map(p => p.player.data.ranking_id)).size !== 1)
+      throw new UserError(`Players must be from the same ranking`)
   }
   return o
 }

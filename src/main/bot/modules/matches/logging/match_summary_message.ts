@@ -1,26 +1,20 @@
 import * as D from 'discord-api-types/v10'
 import { MessageData } from '../../../../../discord-framework'
-import { sentry } from '../../../../../logging'
+import { sentry } from '../../../../../logging/sentry'
 import { maxIndex, nonNullable } from '../../../../../utils/utils'
-import { App } from '../../../../context/app_context'
-import { Guild, Match } from '../../../../database/models'
-import { MatchStatus } from '../../../../database/models/matches'
-import { Colors } from '../../../common/constants'
-import { emojis, relativeTimestamp } from '../../../common/strings'
+import { App } from '../../../../app/App'
+import { Guild, Match } from '../../../../../database/models'
+import { MatchStatus } from '../../../../../database/models/matches'
+import { Colors } from '../../../helpers/constants'
+import { emojis, relativeTimestamp } from '../../../helpers/strings'
 import { default_elo_settings } from '../../rankings/manage_rankings'
 import { rateTrueskill } from '../management/elo_calculation'
 import { syncMatchesChannel } from '../matches_channel'
 
-export function addMatchSummaryMessageListeners(app: App): void {
-  app.events.MatchCreatedOrUpdated.on(async match => {
-    await syncMatchSummaryMessages(app, match)
-  })
-}
-
 /**
  * Sync match summary messages for this match across all guilds the match's ranking is in
  */
-async function syncMatchSummaryMessages(app: App, match: Match): Promise<void> {
+export async function syncMatchSummaryMessages(app: App, match: Match): Promise<void> {
   const guild_rankings = await app.db.guild_rankings.get({ ranking_id: match.data.ranking_id })
 
   await Promise.all(

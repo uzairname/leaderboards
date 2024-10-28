@@ -1,4 +1,4 @@
-import { Player, Ranking } from '../../../../../database/models'
+import { Player, Ranking } from '../../../../../../database/models'
 
 /**
  *

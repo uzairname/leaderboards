@@ -1,13 +1,12 @@
 import * as D from 'discord-api-types/v10'
 import { _, AppCommand, field } from '../../../../../../discord-framework'
-import { App } from '../../../../../context/app_context'
-import { checkGuildInteraction } from '../../../../utils/perms'
-import { AppView } from '../../../../utils/ViewModule'
-import { getOrAddGuild } from '../../../guilds'
+import { GuildCommandView } from '../../../../../app/ViewModule'
+import { checkGuildInteraction } from '../../../../helpers/perms'
 import {
   guildRankingsOption,
   withOptionalSelectedRanking,
-} from '../../../utils/ranking_command_option'
+} from '../../../../helpers/ranking_command_option'
+import { getOrAddGuild } from '../../../guilds/guilds'
 import { allGuildRankingsPage } from '../pages/all_rankings'
 import {
   guildRankingSettingsPage,
@@ -28,9 +27,9 @@ export const rankings_cmd_signature = new AppCommand({
   description: 'Create and manage rankings in this server',
 })
 
-export default new AppView(
+export default new GuildCommandView(
   rankings_cmd_signature,
-  (app: App) => {
+  app => {
     return rankings_cmd_signature
       .onCommand(async ctx =>
         withOptionalSelectedRanking(app, ctx, ranking_option_name, async ranking => {
@@ -66,11 +65,11 @@ export default new AppView(
         )
       })
   },
-  async (app: App, guild_id: string) =>
+  async (app, guild) =>
     new AppCommand({
       ...rankings_cmd_signature.signature,
       options: [
-        (await guildRankingsOption(app, guild_id, ranking_option_name, {
+        (await guildRankingsOption(app, guild, ranking_option_name, {
           allow_single_ranking: true,
         })) ?? [],
       ].flat(),

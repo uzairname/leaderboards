@@ -1,6 +1,12 @@
 #!/bin/bash
 
+# Usage: ./deploy.sh [.env]
+
+# Set environment path. Default to .env
 env_path="${1:-.env}"
+
+# Load environment variables
+source $env_path
 
 # Run TypeScript compiler
 npx tsc
@@ -15,7 +21,12 @@ if [ $? -ne 0 ]; then
 fi
 
 # Deploy to Cloudflare Workers
-wrangler deploy
+if [ "$ENVIRONMENT" = "development" ]; then
+  wrangler deploy
+else
+  wrangler deploy --env $ENVIRONMENT
+fi
+
 if [ $? -ne 0 ]; then
   exit $?
 fi

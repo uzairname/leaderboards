@@ -1,6 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand } from '../../../../../../discord-framework'
-import { AppView } from '../../../../utils/ViewModule'
+import { AppView } from '../../../../../app/ViewModule'
 import { default_num_teams, default_players_per_team } from '../../manage_rankings'
 import { create_ranking_view, createRankingPageResponseData } from '../pages/create_ranking'
 

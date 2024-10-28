@@ -1,12 +1,14 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand } from '../../../../../../../discord-framework'
-import { sentry } from '../../../../../../../logging'
+import { sentry } from '../../../../../../../logging/sentry'
 import { nonNullable } from '../../../../../../../utils/utils'
-import { App } from '../../../../../../context/app_context'
-import { checkGuildInteraction } from '../../../../../utils/perms'
-import { AppView } from '../../../../../utils/ViewModule'
+import { GuildCommandView } from '../../../../../../app/ViewModule'
+import { checkGuildInteraction } from '../../../../../helpers/perms'
+import {
+  guildRankingsOption,
+  withSelectedRanking,
+} from '../../../../../helpers/ranking_command_option'
 import { getOrCreatePlayer } from '../../../../players/manage_players'
-import { guildRankingsOption, withSelectedRanking } from '../../../../utils/ranking_command_option'
 import { challenge_message_signature, challengeMessage } from '../pages/challenge'
 
 const optionnames = {
@@ -21,9 +23,9 @@ export const challenge_cmd_signature = new AppCommand({
   description: 'Challenge someone to a 1v1',
 })
 
-export default new AppView(
+export default new GuildCommandView(
   challenge_cmd_signature,
-  (app: App) =>
+  app =>
     challenge_cmd_signature.onCommand(async ctx =>
       withSelectedRanking(app, ctx, optionnames.ranking, async ranking =>
         ctx.defer(
@@ -73,7 +75,7 @@ export default new AppView(
         ),
       ),
     ),
-  async (app: App, guild_id: string) => {
+  async (app, guild) => {
     return new AppCommand({
       ...challenge_cmd_signature.signature,
       options: (
@@ -97,7 +99,7 @@ export default new AppView(
             ],
           },
         ] as D.APIApplicationCommandOption[]
-      ).concat(await guildRankingsOption(app, guild_id, optionnames.ranking, {})),
+      ).concat(await guildRankingsOption(app, guild, optionnames.ranking, {})),
     })
   },
 )

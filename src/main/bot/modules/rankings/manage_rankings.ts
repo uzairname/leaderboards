@@ -1,11 +1,10 @@
 import { and, eq } from 'drizzle-orm'
-import { App } from '../../../context/app_context'
-import { Guild, GuildRanking, Ranking } from '../../../database/models'
-import { GuildRankingInsert } from '../../../database/models/guild_rankings'
-import { RankingInsert, RankingUpdate } from '../../../database/models/rankings'
-import { GuildRankings, Rankings } from '../../../database/schema'
-import { syncDiscordCommands } from '../../manage-views/sync_discord_commands'
-import { UserError, UserErrors } from '../../utils/UserError'
+import { App } from '../../../app/App'
+import { Guild, GuildRanking, Ranking } from '../../../../database/models'
+import { GuildRankingInsert } from '../../../../database/models/guild_rankings'
+import { RankingInsert, RankingUpdate } from '../../../../database/models/rankings'
+import { GuildRankings, Rankings } from '../../../../database/schema'
+import { UserError, UserErrors } from '../../errors/UserError'
 import { syncGuildRankingLbMessage } from '../leaderboard/leaderboard_message'
 
 /**
@@ -33,7 +32,7 @@ export async function createNewRankingInGuild(
 
   // make sure a ranking from this guild with the same name doesn't already exist
   const same_name_ranking = (
-    await app.db.db
+    await app.db.drizzle
       .select()
       .from(GuildRankings)
       .innerJoin(Rankings, eq(GuildRankings.ranking_id, Rankings.id))
@@ -57,12 +56,16 @@ export async function createNewRankingInGuild(
     display_settings: options.display_settings || default_display_settings,
   })
 
-  await syncDiscordCommands(app, guild.data.id)
+  await app.events.GuildRankingsModified.emit(guild)
 
   return { new_guild_ranking, new_ranking }
 }
 
-export async function updateRanking(app: App, ranking: Ranking, options: RankingUpdate): Promise<void> {
+export async function updateRanking(
+  app: App,
+  ranking: Ranking,
+  options: RankingUpdate,
+): Promise<void> {
   await ranking.update(options)
   const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
   await Promise.all(
@@ -86,7 +89,7 @@ export async function deleteRanking(app: App, ranking: Ranking): Promise<void> {
 
   await Promise.all(
     guild_rankings.map(async item => {
-      await syncDiscordCommands(app, item.guild.data.id)
+      await app.events.GuildRankingsModified.emit(item.guild)
     }),
   )
 }

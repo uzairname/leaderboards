@@ -8,12 +8,12 @@ import {
   getModalSubmitEntries,
 } from '../../../../../../../discord-framework'
 import { nonNullable } from '../../../../../../../utils/utils'
-import { App } from '../../../../../../context/app_context'
-import { Match } from '../../../../../../database/models'
-import { Colors } from '../../../../../common/constants'
-import { ensureAdminPerms } from '../../../../../utils/perms'
-import { UserError } from '../../../../../utils/UserError'
-import { AppView } from '../../../../../utils/ViewModule'
+import { App } from '../../../../../../app/App'
+import { AppView } from '../../../../../../app/ViewModule'
+import { Match } from '../../../../../../../database/models'
+import { UserError } from '../../../../../errors/UserError'
+import { Colors } from '../../../../../helpers/constants'
+import { ensureAdminPerms } from '../../../../../helpers/perms'
 import { matchSummaryEmbed } from '../../../logging/match_summary_message'
 import { deleteMatch, updateMatch } from '../../manage_matches'
 

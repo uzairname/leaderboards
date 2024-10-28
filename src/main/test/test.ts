@@ -1,12 +1,12 @@
 import { APIUser } from 'discord-api-types/v10'
 import { sql } from 'drizzle-orm'
-import { sentry } from '../../logging'
+import { sentry } from '../../logging/sentry'
 import { assert, nonNullable } from '../../utils/utils'
 import { updateMatch } from '../bot/modules/matches/management/manage_matches'
 import { createAndScoreMatch } from '../bot/modules/matches/management/score_matches'
 import { getOrCreatePlayer } from '../bot/modules/players/manage_players'
-import { App } from '../context/app_context'
-import { DbClient } from '../database/client'
+import { App } from '../app/App'
+import { DbClient } from '../../database/client'
 import {
   AccessTokens,
   GuildRankings,
@@ -21,7 +21,7 @@ import {
   TeamPlayers,
   Teams,
   Users,
-} from '../database/schema'
+} from '../../database/schema'
 
 
 
@@ -61,6 +61,11 @@ export async function runTests(app: App): Promise<Response> {
   // sentry.debug(`Tested Leaderboards app (${app.config.env.ENVIRONMENT})`)
   return new Response(`Successfully tested Leaderboards app`, { status: 200 })
 }
+
+
+
+
+
 
 import { Rating, TrueSkill } from 'ts-trueskill'
 import { Gaussian } from 'ts-gaussian'
@@ -306,34 +311,34 @@ async function getRankingInGuildByName(app: App, guild_id: string, name: string)
 
 async function resetDatabase(client: DbClient) {
   await Promise.all([
-    client.db.delete(MatchPlayers),
-    client.db.delete(MatchSummaryMessages),
-    client.db.delete(Matches),
-    client.db.delete(QueueTeams),
-    client.db.delete(TeamPlayers),
-    client.db.delete(GuildRankings),
-    client.db.execute(sql`ALTER SEQUENCE "AccessTokens_id_seq" RESTART WITH 1`),
-    client.db.delete(AccessTokens),
-    client.db.delete(Settings),
+    client.drizzle.delete(MatchPlayers),
+    client.drizzle.delete(MatchSummaryMessages),
+    client.drizzle.delete(Matches),
+    client.drizzle.delete(QueueTeams),
+    client.drizzle.delete(TeamPlayers),
+    client.drizzle.delete(GuildRankings),
+    client.drizzle.execute(sql`ALTER SEQUENCE "AccessTokens_id_seq" RESTART WITH 1`),
+    client.drizzle.delete(AccessTokens),
+    client.drizzle.delete(Settings),
   ])
   await Promise.all([
-    client.db.execute(sql`ALTER SEQUENCE "Matches_id_seq" RESTART WITH 1`),
-    client.db.execute(sql`ALTER SEQUENCE "ActiveMatches_id_seq" RESTART WITH 1`),
-    client.db.delete(Teams),
-    client.db.delete(Players),
-    client.db.delete(Guilds),
+    client.drizzle.execute(sql`ALTER SEQUENCE "Matches_id_seq" RESTART WITH 1`),
+    client.drizzle.execute(sql`ALTER SEQUENCE "ActiveMatches_id_seq" RESTART WITH 1`),
+    client.drizzle.delete(Teams),
+    client.drizzle.delete(Players),
+    client.drizzle.delete(Guilds),
   ])
   await Promise.all([
-    client.db.execute(sql`ALTER SEQUENCE "Teams_id_seq" RESTART WITH 1`),
-    client.db.execute(sql`ALTER SEQUENCE "Players_id_seq" RESTART WITH 1`),
-    client.db.delete(Rankings),
-    await client.db.delete(Users),
+    client.drizzle.execute(sql`ALTER SEQUENCE "Teams_id_seq" RESTART WITH 1`),
+    client.drizzle.execute(sql`ALTER SEQUENCE "Players_id_seq" RESTART WITH 1`),
+    client.drizzle.delete(Rankings),
+    await client.drizzle.delete(Users),
   ])
-  await Promise.all([client.db.execute(sql`ALTER SEQUENCE "Rankings_id_seq" RESTART WITH 1`)])
+  await Promise.all([client.drizzle.execute(sql`ALTER SEQUENCE "Rankings_id_seq" RESTART WITH 1`)])
 }
 
 async function addData(app: App) {
-  const guild1 = await app.db.guilds.create({ id: '98623457887' })
+  const guild1 = await app.db.guilds.create({ id: '98623457887', name: "." })
   await Promise.all([
     app.db.users.getOrCreate({ id: '100', name: 'one' }),
     app.db.users.getOrCreate({ id: '200', name: 'two' }),

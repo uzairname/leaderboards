@@ -1,18 +1,9 @@
 import * as D from 'discord-api-types/v10'
-import {
-  AppCommand,
-  ChatInteractionResponse,
-  ComponentContext,
-  InteractionContext,
-  field,
-} from '../../../../../../discord-framework'
-import { App } from '../../../../../context/app_context'
-import { Colors } from '../../../../common/constants'
-import { checkGuildInteraction } from '../../../../utils/perms'
-import { AppView } from '../../../../utils/ViewModule'
-import { matches_view } from '../../../matches/logging/views/pages/matches'
+import { AppCommand } from '../../../../../../discord-framework'
+import { AppView } from '../../../../../app/ViewModule'
+import { checkGuildInteraction } from '../../../../helpers/perms'
+import { withSelectedRanking } from '../../../../helpers/ranking_command_option'
 import { profile_page_signature, profileOverviewPage } from '../pages/profile'
-import { withSelectedRanking } from '../../../utils/ranking_command_option'
 
 const optionnames = {
   user: 'user',
@@ -32,13 +23,13 @@ export const stats_cmd_signature = new AppCommand({
   ],
 })
 
-export default new AppView(stats_cmd_signature, app => stats_cmd_signature
-  .onCommand(async ctx =>
+export default new AppView(stats_cmd_signature, app =>
+  stats_cmd_signature.onCommand(async ctx =>
     withSelectedRanking(app, ctx, optionnames.ranking, async ranking => {
       const user_option_value = (
         ctx.interaction.data.options?.find(o => o.name === optionnames.user) as
-        | D.APIApplicationCommandInteractionDataStringOption
-        | undefined
+          | D.APIApplicationCommandInteractionDataStringOption
+          | undefined
       )?.value
 
       return ctx.defer(
@@ -49,16 +40,17 @@ export default new AppView(stats_cmd_signature, app => stats_cmd_signature
           },
         },
         async ctx => {
-          return void ctx.edit(await profileOverviewPage(app, {
-            interaction: ctx.interaction,
-            state: profile_page_signature.createState({
-              user_id: user_option_value ?? checkGuildInteraction(ctx.interaction).member.user.id,
-              selected_ranking_id: ranking.data.id
-            })
-          }))
+          return void ctx.edit(
+            await profileOverviewPage(app, {
+              interaction: ctx.interaction,
+              state: profile_page_signature.createState({
+                user_id: user_option_value ?? checkGuildInteraction(ctx.interaction).member.user.id,
+                selected_ranking_id: ranking.data.id,
+              }),
+            }),
+          )
         },
       )
-    }
-    )
-  )
+    }),
+  ),
 )

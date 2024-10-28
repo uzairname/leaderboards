@@ -1,29 +1,41 @@
 import { json, Router } from 'itty-router'
-import views from '../bot/manage-views/all_views'
-import { App } from '../context/app_context'
+import { App } from '../app/App'
+import { GuildCommandView } from '../app/ViewModule'
+import { inviteUrl } from '../bot/helpers/strings'
+import views from '../bot/modules/all_views'
 
 export const apiRouter = (app: App) =>
   Router({ base: '/api' })
     .get('/', async () => {
       return new Response('API')
     })
-    .get('/commands', () => {
+    .get('/commands', async () => {
       const result = {
         'defined commands': views.all_views
           .map(c => {
             return {
               cid_prefix: `${c.base_signature.signature.custom_id_prefix}`,
               name: `${c.base_signature.signature.name}`,
-              is_guild_command: !!c.resolveGuildSignature,
+              is_guild_command: c instanceof GuildCommandView,
               experimental: c.is_dev,
             }
           })
           .sort((a, b) => {
-            // first by experimental, then by cid_prefix
-            if (a.experimental && !b.experimental) return -1
-            if (!a.experimental && b.experimental) return 1
-            return a.cid_prefix.localeCompare(b.cid_prefix)
+            return (
+              (a.experimental ? 2 : 0) -
+              (b.experimental ? 2 : 0) +
+              a.cid_prefix.localeCompare(b.cid_prefix)
+            )
           }),
+        'global discord commands': (await app.bot.getAppCommands()).map(c => c.name),
+      }
+      // format json
+      return json(result)
+    })
+    .get('/commands/:guild_id', async request => {
+      const guild_id = request.params.guild_id
+      const result = {
+        'guild commands': (await app.bot.getAppCommands(guild_id)).map(c => c.name),
       }
       // format json
       return json(result)
@@ -36,4 +48,5 @@ export const apiRouter = (app: App) =>
       }
       return json(result)
     })
+    .get('/invite-url', async () => new Response(inviteUrl(app)))
     .all('*', () => new Response('Not found', { status: 404 }))

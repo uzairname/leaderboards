@@ -1,4 +1,4 @@
-import { ViewModule } from '../../../../utils/ViewModule'
+import { ViewModule } from '../../../../../app/ViewModule'
 import matches_command from './commands/matches'
 import matches_page from './pages/matches'
 

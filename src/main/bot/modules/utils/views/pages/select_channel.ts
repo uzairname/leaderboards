@@ -11,10 +11,10 @@ import {
   ViewState,
   ViewStateFactory,
 } from '../../../../../../discord-framework/interactions/view_state'
-import { App } from '../../../../../context/app_context'
-import views from '../../../../manage-views/all_views'
-import { checkGuildInteraction } from '../../../../utils/perms'
-import { AppView } from '../../../../utils/ViewModule'
+import { App } from '../../../../../app/App'
+import { AppView } from '../../../../../app/ViewModule'
+import { checkGuildInteraction } from '../../../../helpers/perms'
+import views from '../../../all_views'
 
 export const select_channel_view = new MessageView({
   name: 'select channel',

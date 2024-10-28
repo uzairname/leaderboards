@@ -5,15 +5,14 @@ import {
   field,
   InteractionContext,
 } from '../../../../../../discord-framework'
-import { App } from '../../../../../context/app_context'
-import { Colors } from '../../../../common/constants'
-import { syncDiscordCommands } from '../../../../manage-views/sync_discord_commands'
-import { checkGuildInteraction, ensureAdminPerms } from '../../../../utils/perms'
-import { AppView } from '../../../../utils/ViewModule'
-import { getOrAddGuild, syncGuildAdminRole } from '../../../guilds'
+import { App } from '../../../../../app/App'
+import { AppView } from '../../../../../app/ViewModule'
+import { Colors } from '../../../../helpers/constants'
+import { checkGuildInteraction, ensureAdminPerms } from '../../../../helpers/perms'
+import { getOrAddGuild, syncGuildAdminRole } from '../../../guilds/guilds'
 import { rankings_cmd_signature } from '../../../rankings/views/commands/rankings'
 
-export const settings_cmd_def = new AppCommand({
+export const settings_cmd_signature = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
 
   custom_id_prefix: 's',
@@ -28,10 +27,9 @@ export const settings_cmd_def = new AppCommand({
   },
 })
 
-export default new AppView(settings_cmd_def, (app: App) =>
-  settings_cmd_def
+export default new AppView(settings_cmd_signature, app =>
+  settings_cmd_signature
     .onCommand(async ctx => {
-      await syncDiscordCommands(app, ctx.interaction.guild_id)
       return {
         type: D.InteractionResponseType.ChannelMessageWithSource,
         data: await settingsPage(app),
@@ -44,7 +42,7 @@ export default new AppView(settings_cmd_def, (app: App) =>
 )
 
 export async function settingsPage(app: App): Promise<D.APIInteractionResponseCallbackData> {
-  const state = settings_cmd_def.createState()
+  const state = settings_cmd_signature.createState()
   return {
     embeds: [
       {
@@ -78,7 +76,7 @@ export async function settingsPage(app: App): Promise<D.APIInteractionResponseCa
 
 async function onAdminRoleBtn(
   app: App,
-  ctx: InteractionContext<typeof settings_cmd_def>,
+  ctx: InteractionContext<typeof settings_cmd_signature>,
 ): Promise<ChatInteractionResponse> {
   await ensureAdminPerms(app, ctx)
 

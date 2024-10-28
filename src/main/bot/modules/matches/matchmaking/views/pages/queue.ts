@@ -6,11 +6,11 @@ import {
   _,
   field,
 } from '../../../../../../../discord-framework'
-import { App } from '../../../../../../context/app_context'
-import { Colors } from '../../../../../common/constants'
-import { escapeMd, relativeTimestamp } from '../../../../../common/strings'
-import { checkGuildInteraction } from '../../../../../utils/perms'
-import { AppView } from '../../../../../utils/ViewModule'
+import { App } from '../../../../../../app/App'
+import { AppView } from '../../../../../../app/ViewModule'
+import { Colors } from '../../../../../helpers/constants'
+import { checkGuildInteraction } from '../../../../../helpers/perms'
+import { escapeMd, relativeTimestamp } from '../../../../../helpers/strings'
 import { userJoinQueue, userLeaveQueue } from '../../queue/queue_join_leave'
 
 const queue_message_def = new MessageView({
@@ -59,9 +59,9 @@ export default new AppView(queue_message_def, app =>
           },
         },
         async ctx => {
-          const teams_removed = await userLeaveQueue(app, ranking_id, interaction.member.user)
+          const n_teams_removed = await userLeaveQueue(app, ranking_id, interaction.member.user)
           await ctx.edit({
-            content: teams_removed ? 'You left the queue' : `You're not in the queue`,
+            content: n_teams_removed ? 'You left the queue' : `You're not in the queue`,
           })
         },
       )

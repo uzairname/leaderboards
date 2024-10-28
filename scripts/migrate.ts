@@ -13,7 +13,6 @@ dotenv.config({
   path: envPath
 })
 
-
 export const matches_trigger_query = sql.raw(`
 CREATE OR REPLACE FUNCTION "Matches_number_trigger_function"()
 RETURNS TRIGGER AS $$
@@ -64,9 +63,9 @@ async function migrate_database() {
     await migrate(db_test, { migrationsFolder: 'scripts/migrations' })
     await db_test.execute(matches_trigger_query)
   }
+  console.log('done migrating')
 }
 
 migrate_database().then(() => {
-  console.log('done')
   process.exit(0)
 })

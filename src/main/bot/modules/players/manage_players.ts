@@ -1,9 +1,9 @@
 import * as D from 'discord-api-types/v10'
 import { nonNullable } from '../../../../utils/utils'
 import { getUserAccessToken } from '../../../api/oauth'
-import { App } from '../../../context/app_context'
-import { Player, Ranking } from '../../../database/models'
-import { updateUserRoleConnectionData } from '../linked_roles'
+import { App } from '../../../app/App'
+import { Player, Ranking } from '../../../../database/models'
+import { updateUserRoleConnectionData } from '../linked-roles/linked_roles'
 
 export async function getOrCreatePlayer(
   app: App,
@@ -37,8 +37,6 @@ export async function getOrCreatePlayer(
 
   return player
 }
-
-
 
 export async function updatePlayerRating(app: App, player: Player, rating: number, rd: number) {
   await player.update({ rating, rd })

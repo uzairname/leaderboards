@@ -1,25 +1,28 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../logging'
+import { sentry } from '../../logging/sentry'
 import type { DiscordAPIClient } from '../rest/client'
 import { AnyAppCommand, viewIsChatInputAppCommand } from './types'
 
 export async function overwriteDiscordCommandsWithViews(
   bot: DiscordAPIClient,
   commands: AnyAppCommand[],
-  guild_id: string | undefined,
-) {
+  guild_id?: string,
+): Promise<D.RESTPutAPIApplicationCommandsResult> {
   const commands_data = commands.map(appCommandToJSONBody)
 
+  let result: D.RESTPutAPIApplicationGuildCommandsResult
+
   if (guild_id === undefined) {
-    await bot.overwriteGlobalCommands(commands_data)
+    result = await bot.overwriteGlobalCommands(commands_data)
   } else {
     try {
-      await bot.overwriteGuildCommands(guild_id, commands_data)
+      result = await bot.overwriteGuildCommands(guild_id, commands_data)
     } catch (e) {
       if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.MissingAccess) {
         throw new Error(`Missing access to guild ${guild_id}`)
       }
+      throw e
     }
   }
 
@@ -34,6 +37,8 @@ export async function overwriteDiscordCommandsWithViews(
       guild_id,
     },
   })
+
+  return result
 }
 
 function appCommandToJSONBody(view: AnyAppCommand): D.RESTPostAPIApplicationGuildCommandsJSONBody {
@@ -41,7 +46,12 @@ function appCommandToJSONBody(view: AnyAppCommand): D.RESTPostAPIApplicationGuil
     throw new Error(`Description for command ${view.signature.custom_id_prefix} > 100 characters`)
   }
 
-  return {
+  const result = {
     ...view.signature,
-  } as D.RESTPostAPIApplicationGuildCommandsJSONBody
+  }
+
+  delete result.custom_id_prefix
+  delete result.state_schema
+
+  return result
 }

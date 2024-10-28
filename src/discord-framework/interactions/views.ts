@@ -1,5 +1,5 @@
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../logging'
+import { sentry } from '../../logging/sentry'
 import type { DiscordAPIClient } from '../rest/client'
 import { ViewErrors } from './errors'
 import type {

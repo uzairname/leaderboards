@@ -1,15 +1,14 @@
 import * as D from 'discord-api-types/v10'
-import { nonNullable, unflatten } from '../../../../../../utils/utils'
-import { App } from '../../../../../context/app_context'
-import { Guild, GuildRanking } from '../../../../../database/models'
-import { Colors } from '../../../../common/constants'
-import { AppMessages } from '../../../../common/messages'
-import { dateTimestamp, escapeMd, messageLink } from '../../../../common/strings'
-import { getMatchLogsChannel } from '../../../guilds'
-import { help_cmd_signature, howtousePage } from '../../../help_command'
+import { unflatten } from '../../../../../../utils/utils'
+import { App } from '../../../../../app/App'
+import { Guild, GuildRanking } from '../../../../../../database/models'
+import { Colors } from '../../../../helpers/constants'
+import { AppMessages } from '../../../../helpers/messages'
+import { dateTimestamp, escapeMd, messageLink } from '../../../../helpers/strings'
+import { getMatchLogsChannel } from '../../../guilds/guilds'
+import { help_cmd_signature, howtousePage } from '../../../help/help_command'
 import { create_ranking_view, createRankingModal } from './create_ranking'
 import { ranking_settings_view_signature } from './ranking_settings'
-
 
 export async function allGuildRankingsPage(
   app: App,

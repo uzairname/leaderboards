@@ -1,5 +1,5 @@
-import type { App } from '../../../../../context/app_context'
-import type { GuildRanking } from '../../../../../database/models'
+import type { App } from '../../../../../app/App'
+import type { GuildRanking } from '../../../../../../database/models'
 import { queueMessage } from '../views/pages/queue'
 
 export async function sendGuildRankingQueueMessage(

@@ -7,19 +7,19 @@ import {
   MessageView,
   StateContext,
 } from '../../../../../../discord-framework'
-import { App } from '../../../../../context/app_context'
-import { GuildRanking } from '../../../../../database/models'
-import { Colors } from '../../../../common/constants'
-import { escapeMd, messageLink } from '../../../../common/strings'
-import { ensureAdminPerms } from '../../../../utils/perms'
-import { AppView } from '../../../../utils/ViewModule'
+import { nonNullable } from '../../../../../../utils/utils'
+import { App } from '../../../../../app/App'
+import { AppView } from '../../../../../app/ViewModule'
+import { GuildRanking } from '../../../../../../database/models'
+import { Colors } from '../../../../helpers/constants'
+import { ensureAdminPerms } from '../../../../helpers/perms'
+import { escapeMd, messageLink } from '../../../../helpers/strings'
 import { syncGuildRankingLbMessage } from '../../../leaderboard/leaderboard_message'
 import { sendGuildRankingQueueMessage } from '../../../matches/matchmaking/queue/queue_messages'
 import { sendSelectChannelPage } from '../../../utils/views/pages/select_channel'
 import { deleteRanking, updateRanking, validateRankingOptions } from '../../manage_rankings'
 import { guildRankingDetails } from './all_rankings'
 import { rankingNameTextInput } from './create_ranking'
-import { nonNullable } from '../../../../../../utils/utils'
 
 export const ranking_settings_view_signature = new MessageView({
   name: 'ranking settings',
@@ -282,8 +282,11 @@ async function onRenameModalSubmit(
       await ensureAdminPerms(app, ctx)
       const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
       const old_name = ranking.data.name
-      const name = nonNullable(getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)['name']?.value, 'input name')
-      
+      const name = nonNullable(
+        getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)['name']?.value,
+        'input name',
+      )
+
       validateRankingOptions({ name })
 
       const res = await ctx.followup({

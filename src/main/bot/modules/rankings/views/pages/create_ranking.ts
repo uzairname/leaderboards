@@ -10,12 +10,12 @@ import {
   getModalSubmitEntries,
 } from '../../../../../../discord-framework'
 import { nonNullable } from '../../../../../../utils/utils'
-import { App } from '../../../../../context/app_context'
-import { Colors } from '../../../../common/constants'
-import { commandMention, escapeMd } from '../../../../common/strings'
-import { checkGuildInteraction, ensureAdminPerms } from '../../../../utils/perms'
-import { AppView } from '../../../../utils/ViewModule'
-import { getMatchLogsChannel, getOrAddGuild } from '../../../guilds'
+import { App } from '../../../../../app/App'
+import { AppView } from '../../../../../app/ViewModule'
+import { Colors } from '../../../../helpers/constants'
+import { checkGuildInteraction, ensureAdminPerms } from '../../../../helpers/perms'
+import { commandMention, escapeMd } from '../../../../helpers/strings'
+import { getMatchLogsChannel, getOrAddGuild } from '../../../guilds/guilds'
 import { syncGuildRankingLbMessage } from '../../../leaderboard/leaderboard_message'
 import { syncMatchesChannel } from '../../../matches/matches_channel'
 import { sendGuildRankingQueueMessage } from '../../../matches/matchmaking/queue/queue_messages'
@@ -26,7 +26,7 @@ import {
   max_ranking_name_length,
   validateRankingOptions,
 } from '../../manage_rankings'
-import { rankings_cmd_signature } from '../commands/rankings'
+import rankings from '../commands/rankings'
 import { guildRankingSettingsPage, ranking_settings_view_signature } from './ranking_settings'
 
 export const create_ranking_view = new MessageView({
@@ -116,7 +116,7 @@ export async function createRankingPageResponseData(
       ? `\n- **Matchmaking Queue** A message will be sent where players can join the matchmaking queue.`
       : ``)
     + `\n-# You can edit these settings later by running`
-    + ` ${await commandMention(app, rankings_cmd_signature, guild.data.id)} **${escapeMd(name)}**`
+    + ` ${await commandMention(app, rankings)} **${escapeMd(name)}**`
     + `` // prettier-ignore
 
   let components: D.APIMessageActionRowComponent[] = [

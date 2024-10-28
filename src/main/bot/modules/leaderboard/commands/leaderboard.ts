@@ -1,8 +1,7 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand, field } from '../../../../../discord-framework'
-import { App } from '../../../../context/app_context'
-import { AppView } from '../../../utils/ViewModule'
-import { guildRankingsOption, withSelectedRanking } from '../../utils/ranking_command_option'
+import { GuildCommandView } from '../../../../app/ViewModule'
+import { guildRankingsOption, withSelectedRanking } from '../../../helpers/ranking_command_option'
 import { leaderboardMessage } from '../leaderboard_message'
 
 const optionnames = {
@@ -21,26 +20,26 @@ const leaderboard_cmd_signature = new AppCommand({
   },
 })
 
-const leaderboardCmdGuildSignature = async (app: App, guild_id: string) =>
-  new AppCommand({
-    ...leaderboard_cmd_signature.signature,
-    options: [(await guildRankingsOption(app, guild_id, optionnames.ranking)) || []].flat(),
-  })
-
-export const leaderboardCmd = (app: App) =>
-  leaderboard_cmd_signature.onCommand(async ctx =>
-    withSelectedRanking(app, ctx, optionnames.ranking, async ranking => {
-      return ctx.defer(
-        {
-          type: D.InteractionResponseType.DeferredChannelMessageWithSource,
-          data: { flags: D.MessageFlags.Ephemeral },
-        },
-        async ctx => {
-          ctx.state.save.ranking_id(ranking.data.id)
-          await ctx.edit((await leaderboardMessage(ranking)).as_response)
-        },
-      )
+export default new GuildCommandView(
+  leaderboard_cmd_signature,
+  app =>
+    leaderboard_cmd_signature.onCommand(async ctx =>
+      withSelectedRanking(app, ctx, optionnames.ranking, async ranking => {
+        return ctx.defer(
+          {
+            type: D.InteractionResponseType.DeferredChannelMessageWithSource,
+            data: { flags: D.MessageFlags.Ephemeral },
+          },
+          async ctx => {
+            ctx.state.save.ranking_id(ranking.data.id)
+            await ctx.edit((await leaderboardMessage(ranking)).as_response)
+          },
+        )
+      }),
+    ),
+  async (app, guild_id) =>
+    new AppCommand({
+      ...leaderboard_cmd_signature.signature,
+      options: [(await guildRankingsOption(app, guild_id, optionnames.ranking)) || []].flat(),
     }),
-  )
-
-export default new AppView(leaderboard_cmd_signature, leaderboardCmd, leaderboardCmdGuildSignature)
+)

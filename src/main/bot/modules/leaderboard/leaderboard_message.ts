@@ -1,19 +1,10 @@
 import * as D from 'discord-api-types/v10'
 import { GuildChannelData, MessageData } from '../../../../discord-framework'
-import { type App } from '../../../context/app_context'
-import type { Guild, GuildRanking, Ranking } from '../../../database/models'
-import { Colors } from '../../common/constants'
-import { escapeMd, relativeTimestamp, space } from '../../common/strings'
-import { syncRankedCategory } from '../guilds'
-
-export function addRankingChannelsListeners(app: App) {
-  app.events.RankingLeaderboardUpdated.on(async ranking => {
-    await syncRankingLbMessages(app, ranking)
-  })
-  app.events.MatchCreatedOrUpdated.on(async match => {
-    await app.events.RankingLeaderboardUpdated.emit(await match.ranking())
-  })
-}
+import { type App } from '../../../app/App'
+import type { Guild, GuildRanking, Ranking } from '../../../../database/models'
+import { Colors } from '../../helpers/constants'
+import { escapeMd, relativeTimestamp, space } from '../../helpers/strings'
+import { syncRankedCategory } from '../guilds/guilds'
 
 export async function syncRankingLbMessages(app: App, ranking: Ranking): Promise<void> {
   const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })

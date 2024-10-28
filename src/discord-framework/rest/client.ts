@@ -1,8 +1,8 @@
 import { DiscordAPIError, InternalRequest, REST, RequestData, RequestMethod } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../logging'
-import { truncateString } from '../../main/bot/common/strings'
-import { cache } from '../../main/cache'
+import { sentry } from '../../logging/sentry'
+import { truncateString } from '../../main/bot/helpers/strings'
+import { cache } from '../../utils/cache'
 import { DiscordCache } from './cache'
 import { DiscordAPIUtils } from './client_helpers'
 import { DiscordErrors } from './errors'
@@ -71,13 +71,13 @@ export class DiscordAPIClient extends REST {
       RequestMethod.Put,
       D.Routes.applicationGuildCommands(this.application_id, guild_id),
       { body },
-    )) as D.RESTPutAPIApplicationGuildCommandsResult[]
+    )) as D.RESTPutAPIApplicationGuildCommandsResult
   }
 
   async overwriteGlobalCommands(body: D.RESTPutAPIApplicationCommandsJSONBody) {
     return (await this.fetch(RequestMethod.Put, D.Routes.applicationCommands(this.application_id), {
       body,
-    })) as D.RESTPutAPIApplicationCommandsResult[]
+    })) as D.RESTPutAPIApplicationCommandsResult
   }
 
   // USERS
@@ -372,7 +372,7 @@ export class DiscordAPIClient extends REST {
       permissions: permissions?.toString() ?? '',
       scope: 'bot',
     })
-    const url = new URL(D.OAuth2Routes.authorizationURL)
+    const url = new URL(inAppBotAuthorizationURL)
     url.search = params.toString()
     return url
   }
@@ -466,7 +466,7 @@ export class DiscordAPIClient extends REST {
         ((sentry.request_data['discord requests'] as number) || 0) + 1
 
       sentry.addBreadcrumb({
-        category: 'Fetched Discord',
+        category: `Fetched Discord ${method?.toString() ?? ``} ${route}`,
         type: 'http',
         level: error ? 'error' : 'info',
         data: {
@@ -508,3 +508,6 @@ function requiresBotPerms(permissions: bigint) {
     return descriptor
   }
 }
+
+// Used to invite the bot, nothing else
+const inAppBotAuthorizationURL = 'https://discord.com/api/v10/oauth2/authorize'

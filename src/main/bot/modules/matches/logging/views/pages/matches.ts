@@ -1,10 +1,10 @@
 import * as D from 'discord-api-types/v10'
 import { MessageView, field } from '../../../../../../../discord-framework'
 import { ViewState } from '../../../../../../../discord-framework/interactions/view_state'
-import { App } from '../../../../../../context/app_context'
-import { MatchStatus } from '../../../../../../database/models/matches'
-import { Colors } from '../../../../../common/constants'
-import { AppView } from '../../../../../utils/ViewModule'
+import { App } from '../../../../../../app/App'
+import { AppView } from '../../../../../../app/ViewModule'
+import { MatchStatus } from '../../../../../../../database/models/matches'
+import { Colors } from '../../../../../helpers/constants'
 import { matchSummaryEmbed } from '../../match_summary_message'
 
 export const matches_view = new MessageView({
@@ -20,7 +20,7 @@ export const matches_view = new MessageView({
   },
 })
 
-export default new AppView(matches_view, (app: App) =>
+export default new AppView(matches_view, app =>
   matches_view.onComponent(async ctx => {
     return ctx.defer(
       {
@@ -68,6 +68,7 @@ export async function matchesPage(
                 await matchSummaryEmbed(app, match.match, {
                   ranking_name: true,
                   time_finished: true,
+                  id: true,
                 }),
             ),
           )

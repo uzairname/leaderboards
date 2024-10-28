@@ -7,17 +7,17 @@ import {
 } from '../../../../../../../discord-framework'
 import { ViewState } from '../../../../../../../discord-framework/interactions/view_state'
 import { nonNullable } from '../../../../../../../utils/utils'
-import { App } from '../../../../../../context/app_context'
-import { MatchStatus, Vote } from '../../../../../../database/models/matches'
-import { AppMessages } from '../../../../../common/messages'
-import { UserError } from '../../../../../utils/UserError'
-import { AppView } from '../../../../../utils/ViewModule'
-import { checkGuildInteraction } from '../../../../../utils/perms'
+import { App } from '../../../../../../app/App'
+import { AppView } from '../../../../../../app/ViewModule'
+import { MatchStatus, Vote } from '../../../../../../../database/models/matches'
+import { UserError } from '../../../../../errors/UserError'
+import { AppMessages } from '../../../../../helpers/messages'
+import { checkGuildInteraction } from '../../../../../helpers/perms'
 import { finishAndScoreMatch } from '../../../management/score_matches'
 import { start1v1SeriesThread } from '../../start_series'
 
 export const ongoing_series_msg_signature = new MessageView({
-  name: "Ongoing series message",
+  name: 'Ongoing series message',
   custom_id_prefix: 'om',
   state_schema: {
     match_id: field.Int(),

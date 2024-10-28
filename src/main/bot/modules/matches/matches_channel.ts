@@ -1,11 +1,11 @@
 import * as D from 'discord-api-types/v10'
 import { GuildChannelData, MessageData } from '../../../../discord-framework'
-import { App } from '../../../context/app_context'
-import type { Guild } from '../../../database/models'
-import { Colors } from '../../common/constants'
-import { commandMention } from '../../common/strings'
-import { syncRankedCategory } from '../guilds'
-import { matches_command_signature } from './logging/views/commands/matches'
+import { App } from '../../../app/App'
+import type { Guild } from '../../../../database/models'
+import { Colors } from '../../helpers/constants'
+import { commandMention } from '../../helpers/strings'
+import { syncRankedCategory } from '../guilds/guilds'
+import matches from './logging/views/commands/matches'
 
 export async function syncMatchesChannel(app: App, guild: Guild): Promise<D.APIChannel> {
   const sync_channel_result = await app.bot.utils.syncGuildChannel({
@@ -28,7 +28,7 @@ export async function syncMatchesChannel(app: App, guild: Guild): Promise<D.APIC
 }
 
 async function matchesChannelDescriptionMessageData(app: App, guild: Guild): Promise<MessageData> {
-  const matches_cmd_mention = await commandMention(app, matches_command_signature, guild.data.id)
+  const matches_cmd_mention = await commandMention(app, matches, guild.data.id)
 
   const msg = new MessageData({
     embeds: [
