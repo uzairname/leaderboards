@@ -15,4 +15,18 @@ export default class DbCache {
   match_team_players: { [match_id: string]: MatchTeamPlayer[][] } = {}
   matches: { [id: string]: Match } = {}
   teams: { [id: number]: Team } = {}
+
+  clear() {
+    this.setting = undefined
+    this.users = {}
+    this.guilds = {}
+    this.rankings = {}
+    this.guild_rankings = {}
+    this.guild_guild_rankings = {}
+    this.players = {}
+    this.players_by_id = {}
+    this.match_team_players = {}
+    this.matches = {}
+    this.teams = {}
+  }
 }

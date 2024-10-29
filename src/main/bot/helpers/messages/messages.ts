@@ -13,7 +13,7 @@ import challenge from '../../modules/matches/matchmaking/views/commands/challeng
 import create_ranking from '../../modules/rankings/views/commands/create_ranking'
 import rankings from '../../modules/rankings/views/commands/rankings'
 import { Colors } from '../constants'
-import { commandMention, dateTimestamp, escapeMd, messageLink } from '../strings'
+import { commandMention, dateTimestamp, escapeMd, existingMessageLink } from '../strings'
 
 export const concise_description =
   'Tracks Elo ratings and matches for any game. Additional utilities for moderation, display, and statistics.'
@@ -65,16 +65,17 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
         name: `Elo Ratings`,
         value:
           `The bot tracks your estimated skill level as you play matches.` +
-          ` Elo ratings are based on [TrueSkill](https://en.wikipedia.org/wiki/TrueSkill), (the algorithm developed my Microsoft).` +
-          ` It's a Bayesian rating system that models both a player's *skill* and *skill certainty* as a Gaussian distribution.` +
-          `\nWinning against opponents comparatively better than you will award more points. Playing more games makes the algorithm more certain about your skill level and makes your rating more stable.`,
+          ` Winning against opponents comparatively better than you will award more points. Playing more games makes your rating more stable.` +
+          `\n-# Elo ratings are based on [TrueSkill](https://en.wikipedia.org/wiki/TrueSkill), (the algorithm developed my Microsoft).` +
+          ` It's a Bayesian rating system that models a player's skill and skill certainty as a Gaussian distribution.` +
+          ``,
       },
     ],
     color: Colors.EmbedBackground,
   }
 }
 
-export async function allGuildRankings(
+export async function allGuildRankingsText(
   app: App,
   guild: Guild,
   guild_rankings: { guild_ranking: GuildRanking; ranking: Ranking }[],
@@ -85,12 +86,11 @@ export async function allGuildRankings(
           title: `Welcome`,
           description:
             `${escapeMd(guild.data.name)} has no rankings set up.` +
-            ` In order to track elo ratings and host ranked matches, an admin needs to create a ranking.` +
-            `\nCreate one below to get started, or see the guide for more info.`,
+            `\nCreate a ranking in order to track elo ratings and host ranked matches for your server.`,
         }
       : {
-          title: `${escapeMd(guild.data.name)}'s Rankings`,
-          description: `This server has **${guild_rankings.length}** ranking${guild_rankings.length === 1 ? `` : `s`}`,
+          title: `All Rankings`,
+          description: `${escapeMd(guild.data.name)} has **${guild_rankings.length}** ranking${guild_rankings.length === 1 ? `` : `s`}, listed below.`,
         }
 
   const embeds: D.APIEmbed[] = [
@@ -127,14 +127,20 @@ export async function guildRankingDetails(app: App, guild_ranking: GuildRanking)
     ? (await getMatchLogsChannel(app, await guild_ranking.guild))?.id
     : undefined
 
+  const message_link =
+    guild_ranking.data.leaderboard_channel_id && guild_ranking.data.leaderboard_message_id
+      ? await existingMessageLink(
+          app,
+          guild_ranking.data.guild_id,
+          guild_ranking.data.leaderboard_channel_id,
+          guild_ranking.data.leaderboard_message_id,
+        )
+      : undefined
+
   return (
     `- Match type: **` + new Array(num_teams).fill(players_per_team).join('v') + `**`
-    + `\n- ` + (guild_ranking.data.leaderboard_message_id
-      ? `Live leaderboard: ${messageLink(
-        guild_ranking.data.guild_id,
-        guild_ranking.data.leaderboard_channel_id || '0',
-        guild_ranking.data.leaderboard_message_id
-      )}`
+    + `\n- ` + (message_link
+      ? `Live leaderboard: ${message_link}`
       : `Leaderboard not displayed anywhere`)
     + (time_created
       ? `\n- Created on ${dateTimestamp(time_created)}`
@@ -159,11 +165,12 @@ export function ongoingMatch1v1Message(
     }
 
     return (
-      `> -# **<@${user_id}> ` +
+      `- -# **<@${user_id}> ` +
       {
         [Vote.Win]: 'claims win**',
         [Vote.Loss]: 'claims loss**',
         [Vote.Draw]: 'claims draw**',
+        [Vote.Cancel]: 'wants to cancel**',
       }[vote]
     )
   }
@@ -181,7 +188,9 @@ export function ongoingMatch1v1Message(
     description:
       (best_of > 1
         ? `This match is a **best of ${best_of}**. Play all games, then report the results below. `
-        : `Play a game, then report the results below`) + `\nAn admin can resolve any disputes`,
+        : `Play a game, then report the results below`) + `\nAn admin can resolve any disputes` + 
+      `\n\n`+ votes_str +  
+      ``,
     color: Colors.EmbedBackground,
   }
 

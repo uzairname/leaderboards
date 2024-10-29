@@ -1,4 +1,4 @@
-import { APIUser } from 'discord-api-types/v10'
+import { APIUser, ApplicationCommandPermissionType } from 'discord-api-types/v10'
 import { sql } from 'drizzle-orm'
 import { sentry } from '../../logging/sentry'
 import { assert, nonNullable } from '../../utils/utils'
@@ -51,6 +51,42 @@ export async function runTests(app: App): Promise<Response> {
 
   console.log('running tests')
 
+  app.db.cache.clear()
+  await app.db.drizzle.delete(Rankings)
+
+  const guild = await getOrAddGuild(app, '1003698664767762575')
+  const ranking = await app.db.rankings.create({
+    name: 'ranking 1',
+    players_per_team: 2,
+    num_teams: 2,
+    elo_settings: {
+      initial_rating: 1000,
+      initial_rd: 300,
+    },
+  })
+
+  const guild_ranking = await app.db.guild_rankings.create(guild, ranking, {})
+
+  sentry.debug(`Created guild ranking with leaderboard_message: ${guild_ranking.data.display_settings?.leaderboard_message}`)
+
+  const guild_rankings1 = await app.db.guild_rankings.get({guild_id: guild.data.id})
+
+  sentry.debug(`guild rankings 1 with leaderboard_message: ${guild_rankings1[0].guild_ranking.data.display_settings?.leaderboard_message}`)
+
+  await guild_ranking.update({display_settings: {leaderboard_message: true}})
+  sentry.debug(`updated`)
+
+  const guild_rankings2 = await app.db.guild_rankings.get({guild_id: guild.data.id})
+
+  sentry.debug(`after updating:`)
+  sentry.debug(`guild rankings 1 with leaderboard_message: ${guild_rankings1[0].guild_ranking.data.display_settings?.leaderboard_message}`)
+  sentry.debug(`guild rankings 2 with leaderboard_message: ${guild_rankings2[0].guild_ranking.data.display_settings?.leaderboard_message}`)
+
+  await ranking.delete()
+
+  const fetched_rankings = await app.db.guild_rankings.get({guild_id: guild.data.id})
+  sentry.debug(`fetched rankings: ${fetched_rankings.length}. should be 0`)
+
   // await testDatabase(app)
   // sentry.debug(`Tested Leaderboards app (${app.config.env.ENVIRONMENT})`)
   return new Response(`Successfully tested Leaderboards app`, { status: 200 })
@@ -60,6 +96,7 @@ export async function runTests(app: App): Promise<Response> {
 import { Rating, TrueSkill } from 'ts-trueskill'
 import { Gaussian } from 'ts-gaussian'
 import { getNeonDrizzleClient } from '../../database/drizzle-client'
+import { getOrAddGuild } from '../bot/modules/guilds/guilds'
 
 function testTs() {
 

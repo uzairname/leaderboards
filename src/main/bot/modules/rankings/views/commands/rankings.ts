@@ -7,11 +7,8 @@ import {
   withOptionalSelectedRanking,
 } from '../../../../helpers/ranking_command_option'
 import { getOrAddGuild } from '../../../guilds/guilds'
-import { allGuildRankingsPage } from '../pages/all_rankings'
-import {
-  guildRankingSettingsPage,
-  ranking_settings_view_signature,
-} from '../pages/ranking_settings'
+import { allGuildRankingsPage } from '../pages/all_guild_rankings'
+import { rankingSettingsPage } from '../pages/ranking_settings'
 
 const ranking_option_name = 'ranking'
 
@@ -43,12 +40,9 @@ export default new GuildCommand(
           if (ranking) {
             return {
               type: D.InteractionResponseType.ChannelMessageWithSource,
-              data: await guildRankingSettingsPage(app, {
-                state: ranking_settings_view_signature.createState({
-                  ranking_id: ranking.data.id,
-                  guild_id: checkGuildInteraction(ctx.interaction).guild_id,
-                  ranking_name: ranking.data.name,
-                }),
+              data: await rankingSettingsPage(app, {
+                ranking_id: ranking.data.id,
+                guild_id: checkGuildInteraction(ctx.interaction).guild_id,
               }),
             }
           } else {

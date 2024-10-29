@@ -15,6 +15,7 @@ export enum Vote {
   Win = 1,
   Loss = 2,
   Draw = 3,
+  Cancel = 4,
 }
 
 export enum MatchStatus {

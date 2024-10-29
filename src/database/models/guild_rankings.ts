@@ -62,11 +62,25 @@ export class GuildRankingsManager extends DbObjectManager {
         .returning()
     )[0]
     const new_guild_ranking = new GuildRanking(new_data, this.db)
+
+    this.db.cache.guild_guild_rankings[guild.data.id] ??= []
     this.db.cache.guild_guild_rankings[guild.data.id].push({
       guild_ranking: new_guild_ranking,
       ranking,
     })
     return new_guild_ranking
+  }
+
+  async getByName(guild_id: string, name: string) {
+    const data = (
+      await this.db.drizzle
+        .select()
+        .from(GuildRankings)
+        .innerJoin(Rankings, eq(GuildRankings.ranking_id, Rankings.id))
+        .where(and(eq(GuildRankings.guild_id, guild_id), eq(Rankings.name, name)))
+    )[0]
+    if (!data) return null
+    return new GuildRanking(data.GuildRankings, this.db)
   }
 
   async get<By extends { guild_id?: string; ranking_id?: number }>(
@@ -132,3 +146,8 @@ export class GuildRankingsManager extends DbObjectManager {
 }
 export type GuildRankingSelect = InferSelectModel<typeof GuildRankings>
 export type GuildRankingInsert = InferInsertModel<typeof GuildRankings>
+
+export type GuildRankingDisplaySettings = {
+  leaderboard_message?: boolean
+  log_matches?: boolean
+}

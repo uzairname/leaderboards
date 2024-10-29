@@ -2,12 +2,11 @@ import * as D from 'discord-api-types/v10'
 import { Guild, Match } from '../../../../../database/models'
 import { MatchStatus } from '../../../../../database/models/matches'
 import { MessageData } from '../../../../../discord-framework'
-import { maxIndex, nonNullable } from '../../../../../utils/utils'
+import { maxIndex } from '../../../../../utils/utils'
 import { App } from '../../../../app/App'
 import { Colors } from '../../../helpers/constants'
 import { emojis, escapeMd, relativeTimestamp } from '../../../helpers/strings'
-import { default_elo_settings } from '../../rankings/manage_rankings'
-import { rateTrueskill } from '../management/elo_calculation'
+import { getMatchPlayersDisplayStats } from '../../players/display_stats'
 import { syncMatchesChannel } from '../matches_channel'
 
 /**
@@ -85,11 +84,11 @@ export async function matchSummaryEmbed(
     ranking_name?: boolean
     id?: boolean
     time_finished?: boolean
-    include_outcome_num?: boolean
   },
 ): Promise<D.APIEmbed> {
   const ranking = await match.ranking()
-  const team_players = await match.teamPlayers()
+
+  const team_player_stats = await getMatchPlayersDisplayStats(match)
 
   let details: string[] = []
 
@@ -99,56 +98,50 @@ export async function matchSummaryEmbed(
 
   const embed: D.APIEmbed = {
     title: `${escapeMd(ranking.data.name)} Match #${match.data.number}`,
-    color: Colors.EmbedBackground,
+    color: match.data.status === MatchStatus.Finished ? Colors.Primary : Colors.DiscordBackground,
   }
 
-  if (match.data.status === MatchStatus.Finished) {
-    const outcome = nonNullable(match.data.outcome, 'match.outcome')
+  embed.fields = team_player_stats.map((team, team_num) => {
+    return {
+      name: (outcome => {
+        if (outcome) {
+          const winning_team_index = maxIndex(outcome)
+          const is_draw = winning_team_index === -1
+          return is_draw
+            ? emojis.light_circle + `Draw`
+            : team_num === winning_team_index
+              ? emojis.green_triangle + `Win`
+              : emojis.red_triangle + `Loss`
+        } else {
+          return `${team.length > 1 ? `Team` : `Player`} ${team_num + 1}`
+        }
+      })(match.data.outcome),
 
-    const new_ratings = rateTrueskill(
-      outcome,
-      team_players,
-      ranking.data.elo_settings ?? default_elo_settings,
-      match.data.metadata?.best_of,
-    )
+      value: team
+        .map(player => {
+          if (player.rating_after !== undefined && player.provisional_after !== undefined) {
+            const rating_before_text = player.rating_before.toFixed(0)
+            const rating_after_text = player.rating_after.toFixed(0)
+            const diff = player.rating_after - player.rating_before
 
-    const winning_team_index = maxIndex(outcome)
-    const is_draw = winning_team_index === -1
-
-    embed.fields = team_players.map((team, team_num) => {
-      const team_outcome = `${outcome[team_num]}`
-      return {
-        name: is_draw
-          ? emojis.light_circle + (include?.include_outcome_num ? team_outcome : `Draw`)
-          : team_num === winning_team_index
-            ? emojis.green_triangle + (include?.include_outcome_num ? team_outcome : `Win`)
-            : emojis.red_triangle + (include?.include_outcome_num ? team_outcome : `Loss`),
-        value: team
-          .map((player, player_num) => {
-            const rating_after_text = new_ratings[team_num][player_num].new_rating.toFixed(0)
-            const diff = new_ratings[team_num][player_num].new_rating - player.rating_before
             const rating_diff_text = (parseInt(diff.toFixed(0)) > 0 ? '+' : '') + diff.toFixed(0)
-            return `<@${player.player.data.user_id}> ${rating_after_text} *(${rating_diff_text})*`
-          })
-          .join('\n'),
-        inline: true,
-      }
-    })
 
-    embed.color = Colors.Primary
-  } else {
-    embed.description = `*(In Progress)*`
+            return (
+              `<@${player.user_id}>` +
+              `\n\`${rating_before_text}\` → **${rating_after_text}** (${rating_diff_text})`
+            )
+          }
+          
 
-    embed.fields = team_players.map((team, team_num) => {
-      return {
-        name: `${team.length > 1 ? `Team` : `Player`} ${team_num + 1}`,
-        value: team.map(player => `<@${player.player.data.user_id}>`).join('\n'),
-        inline: true,
-      }
-    })
 
-    embed.color = Colors.EmbedBackground
-  }
+
+        })
+        .join('\n'),
+      inline: true,
+    }
+  })
+
+  embed.color = Colors.Primary
 
   if (match.data.time_finished) {
     details.push(`-# Finished ${relativeTimestamp(match.data.time_finished)}`)

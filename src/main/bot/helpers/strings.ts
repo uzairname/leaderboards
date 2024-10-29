@@ -75,6 +75,23 @@ export function messageLink(guild_id: string, channel_id: string, message_id: st
   return `https://discord.com/channels/${guild_id}/${channel_id}/${message_id}`
 }
 
+/**
+ * Returns a message link if the message exists, otherwise null
+ */
+export async function existingMessageLink(
+  app: App,
+  guild_id: string,
+  channel_id: string,
+  message_id: string,
+) {
+  try {
+    const message = await app.discord.getMessage(channel_id, message_id)
+    return messageLink(guild_id, message.channel_id, message_id)
+  } catch {
+    return null
+  }
+}
+
 export function channelMention(channel_id?: string): string {
   return `<#${channel_id || '0'}>`
 }

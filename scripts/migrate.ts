@@ -4,7 +4,6 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import * as dotenv from 'dotenv'
 import { sql } from 'drizzle-orm'
 import { nonNullable } from '../src/utils/utils'
-import { migrate_1 } from './migrate1'
 
 const args = process.argv.slice(2)
 
@@ -54,8 +53,6 @@ EXECUTE FUNCTION "Matches_number_trigger_function"();
 async function migrate_database() {
   
   console.log('migrating')
-
-  await migrate_1()
 
   const db = drizzle(postgres(nonNullable(process.env.POSTGRES_URL, "postgres url"), { ssl: 'require', max: 1 }))
 

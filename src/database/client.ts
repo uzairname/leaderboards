@@ -19,10 +19,7 @@ export class DbClient {
   // select: DrizzleClient['select']
   // read: DrizzleClient
 
-  constructor(
-    readonly drizzle: DrizzleClient,
-    drizzle_read?: DrizzleClient,
-  ) {
+  constructor(readonly drizzle: DrizzleClient) {
     if (cache.db && cache.db instanceof DbCache) {
       this.cache = cache.db
     } else {

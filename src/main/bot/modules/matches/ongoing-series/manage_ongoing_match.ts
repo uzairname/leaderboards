@@ -1,40 +1,45 @@
 import { APIChannel, ThreadAutoArchiveDuration } from 'discord-api-types/v10'
 import { GuildRanking, Match, Player } from '../../../../../database/models'
-import { Vote } from '../../../../../database/models/matches'
+import { MatchStatus, Vote } from '../../../../../database/models/matches'
 import { App } from '../../../../app/App'
 import { UserError } from '../../../errors/UserError'
 import { syncMatchSummaryMessage } from '../logging/match_summary_message'
-import { startNewMatch } from '../management/manage_matches'
+import { revertMatch, startNewMatch } from '../management/manage_matches'
 import { finishAndScoreMatch } from '../management/score_matches'
 import { ongoingMatchPage, ongoing_series_msg_signature } from './views/pages/ongoing_match'
 
 export async function onPlayerVote(
   app: App,
   match: Match,
-  user_id: string,
+  voting_user_id: string,
   vote: Vote,
 ): Promise<void> {
   const team_players = await match.teamPlayers()
 
   const team_index = team_players.findIndex(team =>
-    team.some(p => p.player.data.user_id === user_id),
+    team.some(p => p.player.data.user_id === voting_user_id),
   )
   if (team_index == -1) throw new UserError(`You aren't participating in this match`)
 
-  const team_votes = match.data.team_votes ?? team_players.map(team => Vote.Undecided)
+  const team_votes = match.data.team_votes ?? team_players.map(_ => Vote.Undecided)
 
-  if (vote == Vote.Win && team_votes[team_index] !== Vote.Win) {
-    team_votes[team_index] = Vote.Win
-  } else if (vote == Vote.Loss && team_votes[team_index] !== Vote.Loss) {
-    team_votes[team_index] = Vote.Loss
-  }
+  team_votes[team_index] = vote
+
   await match.update({ team_votes: team_votes })
 
-  const votes_agree =
+  // Act on voting results
+
+  const all_cancel_votes = team_votes.every(v => v === Vote.Cancel)
+  if (all_cancel_votes) {
+    if (match.data.status !== MatchStatus.Ongoing) return
+    await revertMatch(app, match)
+  }
+
+  const unanimous_win =
     team_votes.every(v => v !== Vote.Undecided) &&
     team_votes.filter(v => v === Vote.Win).length === 1
 
-  if (votes_agree) {
+  if (unanimous_win) {
     const outcome = team_votes.map(v => (v === Vote.Win ? 1 : 0))
     await finishAndScoreMatch(app, match, outcome)
   }

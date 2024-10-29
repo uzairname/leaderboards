@@ -97,7 +97,12 @@ export async function ongoingMatchPage(
             type: D.ComponentType.Button,
             style: D.ButtonStyle.Secondary,
             label: `Cancel`,
-            custom_id: state.set.callback(cancel).cId(),
+            custom_id: state
+            .setAll({
+              callback: vote,
+              claim: Vote.Cancel,
+            })
+            .cId(),
           },
         ],
       },

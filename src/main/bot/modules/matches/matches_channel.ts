@@ -58,7 +58,7 @@ async function matchLogsChannelData(
     data: new GuildChannelData({
       type: D.ChannelType.GuildText,
       parent_id: category.id,
-      name: `Match Logs`,
+      name: `matches`,
       topic: `Ranked matches in this server are recorded here`,
       permission_overwrites: matchLogsChannelPermissionOverwrites(app, guild.data.id),
       default_auto_archive_duration: D.ThreadAutoArchiveDuration.OneHour,

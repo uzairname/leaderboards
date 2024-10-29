@@ -5,7 +5,7 @@ import { App } from '../../../../../app/App'
 import { Messages } from '../../../../helpers/messages'
 import { guidePage, help_cmd_signature } from '../../../help/help_command'
 import { create_ranking_view, createRankingModal } from './create_ranking'
-import { ranking_settings_view_signature } from './ranking_settings'
+import { initRankingSettingsPageState } from './ranking_settings'
 
 export async function allGuildRankingsPage(
   app: App,
@@ -13,19 +13,17 @@ export async function allGuildRankingsPage(
 ): Promise<D.APIInteractionResponseCallbackData> {
   const guild_rankings = await app.db.guild_rankings.get({ guild_id: guild.data.id })
 
-  const embeds = await Messages.allGuildRankings(app, guild, guild_rankings)
+  const embeds = await Messages.allGuildRankingsText(app, guild, guild_rankings)
 
   const ranking_btns: D.APIButtonComponent[] = guild_rankings.map(item => {
     return {
       type: D.ComponentType.Button,
       label: item.ranking.data.name || 'Unnamed Ranking',
       style: D.ButtonStyle.Primary,
-      custom_id: ranking_settings_view_signature
-        .createState({
-          ranking_id: item.ranking.data.id,
-          guild_id: item.guild_ranking.data.guild_id,
-        })
-        .cId(),
+      custom_id: initRankingSettingsPageState({
+        ranking_id: item.ranking.data.id,
+        guild_id: item.guild_ranking.data.guild_id,
+      }).cId(),
     }
   })
 

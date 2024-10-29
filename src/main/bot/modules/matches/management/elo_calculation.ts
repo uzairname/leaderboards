@@ -1,10 +1,12 @@
 import { Rating, TrueSkill } from 'ts-trueskill'
+import { EloSettings } from '../../../../../database/models/rankings'
 
 function getAdjustedBeta(baseBeta: number, best_of: number): number {
   // Higher beta = more assumed volatility and slower convergence
   // Multiply by 5 to increase overall volatility
   // Divide to reduce the uncertainty for longer series
-  return (5 * baseBeta) / Math.sqrt(best_of)
+  return (baseBeta) / Math.sqrt(best_of)
+  return baseBeta
 }
 
 export function rateTrueskill(
@@ -13,10 +15,7 @@ export function rateTrueskill(
     rating_before: number
     rd_before: number
   }[][],
-  elo_settings: {
-    initial_rating?: number
-    initial_rd?: number
-  },
+  elo_settings: EloSettings,
   best_of?: number,
 ): {
   new_rating: number

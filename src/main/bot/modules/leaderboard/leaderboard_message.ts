@@ -1,10 +1,12 @@
 import * as D from 'discord-api-types/v10'
 import type { Guild, GuildRanking, Ranking } from '../../../../database/models'
 import { GuildChannelData, MessageData } from '../../../../discord-framework'
+import { sentry } from '../../../../logging/sentry'
 import { type App } from '../../../app/App'
 import { Colors } from '../../helpers/constants'
 import { escapeMd, relativeTimestamp, space } from '../../helpers/strings'
 import { syncRankedCategory } from '../guilds/guilds'
+import { getLeaderboardPlayers } from '../players/display_stats'
 
 export async function syncRankingLbMessages(app: App, ranking: Ranking): Promise<void> {
   const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
@@ -18,10 +20,9 @@ export async function syncRankingLbMessages(app: App, ranking: Ranking): Promise
 export async function syncGuildRankingLbMessage(
   app: App,
   guild_ranking: GuildRanking,
-  create_channel_if_not_exists: boolean = false,
-): Promise<void> {
-  // check if the leaderboard message is enabled for the guild ranking
-  if (!guild_ranking.data.display_settings?.leaderboard_message) return
+  enable_if_disabled = false,
+) {
+  if (!guild_ranking.data.display_settings?.leaderboard_message && !enable_if_disabled) return
 
   const guild = await guild_ranking.guild
   const ranking = await guild_ranking.ranking
@@ -30,17 +31,31 @@ export async function syncGuildRankingLbMessage(
     target_channel_id: guild_ranking.data.leaderboard_channel_id,
     target_message_id: guild_ranking.data.leaderboard_message_id,
     messageData: await leaderboardMessage(ranking),
-    channelData: create_channel_if_not_exists
-      ? () => lbChannelData(app, guild, ranking)
-      : undefined,
+    channelData: () => lbChannelData(app, guild, ranking),
   })
 
   if (result.is_new_message || result.new_channel) {
     await guild_ranking.update({
       leaderboard_channel_id: result.new_channel?.id ?? guild_ranking.data.leaderboard_channel_id,
       leaderboard_message_id: result.is_new_message ? result.message.id : undefined,
+      display_settings: { ...guild_ranking.data.display_settings, leaderboard_message: true },
     })
+    sentry.debug(`synced leaderboard message. ${guild_ranking.data.leaderboard_message_id}`)
   }
+  return result
+}
+
+export async function disableGuildRankingLbMessage(app: App, guild_ranking: GuildRanking) {
+  await app.discord.deleteMessageIfExists(
+    guild_ranking.data.leaderboard_channel_id,
+    guild_ranking.data.leaderboard_message_id,
+  )
+  await guild_ranking.update({
+    display_settings: {
+      ...guild_ranking.data.display_settings,
+      leaderboard_message: false,
+    },
+  })
 }
 
 export async function lbChannelData(
@@ -70,13 +85,19 @@ export async function lbChannelData(
 }
 
 export async function leaderboardMessage(ranking: Ranking): Promise<MessageData> {
-  const players = await ranking.getOrderedTopPlayers()
+  const players = await getLeaderboardPlayers(ranking)
 
   let place = 0
-  const max_rating_len = players[0]?.data.rating?.toFixed(0).length ?? 0
+  const max_rating_len = players[0]?.display_rating.toFixed(0).length ?? 0
+
   const players_text = players
-    .filter(p => p.data.rating != null && p.data.rating != undefined)
     .map(p => {
+      const display_rating = p.display_rating.toFixed(0).padStart(max_rating_len)
+      if (p.provisional) {
+        return `-# ${space}?`
+       + `${space}\`${display_rating}\``
+       + `${space}<@${p.user_id}> ` // prettier-ignore
+      }
       place++
       return `### ${(place => {
         if (place==1) return `🥇`
@@ -84,8 +105,8 @@ export async function leaderboardMessage(ranking: Ranking): Promise<MessageData>
         else if (place==3) return `🥉`
         else return `${place}.${space}`
       })(place)}` 
-      + `${space}\`${p.data.rating!.toFixed(0).padStart(max_rating_len)}\``
-      + `${space}<@${p.data.user_id}> ` // prettier-ignore
+      + `${space}\`${display_rating}\``
+      + `${space}<@${p.user_id}> ` // prettier-ignore
     })
     .join('\n\n')
 
@@ -94,7 +115,7 @@ export async function leaderboardMessage(ranking: Ranking): Promise<MessageData>
     description: 
       (players_text || 'No players yet') 
       + `\n\n-# Last updated ${relativeTimestamp(new Date())}`, //prettier-ignore
-    color: Colors.EmbedBackground,
+    color: Colors.Primary,
   }
 
   return new MessageData({
@@ -110,7 +131,7 @@ export async function leaderboardMessage(ranking: Ranking): Promise<MessageData>
 export function leaderboardChannelPermissionOverwrites(
   guild_id: string,
   application_id: string,
-): D.APIChannelPatchOverwrite[] {
+): D.RESTAPIChannelPatchOverwrite[] {
   return [
     {
       // @everyone can't send messages or make threads

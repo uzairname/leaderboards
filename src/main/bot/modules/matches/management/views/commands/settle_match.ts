@@ -14,9 +14,9 @@ const optionnames = {
 }
 
 export const settle_match_cmd_signature = new AppCommand({
-  name: `settle`,
+  name: `settle-match`,
   type: D.ApplicationCommandType.ChatInput,
-  description: `(Admin) Cancel or settle the result of specific match`,
+  description: `(Admin) Cancel or decide the result of specific match`,
   options: [
     {
       type: D.ApplicationCommandOptionType.User,

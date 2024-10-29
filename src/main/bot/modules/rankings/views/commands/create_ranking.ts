@@ -1,8 +1,17 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand } from '../../../../../../discord-framework'
+import { sentry } from '../../../../../../logging/sentry'
+import { nonNullable } from '../../../../../../utils/utils'
 import { AppView } from '../../../../../app/ViewModule'
-import { default_num_teams, default_players_per_team } from '../../manage_rankings'
-import { create_ranking_view, createRankingPageData } from '../pages/create_ranking'
+import { Colors } from '../../../../helpers/constants'
+import { checkGuildInteraction, ensureAdminPerms } from '../../../../helpers/perms'
+import { getOrAddGuild } from '../../../guilds/guilds'
+import {
+  createNewRankingInGuild,
+  default_num_teams,
+  default_players_per_team,
+} from '../../manage_rankings'
+import { rankingSettingsPage } from '../pages/ranking_settings'
 
 export const create_ranking_cmd_signature = new AppCommand({
   name: 'create-ranking',
@@ -41,6 +50,9 @@ export default new AppView(create_ranking_cmd_signature, app =>
         : [],
     ),
   }).onCommand(async ctx => {
+    await ensureAdminPerms(app, ctx)
+    const interaction = checkGuildInteraction(ctx.interaction)
+
     const options: { [key: string]: string | undefined } = Object.fromEntries(
       (ctx.interaction.data.options as D.APIApplicationCommandInteractionDataStringOption[])?.map(
         o => [o.name, o.value],
@@ -53,16 +65,33 @@ export default new AppView(create_ranking_cmd_signature, app =>
         data: { flags: D.MessageFlags.Ephemeral },
       },
       async ctx => {
-        return void ctx.followup(
-          await createRankingPageData(app, {
-            interaction: ctx.interaction,
-            state: create_ranking_view.createState({
-              input_name: options['name'],
-              input_num_teams: options['num-teams'] ? parseInt(options['num-teams']) : undefined,
-              input_players_per_team: options['players-per-team']
-                ? parseInt(options['players-per-team'])
-                : undefined,
-            }),
+        const guild = await getOrAddGuild(app, interaction.guild_id)
+
+        const ranking = await createNewRankingInGuild(app, guild, {
+          name: nonNullable(options['name'], 'options.name'),
+          num_teams: options['num-teams'] ? parseInt(options['num-teams']) : default_num_teams,
+          players_per_team: options['players-per-team']
+            ? parseInt(options['players-per-team'])
+            : default_players_per_team,
+        })
+
+        sentry.debug(`new ranking. ${ranking.new_guild_ranking.data.leaderboard_message_id}`)
+
+        await ctx.followup({
+          embeds: [
+            {
+              description:
+                `New ranking created: **${ranking.new_ranking.data.name}**` +
+                `\nNext, you can configure additional settings for this ranking below`,
+              color: Colors.Success,
+            },
+          ],
+        })
+
+        await ctx.followup(
+          await rankingSettingsPage(app, {
+            guild_id: guild.data.id,
+            ranking_id: ranking.new_ranking.data.id,
           }),
         )
       },

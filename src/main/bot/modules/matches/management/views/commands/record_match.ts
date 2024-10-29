@@ -18,7 +18,7 @@ import {
   guildRankingsOption,
   withSelectedRanking,
 } from '../../../../../helpers/ranking_command_option'
-import { escapeMd, relativeTimestamp } from '../../../../../helpers/strings'
+import { escapeMd, messageLink, relativeTimestamp } from '../../../../../helpers/strings'
 import { getOrCreatePlayer } from '../../../../players/manage_players'
 import { matchSummaryEmbed } from '../../../logging/match_summary_message'
 import { createAndScoreMatch } from '../../score_matches'
@@ -170,7 +170,7 @@ export default new GuildCommand(
                     const winner = await getOrCreatePlayer(app, winner_id, ranking)
                     const loser = await getOrCreatePlayer(app, loser_id, ranking)
 
-                    await createAndScoreMatch(
+                    const match = await createAndScoreMatch(
                       app,
                       ranking,
                       [[winner], [loser]].map(team =>
@@ -184,8 +184,21 @@ export default new GuildCommand(
                       undefined,
                       ctx.state.data.selected_time_finished,
                     )
+
+                    const match_summary_message = await match.getSummaryMessage(
+                      interaction.guild_id,
+                    )
+
                     return void ctx.edit({
-                      content: `Recorded match`,
+                      content:
+                        `Match #${match.data.number} in ${ranking.data.name} recorded.` +
+                        (match_summary_message
+                          ? ` ${messageLink(
+                              match_summary_message.guild_id,
+                              match_summary_message.channel_id,
+                              match_summary_message.message_id,
+                            )}`
+                          : ``),
                       flags: D.MessageFlags.Ephemeral,
                     })
                   } else {

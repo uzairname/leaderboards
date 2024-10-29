@@ -10,6 +10,11 @@ export type RankingSelect = InferSelectModel<typeof Rankings>
 export type RankingInsert = Omit<InferInsertModel<typeof Rankings>, 'id'>
 export type RankingUpdate = Partial<RankingInsert>
 
+export type EloSettings = {
+  initial_rating: number
+  initial_rd: number
+}
+
 export class Ranking extends DbObject<RankingSelect> {
   constructor(data: RankingSelect, db: DbClient) {
     super(data, db)
@@ -68,6 +73,7 @@ export class Ranking extends DbObject<RankingSelect> {
     await this.db.drizzle.delete(Rankings).where(eq(Rankings.id, this.data.id))
     delete this.db.cache.rankings[this.data.id]
     this.db.cache.guild_rankings = {}
+    this.db.cache.guild_guild_rankings = {}
     delete this.db.cache.players[this.data.id]
     this.db.cache.players_by_id = {}
     this.db.cache.teams = {}

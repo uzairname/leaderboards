@@ -116,26 +116,6 @@ export class DiscordAPIUtils {
     }
   }
 
-  async deleteMessageIfExists(
-    target_channel_id?: string | null,
-    target_message_id?: string | null,
-  ): Promise<D.APIMessage | void> {
-    try {
-      if (!target_message_id || !target_channel_id) return
-      return await this.bot.deleteMessageIfExists(target_channel_id, target_message_id)
-    } catch (e) {
-      if (
-        !(
-          e instanceof DiscordAPIError &&
-          (e.code === D.RESTJSONErrorCodes.UnknownMessage ||
-            e.code === D.RESTJSONErrorCodes.UnknownChannel)
-        )
-      ) {
-        throw e
-      }
-    }
-  }
-
   async syncChannelMessage(params: {
     target_channel_id?: string | null
     target_message_id?: string | null

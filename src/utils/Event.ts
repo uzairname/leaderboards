@@ -1,5 +1,3 @@
-import { sentry } from '../logging/sentry'
-
 export class Event<Context, EventData> {
   constructor(private context: Context) {}
 
@@ -10,7 +8,6 @@ export class Event<Context, EventData> {
   }
 
   async emit(data: EventData): Promise<void> {
-    sentry.debug(`Emitting event, ${this.context} listeners`)
     await Promise.all(this.listeners.map(listener => listener(this.context, data)))
   }
 }

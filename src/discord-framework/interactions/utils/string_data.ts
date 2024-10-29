@@ -1,4 +1,8 @@
-import { nonNullable } from '../../../utils/utils'
+function nonNullable<T>(value: T, value_name?: string): NonNullable<T> {
+  if (value === null || value === undefined)
+    throw new Error(`${value_name || 'value'} is null or undefined`)
+  return value
+}
 
 export type StringDataSchema = {
   [k: string]: Field<unknown>
@@ -122,7 +126,10 @@ export class StringData<TSchema extends StringDataSchema> {
   private validateKeyValue(key: keyof TSchema, value: TSchema[typeof key]['read']): typeof value {
     if (!this.fields.hasOwnProperty(key))
       throw new Error(`Field ${key.toString()} does not exist in this StringData`)
-    return this.fields[key].decompress(this.fields[key].compress(value))
+    if (this.fields[key].compress(value) !== 
+        this.fields[key].compress(this.fields[key].decompress(this.fields[key].compress(value))))
+      throw new Error(`Invalid type "${typeof value}" for field ${key.toString()}`)
+    return value
   }
 }
 
@@ -282,7 +289,7 @@ class StringDataDataField<TSchema extends StringDataSchema> extends Field<
     super()
   }
   compress = (value: StringData<TSchema>['data']) =>
-    new StringData(this.schema).saveAll(value).encode()
+    new StringData(this.schema, '').saveAll(value).encode()
   decompress = (value: string) => new StringData(this.schema, value).data
 }
 

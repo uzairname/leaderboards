@@ -5,6 +5,8 @@ import { Vote } from './models/matches'
 import { MatchMetadata } from './models/matches'
 import { PlayerStats } from './models/players'
 import { Versions } from './models/settings'
+import { EloSettings } from './models/rankings'
+import { GuildRankingDisplaySettings } from './models/guild_rankings'
 
 export const Settings = pgTable('Settings', {
   id: integer('id').primaryKey().default(1),
@@ -48,10 +50,7 @@ export const Rankings = pgTable('Rankings', {
   time_created: timestamp('time_created').notNull().defaultNow(),
   players_per_team: integer('players_per_team').notNull(),
   num_teams: integer('num_teams').notNull(),
-  elo_settings: jsonb('elo_settings').$type<{
-    initial_rating: number
-    initial_rd: number
-  }>(),
+  elo_settings: jsonb('elo_settings').$type<EloSettings>(),
 })
 
 
@@ -62,10 +61,7 @@ export const GuildRankings = pgTable('GuildRankings', {
   is_admin: boolean('is_admin'),
   leaderboard_channel_id: text('leaderboard_channel_id'),
   leaderboard_message_id: text('leaderboard_message_id'),
-  display_settings: jsonb('display_settings').$type<{
-    leaderboard_message?: boolean
-    log_matches?: boolean
-  }>(),
+  display_settings: jsonb('display_settings').$type<GuildRankingDisplaySettings>(),
 },(table) => { return {
   cpk: primaryKey({ columns: [table.guild_id, table.ranking_id] }),
 }})

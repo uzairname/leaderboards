@@ -27,7 +27,7 @@ import {
   validateRankingOptions,
 } from '../../manage_rankings'
 import rankings from '../commands/rankings'
-import { guildRankingSettingsPage, ranking_settings_view_signature } from './ranking_settings'
+import { rankingSettingsPage } from './ranking_settings'
 
 export const create_ranking_view = new MessageView({
   custom_id_prefix: 'cr',
@@ -236,18 +236,33 @@ export function createRankingModal(
   }
 }
 
-export function onCreateRankingModalSubmit(
+export async function onCreateRankingModalSubmit(
   app: App,
   ctx: ComponentContext<typeof create_ranking_view>,
 ): Promise<ChatInteractionResponse> {
   const modal_input = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
-  modal_input['name']?.value && ctx.state.save.input_name(modal_input['name'].value)
-  modal_input['num_teams']?.value &&
-    ctx.state.save.input_num_teams(parseInt(modal_input['num_teams'].value))
-  modal_input['players_per_team']?.value &&
-    ctx.state.save.input_players_per_team(parseInt(modal_input['players_per_team'].value))
+  const name = nonNullable(modal_input['name'], 'modal_input.name').value
 
-  return createRankingPage(app, ctx)
+  const interaction = checkGuildInteraction(ctx.interaction)
+  const guild = await getOrAddGuild(app, interaction.guild_id)
+
+  const ranking = await createNewRankingInGuild(app, guild, {
+    name,
+    num_teams: modal_input['num_teams']?.value
+      ? parseInt(modal_input['num_teams'].value)
+      : undefined,
+    players_per_team: modal_input['players_per_team']?.value
+      ? parseInt(modal_input['players_per_team'].value)
+      : undefined,
+  })
+
+  return {
+    type: D.InteractionResponseType.UpdateMessage,
+    data: await rankingSettingsPage(app, {
+      guild_id: ranking.new_guild_ranking.data.guild_id,
+      ranking_id: ranking.new_guild_ranking.data.ranking_id,
+    }),
+  }
 }
 
 export function onCreateConfirmBtn(
@@ -289,13 +304,9 @@ export function onCreateConfirmBtn(
       }
 
       return ctx.edit(
-        await guildRankingSettingsPage(app, {
-          state: ranking_settings_view_signature.createState({
-            ranking_id: result.new_ranking.data.id,
-            guild_id: guild.data.id,
-            edit: true,
-            ranking_name: result.new_ranking.data.name,
-          }),
+        await rankingSettingsPage(app, {
+          ranking_id: result.new_ranking.data.id,
+          guild_id: guild.data.id,
         }),
       )
     },

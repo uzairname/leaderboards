@@ -78,7 +78,7 @@ export async function revertMatch(app: App, match: Match): Promise<void> {
   await Promise.all(
     guild_rankings.map(async guild_ranking => {
       const summary_message = await match.getSummaryMessage(guild_ranking.guild.data.id)
-      await app.discord.utils.deleteMessageIfExists(
+      await app.discord.deleteMessageIfExists(
         guild_ranking.guild.data.matches_channel_id,
         summary_message?.message_id,
       )

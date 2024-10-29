@@ -1,11 +1,12 @@
-import { and, eq } from 'drizzle-orm'
 import { Guild, GuildRanking, Ranking } from '../../../../database/models'
-import { GuildRankingInsert } from '../../../../database/models/guild_rankings'
-import { RankingInsert, RankingUpdate } from '../../../../database/models/rankings'
-import { GuildRankings, Rankings } from '../../../../database/schema'
+import { GuildRankingDisplaySettings } from '../../../../database/models/guild_rankings'
+import { EloSettings, RankingInsert, RankingUpdate } from '../../../../database/models/rankings'
 import { App } from '../../../app/App'
 import { UserError, UserErrors } from '../../errors/UserError'
-import { syncGuildRankingLbMessage } from '../leaderboard/leaderboard_message'
+import {
+  syncGuildRankingLbMessage,
+  syncRankingLbMessages,
+} from '../leaderboard/leaderboard_message'
 
 /**
  *
@@ -21,8 +22,8 @@ export async function createNewRankingInGuild(
     name: string
     num_teams?: number
     players_per_team?: number
-    elo_settings?: RankingInsert['elo_settings']
-    display_settings?: GuildRankingInsert['display_settings']
+    elo_settings?: EloSettings
+    display_settings?: GuildRankingDisplaySettings
   },
 ): Promise<{
   new_guild_ranking: GuildRanking
@@ -31,30 +32,24 @@ export async function createNewRankingInGuild(
   options = validateRankingOptions(options)
 
   // make sure a ranking from this guild with the same name doesn't already exist
-  const same_name_ranking = (
-    await app.db.drizzle
-      .select()
-      .from(GuildRankings)
-      .innerJoin(Rankings, eq(GuildRankings.ranking_id, Rankings.id))
-      .where(and(eq(GuildRankings.guild_id, guild.data.id), eq(Rankings.name, options.name)))
-  )[0]
+  const same_name_ranking = await app.db.guild_rankings.getByName(guild.data.id, options.name)
   if (same_name_ranking) {
-    throw new UserError(`You already have a ranking named \`${options.name}\``)
+    throw new UserError(`This server already has a ranking called \`${options.name}\``)
   }
 
   const new_ranking = await app.db.rankings.create({
     name: options.name,
-    time_created: new Date(),
     players_per_team: options.players_per_team || default_players_per_team,
     num_teams: options.num_teams || default_num_teams,
     elo_settings: options.elo_settings || default_elo_settings,
-    // TODO: specify players per team and num teams
   })
 
   const new_guild_ranking = await app.db.guild_rankings.create(guild, new_ranking, {
     is_admin: true,
     display_settings: options.display_settings || default_display_settings,
   })
+
+  await syncRankingLbMessages(app, new_ranking)
 
   await app.events.GuildRankingsModified.emit(guild)
 
@@ -66,6 +61,7 @@ export async function updateRanking(
   ranking: Ranking,
   options: RankingUpdate,
 ): Promise<void> {
+  validateRankingOptions(options)
   await ranking.update(options)
   const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
   await Promise.all(
@@ -79,7 +75,7 @@ export async function deleteRanking(app: App, ranking: Ranking): Promise<void> {
   const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
   await Promise.all(
     guild_rankings.map(async item => {
-      await app.discord.utils.deleteMessageIfExists(
+      await app.discord.deleteMessageIfExists(
         item.guild_ranking.data.leaderboard_channel_id,
         item.guild_ranking.data.leaderboard_message_id,
       )

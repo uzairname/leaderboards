@@ -8,7 +8,7 @@ import type {
 import type { App } from '../../app/App'
 import { UserError } from '../errors/UserError'
 import { getOrAddGuild } from '../modules/guilds/guilds'
-import { allGuildRankingsPage } from '../modules/rankings/views/pages/all_rankings'
+import { allGuildRankingsPage } from '../modules/rankings/views/pages/all_guild_rankings'
 import { checkGuildInteraction } from './perms'
 
 export const create_ranking_choice_value = 'create'

@@ -222,12 +222,24 @@ export class DiscordAPIClient extends REST {
   }
 
   @requiresBotPerms(D.PermissionFlagsBits.ManageMessages)
-  async deleteMessageIfExists(channel_id?: string, message_id?: string) {
+  async deleteMessageIfExists(channel_id?: string | null, message_id?: string | null) {
     if (!channel_id || !message_id) return
-    return (await this.fetch(
-      RequestMethod.Delete,
-      D.Routes.channelMessage(channel_id, message_id),
-    )) as D.RESTDeleteAPIChannelMessageResult
+    try {
+      return (await this.fetch(
+        RequestMethod.Delete,
+        D.Routes.channelMessage(channel_id, message_id),
+      )) as D.RESTDeleteAPIChannelMessageResult
+    } catch (e) {
+      if (
+        !(
+          e instanceof DiscordAPIError &&
+          (e.code === D.RESTJSONErrorCodes.UnknownMessage ||
+            e.code === D.RESTJSONErrorCodes.UnknownChannel)
+        )
+      ) {
+        throw e
+      }
+    }
   }
 
   // GUILD
