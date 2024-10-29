@@ -1,7 +1,7 @@
 import * as D from 'discord-api-types/v10'
+import type { Guild, GuildRanking, Ranking } from '../../../../database/models'
 import { GuildChannelData, MessageData } from '../../../../discord-framework'
 import { type App } from '../../../app/App'
-import type { Guild, GuildRanking, Ranking } from '../../../../database/models'
 import { Colors } from '../../helpers/constants'
 import { escapeMd, relativeTimestamp, space } from '../../helpers/strings'
 import { syncRankedCategory } from '../guilds/guilds'
@@ -26,7 +26,7 @@ export async function syncGuildRankingLbMessage(
   const guild = await guild_ranking.guild
   const ranking = await guild_ranking.ranking
 
-  const result = await app.bot.utils.syncChannelMessage({
+  const result = await app.discord.utils.syncChannelMessage({
     target_channel_id: guild_ranking.data.leaderboard_channel_id,
     target_message_id: guild_ranking.data.leaderboard_message_id,
     messageData: await leaderboardMessage(ranking),
@@ -62,7 +62,7 @@ export async function lbChannelData(
       topic: 'This leaderboard is displayed and updated live here',
       permission_overwrites: leaderboardChannelPermissionOverwrites(
         guild.data.id,
-        app.bot.application_id,
+        app.discord.application_id,
       ),
     }),
     reason: `Leaderboard channel for ${ranking.data.name}`,

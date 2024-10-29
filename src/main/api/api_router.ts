@@ -1,6 +1,6 @@
 import { json, Router } from 'itty-router'
 import { App } from '../app/App'
-import { GuildCommandView } from '../app/ViewModule'
+import { GuildCommand } from '../app/ViewModule'
 import { inviteUrl } from '../bot/helpers/strings'
 import views from '../bot/modules/all_views'
 
@@ -16,7 +16,7 @@ export const apiRouter = (app: App) =>
             return {
               cid_prefix: `${c.base_signature.signature.custom_id_prefix}`,
               name: `${c.base_signature.signature.name}`,
-              is_guild_command: c instanceof GuildCommandView,
+              is_guild_command: c instanceof GuildCommand,
               experimental: c.is_dev,
             }
           })
@@ -27,7 +27,7 @@ export const apiRouter = (app: App) =>
               a.cid_prefix.localeCompare(b.cid_prefix)
             )
           }),
-        'global discord commands': (await app.bot.getAppCommands()).map(c => c.name),
+        'global discord commands': (await app.discord.getAppCommands()).map(c => c.name),
       }
       // format json
       return json(result)
@@ -35,7 +35,7 @@ export const apiRouter = (app: App) =>
     .get('/commands/:guild_id', async request => {
       const guild_id = request.params.guild_id
       const result = {
-        'guild commands': (await app.bot.getAppCommands(guild_id)).map(c => c.name),
+        'guild commands': (await app.discord.getAppCommands(guild_id)).map(c => c.name),
       }
       // format json
       return json(result)

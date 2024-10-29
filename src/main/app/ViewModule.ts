@@ -1,3 +1,4 @@
+import { Guild } from '../../database/models'
 import {
   AnyChatInputAppCommand,
   FindViewCallback,
@@ -7,7 +8,6 @@ import {
   type AnyView,
 } from '../../discord-framework'
 import { ViewState, ViewStateFactory } from '../../discord-framework/interactions/view_state'
-import { Guild } from '../../database/models'
 import type { App } from './App'
 
 export class AppView<TView extends AnyView> {
@@ -26,18 +26,18 @@ export class AppView<TView extends AnyView> {
   }
 }
 
-export class GuildCommandView<TView extends AnyChatInputAppCommand> extends AppView<TView> {
+export class GuildCommand<TView extends AnyChatInputAppCommand> extends AppView<TView> {
   constructor(
     base_signature: TView,
-    resolveHandlers: (app: App) => TView,
     public resolveGuildSignature: (app: App, guild: Guild) => Promise<TView>,
+    resolveHandlers: (app: App) => TView,
   ) {
     super(base_signature, resolveHandlers)
   }
 }
 
 export type AnyAppView = AppView<AnyView>
-export type AnyGuildCommandView = GuildCommandView<AnyChatInputAppCommand>
+export type AnyGuildCommand = GuildCommand<AnyChatInputAppCommand>
 
 export class ViewModule {
   public all_views: AnyAppView[]
@@ -80,10 +80,10 @@ export class ViewModule {
           return []
         }
         if (guild) {
-          if (v instanceof GuildCommandView) return v.resolveGuildSignature(app, guild)
+          if (v instanceof GuildCommand) return v.resolveGuildSignature(app, guild)
           // If we're looking for guild commands and it's a guild command, get its signature in the guild
         } else {
-          if (!(v instanceof GuildCommandView)) {
+          if (!(v instanceof GuildCommand)) {
             // if we're not looking for guild commands and it's not a guild command, get its global signature
             const resolved = v.resolveHandlers(app)
             return viewIsAppCommand(resolved) ? resolved : []

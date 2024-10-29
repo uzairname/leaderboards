@@ -110,6 +110,12 @@ export abstract class BaseView<TSchema extends StringDataSchema = {}> {
               args.onError(e, ctx.setException).data,
             )
           }),
+      async timeout_error => {
+        await args.bot.createFollowupMessage(
+          args.interaction.token,
+          args.onError(timeout_error).data,
+        )
+      },
     )
   }
 

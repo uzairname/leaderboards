@@ -1,4 +1,5 @@
 import * as D from 'discord-api-types/v10'
+import { GuildRanking } from '../../../../../../database/models'
 import {
   ChatInteractionResponse,
   ComponentContext,
@@ -10,15 +11,14 @@ import {
 import { nonNullable } from '../../../../../../utils/utils'
 import { App } from '../../../../../app/App'
 import { AppView } from '../../../../../app/ViewModule'
-import { GuildRanking } from '../../../../../../database/models'
 import { Colors } from '../../../../helpers/constants'
+import { Messages } from '../../../../helpers/messages'
 import { ensureAdminPerms } from '../../../../helpers/perms'
 import { escapeMd, messageLink } from '../../../../helpers/strings'
 import { syncGuildRankingLbMessage } from '../../../leaderboard/leaderboard_message'
 import { sendGuildRankingQueueMessage } from '../../../matches/matchmaking/queue/queue_messages'
 import { sendSelectChannelPage } from '../../../utils/views/pages/select_channel'
 import { deleteRanking, updateRanking, validateRankingOptions } from '../../manage_rankings'
-import { guildRankingDetails } from './all_rankings'
 import { rankingNameTextInput } from './create_ranking'
 
 export const ranking_settings_view_signature = new MessageView({
@@ -174,7 +174,6 @@ const setting_select_menu_options: (app: App) => Record<
             {
               title: `Delete ${escapeMd(ctx.state.data.ranking_name)}?`,
               description: `This will delete all of its players and match history`,
-              // +`\nAlternatively, you can disable, start a new season, or reset the ranking's players to retain its history`
               color: Colors.EmbedBackground,
             },
           ],
@@ -184,15 +183,15 @@ const setting_select_menu_options: (app: App) => Record<
               components: [
                 {
                   type: D.ComponentType.Button,
-                  label: `Cancel`,
-                  custom_id: ctx.state.set.callback(undefined).cId(),
-                  style: D.ButtonStyle.Secondary,
-                },
-                {
-                  type: D.ComponentType.Button,
                   label: `Delete`,
                   custom_id: ctx.state.set.callback(onDeleteConfirmBtn).cId(),
                   style: D.ButtonStyle.Danger,
+                },
+                {
+                  type: D.ComponentType.Button,
+                  label: `Cancel`,
+                  custom_id: ctx.state.set.callback(undefined).cId(),
+                  style: D.ButtonStyle.Secondary,
                 },
               ],
             },
@@ -215,7 +214,7 @@ export async function guildRankingSettingsPage(
 
   const embed: D.APIEmbed = {
     title: `${escapeMd(ctx.state.data.ranking_name)}`,
-    description: await guildRankingDetails(app, guild_ranking),
+    description: await Messages.guildRankingDetails(app, guild_ranking),
     color: Colors.EmbedBackground,
   }
 
@@ -405,11 +404,7 @@ function onDeleteConfirmBtn(
       await deleteRanking(app, ranking)
       return void ctx.edit({
         flags: D.MessageFlags.Ephemeral,
-        content: `Deleted **\`${escapeMd(
-          ranking.data.name,
-        )}\`** and all of its players and matches`,
-        embeds: [],
-        components: [],
+        content: `Deleted **${escapeMd(ranking.data.name)}** and all of its players and matches`,
       })
     },
   )

@@ -42,4 +42,5 @@ export interface Env {
   SENTRY_DSN: string
   APP_KEY: string
   POSTGRES_URL: string
+  POSTGRES_READ_URL: string
 }

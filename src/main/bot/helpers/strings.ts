@@ -1,6 +1,7 @@
+import * as D from 'discord-api-types/v10'
 import type { AnyChatInputAppCommand, DiscordErrors } from '../../../discord-framework'
 import type { App } from '../../app/App'
-import { AnyGuildCommandView, AppView } from '../../app/ViewModule'
+import { AnyGuildCommand, AppView } from '../../app/ViewModule'
 
 export const github_url = 'https://github.com/uzairname/leaderboards'
 
@@ -26,17 +27,17 @@ export function inviteAndRoleConnectionsUrl(app: App): string {
 }
 
 export function inviteUrl(app: App): string {
-  return app.bot.botInviteURL(app.config.RequiredBotPermissions).toString()
+  return app.discord.botInviteURL(app.config.RequiredBotPermissions).toString()
 }
 
 export async function commandMention<T extends AppView<AnyChatInputAppCommand>>(
   app: App,
   command: T,
-  guild_id?: T extends AnyGuildCommandView ? string : undefined,
+  guild_id?: T extends AnyGuildCommand ? string : undefined,
 ) {
   const name = command.base_signature.signature.name
   const type = command.base_signature.signature.type
-  const commands = await app.bot.getAppCommands(guild_id)
+  const commands = await app.discord.getAppCommands(guild_id)
   const discord_command = commands.find(command => command.name === name && command.type === type)
   return `</${name}:${discord_command?.id || '0'}>`
 }
@@ -76,6 +77,28 @@ export function messageLink(guild_id: string, channel_id: string, message_id: st
 
 export function channelMention(channel_id?: string): string {
   return `<#${channel_id || '0'}>`
+}
+
+export function memberAvatarUrl(guild_id: string, member: D.APIGuildMember): string {
+  if (member.avatar) {
+    const format = member.avatar.startsWith('a_') ? D.ImageFormat.GIF : D.ImageFormat.PNG
+    return (
+      D.RouteBases.cdn +
+      D.CDNRoutes.guildMemberAvatar(guild_id, member.user.id, member.avatar, format)
+    )
+  } else {
+    return userAvatarUrl(member.user)
+  }
+}
+
+export function userAvatarUrl(user: D.APIUser) {
+  if (user.avatar) {
+    const format = user.avatar.startsWith('a_') ? D.ImageFormat.GIF : D.ImageFormat.PNG
+    return D.RouteBases.cdn + D.CDNRoutes.userAvatar(user.id, user.avatar, format)
+  } else {
+    const idx = ((((Number(user.id) >> 22) % 6) + 6) % 6) as D.DefaultUserAvatarAssets
+    return D.RouteBases.cdn + D.CDNRoutes.defaultUserAvatar(idx)
+  }
 }
 
 export function permsToString(perms: string[]) {

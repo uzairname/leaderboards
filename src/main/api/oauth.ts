@@ -1,10 +1,10 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { Router } from 'itty-router'
+import type { AccessToken } from '../../database/models/access_tokens'
 import type { DiscordAPIClient } from '../../discord-framework'
 import { nonNullable } from '../../utils/utils'
 import type { App } from '../app/App'
-import type { AccessToken } from '../../database/models/access_tokens'
 
 export const oauthRouter = (app: App) =>
   Router({ base: `/oauth` })
@@ -31,7 +31,7 @@ export function oauthRedirect(
 ): Response {
   const state = crypto.randomUUID()
 
-  const url = app.bot.oauthURL(app.config.OauthRedirectURI, scopes, state, bot_permissions)
+  const url = app.discord.oauthURL(app.config.OauthRedirectURI, scopes, state, bot_permissions)
 
   return new Response(null, {
     status: 302,
@@ -54,7 +54,7 @@ export async function oauthCallback(app: App, request: Request): Promise<Respons
   try {
     await saveUserAccessToken(
       app,
-      await app.bot.getOauthToken(
+      await app.discord.getOauthToken(
         nonNullable(url.searchParams.get('code'), 'code'),
         app.config.OauthRedirectURI,
       ),
@@ -72,7 +72,7 @@ export async function oauthCallback(app: App, request: Request): Promise<Respons
 }
 
 export async function saveUserAccessToken(app: App, token: D.RESTPostOAuth2AccessTokenResult) {
-  const me = await app.bot.getOauthUser(token.access_token)
+  const me = await app.discord.getOauthUser(token.access_token)
 
   if (me.user) {
     // save token
@@ -109,7 +109,7 @@ export async function getUserAccessToken(
   const token = scope_tokens.sort(
     (a, b) => b.data.expires_at.getTime() - a.data.expires_at.getTime(),
   )[0]
-  return refreshAccessTokenIfExpired(app.bot, token.data)
+  return refreshAccessTokenIfExpired(app.discord, token.data)
 }
 
 export async function refreshAccessTokenIfExpired(

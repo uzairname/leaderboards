@@ -1,9 +1,8 @@
+import { Match, Ranking } from '../../../../../database/models'
+import { MatchMetadata, MatchStatus, MatchTeamPlayer } from '../../../../../database/models/matches'
 import { sentry } from '../../../../../logging/sentry'
 import { nonNullable } from '../../../../../utils/utils'
 import { App } from '../../../../app/App'
-import { Match, Ranking } from '../../../../../database/models'
-import { MatchMetadata, MatchStatus, MatchTeamPlayer } from '../../../../../database/models/matches'
-import { syncRankingLbMessages } from '../../leaderboard/leaderboard_message'
 import { updatePlayerRating } from '../../players/manage_players'
 import { default_elo_settings } from '../../rankings/manage_rankings'
 import { rateTrueskill } from './elo_calculation'
@@ -65,7 +64,11 @@ export async function createAndScoreMatch(
     status: MatchStatus.Finished,
   })
 
-  return scoreMatch(app, match, team_players, ranking)
+  const scored_match = scoreMatch(app, match, team_players, ranking)
+
+  await app.events.MatchCreatedOrUpdated.emit(match)
+
+  return scored_match
 }
 
 export async function scoreMatch(
@@ -99,7 +102,7 @@ export async function scoreMatch(
     }),
   )
 
-  await app.events.MatchCreatedOrUpdated.emit(match)
+  await app.events.RankingLeaderboardUpdated.emit(ranking)
 
   return match
 }
@@ -181,6 +184,6 @@ export async function scoreRankingHistory(
       await updatePlayerRating(app, player, rating, rd)
     }),
   )
-  // update leaderboard messages
-  await syncRankingLbMessages(app, ranking)
+
+  await app.events.RankingLeaderboardUpdated.emit(ranking)
 }

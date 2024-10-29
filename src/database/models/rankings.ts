@@ -10,8 +10,8 @@ export type RankingSelect = InferSelectModel<typeof Rankings>
 export type RankingInsert = Omit<InferInsertModel<typeof Rankings>, 'id'>
 export type RankingUpdate = Partial<RankingInsert>
 
-export class Ranking extends DbObject<Partial<RankingSelect> & { id: number }> {
-  constructor(data: Partial<RankingSelect> & { id: number }, db: DbClient) {
+export class Ranking extends DbObject<RankingSelect> {
+  constructor(data: RankingSelect, db: DbClient) {
     super(data, db)
     db.cache.rankings[data.id] = this
   }
@@ -67,6 +67,12 @@ export class Ranking extends DbObject<Partial<RankingSelect> & { id: number }> {
   async delete() {
     await this.db.drizzle.delete(Rankings).where(eq(Rankings.id, this.data.id))
     delete this.db.cache.rankings[this.data.id]
+    this.db.cache.guild_rankings = {}
+    delete this.db.cache.players[this.data.id]
+    this.db.cache.players_by_id = {}
+    this.db.cache.teams = {}
+    this.db.cache.matches = {}
+    this.db.cache.match_team_players = {}
   }
 }
 
@@ -90,9 +96,5 @@ export class RankingsManager extends DbObjectManager {
       throw new DbErrors.NotFoundError(`Ranking ${ranking_id} doesn't exist`)
     }
     return new Ranking(data, this.db)
-  }
-
-  partial(ranking_id: number): Ranking {
-    return new Ranking({ id: ranking_id }, this.db)
   }
 }

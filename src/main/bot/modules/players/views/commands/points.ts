@@ -1,10 +1,11 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand } from '../../../../../../discord-framework'
 import { nonNullable } from '../../../../../../utils/utils'
-import { GuildCommandView } from '../../../../../app/ViewModule'
+import { GuildCommand } from '../../../../../app/ViewModule'
 import { UserError } from '../../../../errors/UserError'
 import { ensureAdminPerms } from '../../../../helpers/perms'
 import { guildRankingsOption } from '../../../../helpers/ranking_command_option'
+import { escapeMd } from '../../../../helpers/strings'
 import { getOrCreatePlayer } from '../../manage_players'
 
 const points_cmd_signature = new AppCommand({
@@ -13,8 +14,31 @@ const points_cmd_signature = new AppCommand({
   description: 'Add or remove points from a user',
 })
 
-export default new GuildCommandView(
+export default new GuildCommand(
   points_cmd_signature,
+  async (app, guild_id) => {
+    const options: D.APIApplicationCommandOption[] = [
+      {
+        name: 'user',
+        description: 'User to add/remove points from',
+        type: D.ApplicationCommandOptionType.User,
+        required: true,
+      },
+      {
+        name: 'points',
+        description: 'Points to add. A negative number removes points',
+        type: D.ApplicationCommandOptionType.String,
+        required: true,
+      },
+    ]
+
+    return new AppCommand({
+      ...points_cmd_signature.signature,
+      options: options.concat(
+        await guildRankingsOption(app, guild_id, 'ranking', {}, 'Ranking in which to add points'),
+      ),
+    })
+  },
   app =>
     points_cmd_signature.onCommand(async ctx => {
       // Check if the user has bot admin perms in the guild.
@@ -59,7 +83,7 @@ export default new GuildCommandView(
           await app.events.RankingLeaderboardUpdated.emit(ranking)
 
           return void ctx.edit({
-            content: `Added ${points} points to <@${user.id}> in ${ranking.data.name}`,
+            content: `Added ${points} points to <@${user.id}> in ${escapeMd(ranking.data.name)}`,
             flags: D.MessageFlags.Ephemeral,
             allowed_mentions: {
               parse: [],
@@ -68,29 +92,4 @@ export default new GuildCommandView(
         },
       )
     }),
-  async (app, guild_id) => {
-    let options: D.APIApplicationCommandOption[] = [
-      {
-        name: 'user',
-        description: 'User to add/remove points from',
-        type: D.ApplicationCommandOptionType.User,
-        required: true,
-      },
-      {
-        name: 'points',
-        description: 'Points to add. A negative number removes points',
-        type: D.ApplicationCommandOptionType.String,
-        required: true,
-      },
-    ]
-
-    options = options.concat(
-      await guildRankingsOption(app, guild_id, 'ranking', {}, 'Ranking in which to add points'),
-    )
-
-    return new AppCommand({
-      ...points_cmd_signature.signature,
-      options,
-    })
-  },
 )

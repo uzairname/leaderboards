@@ -131,6 +131,7 @@ const escape_char = 'z'
 const array_encode_shift = 1
 
 function stringToArray(str: string) {
+  if (str.length == 0) return []
   str = shiftString(str, -array_encode_shift)
   const r = new RegExp(`${escape_char}(${delimiter}|${escape_char})`, 'g')
 
@@ -201,7 +202,7 @@ class EnumField<T extends { [key: string]: null }> extends Field<keyof T> {
   decompress = (value: string) => this.id_keys[value]
 }
 
-class ChoiceField<T extends { [key: string]: any }> extends Field<T[keyof T], T[keyof T]> {
+class ChoiceField<T extends { [key: string]: any }> extends Field<T[keyof T]> {
   private id_keys = {} as { [key: string]: keyof T }
   private key_ids = {} as { [K in keyof T]: string }
   constructor(private values: T) {

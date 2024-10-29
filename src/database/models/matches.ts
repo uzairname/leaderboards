@@ -4,7 +4,7 @@ import { sentry } from '../../logging/sentry'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
 import { DbObject, DbObjectManager } from '../managers'
-import { MatchPlayers, MatchSummaryMessages, Matches, Players } from '../schema'
+import { GuildRankings, MatchPlayers, MatchSummaryMessages, Matches, Players } from '../schema'
 
 export type MatchMetadata = {
   best_of: number
@@ -92,13 +92,18 @@ export class Match extends DbObject<MatchSelect> {
     return data
   }
 
-  async updateSummaryMessage(guild_id: string, message_id: string): Promise<void> {
+  async updateSummaryMessage(
+    guild_id: string,
+    channel_id: string,
+    message_id: string,
+  ): Promise<void> {
     try {
       // try to insert
       await this.db.drizzle.insert(MatchSummaryMessages).values({
         match_id: this.data.id,
-        guild_id: guild_id,
-        message_id: message_id,
+        guild_id,
+        channel_id,
+        message_id,
       })
     } catch (e) {
       // duplicate key. update
@@ -158,6 +163,7 @@ export class Match extends DbObject<MatchSelect> {
   async delete(): Promise<void> {
     await this.db.drizzle.delete(Matches).where(eq(Matches.id, this.data.id))
     delete this.db.cache.matches[this.data.id]
+    delete this.db.cache.match_team_players[this.data.id]
   }
 }
 
@@ -207,25 +213,37 @@ export class MatchesManager extends DbObjectManager {
     return new_match
   }
 
-  async get(id: number): Promise<Match> {
-    if (this.db.cache.matches[id]) {
+  // returns matches that are from a ranking in this guild.
+  async get(id: number, guild_id?: string): Promise<Match> {
+    if (this.db.cache.matches[id] && !guild_id) {
       sentry.debug(`cache hit for match ${id}`)
       return this.db.cache.matches[id]
     }
 
-    const data = (await this.db.drizzle.select().from(Matches).where(eq(Matches.id, id)))[0]
+    const query = this.db.drizzle.select({ match: Matches }).from(Matches)
+
+    if (guild_id) {
+      query
+        .innerJoin(GuildRankings, eq(Matches.ranking_id, GuildRankings.ranking_id))
+        .where(and(eq(Matches.id, id), eq(GuildRankings.guild_id, guild_id)))
+    } else {
+      query.where(eq(Matches.id, id))
+    }
+
+    const data = (await query)[0]
 
     if (!data) {
       throw new DbErrors.NotFoundError(`Match ${id} doesn't exist`)
     }
 
-    return new Match(data, this.db)
+    return new Match(data.match, this.db)
   }
 
   async getMany(filters: {
     player_ids?: number[]
     user_ids?: string[]
     ranking_ids?: number[]
+    guild_id?: string
     finished_on_or_after?: Date
     limit?: number
     offset?: number
@@ -250,6 +268,12 @@ export class MatchesManager extends DbObjectManager {
 
     if (filters.ranking_ids) {
       where_sql_chunks.push(inArray(Matches.ranking_id, filters.ranking_ids))
+    }
+
+    if (filters.guild_id) {
+      where_sql_chunks.push(sql`${Matches.ranking_id} in (
+        select ${GuildRankings.ranking_id} from ${GuildRankings} where ${GuildRankings.guild_id} = ${filters.guild_id}
+      )`)
     }
 
     if (filters.finished_on_or_after) {
@@ -303,7 +327,7 @@ export class MatchesManager extends DbObjectManager {
         })
       }
 
-      const match = matches.get(match_id)!
+      const match = matches.get(match_id)! // must exist becuase we just set it above
 
       match.team_players[row.match_player.team_num].push({
         player: new Player(row.player, this.db),

@@ -1,9 +1,9 @@
 import * as D from 'discord-api-types/v10'
 import { MessageView, field } from '../../../../../../../discord-framework'
 import { ViewState } from '../../../../../../../discord-framework/interactions/view_state'
+import { sentry } from '../../../../../../../logging/sentry'
 import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
-import { MatchStatus } from '../../../../../../../database/models/matches'
 import { Colors } from '../../../../../helpers/constants'
 import { matchSummaryEmbed } from '../../match_summary_message'
 
@@ -48,16 +48,20 @@ export async function matchesPage(
 
   const matches_per_page = 5
 
-  const matches = await Promise.all(
-    await app.db.matches.getMany({
-      player_ids: state.data.player_ids,
-      user_ids: state.data.user_ids,
-      ranking_ids: state.data.ranking_ids,
-      limit: matches_per_page,
-      offset: (state.data.page_num ?? 0) * matches_per_page,
-      status: MatchStatus.Finished,
-    }),
+  sentry.debug(
+    `matchespage params ${state.data.player_ids} ${state.data.user_ids} ${state.data.ranking_ids}`,
   )
+
+  const filters = {
+    player_ids: state.data.player_ids,
+    user_ids: state.data.user_ids,
+    ranking_ids: state.data.ranking_ids,
+    limit: matches_per_page,
+    offset: (state.data.page_num ?? 0) * matches_per_page,
+    // status: MatchStatus.Finished,
+  }
+
+  const matches = await app.db.matches.getMany(filters)
 
   return {
     embeds:
@@ -74,7 +78,7 @@ export async function matchesPage(
           )
         : [
             {
-              title: `No matches`,
+              description: `No matches to show`,
               color: Colors.EmbedBackground,
             },
           ],

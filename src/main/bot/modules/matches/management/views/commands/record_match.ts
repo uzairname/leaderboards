@@ -10,7 +10,7 @@ import {
 } from '../../../../../../../discord-framework'
 import { assert, nonNullable, snowflakeToDate } from '../../../../../../../utils/utils'
 import { App } from '../../../../../../app/App'
-import { GuildCommandView } from '../../../../../../app/ViewModule'
+import { GuildCommand } from '../../../../../../app/ViewModule'
 import { UserError } from '../../../../../errors/UserError'
 import { Colors } from '../../../../../helpers/constants'
 import { checkGuildInteraction, hasAdminPerms } from '../../../../../helpers/perms'
@@ -18,7 +18,7 @@ import {
   guildRankingsOption,
   withSelectedRanking,
 } from '../../../../../helpers/ranking_command_option'
-import { relativeTimestamp } from '../../../../../helpers/strings'
+import { escapeMd, relativeTimestamp } from '../../../../../helpers/strings'
 import { getOrCreatePlayer } from '../../../../players/manage_players'
 import { matchSummaryEmbed } from '../../../logging/match_summary_message'
 import { createAndScoreMatch } from '../../score_matches'
@@ -71,8 +71,40 @@ const optionnames = {
   time_finished: 'when',
 }
 
-export default new GuildCommandView(
+export default new GuildCommand(
   record_match_cmd_signature,
+  async (app, guild_id) => {
+    const options: D.APIApplicationCommandOption[] = [
+      {
+        name: optionnames.winner,
+        description: 'Who won (if applicable)',
+        type: D.ApplicationCommandOptionType.User,
+      },
+      {
+        name: optionnames.loser,
+        description: 'Who lost (if applicable)',
+        type: D.ApplicationCommandOptionType.User,
+      },
+      {
+        name: optionnames.time_finished,
+        description: 'Snowflake or Unix timestamp of when the match was finished (default now)',
+        type: D.ApplicationCommandOptionType.String,
+      },
+    ]
+
+    return new AppCommand({
+      ...record_match_cmd_signature.signature,
+      options: options.concat(
+        await guildRankingsOption(
+          app,
+          guild_id,
+          optionnames.ranking,
+          {},
+          'Which ranking should this match belong to',
+        ),
+      ),
+    })
+  },
   app =>
     record_match_cmd_signature
       /**
@@ -207,38 +239,6 @@ export default new GuildCommandView(
           throw new UserError(`Unknown state ${ctx.state.data.clicked_component}`)
         }
       }),
-  async (app, guild_id) => {
-    const options: D.APIApplicationCommandOption[] = [
-      {
-        name: optionnames.winner,
-        description: 'Who won (if applicable)',
-        type: D.ApplicationCommandOptionType.User,
-      },
-      {
-        name: optionnames.loser,
-        description: 'Who lost (if applicable)',
-        type: D.ApplicationCommandOptionType.User,
-      },
-      {
-        name: optionnames.time_finished,
-        description: 'Snowflake or Unix timestamp of when the match was finished (default now)',
-        type: D.ApplicationCommandOptionType.String,
-      },
-    ]
-
-    return new AppCommand({
-      ...record_match_cmd_signature.signature,
-      options: options.concat(
-        await guildRankingsOption(
-          app,
-          guild_id,
-          optionnames.ranking,
-          {},
-          'Which ranking should this match belong to',
-        ),
-      ),
-    })
-  },
 )
 
 async function selectTeamPage(
@@ -363,7 +363,7 @@ async function selectAndConfirmOutcomePage(
   // find the name of the users in the match
   const all_player_names = await Promise.all(
     players.flat().map(async p => {
-      const member = await app.bot.getGuildMember(
+      const member = await app.discord.getGuildMember(
         interaction.guild_id,
         nonNullable(p.user_id, 'user_id'),
       )
@@ -471,7 +471,7 @@ async function playersConfirmingMatchPage(
   const embed: D.APIEmbed = {
     title: `New Match`,
     description:
-      `<@${original_user_id}> wants to record a match in **${ranking.data.name}**. The match will be recorded once all players have agreed to the results` +
+      `<@${original_user_id}> wants to record a match in **${escapeMd(ranking.data.name)}**. The match will be recorded once all players have agreed to the results` +
       `\nExpires ${relativeTimestamp(expires_at)}`,
     fields: new Array(num_teams)
       .fill(0)
@@ -535,7 +535,10 @@ async function onPlayerConfirmOrCancelBtn(
   if (time_since_match_requested > match_confirm_timeout_ms) {
     ctx.interaction.channel?.id &&
       ctx.interaction.message?.id &&
-      (await app.bot.deleteMessageIfExists(ctx.interaction.channel.id, ctx.interaction.message.id))
+      (await app.discord.deleteMessageIfExists(
+        ctx.interaction.channel.id,
+        ctx.interaction.message.id,
+      ))
     return {
       type: D.InteractionResponseType.ChannelMessageWithSource,
       data: {
@@ -593,7 +596,7 @@ async function onPlayerConfirmOrCancelBtn(
           flags: D.MessageFlags.Ephemeral,
         })
         await ctx.edit(await recordMatchFromSelectedTeams(app, ctx))
-        return void app.bot.deleteMessageIfExists(followup.channel_id, followup.id)
+        return void app.discord.deleteMessageIfExists(followup.channel_id, followup.id)
       },
     )
   }

@@ -1,6 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand } from '../../../../../../../discord-framework'
-import { GuildCommandView } from '../../../../../../app/ViewModule'
+import { GuildCommand } from '../../../../../../app/ViewModule'
 import { checkGuildInteraction } from '../../../../../helpers/perms'
 import {
   guildRankingsOption,
@@ -8,7 +8,7 @@ import {
 } from '../../../../../helpers/ranking_command_option'
 import {
   manage_match_page_signature,
-  matchPage,
+  manageMatchPageData,
 } from '../../../management/views/pages/manage_match'
 import { matches_view, matchesPage } from '../pages/matches'
 
@@ -24,8 +24,35 @@ const optionnames = {
   match_id: 'id',
 }
 
-export default new GuildCommandView(
+export default new GuildCommand(
   matches_command_signature,
+  async (app, guild_id) => {
+    const options: D.APIApplicationCommandOption[] = [
+      {
+        name: optionnames.match_id,
+        type: D.ApplicationCommandOptionType.Integer,
+        description: 'View details or manage a specific match',
+      },
+      {
+        name: optionnames.user,
+        type: D.ApplicationCommandOptionType.User,
+        description: 'Filter matches by player',
+      },
+    ]
+
+    return new AppCommand({
+      ...matches_command_signature.signature,
+      options: options.concat(
+        await guildRankingsOption(
+          app,
+          guild_id,
+          optionnames.ranking,
+          { optional: true },
+          'filter matches by ranking',
+        ),
+      ),
+    })
+  },
   app =>
     matches_command_signature.onCommand(async ctx =>
       withOptionalSelectedRanking(app, ctx, optionnames.ranking, async ranking => {
@@ -49,9 +76,11 @@ export default new GuildCommandView(
             data: { flags: D.MessageFlags.Ephemeral },
           },
           async ctx => {
+            // if a match id was provided, show the match page
             if (match_id_option_value !== undefined) {
               return void ctx.edit(
-                await matchPage(app, {
+                await manageMatchPageData(app, {
+                  ...ctx,
                   state: manage_match_page_signature.createState({
                     match_id: match_id_option_value,
                   }),
@@ -59,13 +88,13 @@ export default new GuildCommandView(
               )
             }
 
-            let ranking_ids = ranking ? [ranking.data.id] : undefined
-            if (ranking_ids) {
-              const rankings = await app.db.guild_rankings.get({
-                guild_id: checkGuildInteraction(ctx.interaction).guild_id,
-              })
-              ranking_ids = rankings.map(r => r.ranking.data.id)
-            }
+            let ranking_ids = ranking
+              ? [ranking.data.id]
+              : (
+                  await app.db.guild_rankings.get({
+                    guild_id: checkGuildInteraction(ctx.interaction).guild_id,
+                  })
+                ).map(r => r.ranking.data.id)
 
             await ctx.edit(
               await matchesPage(
@@ -80,33 +109,4 @@ export default new GuildCommandView(
         )
       }),
     ),
-  async (app, guild_id) => {
-    let options: D.APIApplicationCommandOption[] = [
-      {
-        name: optionnames.match_id,
-        type: D.ApplicationCommandOptionType.Integer,
-        description: 'View details or manage a specific match',
-      },
-      {
-        name: optionnames.user,
-        type: D.ApplicationCommandOptionType.User,
-        description: 'Filter matches by player',
-      },
-    ]
-
-    options = options.concat(
-      await guildRankingsOption(
-        app,
-        guild_id,
-        optionnames.ranking,
-        {},
-        'filter matches by ranking',
-      ),
-    )
-
-    return new AppCommand({
-      ...matches_command_signature.signature,
-      options,
-    })
-  },
 )

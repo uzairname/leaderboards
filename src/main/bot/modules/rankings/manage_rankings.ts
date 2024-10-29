@@ -1,9 +1,9 @@
 import { and, eq } from 'drizzle-orm'
-import { App } from '../../../app/App'
 import { Guild, GuildRanking, Ranking } from '../../../../database/models'
 import { GuildRankingInsert } from '../../../../database/models/guild_rankings'
 import { RankingInsert, RankingUpdate } from '../../../../database/models/rankings'
 import { GuildRankings, Rankings } from '../../../../database/schema'
+import { App } from '../../../app/App'
 import { UserError, UserErrors } from '../../errors/UserError'
 import { syncGuildRankingLbMessage } from '../leaderboard/leaderboard_message'
 
@@ -79,7 +79,7 @@ export async function deleteRanking(app: App, ranking: Ranking): Promise<void> {
   const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
   await Promise.all(
     guild_rankings.map(async item => {
-      await app.bot.utils.deleteMessageIfExists(
+      await app.discord.utils.deleteMessageIfExists(
         item.guild_ranking.data.leaderboard_channel_id,
         item.guild_ranking.data.leaderboard_message_id,
       )

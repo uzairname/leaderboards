@@ -1,6 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { _, AppCommand, field } from '../../../../../../discord-framework'
-import { GuildCommandView } from '../../../../../app/ViewModule'
+import { GuildCommand } from '../../../../../app/ViewModule'
 import { checkGuildInteraction } from '../../../../helpers/perms'
 import {
   guildRankingsOption,
@@ -27,8 +27,15 @@ export const rankings_cmd_signature = new AppCommand({
   description: 'Create and manage rankings in this server',
 })
 
-export default new GuildCommandView(
+export default new GuildCommand(
   rankings_cmd_signature,
+  async (app, guild) =>
+    new AppCommand({
+      ...rankings_cmd_signature.signature,
+      options: await guildRankingsOption(app, guild, ranking_option_name, {
+        optional: true,
+      }),
+    }),
   app => {
     return rankings_cmd_signature
       .onCommand(async ctx =>
@@ -65,13 +72,4 @@ export default new GuildCommandView(
         )
       })
   },
-  async (app, guild) =>
-    new AppCommand({
-      ...rankings_cmd_signature.signature,
-      options: [
-        (await guildRankingsOption(app, guild, ranking_option_name, {
-          allow_single_ranking: true,
-        })) ?? [],
-      ].flat(),
-    }),
 )

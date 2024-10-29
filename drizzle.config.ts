@@ -1,15 +1,19 @@
-import { Config } from 'drizzle-kit'
+import { defineConfig } from 'drizzle-kit'
 import * as dotenv from 'dotenv'
 
 dotenv.config({
   path: '.env'
 })
 
-export default {
-  schema: 'src/main/database/schema.ts',
+if (!process.env.POSTGRES_URL) {
+  throw new Error('POSTGRES_URL is not set')
+}
+
+export default defineConfig({
   out: 'scripts/migrations',
-  driver: 'pg',
+  dialect: 'postgresql',
+  schema: 'src/database/schema.ts',
   dbCredentials: {
-    connectionString: process.env['POSTGRES_URL'] + '?sslmode=require',
+    url: process.env.POSTGRES_URL + '?sslmode=require',
   },
-} satisfies Config
+})

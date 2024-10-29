@@ -1,11 +1,11 @@
 import * as D from 'discord-api-types/v10'
+import { Guild, Ranking } from '../../../database/models'
 import type {
   AnyAppCommand,
   CommandInteractionResponse,
   InteractionContext,
 } from '../../../discord-framework'
 import type { App } from '../../app/App'
-import { Guild, Ranking } from '../../../database/models'
 import { UserError } from '../errors/UserError'
 import { getOrAddGuild } from '../modules/guilds/guilds'
 import { allGuildRankingsPage } from '../modules/rankings/views/pages/all_rankings'
@@ -21,19 +21,19 @@ export async function guildRankingsOption(
   guild: Guild,
   ranking_option_name = 'ranking',
   options?: {
-    allow_single_ranking?: boolean
+    optional?: boolean
     required?: boolean
   },
   description: string = 'Select a ranking',
 ): Promise<D.APIApplicationCommandOption[]> {
   const guild_rankings = await app.db.guild_rankings.get({ guild_id: guild.data.id })
 
-  if (guild_rankings.length == 1 && !options?.allow_single_ranking) {
+  if (guild_rankings.length == 1 && !options?.optional) {
     return []
   }
 
   const choices = guild_rankings.map(item => ({
-    name: item.ranking.data.name ?? 'Unnamed Ranking',
+    name: item.ranking.data.name,
     value: item.ranking.data.id.toString(),
   }))
 
@@ -57,7 +57,7 @@ export async function withOptionalSelectedRanking(
   ranking_option_name: string,
   callback: (ranking: Ranking | undefined) => Promise<CommandInteractionResponse>,
 ): Promise<CommandInteractionResponse> {
-  return _withSelectedRanking(app, ctx, ranking_option_name, callback, true)
+  return _withSelectedRanking(app, ctx, ranking_option_name, callback)
 }
 
 export async function withSelectedRanking(
@@ -71,7 +71,7 @@ export async function withSelectedRanking(
     ctx,
     ranking_option_name,
     async ranking => callback(ranking!),
-    false,
+    true,
   )
 }
 

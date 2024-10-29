@@ -39,7 +39,7 @@ export default new AppView(queue_message_def, app =>
           ctx.state.save.last_active(new Date())
 
           await Promise.all([
-            app.bot.editMessage(
+            app.discord.editMessage(
               interaction.channel!.id,
               interaction.message!.id,
               (await queueMessage(app, ranking_id, ctx)).as_patch,
@@ -84,7 +84,7 @@ export async function queueMessage(
         title: `${escapeMd(ranking.data.name)} Queue`,
         description: 
           `Join or leave the ${new Array(ranking.data.num_teams).fill(ranking.data.players_per_team).join('v')}`
-            + ` matchmaking queue for ${ranking.data.name}`
+            + ` matchmaking queue for ${escapeMd(ranking.data.name)}`
           + `\nLast active: ${state.data.last_active ? relativeTimestamp(state.data.last_active) : `never`}`, //prettier-ignore
         color: Colors.EmbedBackground,
       },

@@ -1,6 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand, field } from '../../../../../../../discord-framework'
-import { GuildCommandView } from '../../../../../../app/ViewModule'
+import { GuildCommand } from '../../../../../../app/ViewModule'
 import { UserError } from '../../../../../errors/UserError'
 import { checkGuildInteraction, ensureAdminPerms } from '../../../../../helpers/perms'
 import {
@@ -9,7 +9,7 @@ import {
 } from '../../../../../helpers/ranking_command_option'
 import { channelMention } from '../../../../../helpers/strings'
 import { getOrCreatePlayer } from '../../../../players/manage_players'
-import { start1v1SeriesThread } from '../../../ongoing-series/start_series'
+import { start1v1SeriesThread } from '../../../ongoing-series/manage_ongoing_match'
 
 export const start_match_cmd_signature = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -29,8 +29,35 @@ const optionnames = {
   player2: 'player-2',
 }
 
-export default new GuildCommandView(
+export default new GuildCommand(
   start_match_cmd_signature,
+  async (app, guild) => {
+    const options: D.APIApplicationCommandOption[] = [
+      {
+        name: optionnames.player1,
+        description: `Player 1`,
+        type: D.ApplicationCommandOptionType.User,
+      },
+      {
+        name: optionnames.player2,
+        description: `Player 2`,
+        type: D.ApplicationCommandOptionType.User,
+      },
+    ]
+
+    return new AppCommand({
+      ...start_match_cmd_signature.signature,
+      options: options.concat(
+        await guildRankingsOption(
+          app,
+          guild,
+          optionnames.ranking,
+          {},
+          'Which ranking should this match belong to',
+        ),
+      ),
+    })
+  },
   app =>
     start_match_cmd_signature.onCommand(async ctx =>
       withSelectedRanking(app, ctx, optionnames.ranking, async ranking =>
@@ -94,33 +121,4 @@ export default new GuildCommandView(
         ),
       ),
     ),
-  async (app, guild) => {
-    let options: D.APIApplicationCommandOption[] = [
-      {
-        name: optionnames.player1,
-        description: `Player 1`,
-        type: D.ApplicationCommandOptionType.User,
-      },
-      {
-        name: optionnames.player2,
-        description: `Player 2`,
-        type: D.ApplicationCommandOptionType.User,
-      },
-    ]
-
-    options = options.concat(
-      await guildRankingsOption(
-        app,
-        guild,
-        optionnames.ranking,
-        {},
-        'Which ranking should this match belong to',
-      ),
-    )
-
-    return new AppCommand({
-      ...start_match_cmd_signature.signature,
-      options,
-    })
-  },
 )

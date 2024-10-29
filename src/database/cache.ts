@@ -7,6 +7,9 @@ export default class DbCache {
   guilds: { [id: string]: Guild } = {}
   rankings: { [id: number]: Ranking } = {}
   guild_rankings: { [guild_id: string]: { [ranking_id: number]: GuildRanking } } = {}
+  guild_guild_rankings: {
+    [guild_id: string]: { ranking: Ranking; guild_ranking: GuildRanking }[]
+  } = {}
   players: { [ranking_id: number]: { [user_id: string]: Player } } = {}
   players_by_id: { [id: string]: Player } = {}
   match_team_players: { [match_id: string]: MatchTeamPlayer[][] } = {}

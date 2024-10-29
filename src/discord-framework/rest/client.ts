@@ -510,4 +510,4 @@ function requiresBotPerms(permissions: bigint) {
 }
 
 // Used to invite the bot, nothing else
-const inAppBotAuthorizationURL = 'https://discord.com/api/v10/oauth2/authorize'
+const inAppBotAuthorizationURL = 'https://discord.com/api/oauth2/authorize'

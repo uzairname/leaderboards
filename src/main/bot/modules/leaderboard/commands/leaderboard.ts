@@ -1,6 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand, field } from '../../../../../discord-framework'
-import { GuildCommandView } from '../../../../app/ViewModule'
+import { GuildCommand } from '../../../../app/ViewModule'
 import { guildRankingsOption, withSelectedRanking } from '../../../helpers/ranking_command_option'
 import { leaderboardMessage } from '../leaderboard_message'
 
@@ -20,8 +20,13 @@ const leaderboard_cmd_signature = new AppCommand({
   },
 })
 
-export default new GuildCommandView(
+export default new GuildCommand(
   leaderboard_cmd_signature,
+  async (app, guild_id) =>
+    new AppCommand({
+      ...leaderboard_cmd_signature.signature,
+      options: [(await guildRankingsOption(app, guild_id, optionnames.ranking)) || []].flat(),
+    }),
   app =>
     leaderboard_cmd_signature.onCommand(async ctx =>
       withSelectedRanking(app, ctx, optionnames.ranking, async ranking => {
@@ -37,9 +42,4 @@ export default new GuildCommandView(
         )
       }),
     ),
-  async (app, guild_id) =>
-    new AppCommand({
-      ...leaderboard_cmd_signature.signature,
-      options: [(await guildRankingsOption(app, guild_id, optionnames.ranking)) || []].flat(),
-    }),
 )

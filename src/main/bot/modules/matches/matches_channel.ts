@@ -1,21 +1,21 @@
 import * as D from 'discord-api-types/v10'
+import type { Guild } from '../../../../database/models'
 import { GuildChannelData, MessageData } from '../../../../discord-framework'
 import { App } from '../../../app/App'
-import type { Guild } from '../../../../database/models'
 import { Colors } from '../../helpers/constants'
 import { commandMention } from '../../helpers/strings'
 import { syncRankedCategory } from '../guilds/guilds'
 import matches from './logging/views/commands/matches'
 
 export async function syncMatchesChannel(app: App, guild: Guild): Promise<D.APIChannel> {
-  const sync_channel_result = await app.bot.utils.syncGuildChannel({
+  const sync_channel_result = await app.discord.utils.syncGuildChannel({
     target_channel_id: guild.data.matches_channel_id,
     channelData: async () => matchLogsChannelData(app, guild),
   })
 
   if (sync_channel_result.is_new_channel) {
     await Promise.all([
-      app.bot.createMessage(
+      app.discord.createMessage(
         sync_channel_result.channel.id,
         (await matchesChannelDescriptionMessageData(app, guild)).as_post,
       ),
@@ -81,7 +81,7 @@ function matchLogsChannelPermissionOverwrites(
       ).toString(),
     },
     {
-      id: app.bot.application_id, // bot
+      id: app.discord.application_id, // bot
       type: 1, // user
       allow: (
         D.PermissionFlagsBits.SendMessages |

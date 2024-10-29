@@ -2,7 +2,7 @@ import { APIUser } from 'discord-api-types/v10'
 import { sql } from 'drizzle-orm'
 import { sentry } from '../../logging/sentry'
 import { assert, nonNullable } from '../../utils/utils'
-import { updateMatch } from '../bot/modules/matches/management/manage_matches'
+import { updateMatchOutcome } from '../bot/modules/matches/management/manage_matches'
 import { createAndScoreMatch } from '../bot/modules/matches/management/score_matches'
 import { getOrCreatePlayer } from '../bot/modules/players/manage_players'
 import { App } from '../app/App'
@@ -22,10 +22,6 @@ import {
   Teams,
   Users,
 } from '../../database/schema'
-
-
-
-
 
 class Test {
   @catchError(3)
@@ -55,20 +51,15 @@ export async function runTests(app: App): Promise<Response> {
 
   console.log('running tests')
 
-  testTs()
-
   // await testDatabase(app)
   // sentry.debug(`Tested Leaderboards app (${app.config.env.ENVIRONMENT})`)
   return new Response(`Successfully tested Leaderboards app`, { status: 200 })
 }
 
 
-
-
-
-
 import { Rating, TrueSkill } from 'ts-trueskill'
 import { Gaussian } from 'ts-gaussian'
+import { getNeonDrizzleClient } from '../../database/drizzle-client'
 
 function testTs() {
 

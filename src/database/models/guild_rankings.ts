@@ -1,5 +1,6 @@
 import { and, eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { Guild, Ranking } from '.'
+import { sentry } from '../../logging/sentry'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
 import { DbObject, DbObjectManager } from '../managers'
@@ -60,8 +61,12 @@ export class GuildRankingsManager extends DbObjectManager {
         })
         .returning()
     )[0]
-
-    return new GuildRanking(new_data, this.db)
+    const new_guild_ranking = new GuildRanking(new_data, this.db)
+    this.db.cache.guild_guild_rankings[guild.data.id].push({
+      guild_ranking: new_guild_ranking,
+      ranking,
+    })
+    return new_guild_ranking
   }
 
   async get<By extends { guild_id?: string; ranking_id?: number }>(
@@ -77,7 +82,10 @@ export class GuildRankingsManager extends DbObjectManager {
   > {
     if (by.guild_id && by.ranking_id) {
       const cached_guild_ranking = this.db.cache.guild_rankings[by.guild_id]?.[by.ranking_id]
-      if (cached_guild_ranking) return cached_guild_ranking as any
+      if (cached_guild_ranking) {
+        sentry.debug(`Cache hit for guild_ranking guild:${by.guild_id} ranking:${by.ranking_id}`)
+        return cached_guild_ranking as any
+      }
       const data = await this.db.drizzle
         .select()
         .from(GuildRankings)
@@ -90,15 +98,23 @@ export class GuildRankingsManager extends DbObjectManager {
         )
       return new GuildRanking(data[0], this.db) as any
     } else if (by.guild_id) {
+      const cached_rankings = this.db.cache.guild_guild_rankings[by.guild_id]
+      if (cached_rankings) {
+        sentry.debug(`Cache hit for guild_rankings guild:${by.guild_id}`)
+        return cached_rankings as any
+      }
       const data = await this.db.drizzle
-        .select()
+        .select({ ranking: Rankings, guild_ranking: GuildRankings })
         .from(GuildRankings)
         .where(eq(GuildRankings.guild_id, by.guild_id))
         .innerJoin(Rankings, eq(GuildRankings.ranking_id, Rankings.id))
-      return data.map(d => ({
-        guild_ranking: new GuildRanking(d.GuildRankings, this.db),
-        ranking: new Ranking(d.Rankings, this.db),
+
+      const result = data.map(d => ({
+        guild_ranking: new GuildRanking(d.guild_ranking, this.db),
+        ranking: new Ranking(d.ranking, this.db),
       })) as any
+      this.db.cache.guild_guild_rankings[by.guild_id] = result
+      return result
     } else if (by.ranking_id) {
       const data = await this.db.drizzle
         .select()

@@ -1,8 +1,8 @@
 import * as D from 'discord-api-types/v10'
+import { Player, Ranking } from '../../../../database/models'
 import { nonNullable } from '../../../../utils/utils'
 import { getUserAccessToken } from '../../../api/oauth'
 import { App } from '../../../app/App'
-import { Player, Ranking } from '../../../../database/models'
 import { updateUserRoleConnectionData } from '../linked-roles/linked_roles'
 
 export async function getOrCreatePlayer(
@@ -19,7 +19,7 @@ export async function getOrCreatePlayer(
 
   if (!player) {
     discord_user =
-      typeof discord_user == 'string' ? await app.bot.getUser(discord_user) : discord_user
+      typeof discord_user == 'string' ? await app.discord.getUser(discord_user) : discord_user
 
     const app_user = await app.db.users.getOrCreate({
       id: discord_user.id,

@@ -85,7 +85,7 @@ async function onAdminRoleBtn(
 
   const role_result = await syncGuildAdminRole(app, guild)
 
-  await app.bot.addRoleToMember(
+  await app.discord.addRoleToMember(
     interaction.guild_id,
     interaction.member.user.id,
     role_result.role.id,

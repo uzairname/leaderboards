@@ -1,20 +1,20 @@
-import { Toucan } from 'toucan-js';
-import { Env } from '..';
-import { cache } from '../utils/cache';
-import { isInt } from '../utils/utils';
-import { RequestTimeoutError } from './errors';
+import { Toucan } from 'toucan-js'
+import { Env } from '..'
+import { cache } from '../utils/cache'
+import { isInt } from '../utils/utils'
+import { RequestTimeoutError } from './errors'
 
 export class Logger extends Toucan {
-  private time_received = Date.now();
+  private time_received = Date.now()
   private caught_exception: unknown
 
-  request_data: Record<string, unknown> = {};
+  request_data: Record<string, unknown> = {}
   request_name: string
 
   constructor(
     private request: Request,
     env: Env,
-    private execution_context: ExecutionContext
+    private execution_context: ExecutionContext,
   ) {
     super({
       dsn: env.SENTRY_DSN,
@@ -65,7 +65,8 @@ export class Logger extends Toucan {
     callback: (ctx: {
       setException: (e: unknown) => void
       setRequestName: (name: string) => void
-    }) => Promise<void>
+    }) => Promise<void>,
+    onTimeout?: (e: RequestTimeoutError) => Promise<void>,
   ): void {
     let offload_caught_exception: unknown
     let request_name = `${this.request_name} followup`
@@ -88,8 +89,10 @@ export class Logger extends Toucan {
     this.execution_context.waitUntil(
       new Promise<void>((resolve, reject) => {
         const timeout_ms = 20000
-        setTimeout(() => {
-          reject(new RequestTimeoutError(request_name, timeout_ms))
+        setTimeout(async () => {
+          const e = new RequestTimeoutError(request_name, timeout_ms)
+          await onTimeout?.(e)
+          reject(e)
         }, timeout_ms)
 
         this.debug(`Offloading "${request_name}"`)
@@ -105,7 +108,7 @@ export class Logger extends Toucan {
         })
         .catch(e => {
           this.captureException(e)
-        })
+        }),
     )
   }
 

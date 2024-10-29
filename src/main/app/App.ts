@@ -1,4 +1,7 @@
 import { Env } from '../..'
+import { DbClient } from '../../database/client'
+import { getNeonDrizzleClient } from '../../database/drizzle-client'
+import { Guild } from '../../database/models'
 import {
   DiscordAPIClient,
   overwriteDiscordCommandsWithViews,
@@ -6,10 +9,7 @@ import {
 } from '../../discord-framework'
 import { sentry } from '../../logging/sentry'
 import { onViewError } from '../bot/errors/on_view_error'
-import { DbClient } from '../../database/client'
-import { getNeonDrizzleClient } from '../../database/drizzle-client'
-import { Guild } from '../../database/models'
-import { AppEvents } from './AppEvents'
+import { AppEvents, getAppEvents } from './AppEvents'
 import { Config } from './Config'
 import { ViewModule } from './ViewModule'
 
@@ -17,7 +17,7 @@ const direct_response_in_dev = true
 
 export class App {
   public db: DbClient
-  public bot: DiscordAPIClient
+  public discord: DiscordAPIClient
   public config: Config
   public views: ViewModule
   public events: AppEvents
@@ -29,10 +29,15 @@ export class App {
   ) {
     this.config = new Config(env)
 
-    const drizzle = getNeonDrizzleClient(this.config.env.POSTGRES_URL, sentry)
+    const drizzle = getNeonDrizzleClient(
+      this.config.env.POSTGRES_URL,
+      this.config.env.POSTGRES_READ_URL,
+      sentry,
+    )
+
     this.db = new DbClient(drizzle)
 
-    this.bot = new DiscordAPIClient({
+    this.discord = new DiscordAPIClient({
       token: this.config.env.DISCORD_TOKEN,
       application_id: this.config.env.APPLICATION_ID,
       client_id: this.config.env.APPLICATION_ID,
@@ -42,13 +47,12 @@ export class App {
 
     this.views = all_views
 
-    this.events = new AppEvents(this)
-    all_event_listeners.forEach(register => register(this.events))
+    this.events = getAppEvents(this, all_event_listeners)
   }
 
   handleInteractionRequest(request: Request) {
     return respondToInteraction(
-      this.bot,
+      this.discord,
       request,
       this.views.getFindViewCallback(this),
       onViewError(this),
@@ -58,7 +62,7 @@ export class App {
 
   async syncDiscordCommands(guild?: Guild) {
     return await overwriteDiscordCommandsWithViews(
-      this.bot,
+      this.discord,
       await this.views.getAllCommandSignatures(this, guild),
       guild?.data.id,
     )

@@ -2,7 +2,7 @@ import * as D from 'discord-api-types/v10'
 import { AppCommand } from '../../../../../../discord-framework'
 import { AppView } from '../../../../../app/ViewModule'
 import { default_num_teams, default_players_per_team } from '../../manage_rankings'
-import { create_ranking_view, createRankingPageResponseData } from '../pages/create_ranking'
+import { create_ranking_view, createRankingPageData } from '../pages/create_ranking'
 
 export const create_ranking_cmd_signature = new AppCommand({
   name: 'create-ranking',
@@ -54,7 +54,7 @@ export default new AppView(create_ranking_cmd_signature, app =>
       },
       async ctx => {
         return void ctx.followup(
-          await createRankingPageResponseData(app, {
+          await createRankingPageData(app, {
             interaction: ctx.interaction,
             state: create_ranking_view.createState({
               input_name: options['name'],

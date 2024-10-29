@@ -13,7 +13,7 @@ import { Colors } from '../../../../../helpers/constants'
 import { checkGuildInteraction } from '../../../../../helpers/perms'
 import { channelMention, relativeTimestamp } from '../../../../../helpers/strings'
 import { getOrCreatePlayer } from '../../../../players/manage_players'
-import { start1v1SeriesThread } from '../../../ongoing-series/start_series'
+import { start1v1SeriesThread } from '../../../ongoing-series/manage_ongoing_match'
 
 export const challenge_message_signature = new MessageView({
   name: 'Challenge Message',
@@ -58,7 +58,7 @@ export async function challengeMessage(
         + `\n` + ((ctx.state.is.opponent_accepted() && ctx.state.data.ongoing_match_channel_id)
           ? `Challenge accepted. A thread has been created: ${channelMention(ctx.state.data.ongoing_match_channel_id)}`
           : `*Awaiting response*`)
-        + `\n-# Expires ${relativeTimestamp(expires_at)}`
+        + `\n\n-# Expires ${relativeTimestamp(expires_at)}`
         + ``, // prettier-ignore
       color: Colors.Primary,
     },
@@ -96,7 +96,10 @@ async function onAccept(
   // check expiration
   const expires_at = new Date(ctx.state.get.time_sent().getTime() + app.config.ChallengeTimeoutMs)
   if (new Date() > expires_at) {
-    await app.bot.deleteMessageIfExists(ctx.interaction.channel?.id, ctx.interaction.message?.id)
+    await app.discord.deleteMessageIfExists(
+      ctx.interaction.channel?.id,
+      ctx.interaction.message?.id,
+    )
     return {
       type: D.InteractionResponseType.ChannelMessageWithSource,
       data: { content: `This challenge has expired`, flags: D.MessageFlags.Ephemeral },

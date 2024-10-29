@@ -67,7 +67,7 @@ export const GuildRankings = pgTable('GuildRankings', {
     log_matches?: boolean
   }>(),
 },(table) => { return {
-  cpk: primaryKey(table.guild_id, table.ranking_id),
+  cpk: primaryKey({ columns: [table.guild_id, table.ranking_id] }),
 }})
 
 
@@ -100,7 +100,7 @@ export const TeamPlayers = pgTable('TeamPlayers', {
   player_id: integer('player_id').notNull().references(() => Players.id, {onDelete: 'cascade'}),
   time_created: timestamp('time_created').notNull().defaultNow(),
 }, (table) => { return {
-  cpk: primaryKey(table.team_id, table.player_id),
+  cpk: primaryKey({ columns: [table.team_id, table.player_id] }),
 }})
 
 
@@ -129,9 +129,10 @@ export const Matches = pgTable('Matches', {
 export const MatchSummaryMessages = pgTable('MatchSummaryMessages', {
   match_id: integer('match_id').notNull().references(() => Matches.id, {onDelete: 'cascade'}),
   guild_id: text('guild_id').notNull().references(() => Guilds.id, {onDelete: 'cascade'}),
+  channel_id: text('channel_id').notNull(),
   message_id: text('message_id').notNull(),
 }, (table) => { return {
-  cpk: primaryKey(table.match_id, table.guild_id),
+  cpk: primaryKey({ columns: [table.match_id, table.guild_id] }),
 }})
 
 
@@ -142,5 +143,5 @@ export const MatchPlayers = pgTable('MatchPlayers', {
   rating_before: real('rating_before').notNull(),
   rd_before: real('rd_before').notNull(),
 }, (table) => { return {
-  cpk: primaryKey(table.match_id, table.player_id),
+  cpk: primaryKey({ columns: [table.match_id, table.player_id] }),
 }})

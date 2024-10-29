@@ -34,5 +34,5 @@ export async function updateUserRoleConnectionData(
     },
   }
 
-  await app.bot.updateUserRoleConnection(access_token, body)
+  await app.discord.updateUserRoleConnection(access_token, body)
 }

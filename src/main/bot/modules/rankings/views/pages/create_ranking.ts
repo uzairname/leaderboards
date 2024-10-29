@@ -71,11 +71,11 @@ export async function createRankingPage(
 
   return {
     type,
-    data: await createRankingPageResponseData(app, ctx),
+    data: await createRankingPageData(app, ctx),
   }
 }
 
-export async function createRankingPageResponseData(
+export async function createRankingPageData(
   app: App,
   ctx: InteractionContext<typeof create_ranking_view>,
 ): Promise<D.APIInteractionResponseCallbackData> {
@@ -116,7 +116,7 @@ export async function createRankingPageResponseData(
       ? `\n- **Matchmaking Queue** A message will be sent where players can join the matchmaking queue.`
       : ``)
     + `\n-# You can edit these settings later by running`
-    + ` ${await commandMention(app, rankings)} **${escapeMd(name)}**`
+    + ` ${await commandMention(app, rankings, guild.data.id)} **${escapeMd(name)}**`
     + `` // prettier-ignore
 
   let components: D.APIMessageActionRowComponent[] = [

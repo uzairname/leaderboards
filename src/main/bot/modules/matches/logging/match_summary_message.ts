@@ -1,12 +1,11 @@
 import * as D from 'discord-api-types/v10'
-import { MessageData } from '../../../../../discord-framework'
-import { sentry } from '../../../../../logging/sentry'
-import { maxIndex, nonNullable } from '../../../../../utils/utils'
-import { App } from '../../../../app/App'
 import { Guild, Match } from '../../../../../database/models'
 import { MatchStatus } from '../../../../../database/models/matches'
+import { MessageData } from '../../../../../discord-framework'
+import { maxIndex, nonNullable } from '../../../../../utils/utils'
+import { App } from '../../../../app/App'
 import { Colors } from '../../../helpers/constants'
-import { emojis, relativeTimestamp } from '../../../helpers/strings'
+import { emojis, escapeMd, relativeTimestamp } from '../../../helpers/strings'
 import { default_elo_settings } from '../../rankings/manage_rankings'
 import { rateTrueskill } from '../management/elo_calculation'
 import { syncMatchesChannel } from '../matches_channel'
@@ -50,14 +49,18 @@ export async function syncMatchSummaryMessage(
 
   const stored_message = await match.getSummaryMessage(guild.data.id)
 
-  const sync_message_result = await app.bot.utils.syncChannelMessage({
+  const sync_message_result = await app.discord.utils.syncChannelMessage({
     target_channel_id: matches_channel.id,
     target_message_id: stored_message?.message_id,
     messageData: await matchSummaryMessageData(app, match),
   })
 
   if (sync_message_result.is_new_message) {
-    await match.updateSummaryMessage(guild.data.id, sync_message_result.message.id)
+    await match.updateSummaryMessage(
+      guild.data.id,
+      matches_channel.id,
+      sync_message_result.message.id,
+    )
   }
 
   return sync_message_result.message
@@ -85,7 +88,6 @@ export async function matchSummaryEmbed(
     include_outcome_num?: boolean
   },
 ): Promise<D.APIEmbed> {
-  sentry.debug(`getting ranking`)
   const ranking = await match.ranking()
   const team_players = await match.teamPlayers()
 
@@ -96,12 +98,9 @@ export async function matchSummaryEmbed(
   }
 
   const embed: D.APIEmbed = {
-    title: ``,
-    fields: [],
+    title: `${escapeMd(ranking.data.name)} Match #${match.data.number}`,
     color: Colors.EmbedBackground,
   }
-
-  embed.title = `${ranking.data.name} Match`
 
   if (match.data.status === MatchStatus.Finished) {
     const outcome = nonNullable(match.data.outcome, 'match.outcome')
@@ -138,7 +137,7 @@ export async function matchSummaryEmbed(
 
     embed.color = Colors.Primary
   } else {
-    // embed.title = `Match ${match.data.number} (In Progress)`
+    embed.description = `*(In Progress)*`
 
     embed.fields = team_players.map((team, team_num) => {
       return {
@@ -148,7 +147,7 @@ export async function matchSummaryEmbed(
       }
     })
 
-    embed.color = Colors.DiscordBackground
+    embed.color = Colors.EmbedBackground
   }
 
   if (match.data.time_finished) {

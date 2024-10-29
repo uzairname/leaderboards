@@ -1,21 +1,21 @@
 import * as D from 'discord-api-types/v10'
+import { Match } from '../../../../../../../database/models'
 import {
   ChatInteractionResponse,
   ComponentContext,
+  InteractionContext,
   MessageView,
-  StateContext,
   field,
   getModalSubmitEntries,
 } from '../../../../../../../discord-framework'
 import { nonNullable } from '../../../../../../../utils/utils'
 import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
-import { Match } from '../../../../../../../database/models'
 import { UserError } from '../../../../../errors/UserError'
 import { Colors } from '../../../../../helpers/constants'
-import { ensureAdminPerms } from '../../../../../helpers/perms'
+import { hasAdminPerms } from '../../../../../helpers/perms'
 import { matchSummaryEmbed } from '../../../logging/match_summary_message'
-import { deleteMatch, updateMatch } from '../../manage_matches'
+import { revertMatch, updateMatchOutcome } from '../../manage_matches'
 
 export const manage_match_page_signature = new MessageView({
   custom_id_prefix: 'm',
@@ -39,7 +39,7 @@ const manageMatchPage = (app: App) =>
         ? D.InteractionResponseType.UpdateMessage
         : D.InteractionResponseType.ChannelMessageWithSource,
       data: {
-        ...(await matchPage(app, ctx)),
+        ...(await manageMatchPageData(app, ctx)),
         flags: D.MessageFlags.Ephemeral,
       },
     }
@@ -73,9 +73,9 @@ const setting_select_menu_options: Record<
   }),
 }
 
-export async function matchPage(
+export async function manageMatchPageData(
   app: App,
-  ctx: StateContext<typeof manage_match_page_signature>,
+  ctx: InteractionContext<typeof manage_match_page_signature>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const match_id = ctx.state.get.match_id()
   const match = await app.db.matches.get(match_id)
@@ -87,25 +87,31 @@ export async function matchPage(
 
   ctx.state.save.on_page(true)
 
-  return {
-    embeds: [embed],
+  const components: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = []
+
+  const settings_select_menu: D.APIActionRowComponent<D.APIMessageActionRowComponent> = {
+    type: D.ComponentType.ActionRow,
     components: [
       {
-        type: D.ComponentType.ActionRow,
-        components: [
-          {
-            type: D.ComponentType.StringSelect,
-            custom_id: ctx.state.set.callback(onSettingSelect).cId(),
-            placeholder: 'Match Settings',
-            options: Object.entries(setting_select_menu_options).map(([value, option]) => ({
-              label: option(app, match).name,
-              value,
-              description: option(app, match).description,
-            })),
-          },
-        ],
+        type: D.ComponentType.StringSelect,
+        custom_id: ctx.state.set.callback(onSettingSelect).cId(),
+        placeholder: 'Match Settings',
+        options: Object.entries(setting_select_menu_options).map(([value, option]) => ({
+          label: option(app, match).name,
+          value,
+          description: option(app, match).description,
+        })),
       },
     ],
+  }
+
+  if (await hasAdminPerms(app, ctx)) {
+    components.push(settings_select_menu)
+  }
+
+  return {
+    embeds: [embed],
+    components,
   }
 }
 
@@ -158,7 +164,6 @@ async function onMatchOutcomeModalSubmit(
       type: D.InteractionResponseType.DeferredMessageUpdate,
     },
     async ctx => {
-      await ensureAdminPerms(app, ctx)
       const match = await app.db.matches.get(ctx.state.get.match_id())
       const ranking = await match.ranking()
       const num_teams = nonNullable(ranking.data.num_teams, 'num_teams')
@@ -177,9 +182,9 @@ async function onMatchOutcomeModalSubmit(
         new_outcome[team_num] = score
       }
 
-      await updateMatch(app, match, new_outcome)
+      await updateMatchOutcome(app, match, new_outcome)
 
-      return void ctx.edit(await matchPage(app, ctx))
+      return void ctx.edit(await manageMatchPageData(app, ctx))
     },
   )
 }
@@ -231,8 +236,7 @@ async function onRevertConfirm(
       type: D.InteractionResponseType.DeferredMessageUpdate,
     },
     async ctx => {
-      await ensureAdminPerms(app, ctx)
-      await deleteMatch(app, match)
+      await revertMatch(app, match)
       return void ctx.edit({
         embeds: [
           {

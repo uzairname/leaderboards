@@ -72,7 +72,7 @@ async function selectChannelPage(
   message?: string,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const channels = (
-    await app.bot.getGuildChannels(checkGuildInteraction(ctx.interaction).guild_id)
+    await app.discord.getGuildChannels(checkGuildInteraction(ctx.interaction).guild_id)
   ).filter(c => !ctx.state.data.text_only || c.type === D.ChannelType.GuildText)
 
   let btns: D.APIButtonComponent[] = [

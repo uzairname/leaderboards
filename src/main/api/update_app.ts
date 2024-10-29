@@ -1,6 +1,7 @@
 import { Router } from 'itty-router'
+import { sentry } from '../../logging/sentry'
 import { App } from '../app/App'
-import { checkUpdateGuild, getOrAddGuild } from '../bot/modules/guilds/guilds'
+import { getOrAddGuild, updateGuild } from '../bot/modules/guilds/guilds'
 import { getAppRoleConnectionsMetadata } from '../bot/modules/linked-roles/linked_roles'
 
 export const updateRouter = (app: App) =>
@@ -10,19 +11,23 @@ export const updateRouter = (app: App) =>
         last_updated: true,
         guilds: true,
       })
+
       const [_, guild_names] = await Promise.all([
         app.syncDiscordCommands(),
-        app.db.guilds.getAll().then(guilds =>
-          Promise.all(
-            guilds.map(guild =>
-              checkUpdateGuild(app, guild)
-                .then(res => guild.data.name)
-                .catch(() => undefined),
-            ),
-          ).then(res => res.filter(c => c !== undefined)),
-        ),
-        app.bot.updateRoleConnectionsMetadata(getAppRoleConnectionsMetadata(app)),
+        app.db.guilds
+          .getAll()
+          .then(guilds =>
+            Promise.all(
+              guilds.map(guild => updateGuild(app, guild).then(() => guild.data.name)),
+            ).then(res => res.filter(c => c !== undefined)),
+          ),
+        app.discord.updateRoleConnectionsMetadata(getAppRoleConnectionsMetadata(app)),
       ])
+
+      sentry.addBreadcrumb({
+        message: `Updated Leaderboards app in ${guild_names.length} guilds`,
+        data: { guild_names },
+      })
       return new Response(`Successfully updated Leaderboards app (${guild_names.length} guilds)`, {
         status: 200,
       })

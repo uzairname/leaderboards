@@ -2,7 +2,7 @@ import * as D from 'discord-api-types/v10'
 import { AppCommand } from '../../../../../../../discord-framework'
 import { sentry } from '../../../../../../../logging/sentry'
 import { nonNullable } from '../../../../../../../utils/utils'
-import { GuildCommandView } from '../../../../../../app/ViewModule'
+import { GuildCommand } from '../../../../../../app/ViewModule'
 import { checkGuildInteraction } from '../../../../../helpers/perms'
 import {
   guildRankingsOption,
@@ -23,8 +23,35 @@ export const challenge_cmd_signature = new AppCommand({
   description: 'Challenge someone to a 1v1',
 })
 
-export default new GuildCommandView(
+export default new GuildCommand(
   challenge_cmd_signature,
+  async (app, guild) => {
+    return new AppCommand({
+      ...challenge_cmd_signature.signature,
+      options: (
+        [
+          {
+            type: D.ApplicationCommandOptionType.User,
+            name: 'opponent',
+            description: 'Who to challenge',
+            required: true,
+          },
+          {
+            type: D.ApplicationCommandOptionType.Number,
+            name: optionnames.best_of,
+            description: 'Best of how many games?',
+            required: false,
+            choices: [
+              { name: '1', value: 1 },
+              { name: '3', value: 3 },
+              { name: '5', value: 5 },
+              { name: '7', value: 7 },
+            ],
+          },
+        ] as D.APIApplicationCommandOption[]
+      ).concat(await guildRankingsOption(app, guild, optionnames.ranking, {})),
+    })
+  },
   app =>
     challenge_cmd_signature.onCommand(async ctx =>
       withSelectedRanking(app, ctx, optionnames.ranking, async ranking =>
@@ -56,7 +83,7 @@ export default new GuildCommandView(
 
             sentry.debug(`A best of ${best_of} challenge was initiated`)
 
-            await app.bot.createMessage(
+            await app.discord.createMessage(
               ctx.interaction.channel.id,
               (
                 await challengeMessage(app, {
@@ -75,31 +102,4 @@ export default new GuildCommandView(
         ),
       ),
     ),
-  async (app, guild) => {
-    return new AppCommand({
-      ...challenge_cmd_signature.signature,
-      options: (
-        [
-          {
-            type: D.ApplicationCommandOptionType.User,
-            name: 'opponent',
-            description: 'Who to challenge',
-            required: true,
-          },
-          {
-            type: D.ApplicationCommandOptionType.Number,
-            name: optionnames.best_of,
-            description: 'Best of how many games?',
-            required: false,
-            choices: [
-              { name: '1', value: 1 },
-              { name: '3', value: 3 },
-              { name: '5', value: 5 },
-              { name: '7', value: 7 },
-            ],
-          },
-        ] as D.APIApplicationCommandOption[]
-      ).concat(await guildRankingsOption(app, guild, optionnames.ranking, {})),
-    })
-  },
 )

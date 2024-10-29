@@ -1,4 +1,3 @@
-import { App } from '../../../../app/App'
 import { GuildRanking, Match } from '../../../../../database/models'
 import {
   MatchInsert,
@@ -7,6 +6,7 @@ import {
   MatchTeamPlayer,
   Vote,
 } from '../../../../../database/models/matches'
+import { App } from '../../../../app/App'
 import { UserError } from '../../../errors/UserError'
 import { scoreRankingHistory } from './score_matches'
 
@@ -41,7 +41,10 @@ export async function startNewMatch(
   return match
 }
 
-export async function updateMatch(
+/**
+ * Updates a match's outcome and/or metadata. Recalculates rankings if outcome is provided.
+ */
+export async function updateMatchOutcome(
   app: App,
   match: Match,
   outcome?: number[],
@@ -65,43 +68,58 @@ export async function updateMatch(
   await app.events.MatchCreatedOrUpdated.emit(match)
 }
 
-export async function deleteMatch(app: App, match: Match): Promise<void> {
+/**
+ * Deletes a match and reverses its effects on rankings.
+ * Deletes all summary messages
+ */
+export async function revertMatch(app: App, match: Match): Promise<void> {
   // delete summary messages before deleting match
   const guild_rankings = await app.db.guild_rankings.get({ ranking_id: match.data.ranking_id })
   await Promise.all(
     guild_rankings.map(async guild_ranking => {
       const summary_message = await match.getSummaryMessage(guild_ranking.guild.data.id)
-      await app.bot.utils.deleteMessageIfExists(
+      await app.discord.utils.deleteMessageIfExists(
         guild_ranking.guild.data.matches_channel_id,
         summary_message?.message_id,
       )
     }),
   )
 
-  // get player ratings before deleting match
-  const player_ratings_before = Object.fromEntries(
-    (await match.teamPlayers())
-      .map(t =>
-        t.map(p => [
-          p.player.data.id,
-          {
-            rating: p.rating_before,
-            rd: p.rd_before,
-          },
-        ]),
+  if (match.data.status === MatchStatus.Finished) {
+    // Revert its effects on rankings
+    const player_ratings_before: Record<number, { rating: number; rd: number }> =
+      Object.fromEntries(
+        (await match.teamPlayers())
+          .map(t =>
+            t.map(p => [
+              p.player.data.id,
+              {
+                rating: p.rating_before,
+                rd: p.rd_before,
+              },
+            ]),
+          )
+          .flat(),
       )
-      .flat(),
-  )
 
-  await match.delete()
+    await match.delete()
 
-  // score ranking history without match
-  await scoreRankingHistory(
-    app,
-    await match.ranking(),
-    match.data.time_finished ?? undefined,
-    player_ratings_before,
-  )
+    // score ranking history without match
+    await scoreRankingHistory(
+      app,
+      await match.ranking(),
+      match.data.time_finished ?? undefined,
+      player_ratings_before,
+    )
+  } else {
+    // The match is ongoing. It had no effect on rankings
+    // The match may have a thread
+    const thread_id = match.data.ongoing_match_channel_id
+    if (thread_id) {
+      await app.discord.deleteChannel(thread_id)
+    }
+    await match.delete()
+  }
 }
 
 export function validateMatchData<
