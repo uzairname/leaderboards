@@ -1,18 +1,18 @@
 import * as D from 'discord-api-types/v10'
 import { MessageView, field } from '../../../../../../../discord-framework'
 import { ViewState } from '../../../../../../../discord-framework/interactions/view_state'
-import { sentry } from '../../../../../../../logging/sentry'
 import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
 import { Colors } from '../../../../../helpers/constants'
 import { matchSummaryEmbed } from '../../match_summary_message'
 
-export const matches_view = new MessageView({
+export const matches_page_config = new MessageView({
   custom_id_prefix: 'mh',
   name: 'match history',
   state_schema: {
     message_sent: field.Boolean(),
     match_id: field.Int(),
+    guild_id: field.String(),
     ranking_ids: field.Array(field.Int()),
     player_ids: field.Array(field.Int()),
     user_ids: field.Array(field.String()),
@@ -20,8 +20,8 @@ export const matches_view = new MessageView({
   },
 })
 
-export default new AppView(matches_view, app =>
-  matches_view.onComponent(async ctx => {
+export default new AppView(matches_page_config, app =>
+  matches_page_config.onComponent(async ctx => {
     return ctx.defer(
       {
         type: D.InteractionResponseType.DeferredMessageUpdate,
@@ -37,9 +37,9 @@ export default new AppView(matches_view, app =>
 
 export async function matchesPage(
   app: App,
-  state?: ViewState<typeof matches_view.state_schema>,
+  state?: ViewState<typeof matches_page_config.state_schema>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  state = state ?? matches_view.createState()
+  state = state ?? matches_page_config.newState()
 
   state.saveAll({
     message_sent: true,
@@ -48,34 +48,26 @@ export async function matchesPage(
 
   const matches_per_page = 5
 
-  sentry.debug(
-    `matchespage params ${state.data.player_ids} ${state.data.user_ids} ${state.data.ranking_ids}`,
-  )
-
-  const filters = {
+  const matches = await app.db.matches.getMany({
     player_ids: state.data.player_ids,
     user_ids: state.data.user_ids,
     ranking_ids: state.data.ranking_ids,
-    limit: matches_per_page,
+    guild_id: state.data.guild_id,
+    limit: matches_per_page + 1, // +1 to check if there are more pages
     offset: (state.data.page_num ?? 0) * matches_per_page,
     // status: MatchStatus.Finished,
-  }
+  })
 
-  const matches = await app.db.matches.getMany(filters)
+  // determine if on last page
+  const is_last_page = matches.length <= matches_per_page
+  if (matches.length > matches_per_page) {
+    matches.shift()
+  }
 
   return {
     embeds:
       matches.length > 0
-        ? await Promise.all(
-            matches.map(
-              async match =>
-                await matchSummaryEmbed(app, match.match, {
-                  ranking_name: true,
-                  time_finished: true,
-                  id: true,
-                }),
-            ),
-          )
+        ? await Promise.all(matches.map(async match => await matchSummaryEmbed(app, match.match)))
         : [
             {
               description: `No matches to show`,
@@ -98,7 +90,7 @@ export async function matchesPage(
             style: D.ButtonStyle.Primary,
             custom_id: state.set.page_num((state.data.page_num ?? 0) + 1).cId(),
             label: 'Older',
-            disabled: matches.length < matches_per_page,
+            disabled: is_last_page,
           },
         ],
       },

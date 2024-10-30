@@ -5,6 +5,7 @@ import { DbClient } from '../client'
 import { DbErrors } from '../errors'
 import { DbObject, DbObjectManager } from '../managers'
 import { GuildRankings, MatchPlayers, MatchSummaryMessages, Matches, Players } from '../schema'
+import { PlayerSelect } from './players'
 
 export type MatchMetadata = {
   best_of: number
@@ -59,21 +60,9 @@ export class Match extends DbObject<MatchSelect> {
       .where(eq(MatchPlayers.match_id, this.data.id))
       .innerJoin(Players, eq(MatchPlayers.player_id, Players.id))
 
-    // calculate number of teams
-    const num_teams = new Set(result.map(p => p.match_player.team_num)).size
-
-    // create a 2d array based on each players team index
-    const team_players = Array.from({ length: num_teams }, () => [] as MatchTeamPlayer[])
-
-    result.forEach(row => {
-      team_players[row.match_player.team_num].push({
-        player: new Player(row.player, this.db),
-        rating_before: row.match_player.rating_before,
-        rd_before: row.match_player.rd_before,
-      })
-    })
-
-    this.db.cache.match_team_players[this.data.id] = team_players
+    const team_players = await this.convertTeamPlayers(result)
+    if (!team_players)
+      throw new DbErrors.NotFoundError(`Not all players found for match ${this.data.id}`)
 
     return team_players
   }
@@ -166,6 +155,36 @@ export class Match extends DbObject<MatchSelect> {
     delete this.db.cache.matches[this.data.id]
     delete this.db.cache.match_team_players[this.data.id]
   }
+
+  /**
+   * For the result of a select query, returns an array of team players
+   * If some match players are missing from the database, returns null
+   */
+  async convertTeamPlayers(
+    query_result: { player: PlayerSelect; match_player: MatchPlayerSelect }[],
+  ): Promise<MatchTeamPlayer[][] | null> {
+    const ranking = await this.db.rankings.get(query_result[0].player.ranking_id)
+    const num_teams = ranking.data.num_teams
+    const players_per_team = ranking.data.players_per_team
+
+    const team_players = Array.from({ length: num_teams }, () => [] as MatchTeamPlayer[])
+
+    query_result.forEach(row => {
+      team_players[row.match_player.team_num].push({
+        player: new Player(row.player, this.db),
+        rating_before: row.match_player.rating_before,
+        rd_before: row.match_player.rd_before,
+      })
+    })
+
+    // ensure that each team has the correct number of players
+    if (team_players.some(team => team.length !== players_per_team)) return null
+
+    const match_id = query_result[0].match_player.match_id
+    this.db.cache.match_team_players[match_id] = team_players
+
+    return team_players
+  }
 }
 
 export class MatchesManager extends DbObjectManager {
@@ -240,6 +259,9 @@ export class MatchesManager extends DbObjectManager {
     return new Match(data.match, this.db)
   }
 
+  /**
+   * Returns a list of matches, in order of in order of oldest to most recent
+   */
   async getMany(filters: {
     player_ids?: number[]
     user_ids?: string[]
@@ -310,37 +332,22 @@ export class MatchesManager extends DbObjectManager {
       .where(matches_sql)
       .orderBy(asc(Matches.time_finished))
 
-    const matches = new Map<number, { match: Match; team_players: MatchTeamPlayer[][] }>()
+    const matches = await Promise.all(
+      Array.from(new Set<number>(result.map(r => r.match.id)))
+        .sort()
+        .map(async match_id => {
+          const match_players = result.filter(r => r.match.id === match_id)
+          const match = new Match(match_players[0].match, this.db)
 
-    result.forEach(row => {
-      const match_id = row.match.id
+          const team_players = await match.convertTeamPlayers(match_players)
+          return { match, team_players }
+        }),
+    )
 
-      if (!matches.has(match_id)) {
-        // initialize an empty match element
+    const matches_valid_teams = matches.filter(
+      (m): m is { match: Match; team_players: MatchTeamPlayer[][] } => m.team_players !== null,
+    )
 
-        const num_teams = new Set(
-          result.filter(r => r.match.id === match_id).map(r => r.match_player.team_num),
-        ).size
-
-        matches.set(match_id, {
-          match: new Match(row.match, this.db),
-          team_players: Array.from({ length: num_teams }, () => [] as MatchTeamPlayer[]),
-        })
-      }
-
-      const match = matches.get(match_id)! // must exist becuase we just set it above
-
-      match.team_players[row.match_player.team_num].push({
-        player: new Player(row.player, this.db),
-        rating_before: row.match_player.rating_before,
-        rd_before: row.match_player.rd_before,
-      })
-    })
-
-    matches.forEach(match => {
-      this.db.cache.match_team_players[match.match.data.id] = match.team_players
-    })
-
-    return Array.from(matches.values())
+    return matches_valid_teams
   }
 }

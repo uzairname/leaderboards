@@ -7,7 +7,6 @@ import {
   guildRankingsOption,
   withSelectedRanking,
 } from '../../../../../helpers/ranking_command_option'
-import { channelMention } from '../../../../../helpers/strings'
 import { getOrCreatePlayer } from '../../../../players/manage_players'
 import { start1v1SeriesThread } from '../../../ongoing-series/manage_ongoing_match'
 
@@ -46,7 +45,7 @@ export default new GuildCommand(
     ]
 
     return new AppCommand({
-      ...start_match_cmd_signature.signature,
+      ...start_match_cmd_signature.config,
       options: options.concat(
         await guildRankingsOption(
           app,
@@ -110,7 +109,7 @@ export default new GuildCommand(
                 )
 
                 return void (await ctx.edit({
-                  content: `Match started. A thread has been created: ${channelMention(thread.id)}`,
+                  content: `Match started. A thread has been created: <#${thread.id}`,
                   flags: D.MessageFlags.Ephemeral,
                 }))
               }

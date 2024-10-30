@@ -12,16 +12,6 @@ export const dev_cmd_signature = new AppCommand({
       name: 'clear-cache',
       description: 'Clear cache',
     },
-    {
-      type: D.ApplicationCommandOptionType.Subcommand,
-      name: 'test',
-      description: 'Test',
-    },
-    {
-      type: D.ApplicationCommandOptionType.Subcommand,
-      name: 'test2',
-      description: 'Test2',
-    },
   ],
 })
 

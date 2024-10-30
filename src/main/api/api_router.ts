@@ -14,8 +14,8 @@ export const apiRouter = (app: App) =>
         'defined commands': views.all_views
           .map(c => {
             return {
-              cid_prefix: `${c.base_signature.signature.custom_id_prefix}`,
-              name: `${c.base_signature.signature.name}`,
+              cid_prefix: `${c.base_signature.config.custom_id_prefix}`,
+              name: `${c.base_signature.config.name}`,
               is_guild_command: c instanceof GuildCommand,
               experimental: c.is_dev,
             }

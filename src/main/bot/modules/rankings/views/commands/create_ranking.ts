@@ -6,12 +6,13 @@ import { AppView } from '../../../../../app/ViewModule'
 import { Colors } from '../../../../helpers/constants'
 import { checkGuildInteraction, ensureAdminPerms } from '../../../../helpers/perms'
 import { getOrAddGuild } from '../../../guilds/guilds'
+import { syncMatchesChannel } from '../../../matches/matches_channel'
 import {
   createNewRankingInGuild,
   default_num_teams,
   default_players_per_team,
 } from '../../manage_rankings'
-import { rankingSettingsPage } from '../pages/ranking_settings'
+import { ranking_settings_page_config, rankingSettingsPage } from '../pages/ranking_settings'
 
 export const create_ranking_cmd_signature = new AppCommand({
   name: 'create-ranking',
@@ -21,7 +22,7 @@ export const create_ranking_cmd_signature = new AppCommand({
 
 export default new AppView(create_ranking_cmd_signature, app =>
   new AppCommand({
-    ...create_ranking_cmd_signature.signature,
+    ...create_ranking_cmd_signature.config,
     options: (
       [
         {
@@ -67,6 +68,8 @@ export default new AppView(create_ranking_cmd_signature, app =>
       async ctx => {
         const guild = await getOrAddGuild(app, interaction.guild_id)
 
+        await syncMatchesChannel(app, guild)
+
         const ranking = await createNewRankingInGuild(app, guild, {
           name: nonNullable(options['name'], 'options.name'),
           num_teams: options['num-teams'] ? parseInt(options['num-teams']) : default_num_teams,
@@ -90,8 +93,10 @@ export default new AppView(create_ranking_cmd_signature, app =>
 
         await ctx.followup(
           await rankingSettingsPage(app, {
-            guild_id: guild.data.id,
-            ranking_id: ranking.new_ranking.data.id,
+            state: ranking_settings_page_config.newState({
+              guild_id: guild.data.id,
+              ranking_id: ranking.new_ranking.data.id,
+            }),
           }),
         )
       },

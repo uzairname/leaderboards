@@ -1,6 +1,5 @@
 import * as D from 'discord-api-types/v10'
 import {
-  ChatInteraction,
   ChatInteractionResponse,
   ComponentContext,
   InteractionContext,
@@ -16,7 +15,7 @@ import { AppView } from '../../../../../app/ViewModule'
 import { checkGuildInteraction } from '../../../../helpers/perms'
 import views from '../../../all_views'
 
-export const select_channel_view = new MessageView({
+export const select_channel_page_config = new MessageView({
   name: 'select channel',
   custom_id_prefix: 'sc',
   state_schema: {
@@ -36,7 +35,7 @@ export const select_channel_view = new MessageView({
 })
 
 export function selectChannelView(app: App) {
-  return select_channel_view.onComponent(async ctx => {
+  return select_channel_page_config.onComponent(async ctx => {
     if (ctx.state.data.callback) return ctx.state.data.callback(app, ctx)
 
     return ctx.defer(
@@ -52,15 +51,15 @@ export function selectChannelView(app: App) {
 
 export async function sendSelectChannelPage(
   app: App,
-  interaction: ChatInteraction,
-  data: ViewState<typeof select_channel_view.state_schema>['data'],
+  ctx: InteractionContext<any>,
+  data: ViewState<typeof select_channel_page_config.state_schema>['data'],
   message?: string,
 ): Promise<D.APIInteractionResponseCallbackData> {
   return await selectChannelPage(
     app,
     {
-      interaction,
-      state: select_channel_view.createState(data),
+      ...ctx,
+      state: select_channel_page_config.newState(data),
     },
     message,
   )
@@ -68,7 +67,7 @@ export async function sendSelectChannelPage(
 
 async function selectChannelPage(
   app: App,
-  ctx: InteractionContext<typeof select_channel_view>,
+  ctx: InteractionContext<typeof select_channel_page_config>,
   message?: string,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const channels = (
@@ -140,7 +139,7 @@ async function selectChannelPage(
 
 function onNextBtn(
   app: App,
-  ctx: ComponentContext<typeof select_channel_view>,
+  ctx: ComponentContext<typeof select_channel_page_config>,
 ): ChatInteractionResponse {
   return ctx.defer(
     {
@@ -152,7 +151,7 @@ function onNextBtn(
 
 function onPrevBtn(
   app: App,
-  ctx: ComponentContext<typeof select_channel_view>,
+  ctx: ComponentContext<typeof select_channel_page_config>,
 ): ChatInteractionResponse {
   return ctx.defer(
     {
@@ -164,7 +163,7 @@ function onPrevBtn(
 
 function onSelectChannel(
   app: App,
-  ctx: ComponentContext<typeof select_channel_view>,
+  ctx: ComponentContext<typeof select_channel_page_config>,
 ): ChatInteractionResponse {
   ctx.state.save.selected_channel_id(
     (ctx.interaction.data as D.APIMessageStringSelectInteractionData).values?.[0],
@@ -178,4 +177,4 @@ function onSelectChannel(
   )
 }
 
-export default new AppView(select_channel_view, selectChannelView)
+export default new AppView(select_channel_page_config, selectChannelView)

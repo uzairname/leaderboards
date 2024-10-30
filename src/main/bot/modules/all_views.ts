@@ -6,6 +6,7 @@ import matches_module from './matches/logging/views'
 import match_management_module from './matches/management/views'
 import matchmaking_module from './matches/matchmaking/views'
 import ongoing_series_module from './matches/ongoing-series/views'
+import misc_commands from './misc_commands'
 import players_module from './players/views'
 import rankings_module from './rankings/views'
 import test_module from './test/views/'
@@ -23,4 +24,5 @@ export default new ViewModule([
   settings_module,
   test_module,
   ongoing_series_module,
+  misc_commands,
 ])

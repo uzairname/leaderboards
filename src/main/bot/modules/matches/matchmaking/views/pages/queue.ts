@@ -9,11 +9,11 @@ import {
 import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
 import { Colors } from '../../../../../helpers/constants'
-import { checkGuildInteraction } from '../../../../../helpers/perms'
+import { checkGuildComponentInteraction } from '../../../../../helpers/perms'
 import { escapeMd, relativeTimestamp } from '../../../../../helpers/strings'
 import { userJoinQueue, userLeaveQueue } from '../../queue/queue_join_leave'
 
-const queue_message_def = new MessageView({
+const queue_page_config = new MessageView({
   name: 'Queue Message',
   custom_id_prefix: 'q',
   state_schema: {
@@ -23,9 +23,9 @@ const queue_message_def = new MessageView({
   },
 })
 
-export default new AppView(queue_message_def, app =>
-  queue_message_def.onComponent(async ctx => {
-    const interaction = checkGuildInteraction(ctx.interaction)
+export default new AppView(queue_page_config, app =>
+  queue_page_config.onComponent(async ctx => {
+    const interaction = checkGuildComponentInteraction(ctx.interaction)
     const ranking_id = ctx.state.get.ranking_id()
 
     if (ctx.state.is.component('join')) {
@@ -40,8 +40,8 @@ export default new AppView(queue_message_def, app =>
 
           await Promise.all([
             app.discord.editMessage(
-              interaction.channel!.id,
-              interaction.message!.id,
+              interaction.channel.id,
+              interaction.message.id,
               (await queueMessage(app, ranking_id, ctx)).as_patch,
             ),
             ctx.edit({
@@ -74,9 +74,9 @@ export default new AppView(queue_message_def, app =>
 export async function queueMessage(
   app: App,
   ranking_id: number,
-  ctx?: InteractionContext<typeof queue_message_def>,
+  ctx?: InteractionContext<typeof queue_page_config>,
 ): Promise<MessageData> {
-  const state = ctx?.state ?? queue_message_def.createState({ ranking_id })
+  const state = ctx?.state ?? queue_page_config.newState({ ranking_id })
   const ranking = await app.db.rankings.get(ranking_id)
   return new MessageData({
     embeds: [

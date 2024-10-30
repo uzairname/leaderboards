@@ -25,6 +25,10 @@ export class Config {
 
   readonly ChallengeTimeoutMs = 1000 * 60 * 10
 
+  readonly display_mean_rating = 1000
+  readonly display_sd_offset = -0.6
+  readonly provisional_rd_threshold = 1
+
   constructor(readonly env: Env) {
     this.OauthRedirectURI = env.BASE_URL + `/oauth` + this.OauthRoutes.Redirect
 

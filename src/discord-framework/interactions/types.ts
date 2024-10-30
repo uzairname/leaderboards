@@ -48,7 +48,7 @@ export function viewIsAppCommand(view: AnyView): view is AnyAppCommand {
 }
 
 export function viewIsChatInputAppCommand(view: AnyView): view is AnyChatInputAppCommand {
-  return viewIsAppCommand(view) && view.signature.type === D.ApplicationCommandType.ChatInput
+  return viewIsAppCommand(view) && view.config.type === D.ApplicationCommandType.ChatInput
 }
 
 export type FindViewCallback = (
@@ -87,6 +87,7 @@ export interface InteractionContext<
   InteractionT extends ChatInteraction = ChatInteraction,
 > extends StateContext<View> {
   interaction: InteractionT
+  send: (data: D.RESTPostAPIChannelMessageJSONBody) => Promise<D.RESTPostAPIChannelMessageResult>
 }
 
 // Defer
@@ -116,7 +117,7 @@ export interface InitialInteractionContext<
 export interface CommandContext<
   View extends AnyView,
   Type extends D.ApplicationCommandType = View extends AnyAppCommand
-    ? View['signature']['type']
+    ? View['config']['type']
     : D.ApplicationCommandType,
 > extends InitialInteractionContext<View, AppCommandInteraction<Type>> {}
 
@@ -145,7 +146,7 @@ export type ViewAutocompleteCallback<Type extends D.ApplicationCommandType> = (
 
 // Command
 export type CommandCallback<View extends AnyAppCommand> = (
-  ctx: CommandContext<View, View['signature']['type']>,
+  ctx: CommandContext<View, View['config']['type']>,
 ) => Promise<CommandInteractionResponse>
 
 // Component

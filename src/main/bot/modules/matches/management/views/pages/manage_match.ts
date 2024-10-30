@@ -17,7 +17,7 @@ import { hasAdminPerms } from '../../../../../helpers/perms'
 import { matchSummaryEmbed } from '../../../logging/match_summary_message'
 import { revertMatch, updateMatchOutcome } from '../../manage_matches'
 
-export const manage_match_page_signature = new MessageView({
+export const manage_match_page_config = new MessageView({
   custom_id_prefix: 'm',
   name: 'Manage Match Message',
   state_schema: {
@@ -32,7 +32,7 @@ export const manage_match_page_signature = new MessageView({
 })
 
 const manageMatchPage = (app: App) =>
-  manage_match_page_signature.onComponent(async ctx => {
+  manage_match_page_config.onComponent(async ctx => {
     if (ctx.state.data.callback) return ctx.state.data.callback(app, ctx)
     return {
       type: ctx.state.data.on_page
@@ -45,7 +45,7 @@ const manageMatchPage = (app: App) =>
     }
   })
 
-export default new AppView(manage_match_page_signature, manageMatchPage)
+export default new AppView(manage_match_page_config, manageMatchPage)
 
 const setting_select_menu_options: Record<
   string,
@@ -57,7 +57,7 @@ const setting_select_menu_options: Record<
     description: string
     callback: (
       app: App,
-      ctx: ComponentContext<typeof manage_match_page_signature>,
+      ctx: ComponentContext<typeof manage_match_page_config>,
     ) => Promise<ChatInteractionResponse>
   }
 > = {
@@ -75,15 +75,11 @@ const setting_select_menu_options: Record<
 
 export async function manageMatchPageData(
   app: App,
-  ctx: InteractionContext<typeof manage_match_page_signature>,
+  ctx: InteractionContext<typeof manage_match_page_config>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const match_id = ctx.state.get.match_id()
   const match = await app.db.matches.get(match_id)
-  const embed = await matchSummaryEmbed(app, match, {
-    ranking_name: true,
-    time_finished: true,
-    id: true,
-  })
+  const embed = await matchSummaryEmbed(app, match)
 
   ctx.state.save.on_page(true)
 
@@ -117,7 +113,7 @@ export async function manageMatchPageData(
 
 async function onSettingSelect(
   app: App,
-  ctx: ComponentContext<typeof manage_match_page_signature>,
+  ctx: ComponentContext<typeof manage_match_page_config>,
 ): Promise<ChatInteractionResponse> {
   const value = (ctx.interaction.data as D.APIMessageStringSelectInteractionData).values[0]
   if (!value) return { type: D.InteractionResponseType.DeferredMessageUpdate }
@@ -127,7 +123,7 @@ async function onSettingSelect(
 
 async function matchOutcomeModal(
   app: App,
-  ctx: ComponentContext<typeof manage_match_page_signature>,
+  ctx: ComponentContext<typeof manage_match_page_config>,
 ): Promise<D.APIModalInteractionResponse> {
   const match = await app.db.matches.get(ctx.state.get.match_id())
   const teams = await match.teamPlayers()
@@ -157,7 +153,7 @@ async function matchOutcomeModal(
 
 async function onMatchOutcomeModalSubmit(
   app: App,
-  ctx: ComponentContext<typeof manage_match_page_signature>,
+  ctx: ComponentContext<typeof manage_match_page_config>,
 ): Promise<ChatInteractionResponse> {
   return ctx.defer(
     {
@@ -191,7 +187,7 @@ async function onMatchOutcomeModalSubmit(
 
 async function onRevert(
   app: App,
-  ctx: ComponentContext<typeof manage_match_page_signature>,
+  ctx: ComponentContext<typeof manage_match_page_config>,
 ): Promise<ChatInteractionResponse> {
   return {
     type: D.InteractionResponseType.UpdateMessage,
@@ -228,7 +224,7 @@ async function onRevert(
 
 async function onRevertConfirm(
   app: App,
-  ctx: ComponentContext<typeof manage_match_page_signature>,
+  ctx: ComponentContext<typeof manage_match_page_config>,
 ): Promise<ChatInteractionResponse> {
   const match = await app.db.matches.get(ctx.state.get.match_id())
   return ctx.defer(

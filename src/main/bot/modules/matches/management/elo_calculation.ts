@@ -5,7 +5,7 @@ function getAdjustedBeta(baseBeta: number, best_of: number): number {
   // Higher beta = more assumed volatility and slower convergence
   // Multiply by 5 to increase overall volatility
   // Divide to reduce the uncertainty for longer series
-  return (baseBeta) / Math.sqrt(best_of)
+  return baseBeta / Math.sqrt(best_of)
   return baseBeta
 }
 

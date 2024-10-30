@@ -7,7 +7,6 @@ import {
   MessageView,
   StateContext,
 } from '../../../../../../discord-framework'
-import { ViewState } from '../../../../../../discord-framework/interactions/view_state'
 import { nonNullable } from '../../../../../../utils/utils'
 import { App } from '../../../../../app/App'
 import { AppView } from '../../../../../app/ViewModule'
@@ -21,10 +20,9 @@ import {
   syncGuildRankingLbMessage,
 } from '../../../leaderboard/leaderboard_message'
 import { deleteRanking, updateRanking } from '../../manage_rankings'
-import { allGuildRankingsPage } from './all_guild_rankings'
-import { rankingNameTextInput } from './create_ranking'
+import { rankingNameTextInput, rankingsPage } from './rankings'
 
-export const ranking_settings_view_signature = new MessageView({
+export const ranking_settings_page_config = new MessageView({
   name: 'ranking settings',
   custom_id_prefix: 'rs',
   state_schema: {
@@ -46,43 +44,32 @@ export const ranking_settings_view_signature = new MessageView({
   },
 })
 
-export default new AppView(ranking_settings_view_signature, app =>
-  ranking_settings_view_signature.onComponent(async ctx => {
+export default new AppView(ranking_settings_page_config, app =>
+  ranking_settings_page_config.onComponent(async ctx => {
     if (ctx.state.data.callback) {
       return ctx.state.data.callback(app, ctx)
     } else {
       return {
         type: D.InteractionResponseType.UpdateMessage,
-        data: await _rankingSettingsPage(app, ctx),
+        data: await rankingSettingsPage(app, ctx),
       }
     }
   }),
 )
 
-export function initRankingSettingsPageState(options: {
-  guild_id: string
-  ranking_id: number
-}): ViewState<typeof ranking_settings_view_signature.state_schema> {
-  return ranking_settings_view_signature.createState({
-    guild_id: options.guild_id,
-    ranking_id: options.ranking_id,
-  })
-}
-
-export async function rankingSettingsPage(
+async function _rankingSettingsPage(
   app: App,
   options: {
     guild_id: string
     ranking_id: number
   },
-  // state: ViewState<typeof ranking_settings_view_signature.state_schema>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  return await _rankingSettingsPage(app, { state: initRankingSettingsPageState(options) })
+  return await rankingSettingsPage(app, { state: ranking_settings_page_config.newState(options) })
 }
 
-async function _rankingSettingsPage(
+export async function rankingSettingsPage(
   app: App,
-  ctx: StateContext<typeof ranking_settings_view_signature>,
+  ctx: StateContext<typeof ranking_settings_page_config>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const guild_ranking = await app.db.guild_rankings.get({
     guild_id: ctx.state.get.guild_id(),
@@ -98,29 +85,6 @@ async function _rankingSettingsPage(
       (await Messages.guildRankingDetails(app, guild_ranking)),
     color: Colors.Primary,
   }
-
-  // const select_menu: D.APISelectMenuComponent = {
-  //   type: D.ComponentType.StringSelect,
-  //   custom_id: ctx.state.set.callback(onSettingSelect).cId(),
-  //   placeholder: `Select a setting`,
-  //   options: Object.entries(setting_select_menu_options(app))
-  //     .map(([value, option]) => {
-  //       const { name, description } = option(guild_ranking)
-  //       if (value == 'queue_message' && !app.config.features.QueueMessage) {
-  //         return null
-  //       }
-  //       if (value == 'match_logs' && !app.config.features.DisableLogMatchesOption) {
-  //         return null
-  //       }
-
-  //       return {
-  //         label: name,
-  //         value,
-  //         description: description,
-  //       }
-  //     })
-  //     .filter(option => !!option),
-  // }
 
   const buttons1: D.APIActionRowComponent<D.APIButtonComponent> = {
     type: D.ComponentType.ActionRow,
@@ -174,7 +138,7 @@ async function _rankingSettingsPage(
 
 async function sendAllGuildRankingsPage(
   app: App,
-  ctx: ComponentContext<typeof ranking_settings_view_signature>,
+  ctx: ComponentContext<typeof ranking_settings_page_config>,
 ): Promise<ChatInteractionResponse> {
   return ctx.defer(
     {
@@ -182,14 +146,14 @@ async function sendAllGuildRankingsPage(
     },
     async ctx => {
       const guild = await getOrAddGuild(app, ctx.state.get.guild_id())
-      return void ctx.edit(await allGuildRankingsPage(app, guild))
+      return void ctx.edit(await rankingsPage(app, guild))
     },
   )
 }
 
 async function rename(
   app: App,
-  ctx: ComponentContext<typeof ranking_settings_view_signature>,
+  ctx: ComponentContext<typeof ranking_settings_page_config>,
 ): Promise<ChatInteractionResponse> {
   const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
   return {
@@ -204,7 +168,7 @@ async function rename(
 
 async function toggleLiveLeaderboard(
   app: App,
-  ctx: ComponentContext<typeof ranking_settings_view_signature>,
+  ctx: ComponentContext<typeof ranking_settings_page_config>,
 ): Promise<ChatInteractionResponse> {
   await ensureAdminPerms(app, ctx)
   return ctx.defer(
@@ -232,14 +196,14 @@ async function toggleLiveLeaderboard(
         })
       }
 
-      await ctx.edit(await _rankingSettingsPage(app, ctx))
+      await ctx.edit(await rankingSettingsPage(app, ctx))
     },
   )
 }
 
 async function onRenameModalSubmit(
   app: App,
-  ctx: ComponentContext<typeof ranking_settings_view_signature>,
+  ctx: ComponentContext<typeof ranking_settings_page_config>,
 ): Promise<ChatInteractionResponse> {
   await ensureAdminPerms(app, ctx)
 
@@ -261,15 +225,16 @@ async function onRenameModalSubmit(
         flags: D.MessageFlags.Ephemeral,
       })
 
-      return void Promise.all([ctx.edit(await _rankingSettingsPage(app, ctx)), ctx.delete(res.id)])
+      return void Promise.all([ctx.edit(await rankingSettingsPage(app, ctx)), ctx.delete(res.id)])
     },
   )
 }
 
 async function onDeleteBtn(
   app: App,
-  ctx: ComponentContext<typeof ranking_settings_view_signature>,
+  ctx: ComponentContext<typeof ranking_settings_page_config>,
 ): Promise<ChatInteractionResponse> {
+  await ensureAdminPerms(app, ctx)
   const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
   return {
     type: D.InteractionResponseType.UpdateMessage,
@@ -306,100 +271,10 @@ async function onDeleteBtn(
   }
 }
 
-// async function onLbChannelSelect(
-//   app: App,
-//   ctx: ComponentContext<typeof ranking_settings_view_signature>,
-// ): Promise<ChatInteractionResponse> {
-//   // send leaderboard message
-//   return ctx.defer(
-//     {
-//       type: D.InteractionResponseType.DeferredMessageUpdate,
-//     },
-//     async ctx => {
-//       const lb_channel_id = ctx.state.data.selected_channel_id
-
-//       if (!lb_channel_id) {
-//         return void ctx.edit(await _rankingSettingsPage(app, ctx))
-//       }
-//       await ensureAdminPerms(app, ctx)
-
-//       const guild_ranking = await app.db.guild_rankings.get({
-//         guild_id: ctx.state.get.guild_id(),
-//         ranking_id: ctx.state.get.ranking_id(),
-//       })
-
-//       await guild_ranking.update({
-//         leaderboard_channel_id: lb_channel_id,
-//         display_settings: {
-//           ...guild_ranking.data.display_settings,
-//           leaderboard_message: true,
-//         },
-//       })
-//       await syncGuildRankingLbMessage(app, guild_ranking)
-//       await ctx.edit(await _rankingSettingsPage(app, ctx))
-//       await ctx.followup({
-//         embeds: [
-//           {
-//             title: `Leaderboard Created`,
-//             description: `The leaderboard for this ranking will now be updated live here ${messageLink(
-//               guild_ranking.data.guild_id,
-//               lb_channel_id,
-//               guild_ranking.data.leaderboard_message_id ?? '0',
-//             )}`,
-//             color: Colors.Success,
-//           },
-//         ],
-//         flags: D.MessageFlags.Ephemeral,
-//       })
-//     },
-//   )
-// }
-
-// async function onQueueMessageSelect(
-//   app: App,
-//   ctx: ComponentContext<typeof ranking_settings_view_signature>,
-// ): Promise<ChatInteractionResponse> {
-//   return ctx.defer(
-//     {
-//       type: D.InteractionResponseType.DeferredMessageUpdate,
-//     },
-//     async ctx => {
-//       const queue_channel_id = ctx.state.data.selected_channel_id
-
-//       if (!queue_channel_id || !app.config.features.QueueMessage) {
-//         return void ctx.edit(await _rankingSettingsPage(app, ctx))
-//       }
-//       const guild_ranking = await app.db.guild_rankings.get({
-//         guild_id: ctx.state.get.guild_id(),
-//         ranking_id: ctx.state.get.ranking_id(),
-//       })
-
-//       await ensureAdminPerms(app, ctx)
-//       const result = await sendGuildRankingQueueMessage(app, guild_ranking, queue_channel_id)
-//       await ctx.edit(await _rankingSettingsPage(app, ctx))
-//       await ctx.followup({
-//         embeds: [
-//           {
-//             title: `Queue Message Created`,
-//             description: `${messageLink(
-//               guild_ranking.data.guild_id,
-//               queue_channel_id,
-//               result.message_id,
-//             )}`,
-//             color: Colors.Success,
-//           },
-//         ],
-//         flags: D.MessageFlags.Ephemeral,
-//       })
-//     },
-//   )
-// }
-
 async function onDeleteConfirmBtn(
   app: App,
-  ctx: ComponentContext<typeof ranking_settings_view_signature>,
+  ctx: ComponentContext<typeof ranking_settings_page_config>,
 ): Promise<ChatInteractionResponse> {
-  await ensureAdminPerms(app, ctx)
   return ctx.defer(
     {
       type: D.InteractionResponseType.DeferredMessageUpdate,
@@ -410,7 +285,7 @@ async function onDeleteConfirmBtn(
       await deleteRanking(app, ranking)
 
       const guild = await getOrAddGuild(app, interaction.guild_id)
-      await ctx.edit(await allGuildRankingsPage(app, guild))
+      await ctx.edit(await rankingsPage(app, guild))
 
       return void ctx.followup({
         flags: D.MessageFlags.Ephemeral,
@@ -422,7 +297,7 @@ async function onDeleteConfirmBtn(
 
 async function eloSettingsPage(
   app: App,
-  ctx: ComponentContext<typeof ranking_settings_view_signature>,
+  ctx: ComponentContext<typeof ranking_settings_page_config>,
 ): Promise<ChatInteractionResponse> {
   return {
     type: D.InteractionResponseType.UpdateMessage,
@@ -450,153 +325,3 @@ async function eloSettingsPage(
     },
   }
 }
-
-// const setting_select_menu_options: (app: App) => Record<
-//   string,
-//   (guild_ranking: GuildRanking) => {
-//     name: string
-//     description: string
-//     onSelect: (
-//       ctx: ComponentContext<typeof ranking_settings_view_signature>,
-//     ) => Promise<ChatInteractionResponse>
-//   }
-// > = (app: App) => ({
-//   rename: () => ({
-//     name: '✏️Rename',
-//     description: 'Rename the ranking',
-//     onSelect: async ctx => ({
-//       type: D.InteractionResponseType.Modal,
-//       data: {
-//         custom_id: ctx.state.set.callback(onRenameModalSubmit).cId(),
-//         title: `Rename ${ctx.state.get.ranking_name()}`,
-//         components: [rankingNameTextInput()],
-//       },
-//     }),
-//   }),
-//   leaderboard_msg: () => ({
-//     name: '🏅Send Leaderboard',
-//     description: 'Send a live-updating leaderboard to a channel',
-//     onSelect: async ctx => {
-//       return ctx.defer(
-//         {
-//           type: D.InteractionResponseType.DeferredMessageUpdate,
-//         },
-//         async ctx => {
-//           await ctx.edit(
-//             await sendSelectChannelPage(app, ctx.interaction, {
-//               submit_cid: ctx.state.set.callback(onLbChannelSelect).cId(),
-//               channel_id_field: 'selected_channel_id',
-//               text_only: true,
-//             }),
-//           )
-//         },
-//       )
-//     },
-//   }),
-//   queue_message: () => ({
-//     name: '⚔️Send Queue Message',
-//     description: 'Send a queue message to a channel',
-//     onSelect: async ctx =>
-//       ctx.defer(
-//         {
-//           type: D.InteractionResponseType.DeferredMessageUpdate,
-//         },
-//         async ctx => {
-//           await ctx.edit(
-//             await sendSelectChannelPage(app, ctx.interaction, {
-//               submit_cid: ctx.state.set.callback(onQueueMessageSelect).cId(),
-//               channel_id_field: 'selected_channel_id',
-//               text_only: true,
-//             }),
-//           )
-//         },
-//       ),
-//   }),
-//   match_logs: guild_ranking => {
-//     return {
-//       name: guild_ranking.data.display_settings?.log_matches
-//         ? '📜Disable Match Logs'
-//         : '📜Enable Match Logs',
-//       description: guild_ranking.data.display_settings?.log_matches
-//         ? `Stop logging matches from this ranking to the chosen channel`
-//         : `Log the results of matches to a channel`,
-//       onSelect: async ctx =>
-//         ctx.defer(
-//           {
-//             type: D.InteractionResponseType.DeferredMessageUpdate,
-//           },
-//           async ctx => {
-//             await ensureAdminPerms(app, ctx)
-//             const guild_ranking = await app.db.guild_rankings.get({
-//               guild_id: ctx.state.get.guild_id(),
-//               ranking_id: ctx.state.get.ranking_id(),
-//             })
-
-//             const display_settings = guild_ranking.data.display_settings ?? {}
-//             const log_matches = !display_settings.log_matches
-
-//             await guild_ranking.update({
-//               display_settings: {
-//                 ...display_settings,
-//                 log_matches,
-//               },
-//             })
-//             await ctx.edit(await guildRankingSettingsPage(app, ctx))
-//           },
-//         ),
-//     }
-//   },
-//   delete: () => ({
-//     name: '🗑️Delete',
-//     description: 'Delete this ranking',
-//     onSelect: async ctx => {
-//       await ensureAdminPerms(app, ctx)
-//       return {
-//         type: D.InteractionResponseType.UpdateMessage,
-//         data: {
-//           content: ``,
-//           embeds: [
-//             {
-//               title: `Delete ${escapeMd(ctx.state.data.ranking_name)}?`,
-//               description: `This will delete all of its players and match history`,
-//               color: Colors.EmbedBackground,
-//             },
-//           ],
-//           components: [
-//             {
-//               type: D.ComponentType.ActionRow,
-//               components: [
-//                 {
-//                   type: D.ComponentType.Button,
-//                   label: `Delete`,
-//                   custom_id: ctx.state.set.callback(onDeleteConfirmBtn).cId(),
-//                   style: D.ButtonStyle.Danger,
-//                 },
-//                 {
-//                   type: D.ComponentType.Button,
-//                   label: `Cancel`,
-//                   custom_id: ctx.state.set.callback(undefined).cId(),
-//                   style: D.ButtonStyle.Secondary,
-//                 },
-//               ],
-//             },
-//           ],
-//           flags: D.MessageFlags.Ephemeral,
-//         },
-//       }
-//     },
-//   }),
-// })
-
-// async function onSettingSelect(
-//   app: App,
-//   ctx: ComponentContext<typeof ranking_settings_view_signature>,
-// ): Promise<ChatInteractionResponse> {
-//   const value = (ctx.interaction.data as D.APIMessageStringSelectInteractionData).values[0]
-//   if (!value) return { type: D.InteractionResponseType.DeferredMessageUpdate }
-//   const guild_ranking = await app.db.guild_rankings.get({
-//     guild_id: ctx.state.get.guild_id(),
-//     ranking_id: ctx.state.get.ranking_id(),
-//   })
-//   return setting_select_menu_options(app)[value](guild_ranking).onSelect(ctx)
-// }

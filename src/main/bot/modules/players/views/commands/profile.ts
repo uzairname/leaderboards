@@ -6,7 +6,7 @@ import {
   guildRankingsOption,
   withOptionalSelectedRanking,
 } from '../../../../helpers/ranking_command_option'
-import { profile_page_signature, profileOverviewPage } from '../pages/profile'
+import { profile_page_config, profileOverviewPage } from '../pages/profile'
 
 const optionnames = {
   user: 'user',
@@ -31,7 +31,7 @@ export default new GuildCommand(
     ]
 
     return new AppCommand({
-      ...profile_cmd_signature.signature,
+      ...profile_cmd_signature.config,
       options: options.concat(
         await guildRankingsOption(app, guild, optionnames.ranking, {
           optional: true,
@@ -58,8 +58,8 @@ export default new GuildCommand(
           async ctx => {
             return void ctx.edit(
               await profileOverviewPage(app, {
-                interaction: ctx.interaction,
-                state: profile_page_signature.createState({
+                ...ctx,
+                state: profile_page_config.newState({
                   user_id:
                     user_option_value ?? checkGuildInteraction(ctx.interaction).member.user.id,
                   selected_ranking_id: ranking?.data.id,

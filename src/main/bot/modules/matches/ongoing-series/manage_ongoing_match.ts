@@ -1,12 +1,13 @@
 import { APIChannel, ThreadAutoArchiveDuration } from 'discord-api-types/v10'
 import { GuildRanking, Match, Player } from '../../../../../database/models'
 import { MatchStatus, Vote } from '../../../../../database/models/matches'
+import { sentry } from '../../../../../logging/sentry'
 import { App } from '../../../../app/App'
 import { UserError } from '../../../errors/UserError'
 import { syncMatchSummaryMessage } from '../logging/match_summary_message'
 import { revertMatch, startNewMatch } from '../management/manage_matches'
 import { finishAndScoreMatch } from '../management/score_matches'
-import { ongoingMatchPage, ongoing_series_msg_signature } from './views/pages/ongoing_match'
+import { ongoingMatchPage, ongoing_series_page_config } from './views/pages/ongoing_match'
 
 export async function onPlayerVote(
   app: App,
@@ -23,15 +24,14 @@ export async function onPlayerVote(
 
   const team_votes = match.data.team_votes ?? team_players.map(_ => Vote.Undecided)
 
-  team_votes[team_index] = vote
+  team_votes[team_index] = team_votes[team_index] === vote ? Vote.Undecided : vote
 
   await match.update({ team_votes: team_votes })
 
   // Act on voting results
 
   const all_cancel_votes = team_votes.every(v => v === Vote.Cancel)
-  if (all_cancel_votes) {
-    if (match.data.status !== MatchStatus.Ongoing) return
+  if (all_cancel_votes && match.data.status === MatchStatus.Ongoing) {
     await revertMatch(app, match)
   }
 
@@ -39,8 +39,9 @@ export async function onPlayerVote(
     team_votes.every(v => v !== Vote.Undecided) &&
     team_votes.filter(v => v === Vote.Win).length === 1
 
-  if (unanimous_win) {
+  if (unanimous_win && match.data.status === MatchStatus.Ongoing) {
     const outcome = team_votes.map(v => (v === Vote.Win ? 1 : 0))
+    sentry.debug('scoring match')
     await finishAndScoreMatch(app, match, outcome)
   }
 }
@@ -83,7 +84,7 @@ export async function start1v1SeriesThread(
         (
           await ongoingMatchPage(
             app,
-            ongoing_series_msg_signature.createState({
+            ongoing_series_page_config.newState({
               match_id: match.data.id,
             }),
           )

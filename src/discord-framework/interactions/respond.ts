@@ -86,7 +86,8 @@ async function respond(
 
 function logInteraction(interaction: D.APIInteraction) {
   sentry.setUser({
-    id: interaction.user?.id ?? interaction.member?.user.id,
+    id: interaction.user?.username ?? interaction.member?.user.username,
+    user_id: interaction.user?.id ?? interaction.member?.user.id,
     username: interaction.user?.username ?? interaction.member?.user.username,
     guild: interaction.guild_id,
   })
@@ -94,10 +95,15 @@ function logInteraction(interaction: D.APIInteraction) {
   const data: Record<string, unknown> = {}
 
   if (interaction.type === D.InteractionType.ApplicationCommand) {
+    const options = D.Utils.isChatInputApplicationCommandInteraction(interaction)
+      ? interaction.data.options
+      : undefined
+
     data['command_interaction'] = {
       name: interaction.data.name,
       type: interaction.data.type,
       guild_id: interaction.guild_id,
+      options,
     }
   } else if (
     interaction.type === D.InteractionType.MessageComponent ||

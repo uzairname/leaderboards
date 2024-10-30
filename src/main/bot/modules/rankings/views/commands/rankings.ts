@@ -7,8 +7,8 @@ import {
   withOptionalSelectedRanking,
 } from '../../../../helpers/ranking_command_option'
 import { getOrAddGuild } from '../../../guilds/guilds'
-import { allGuildRankingsPage } from '../pages/all_guild_rankings'
-import { rankingSettingsPage } from '../pages/ranking_settings'
+import { ranking_settings_page_config, rankingSettingsPage } from '../pages/ranking_settings'
+import { rankingsPage } from '../pages/rankings'
 
 const ranking_option_name = 'ranking'
 
@@ -28,7 +28,7 @@ export default new GuildCommand(
   rankings_cmd_signature,
   async (app, guild) =>
     new AppCommand({
-      ...rankings_cmd_signature.signature,
+      ...rankings_cmd_signature.config,
       options: await guildRankingsOption(app, guild, ranking_option_name, {
         optional: true,
       }),
@@ -41,15 +41,17 @@ export default new GuildCommand(
             return {
               type: D.InteractionResponseType.ChannelMessageWithSource,
               data: await rankingSettingsPage(app, {
-                ranking_id: ranking.data.id,
-                guild_id: checkGuildInteraction(ctx.interaction).guild_id,
+                state: ranking_settings_page_config.newState({
+                  ranking_id: ranking.data.id,
+                  guild_id: checkGuildInteraction(ctx.interaction).guild_id,
+                }),
               }),
             }
           } else {
             const guild = await getOrAddGuild(app, checkGuildInteraction(ctx.interaction).guild_id)
             return {
               type: D.InteractionResponseType.ChannelMessageWithSource,
-              data: await allGuildRankingsPage(app, guild),
+              data: await rankingsPage(app, guild),
             }
           }
         }),
@@ -62,7 +64,7 @@ export default new GuildCommand(
             type: D.InteractionResponseType.ChannelMessageWithSource,
             data: { content: 'Loading...' },
           },
-          async ctx => ctx.edit(await allGuildRankingsPage(app, guild)),
+          async ctx => ctx.edit(await rankingsPage(app, guild)),
         )
       })
   },

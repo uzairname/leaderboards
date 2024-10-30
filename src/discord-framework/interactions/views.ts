@@ -1,6 +1,7 @@
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging/sentry'
-import type { DiscordAPIClient } from '../rest/client'
+import { checkGuildComponentInteraction } from '../../main/bot/helpers/perms'
+import { DiscordAPIClient } from '../rest/client'
 import { ViewErrors } from './errors'
 import type {
   AnyContext,
@@ -28,17 +29,17 @@ export abstract class BaseView<TSchema extends StringDataSchema = {}> {
   name: string
   state_schema: TSchema
   protected constructor(
-    public signature: {
+    public config: {
       custom_id_prefix?: string
       name?: string
       state_schema?: TSchema
     },
   ) {
-    this.state_schema = signature.state_schema ?? ({} as TSchema)
-    this.name = this.signature.name ?? this.signature.custom_id_prefix ?? 'Unnamed View'
-    if (signature.custom_id_prefix?.includes('.')) {
+    this.state_schema = config.state_schema ?? ({} as TSchema)
+    this.name = this.config.name ?? this.config.custom_id_prefix ?? 'Unnamed View'
+    if (config.custom_id_prefix?.includes('.')) {
       throw new ViewErrors.InvalidCustomId(
-        `Custom id prefix contains delimiter: ${signature.custom_id_prefix}`,
+        `Custom id prefix contains delimiter: ${config.custom_id_prefix}`,
       )
     }
   }
@@ -55,7 +56,7 @@ export abstract class BaseView<TSchema extends StringDataSchema = {}> {
   async respondToComponent(
     interaction: ComponentInteraction,
     state: ViewState<TSchema>,
-    bot: DiscordAPIClient,
+    discord: DiscordAPIClient,
     onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource,
   ): Promise<ChatInteractionResponse> {
     sentry.request_name = `${this.name} Component`
@@ -64,72 +65,61 @@ export abstract class BaseView<TSchema extends StringDataSchema = {}> {
       interaction,
       state,
       defer: (initial_response, callback) => {
-        this.deferResponse({
-          callback,
-          interaction,
-          state,
-          bot,
-          onError,
-        })
+        this.deferResponse(callback, interaction, state, discord, onError)
         return initial_response
+      },
+      send: async data => {
+        const _interaction = checkGuildComponentInteraction(interaction)
+        return await discord.createMessage(_interaction.channel.id, data)
       },
     })
   }
 
-  protected deferResponse(args: {
-    callback: DeferCallback<any, any>
-    interaction: ChatInteraction
-    state: ViewState<StringDataSchema>
-    bot: DiscordAPIClient
-    onError: InteractionErrorCallback
-  }): void {
+  protected deferResponse(
+    callback: DeferCallback<any, any>,
+    interaction: ChatInteraction,
+    state: ViewState<StringDataSchema>,
+    discord: DiscordAPIClient,
+    onError: InteractionErrorCallback,
+  ): void {
     sentry.offload(
       async ctx =>
-        await args
-          .callback({
-            interaction: args.interaction,
-            state: args.state,
-            followup: async (response_data: D.APIInteractionResponseCallbackData) => {
-              return args.bot.createFollowupMessage(args.interaction.token, response_data)
-            },
-            edit: async (data: D.RESTPatchAPIWebhookWithTokenMessageJSONBody) => {
-              await args.bot.editOriginalInteractionResponse(args.interaction.token, {
-                content: null,
-                embeds: null,
-                components: null,
-                ...data,
-              })
-            },
-            delete: async (message_id?: string) => {
-              await args.bot.deleteInteractionResponse(args.interaction.token, message_id)
-            },
-          })
-          .catch(async e => {
-            await args.bot.createFollowupMessage(
-              args.interaction.token,
-              args.onError(e, ctx.setException).data,
-            )
-          }),
+        await callback({
+          interaction,
+          state,
+          followup: async (response_data: D.APIInteractionResponseCallbackData) => {
+            return discord.createFollowupMessage(interaction.token, response_data)
+          },
+          edit: async (data: D.RESTPatchAPIWebhookWithTokenMessageJSONBody) => {
+            await discord.editOriginalInteractionResponse(interaction.token, {
+              content: null,
+              embeds: null,
+              components: null,
+              ...data,
+            })
+          },
+          delete: async (message_id?: string) => {
+            await discord.deleteInteractionResponse(interaction.token, message_id)
+          },
+          send: async data => {
+            return await discord.createMessage(interaction.channel!.id, data)
+          },
+        }).catch(async e => {
+          await discord.createFollowupMessage(interaction.token, onError(e, ctx.setException).data)
+        }),
       async timeout_error => {
-        await args.bot.createFollowupMessage(
-          args.interaction.token,
-          args.onError(timeout_error).data,
-        )
+        await discord.createFollowupMessage(interaction.token, onError(timeout_error).data)
       },
     )
   }
 
-  createState(
-    data: { [K in keyof TSchema]?: TSchema[K]['write'] | null } = {},
-  ): ViewState<TSchema> {
-    return ViewStateFactory.fromViewSignature(this).setAll(data)
+  newState(data: { [K in keyof TSchema]?: TSchema[K]['write'] | null } = {}): ViewState<TSchema> {
+    return ViewStateFactory.fromView(this).setAll(data)
   }
 
   isStateCtx(ctx: StateContext<this>): ctx is StateContext<this> {
     try {
-      return (
-        JSON.stringify(this.createState(ctx.state.data).data) === JSON.stringify(ctx.state.data)
-      )
+      return JSON.stringify(this.newState(ctx.state.data).data) === JSON.stringify(ctx.state.data)
     } catch {
       return false
     }
@@ -168,7 +158,7 @@ export class AppCommand<
   CommandType extends D.ApplicationCommandType,
 > extends BaseView<TSchema> {
   constructor(
-    public signature: (CommandType extends D.ApplicationCommandType.ChatInput
+    public config: (CommandType extends D.ApplicationCommandType.ChatInput
       ? D.RESTPostAPIChatInputApplicationCommandsJSONBody
       : D.RESTPostAPIContextMenuApplicationCommandsJSONBody) & {
       type: CommandType
@@ -176,7 +166,7 @@ export class AppCommand<
       custom_id_prefix?: string
     },
   ) {
-    super(signature)
+    super(config)
   }
 
   onCommand(callback: CommandCallback<this>) {
@@ -190,26 +180,21 @@ export class AppCommand<
 
   async respondToCommand(
     interaction: AppCommandInteraction<CommandType>,
-    bot: DiscordAPIClient,
+    discord: DiscordAPIClient,
     onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource,
   ): Promise<CommandInteractionResponse> {
     sentry.request_name = `${this.name} Command`
 
-    const state = this.createState()
+    const state = this.newState()
 
     return this.commandCallback({
       interaction,
       state,
       defer: (response, callback) => {
-        this.deferResponse({
-          callback,
-          interaction,
-          state,
-          bot,
-          onError,
-        })
+        this.deferResponse(callback, interaction, state, discord, onError)
         return response
       },
+      send: async data => discord.createMessage(interaction.channel.id, data),
     })
   }
 
@@ -230,14 +215,14 @@ export class AppCommand<
   }
 }
 
-export type MessageViewSignature<TSchema extends StringDataSchema> = {
+export type MessageViewConfig<TSchema extends StringDataSchema> = {
   name?: string
   state_schema?: TSchema
   custom_id_prefix?: string
 }
 
 export class MessageView<TSchema extends StringDataSchema> extends BaseView<TSchema> {
-  constructor(public readonly signature: MessageViewSignature<TSchema>) {
-    super(signature)
+  constructor(public readonly config: MessageViewConfig<TSchema>) {
+    super(config)
   }
 }

@@ -36,11 +36,11 @@ export class ViewState<T extends StringDataSchema> extends StringData<T> {
 }
 
 export abstract class ViewStateFactory<T extends StringDataSchema> extends ViewState<T> {
-  static fromViewSignature<T extends StringDataSchema>(view: BaseView<T>): ViewState<T> {
-    return new ViewState(view.state_schema, view.signature.custom_id_prefix)
+  static fromView<T extends StringDataSchema>(view: BaseView<T>): ViewState<T> {
+    return new ViewState(view.state_schema, view.config.custom_id_prefix)
   }
 
-  static splitCustomId(custom_id: string): [string, string] {
+  private static splitCustomId(custom_id: string): [string, string] {
     const decompressed_custom_id = decompressFromUTF16(custom_id)
 
     if (!decompressed_custom_id)
@@ -58,7 +58,7 @@ export abstract class ViewStateFactory<T extends StringDataSchema> extends ViewS
   ): { view: AnyView; state: ViewState<StringDataSchema> } {
     const [prefix, encoded_data] = ViewStateFactory.splitCustomId(custom_id)
     const view = customIdPrefixToViewHandlers(prefix)
-    const blank_state = ViewStateFactory.fromViewSignature(view)
+    const blank_state = ViewStateFactory.fromView(view)
     const state = encoded_data ? blank_state.decode(encoded_data) : blank_state
 
     sentry.addBreadcrumb({

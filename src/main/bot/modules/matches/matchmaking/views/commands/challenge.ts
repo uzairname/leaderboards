@@ -1,6 +1,5 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand } from '../../../../../../../discord-framework'
-import { sentry } from '../../../../../../../logging/sentry'
 import { nonNullable } from '../../../../../../../utils/utils'
 import { GuildCommand } from '../../../../../../app/ViewModule'
 import { checkGuildInteraction } from '../../../../../helpers/perms'
@@ -27,7 +26,7 @@ export default new GuildCommand(
   challenge_cmd_signature,
   async (app, guild) => {
     return new AppCommand({
-      ...challenge_cmd_signature.signature,
+      ...challenge_cmd_signature.config,
       options: (
         [
           {
@@ -39,7 +38,7 @@ export default new GuildCommand(
           {
             type: D.ApplicationCommandOptionType.Number,
             name: optionnames.best_of,
-            description: 'Best of how many games?',
+            description: 'Best of how many games? This affects elo calculation',
             required: false,
             choices: [
               { name: '1', value: 1 },
@@ -81,14 +80,18 @@ export default new GuildCommand(
                   | undefined
               )?.value ?? 1
 
-            sentry.debug(`A best of ${best_of} challenge was initiated`)
+            if (opponent_id === initiator.data.user_id) {
+              return void ctx.followup({
+                content: `You can't 1v1 yourself`,
+                flags: D.MessageFlags.Ephemeral,
+              })
+            }
 
-            await app.discord.createMessage(
-              ctx.interaction.channel.id,
+            await ctx.send(
               (
                 await challengeMessage(app, {
-                  interaction: ctx.interaction,
-                  state: challenge_message_signature.createState({
+                  ...ctx,
+                  state: challenge_message_signature.newState({
                     time_sent: new Date(),
                     initiator_id: initiator.data.user_id,
                     opponent_id,

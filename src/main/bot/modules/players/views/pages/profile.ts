@@ -5,9 +5,9 @@ import { AppView } from '../../../../../app/ViewModule'
 import { Colors } from '../../../../helpers/constants'
 import { checkGuildInteraction } from '../../../../helpers/perms'
 import { escapeMd, memberAvatarUrl } from '../../../../helpers/strings'
-import { matches_view } from '../../../matches/logging/views/pages/matches'
+import { matches_page_config } from '../../../matches/logging/views/pages/matches'
 
-export const profile_page_signature = new MessageView({
+export const profile_page_config = new MessageView({
   name: 'Profile page',
   custom_id_prefix: 'p',
   state_schema: {
@@ -19,8 +19,8 @@ export const profile_page_signature = new MessageView({
   },
 })
 
-export default new AppView(profile_page_signature, app =>
-  profile_page_signature.onComponent(async ctx => {
+export default new AppView(profile_page_config, app =>
+  profile_page_config.onComponent(async ctx => {
     return {
       type: D.InteractionResponseType.UpdateMessage,
       data: await ctx.state.get.callback()(app, ctx),
@@ -30,7 +30,7 @@ export default new AppView(profile_page_signature, app =>
 
 export async function profileOverviewPage(
   app: App,
-  ctx: InteractionContext<typeof profile_page_signature>,
+  ctx: InteractionContext<typeof profile_page_config>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const interaction = checkGuildInteraction(ctx.interaction)
 
@@ -82,8 +82,8 @@ export async function profileOverviewPage(
             type: D.ComponentType.Button,
             label: `View Recent Matches`,
             style: D.ButtonStyle.Primary,
-            custom_id: matches_view
-              .createState({
+            custom_id: matches_page_config
+              .newState({
                 ranking_ids: ctx.state.data.selected_ranking_id
                   ? [ctx.state.data.selected_ranking_id]
                   : undefined,

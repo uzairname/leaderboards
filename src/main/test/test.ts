@@ -1,11 +1,5 @@
-import { APIUser, ApplicationCommandPermissionType } from 'discord-api-types/v10'
+import { APIUser } from 'discord-api-types/v10'
 import { sql } from 'drizzle-orm'
-import { sentry } from '../../logging/sentry'
-import { assert, nonNullable } from '../../utils/utils'
-import { updateMatchOutcome } from '../bot/modules/matches/management/manage_matches'
-import { createAndScoreMatch } from '../bot/modules/matches/management/score_matches'
-import { getOrCreatePlayer } from '../bot/modules/players/manage_players'
-import { App } from '../app/App'
 import { DbClient } from '../../database/client'
 import {
   AccessTokens,
@@ -22,6 +16,10 @@ import {
   Teams,
   Users,
 } from '../../database/schema'
+import { sentry } from '../../logging/sentry'
+import { assert, nonNullable } from '../../utils/utils'
+import { App } from '../app/App'
+import { getOrCreatePlayer } from '../bot/modules/players/manage_players'
 
 class Test {
   @catchError(3)
@@ -46,9 +44,7 @@ function catchError(x: number) {
   }
 }
 
-
 export async function runTests(app: App): Promise<Response> {
-
   console.log('running tests')
 
   app.db.cache.clear()
@@ -67,24 +63,32 @@ export async function runTests(app: App): Promise<Response> {
 
   const guild_ranking = await app.db.guild_rankings.create(guild, ranking, {})
 
-  sentry.debug(`Created guild ranking with leaderboard_message: ${guild_ranking.data.display_settings?.leaderboard_message}`)
+  sentry.debug(
+    `Created guild ranking with leaderboard_message: ${guild_ranking.data.display_settings?.leaderboard_message}`,
+  )
 
-  const guild_rankings1 = await app.db.guild_rankings.get({guild_id: guild.data.id})
+  const guild_rankings1 = await app.db.guild_rankings.get({ guild_id: guild.data.id })
 
-  sentry.debug(`guild rankings 1 with leaderboard_message: ${guild_rankings1[0].guild_ranking.data.display_settings?.leaderboard_message}`)
+  sentry.debug(
+    `guild rankings 1 with leaderboard_message: ${guild_rankings1[0].guild_ranking.data.display_settings?.leaderboard_message}`,
+  )
 
-  await guild_ranking.update({display_settings: {leaderboard_message: true}})
+  await guild_ranking.update({ display_settings: { leaderboard_message: true } })
   sentry.debug(`updated`)
 
-  const guild_rankings2 = await app.db.guild_rankings.get({guild_id: guild.data.id})
+  const guild_rankings2 = await app.db.guild_rankings.get({ guild_id: guild.data.id })
 
   sentry.debug(`after updating:`)
-  sentry.debug(`guild rankings 1 with leaderboard_message: ${guild_rankings1[0].guild_ranking.data.display_settings?.leaderboard_message}`)
-  sentry.debug(`guild rankings 2 with leaderboard_message: ${guild_rankings2[0].guild_ranking.data.display_settings?.leaderboard_message}`)
+  sentry.debug(
+    `guild rankings 1 with leaderboard_message: ${guild_rankings1[0].guild_ranking.data.display_settings?.leaderboard_message}`,
+  )
+  sentry.debug(
+    `guild rankings 2 with leaderboard_message: ${guild_rankings2[0].guild_ranking.data.display_settings?.leaderboard_message}`,
+  )
 
   await ranking.delete()
 
-  const fetched_rankings = await app.db.guild_rankings.get({guild_id: guild.data.id})
+  const fetched_rankings = await app.db.guild_rankings.get({ guild_id: guild.data.id })
   sentry.debug(`fetched rankings: ${fetched_rankings.length}. should be 0`)
 
   // await testDatabase(app)
@@ -92,17 +96,13 @@ export async function runTests(app: App): Promise<Response> {
   return new Response(`Successfully tested Leaderboards app`, { status: 200 })
 }
 
-
 import { Rating, TrueSkill } from 'ts-trueskill'
-import { Gaussian } from 'ts-gaussian'
-import { getNeonDrizzleClient } from '../../database/drizzle-client'
 import { getOrAddGuild } from '../bot/modules/guilds/guilds'
 
 function testTs() {
-
   function getAdjustedBeta(baseBeta: number, best_of: number): number {
     // Reduce the uncertainty for longer series
-    return 7 * baseBeta / best_of;
+    return (7 * baseBeta) / best_of
   }
 
   const outcome = [0, 1]
@@ -116,7 +116,7 @@ function testTs() {
   }
 
   const env = new TrueSkill(elo_settings.initial_rating, elo_settings.initial_rd)
-  
+
   console.log(`Trueskill default beta: ${env.beta}, ${best_of}`)
 
   env.beta = getAdjustedBeta(env.beta, best_of ?? 1)
@@ -130,7 +130,6 @@ function testTs() {
   beta*1/sqrt(5)          (59.4, 13.9) -> (62.5, 12.5)
   beta 0:                 (59.4, 13.8) -> (62.3, 12.4)
   */
-
 
   console.log(getAdjustedBeta(env.beta, best_of ?? 1))
 
@@ -151,9 +150,7 @@ function testTs() {
   new_player_ratings = env.rate(new_player_ratings, team_ranks)
 
   console.log(new_player_ratings.map(t => t.map(r => ({ mu: r.mu, sigma: r.sigma }))))
-
 }
-
 
 async function testDatabase(app: App) {
   await resetDatabase(app.db)
@@ -366,7 +363,7 @@ async function resetDatabase(client: DbClient) {
 }
 
 async function addData(app: App) {
-  const guild1 = await app.db.guilds.create({ id: '98623457887', name: "." })
+  const guild1 = await app.db.guilds.create({ id: '98623457887', name: '.' })
   await Promise.all([
     app.db.users.getOrCreate({ id: '100', name: 'one' }),
     app.db.users.getOrCreate({ id: '200', name: 'two' }),

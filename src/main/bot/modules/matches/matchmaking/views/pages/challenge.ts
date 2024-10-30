@@ -11,7 +11,7 @@ import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
 import { Colors } from '../../../../../helpers/constants'
 import { checkGuildInteraction } from '../../../../../helpers/perms'
-import { channelMention, relativeTimestamp } from '../../../../../helpers/strings'
+import { relativeTimestamp } from '../../../../../helpers/strings'
 import { getOrCreatePlayer } from '../../../../players/manage_players'
 import { start1v1SeriesThread } from '../../../ongoing-series/manage_ongoing_match'
 
@@ -19,15 +19,15 @@ export const challenge_message_signature = new MessageView({
   name: 'Challenge Message',
   custom_id_prefix: 'c',
   state_schema: {
-    time_sent: field.Date(),
+    ranking_id: field.Int(),
     initiator_id: field.String(),
     opponent_id: field.String(),
-    ranking_id: field.Int(),
+    time_sent: field.Date(),
     best_of: field.Int(),
     opponent_accepted: field.Boolean(),
     ongoing_match_channel_id: field.String(),
     callback: field.Choice({
-      onAccept,
+      accept,
     }),
   },
 })
@@ -49,14 +49,18 @@ export async function challengeMessage(
   const expires_at = new Date(ctx.state.get.time_sent().getTime() + app.config.ChallengeTimeoutMs)
   const best_of = ctx.state.get.best_of()
 
+  const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
+
+  const content = `### <@${initiator_id}> challenges <@${opponent_id}> to a 1v1`
+
   const embeds: D.APIEmbed[] = [
     {
       title: ``,
-      description:
-        `### <@${initiator_id}> challenges <@${opponent_id}> to a 1v1`
-        + (best_of > 1 ? `\nBest of ${best_of}` : ``)
+      description: ``
+        + `Ranking: **${ranking.data.name}**`
+        + `\nBest of **${best_of}**`
         + `\n` + ((ctx.state.is.opponent_accepted() && ctx.state.data.ongoing_match_channel_id)
-          ? `Challenge accepted. A thread has been created: ${channelMention(ctx.state.data.ongoing_match_channel_id)}`
+          ? `Challenge accepted. New match started in <#${ctx.state.data.ongoing_match_channel_id}>`
           : `*Awaiting response*`)
         + `\n\n-# Expires ${relativeTimestamp(expires_at)}`
         + ``, // prettier-ignore
@@ -73,7 +77,7 @@ export async function challengeMessage(
               {
                 type: D.ComponentType.Button,
                 style: D.ButtonStyle.Primary,
-                custom_id: ctx.state.set.callback(onAccept).cId(),
+                custom_id: ctx.state.set.callback(accept).cId(),
                 label: 'Accept',
               },
             ],
@@ -82,14 +86,14 @@ export async function challengeMessage(
       : []
 
   return new MessageData({
-    content: `-# <@${opponent_id}>`,
+    content,
     embeds,
     components,
     allowed_mentions: { users: [opponent_id] },
   })
 }
 
-async function onAccept(
+async function accept(
   app: App,
   ctx: ComponentContext<typeof challenge_message_signature>,
 ): Promise<ChatInteractionResponse> {

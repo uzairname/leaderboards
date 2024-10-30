@@ -13,7 +13,11 @@ import { App } from '../../../../../../app/App'
 import { GuildCommand } from '../../../../../../app/ViewModule'
 import { UserError } from '../../../../../errors/UserError'
 import { Colors } from '../../../../../helpers/constants'
-import { checkGuildInteraction, hasAdminPerms } from '../../../../../helpers/perms'
+import {
+  checkGuildComponentInteraction,
+  checkGuildInteraction,
+  hasAdminPerms,
+} from '../../../../../helpers/perms'
 import {
   guildRankingsOption,
   withSelectedRanking,
@@ -93,7 +97,7 @@ export default new GuildCommand(
     ]
 
     return new AppCommand({
-      ...record_match_cmd_signature.signature,
+      ...record_match_cmd_signature.config,
       options: options.concat(
         await guildRankingsOption(
           app,
@@ -542,16 +546,13 @@ async function onPlayerConfirmOrCancelBtn(
   app: App,
   ctx: ComponentContext<typeof record_match_cmd_signature>,
 ): Promise<ChatInteractionResponse> {
+  const interaction = checkGuildComponentInteraction(ctx.interaction)
+
   const time_since_match_requested =
     new Date().getTime() - ctx.state.get.match_requested_at().getTime()
 
   if (time_since_match_requested > match_confirm_timeout_ms) {
-    ctx.interaction.channel?.id &&
-      ctx.interaction.message?.id &&
-      (await app.discord.deleteMessageIfExists(
-        ctx.interaction.channel.id,
-        ctx.interaction.message.id,
-      ))
+    await app.discord.deleteMessageIfExists(interaction.channel.id, interaction.message.id)
     return {
       type: D.InteractionResponseType.ChannelMessageWithSource,
       data: {
@@ -561,7 +562,6 @@ async function onPlayerConfirmOrCancelBtn(
     }
   }
 
-  const interaction = checkGuildInteraction(ctx.interaction)
   const user_id = interaction.member.user.id
 
   // find which user is confirming/cancelling
@@ -656,7 +656,7 @@ async function recordMatchFromSelectedTeams(
 
   return {
     components: [],
-    embeds: [await matchSummaryEmbed(app, new_match, { id: true })],
+    embeds: [await matchSummaryEmbed(app, new_match)],
     flags: D.MessageFlags.Ephemeral,
   }
 }

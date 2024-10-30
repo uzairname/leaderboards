@@ -126,8 +126,10 @@ export class StringData<TSchema extends StringDataSchema> {
   private validateKeyValue(key: keyof TSchema, value: TSchema[typeof key]['read']): typeof value {
     if (!this.fields.hasOwnProperty(key))
       throw new Error(`Field ${key.toString()} does not exist in this StringData`)
-    if (this.fields[key].compress(value) !== 
-        this.fields[key].compress(this.fields[key].decompress(this.fields[key].compress(value))))
+    if (
+      this.fields[key].compress(value) !==
+      this.fields[key].compress(this.fields[key].decompress(this.fields[key].compress(value)))
+    )
       throw new Error(`Invalid type "${typeof value}" for field ${key.toString()}`)
     return value
   }

@@ -1,21 +1,28 @@
 import { Match, Ranking } from '../../../../database/models'
 import { MatchStatus } from '../../../../database/models/matches'
+import { sentry } from '../../../../logging/sentry'
 import { nonNullable } from '../../../../utils/utils'
+import { App } from '../../../app/App'
 import { rateTrueskill } from '../matches/management/elo_calculation'
 import { default_elo_settings } from '../rankings/manage_rankings'
 
-const display_mean_rating = 1000
-const display_sd_offset = -0.6
+export const calcDisplayRating =
+  (app: App, initial_rating: number) => (rating: number, rd: number) =>
+    Math.max(
+      0,
+      Math.round(
+        (rating + app.config.display_sd_offset * rd) *
+          (app.config.display_mean_rating / initial_rating),
+      ),
+    )
 
-export const calcDisplayRating = (initial_rating: number) => (rating: number, rd: number) =>
-  Math.max(
-    0,
-    Math.round((rating + display_sd_offset * rd) * (display_mean_rating / initial_rating)),
-  )
+const isRatingProvisional = (app: App, initial_rd: number) => (rd: number) =>
+  rd > initial_rd * app.config.provisional_rd_threshold
 
-const isRatingProvisional = (initial_rd: number) => (rd: number) => rd > initial_rd * 0.9
-
-export async function getLeaderboardPlayers(ranking: Ranking): Promise<
+export async function getLeaderboardPlayers(
+  app: App,
+  ranking: Ranking,
+): Promise<
   {
     user_id: string
     display_rating: number
@@ -28,15 +35,18 @@ export async function getLeaderboardPlayers(ranking: Ranking): Promise<
 
   return players.map(player => ({
     user_id: player.data.user_id,
-    display_rating: calcDisplayRating(elo_settings.initial_rating)(
+    display_rating: calcDisplayRating(app, elo_settings.initial_rating)(
       player.data.rating,
       player.data.rd,
     ),
-    provisional: isRatingProvisional(elo_settings.initial_rd)(player.data.rd),
+    provisional: isRatingProvisional(app, elo_settings.initial_rd)(player.data.rd),
   }))
 }
 
-export async function getMatchPlayersDisplayStats(match: Match): Promise<
+export async function getMatchPlayersDisplayStats(
+  app: App,
+  match: Match,
+): Promise<
   {
     user_id: string
     rating_before: number
@@ -50,6 +60,10 @@ export async function getMatchPlayersDisplayStats(match: Match): Promise<
 
   const elo_settings = ranking.data.elo_settings ?? default_elo_settings
 
+  sentry.debug(
+    `team_players: ${team_players.length}, ${team_players[0].length}, ${team_players[1].length}`,
+  )
+
   const new_ratings =
     match.data.status === MatchStatus.Finished
       ? rateTrueskill(
@@ -60,8 +74,8 @@ export async function getMatchPlayersDisplayStats(match: Match): Promise<
         )
       : undefined
 
-  const display = calcDisplayRating(elo_settings.initial_rating)
-  const provisional = isRatingProvisional(elo_settings.initial_rd)
+  const display = calcDisplayRating(app, elo_settings.initial_rating)
+  const provisional = isRatingProvisional(app, elo_settings.initial_rd)
 
   const result = team_players.map((team, team_num) =>
     team.map((player, player_num) => {

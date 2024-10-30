@@ -1,4 +1,3 @@
-import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging/sentry'
 import type { DiscordAPIClient } from '../rest/client'
@@ -16,14 +15,7 @@ export async function overwriteDiscordCommandsWithViews(
   if (guild_id === undefined) {
     result = await bot.overwriteGlobalCommands(commands_data)
   } else {
-    try {
-      result = await bot.overwriteGuildCommands(guild_id, commands_data)
-    } catch (e) {
-      if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.MissingAccess) {
-        throw new Error(`Missing access to guild ${guild_id}`)
-      }
-      throw e
-    }
+    result = await bot.overwriteGuildCommands(guild_id, commands_data)
   }
 
   sentry.addBreadcrumb({
@@ -33,7 +25,7 @@ export async function overwriteDiscordCommandsWithViews(
       (guild_id ? ` in guild ${guild_id}` : ' globally'),
     level: 'info',
     data: {
-      commands: commands.map(c => c.signature.name),
+      commands: commands.map(c => c.config.name),
       guild_id,
     },
   })
@@ -42,12 +34,12 @@ export async function overwriteDiscordCommandsWithViews(
 }
 
 function appCommandToJSONBody(view: AnyAppCommand): D.RESTPostAPIApplicationGuildCommandsJSONBody {
-  if (viewIsChatInputAppCommand(view) && view.signature.description.length > 100) {
-    throw new Error(`Description for command ${view.signature.custom_id_prefix} > 100 characters`)
+  if (viewIsChatInputAppCommand(view) && view.config.description.length > 100) {
+    throw new Error(`Description for command ${view.config.custom_id_prefix} > 100 characters`)
   }
 
   const result = {
-    ...view.signature,
+    ...view.config,
   }
 
   delete result.custom_id_prefix

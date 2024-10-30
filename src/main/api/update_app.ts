@@ -14,13 +14,15 @@ export const updateRouter = (app: App) =>
 
       const [_, guild_names] = await Promise.all([
         app.syncDiscordCommands(),
-        app.db.guilds
-          .getAll()
-          .then(guilds =>
-            Promise.all(
-              guilds.map(guild => updateGuild(app, guild).then(() => guild.data.name)),
-            ).then(res => res.filter(c => c !== undefined)),
-          ),
+        app.db.guilds.getAll().then(guilds =>
+          Promise.all(
+            guilds.map(guild =>
+              updateGuild(app, guild)
+                .then(() => guild.data.name)
+                .catch(() => undefined),
+            ),
+          ).then(res => res.filter(c => c !== undefined)),
+        ),
         app.discord.updateRoleConnectionsMetadata(getAppRoleConnectionsMetadata(app)),
       ])
 

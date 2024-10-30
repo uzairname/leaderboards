@@ -35,8 +35,8 @@ export async function commandMention<T extends AppView<AnyChatInputAppCommand>>(
   command: T,
   guild_id?: T extends AnyGuildCommand ? string : undefined,
 ) {
-  const name = command.base_signature.signature.name
-  const type = command.base_signature.signature.type
+  const name = command.base_signature.config.name
+  const type = command.base_signature.config.type
   const commands = await app.discord.getAppCommands(guild_id)
   const discord_command = commands.find(command => command.name === name && command.type === type)
   return `</${name}:${discord_command?.id || '0'}>`
@@ -67,6 +67,10 @@ export function escapeMd(str: string | undefined | null): string {
 
 export const space = `⠀` // U+2800: Braille Pattern Blank
 
+export function spaces(n: number): string {
+  return space.repeat(n)
+}
+
 export function truncateString(str: string, max_length: number): string {
   return str.length > max_length ? str.slice(0, max_length - 2) + '..' : str
 }
@@ -92,8 +96,14 @@ export async function existingMessageLink(
   }
 }
 
-export function channelMention(channel_id?: string): string {
-  return `<#${channel_id || '0'}>`
+export async function existingChannelMention(app: App, channel_id?: string | null) {
+  if (!channel_id) return null
+  try {
+    const channel = await app.discord.getChannel(channel_id)
+    return `<#${channel.id}>`
+  } catch {
+    return null
+  }
 }
 
 export function memberAvatarUrl(guild_id: string, member: D.APIGuildMember): string {

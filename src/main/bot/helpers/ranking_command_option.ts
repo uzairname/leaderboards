@@ -8,7 +8,7 @@ import type {
 import type { App } from '../../app/App'
 import { UserError } from '../errors/UserError'
 import { getOrAddGuild } from '../modules/guilds/guilds'
-import { allGuildRankingsPage } from '../modules/rankings/views/pages/all_guild_rankings'
+import { rankingsPage } from '../modules/rankings/views/pages/rankings'
 import { checkGuildInteraction } from './perms'
 
 export const create_ranking_choice_value = 'create'
@@ -22,7 +22,6 @@ export async function guildRankingsOption(
   ranking_option_name = 'ranking',
   options?: {
     optional?: boolean
-    required?: boolean
   },
   description: string = 'Select a ranking',
 ): Promise<D.APIApplicationCommandOption[]> {
@@ -46,6 +45,7 @@ export async function guildRankingsOption(
       type: D.ApplicationCommandOptionType.String,
       name: ranking_option_name,
       description,
+      required: !options?.optional,
       choices,
     },
   ]
@@ -105,7 +105,7 @@ async function _withSelectedRanking(
       const guild = await getOrAddGuild(app, interaction.guild_id)
       return {
         type: D.InteractionResponseType.ChannelMessageWithSource,
-        data: await allGuildRankingsPage(app, guild),
+        data: await rankingsPage(app, guild),
       }
     } else {
       throw new UserError('Please specify a ranking')

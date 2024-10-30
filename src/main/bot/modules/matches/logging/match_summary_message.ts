@@ -5,7 +5,7 @@ import { MessageData } from '../../../../../discord-framework'
 import { maxIndex } from '../../../../../utils/utils'
 import { App } from '../../../../app/App'
 import { Colors } from '../../../helpers/constants'
-import { emojis, escapeMd, relativeTimestamp } from '../../../helpers/strings'
+import { emojis, escapeMd, relativeTimestamp, spaces } from '../../../helpers/strings'
 import { getMatchPlayersDisplayStats } from '../../players/display_stats'
 import { syncMatchesChannel } from '../matches_channel'
 
@@ -66,42 +66,29 @@ export async function syncMatchSummaryMessage(
 }
 
 export async function matchSummaryMessageData(app: App, match: Match): Promise<MessageData> {
+  const team_players = await match.teamPlayers()
+
   return new MessageData({
-    embeds: [
-      await matchSummaryEmbed(app, match, {
-        ranking_name: true,
-        id: true,
-        time_finished: true,
-      }),
-    ],
+    embeds: [await matchSummaryEmbed(app, match)],
   })
 }
 
-export async function matchSummaryEmbed(
-  app: App,
-  match: Match,
-  include?: {
-    ranking_name?: boolean
-    id?: boolean
-    time_finished?: boolean
-  },
-): Promise<D.APIEmbed> {
+export async function matchSummaryEmbed(app: App, match: Match, include?: {}): Promise<D.APIEmbed> {
   const ranking = await match.ranking()
 
-  const team_player_stats = await getMatchPlayersDisplayStats(match)
-
-  let details: string[] = []
-
-  if (include?.id) {
-    details.push(`-# id: \`${match.data.id}\``)
-  }
+  const team_player_stats = await getMatchPlayersDisplayStats(app, match)
 
   const embed: D.APIEmbed = {
-    title: `${escapeMd(ranking.data.name)} Match #${match.data.number}`,
-    color: match.data.status === MatchStatus.Finished ? Colors.Primary : Colors.DiscordBackground,
+    description:
+      `` +
+      `### Results of Match ${match.data.number} in ${escapeMd(ranking.data.name)}` +
+      `\n` +
+      (match.data.status === MatchStatus.Finished ? `` : `*(In progress)*`) +
+      ``,
+    color: match.data.status === MatchStatus.Finished ? Colors.Primary : Colors.EmbedBackground,
   }
 
-  embed.fields = team_player_stats.map((team, team_num) => {
+  const fields: D.APIEmbedField[] = team_player_stats.map((team, team_num) => {
     return {
       name: (outcome => {
         if (outcome) {
@@ -128,20 +115,20 @@ export async function matchSummaryEmbed(
 
             return (
               `<@${player.user_id}>` +
-              `\n\`${rating_before_text}\` → **${rating_after_text}** (${rating_diff_text})`
+              `\n\`${rating_before_text}\` → **${rating_after_text}**\n-# ${spaces(2)}(${rating_diff_text})`
             )
+          } else {
+            return `<@${player.user_id}>` + `\n\`${player.rating_before.toFixed(0)}\``
           }
-          
-
-
-
         })
         .join('\n'),
       inline: true,
     }
   })
 
-  embed.color = Colors.Primary
+  let details: string[] = []
+
+  details.push(`-# id: \`${match.data.id}\``)
 
   if (match.data.time_finished) {
     details.push(`-# Finished ${relativeTimestamp(match.data.time_finished)}`)
@@ -149,16 +136,14 @@ export async function matchSummaryEmbed(
     details.push(`-# Started ${relativeTimestamp(match.data.time_started)}`)
   }
 
-  embed.fields = embed.fields?.concat(
-    details
-      ? [
-          {
-            name: `Details`,
-            value: details.join('\n'),
-          },
-        ]
-      : [],
-  )
+  if (details) {
+    fields.push({
+      name: `Details`,
+      value: details.join('\n'),
+    })
+  }
+
+  embed.fields = fields
 
   return embed
 }

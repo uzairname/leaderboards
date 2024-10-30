@@ -46,7 +46,7 @@ export class ViewModule {
     this.all_views = views.flatMap(v => (v instanceof ViewModule ? v.all_views : [v]))
 
     // Identify duplicate custom_id_prefixes
-    const custom_id_prefixes = this.all_views.map(v => v.base_signature.signature.custom_id_prefix)
+    const custom_id_prefixes = this.all_views.map(v => v.base_signature.config.custom_id_prefix)
     const duplicates = custom_id_prefixes.filter(
       (v, i) => v !== undefined && custom_id_prefixes.indexOf(v) !== i,
     )
@@ -58,7 +58,7 @@ export class ViewModule {
     const all_views = this.all_views
     return function (custom_id_prefix: string) {
       const matching_views = all_views.filter(
-        v => custom_id_prefix && v.base_signature.signature.custom_id_prefix === custom_id_prefix,
+        v => custom_id_prefix && v.base_signature.config.custom_id_prefix === custom_id_prefix,
       )
       if (matching_views.length !== 1) {
         throw new Error('unique view signature not found')
@@ -103,11 +103,11 @@ export class ViewModule {
         const _v = v.base_signature
 
         return custom_id_prefix
-          ? _v.signature.custom_id_prefix === custom_id_prefix
+          ? _v.config.custom_id_prefix === custom_id_prefix
           : command
             ? viewIsAppCommand(_v) &&
-              command.name === _v.signature.name &&
-              command.type === _v.signature.type
+              command.name === _v.config.name &&
+              command.type === _v.config.type
             : false
       })
 

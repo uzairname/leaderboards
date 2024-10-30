@@ -30,7 +30,9 @@ export const AccessTokens = pgTable('AccessTokens', {
   data: jsonb('data').$type<RESTPostOAuth2AccessTokenResult>().notNull(),
   expires_at: timestamp('expires_at').notNull(),
   time_created: timestamp('time_created').notNull().defaultNow(),
-})
+}, (table) => ({
+  user_idx: index('access_tokens_user_id_index').on(table.user_id),
+}))
 
 
 export const Guilds = pgTable('Guilds', {
@@ -95,9 +97,9 @@ export const TeamPlayers = pgTable('TeamPlayers', {
   team_id: integer('team_id').notNull().references(() => Teams.id, {onDelete: 'cascade'}),
   player_id: integer('player_id').notNull().references(() => Players.id, {onDelete: 'cascade'}),
   time_created: timestamp('time_created').notNull().defaultNow(),
-}, (table) => { return {
+}, (table) => ({
   cpk: primaryKey({ columns: [table.team_id, table.player_id] }),
-}})
+}))
 
 
 export const QueueTeams = pgTable('QueueTeams', {
@@ -117,9 +119,10 @@ export const Matches = pgTable('Matches', {
   metadata: jsonb('metadata').$type<MatchMetadata>(),
   time_started: timestamp('time_started'),
   time_finished: timestamp('time_finished'),
-}, (table) => { return {
+}, (table) => ({
   ranking_idx: index('match_ranking_id_index').on(table.ranking_id),
-}})
+  time_finished_idx: index('match_time_finished_index').on(table.time_finished),
+}))
 
 
 export const MatchSummaryMessages = pgTable('MatchSummaryMessages', {
@@ -127,9 +130,9 @@ export const MatchSummaryMessages = pgTable('MatchSummaryMessages', {
   guild_id: text('guild_id').notNull().references(() => Guilds.id, {onDelete: 'cascade'}),
   channel_id: text('channel_id').notNull(),
   message_id: text('message_id').notNull(),
-}, (table) => { return {
+}, (table) => ({
   cpk: primaryKey({ columns: [table.match_id, table.guild_id] }),
-}})
+}))
 
 
 export const MatchPlayers = pgTable('MatchPlayers', {
@@ -138,6 +141,6 @@ export const MatchPlayers = pgTable('MatchPlayers', {
   team_num: integer('team_num').notNull(),
   rating_before: real('rating_before').notNull(),
   rd_before: real('rd_before').notNull(),
-}, (table) => { return {
+}, (table) => ({
   cpk: primaryKey({ columns: [table.match_id, table.player_id] }),
-}})
+}))

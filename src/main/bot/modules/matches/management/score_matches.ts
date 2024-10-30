@@ -66,8 +66,6 @@ export async function createAndScoreMatch(
 
   const scored_match = scoreMatch(app, match, team_players, ranking)
 
-  await app.events.MatchCreatedOrUpdated.emit(match)
-
   return scored_match
 }
 
@@ -103,6 +101,7 @@ export async function scoreMatch(
   )
 
   await app.events.RankingLeaderboardUpdated.emit(ranking)
+  await app.events.MatchCreatedOrUpdated.emit(match)
 
   return match
 }
@@ -122,8 +121,6 @@ export async function scoreRankingHistory(
     finished_on_or_after: finished_on_or_after,
     status: MatchStatus.Finished,
   })
-
-  sentry.debug(`Rescoring ${matches.length} matches`)
 
   for (const match of matches) {
     // get player ratings before

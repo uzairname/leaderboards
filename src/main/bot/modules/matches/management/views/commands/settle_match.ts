@@ -5,7 +5,7 @@ import { AppView } from '../../../../../../app/ViewModule'
 import { UserError } from '../../../../../errors/UserError'
 import { checkGuildInteraction, ensureAdminPerms } from '../../../../../helpers/perms'
 import { revertMatch, updateMatchOutcome } from '../../manage_matches'
-import { manage_match_page_signature, manageMatchPageData } from '../pages/manage_match'
+import { manage_match_page_config, manageMatchPageData } from '../pages/manage_match'
 
 const optionnames = {
   match_id: `match-id`,
@@ -27,7 +27,7 @@ export const settle_match_cmd_signature = new AppCommand({
     {
       type: D.ApplicationCommandOptionType.Integer,
       name: optionnames.match_id,
-      description: `The match id. You can find this number in the match logs or by using /matches`,
+      description: `(optional) Defaults to the player's last match. You can find the match id by using /matches`,
       required: false,
     },
     {
@@ -128,7 +128,9 @@ export default new AppView(settle_match_cmd_signature, app =>
             )
             new_outcome[team_index] = 1
             sentry.debug(`Setting outcome: from ${match.data.outcome} to ${new_outcome}`)
+
             await updateMatchOutcome(app, match, new_outcome)
+
             return void ctx.followup({
               content: `Match winner set`,
               flags: D.MessageFlags.Ephemeral,
@@ -139,7 +141,7 @@ export default new AppView(settle_match_cmd_signature, app =>
           return void ctx.edit(
             await manageMatchPageData(app, {
               ...ctx,
-              state: manage_match_page_signature.createState({
+              state: manage_match_page_config.newState({
                 match_id: match_id_option_value,
               }),
             }),

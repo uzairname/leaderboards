@@ -340,5 +340,5 @@ dist
 .dev.vars
 .wrangler/
 test.sh
-test.ts
+./test.ts
 commit.txt

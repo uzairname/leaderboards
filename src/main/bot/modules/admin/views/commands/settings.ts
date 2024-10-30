@@ -1,10 +1,5 @@
 import * as D from 'discord-api-types/v10'
-import {
-  AppCommand,
-  ChatInteractionResponse,
-  field,
-  InteractionContext,
-} from '../../../../../../discord-framework'
+import { AppCommand, field, InteractionContext } from '../../../../../../discord-framework'
 import { App } from '../../../../../app/App'
 import { AppView } from '../../../../../app/ViewModule'
 import { Colors } from '../../../../helpers/constants'
@@ -37,12 +32,15 @@ export default new AppView(settings_cmd_signature, app =>
     })
 
     .onComponent(async ctx => {
-      return ctx.state.get.callback()(app, ctx)
+      return {
+        type: D.InteractionResponseType.UpdateMessage,
+        data: await ctx.state.get.callback()(app, ctx),
+      }
     }),
 )
 
 export async function settingsPage(app: App): Promise<D.APIInteractionResponseCallbackData> {
-  const state = settings_cmd_signature.createState()
+  const state = settings_cmd_signature.newState()
   return {
     embeds: [
       {
@@ -59,7 +57,7 @@ export async function settingsPage(app: App): Promise<D.APIInteractionResponseCa
             type: D.ComponentType.Button,
             label: 'Manage Rankings',
             style: D.ButtonStyle.Primary,
-            custom_id: rankings_cmd_signature.createState({}).cId(),
+            custom_id: rankings_cmd_signature.newState({}).cId(),
           },
           {
             type: D.ComponentType.Button,
@@ -77,7 +75,7 @@ export async function settingsPage(app: App): Promise<D.APIInteractionResponseCa
 async function onAdminRoleBtn(
   app: App,
   ctx: InteractionContext<typeof settings_cmd_signature>,
-): Promise<ChatInteractionResponse> {
+): Promise<D.APIInteractionResponseCallbackData> {
   await ensureAdminPerms(app, ctx)
 
   const interaction = checkGuildInteraction(ctx.interaction)
@@ -92,15 +90,12 @@ async function onAdminRoleBtn(
   )
 
   return {
-    type: D.InteractionResponseType.UpdateMessage,
-    data: {
-      embeds: [
-        {
-          title: 'Admin Role',
-          description: `The role <@&${role_result.role.id}> can manage rankings and matches. You can rename, edit, and assign it to anyone`,
-          color: Colors.Primary,
-        },
-      ],
-    },
+    embeds: [
+      {
+        title: 'Admin Role',
+        description: `The role <@&${role_result.role.id}> can manage rankings and matches. You can rename, edit, and assign it to anyone`,
+        color: Colors.Primary,
+      },
+    ],
   }
 }

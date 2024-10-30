@@ -8,6 +8,7 @@ import {
 } from '../../../../../database/models/matches'
 import { App } from '../../../../app/App'
 import { UserError } from '../../../errors/UserError'
+import { existingChannelMention } from '../../../helpers/strings'
 import { scoreRankingHistory } from './score_matches'
 
 export async function startNewMatch(
@@ -19,13 +20,28 @@ export async function startNewMatch(
   validateMatchData({ team_players })
 
   // check if players are already in an active match
-  const player_active_matches = await app.db.matches.getMany({
+  const active_matches = await app.db.matches.getMany({
     player_ids: team_players.flat().map(p => p.player.data.id),
+    ranking_ids: [guild_ranking.data.ranking_id],
     status: MatchStatus.Ongoing,
   })
 
-  if (player_active_matches.length > 0) {
-    throw new UserError(`One or more players are already in an ongoing match`)
+  if (active_matches.length > 0) {
+    throw new UserError(
+      `Finish the following match${active_matches.length === 1 ? `` : `es`} before starting a new one:` +
+        `\n` +
+        (
+          await Promise.all(
+            active_matches.map(async m => {
+              const channel_mention = await existingChannelMention(
+                app,
+                m.match.data.ongoing_match_channel_id,
+              )
+              return `\`${m.match.data.id}\`` + (channel_mention ? `: ${channel_mention}` : ``) + ``
+            }),
+          )
+        ).join(`\n`),
+    )
   }
 
   const ranking = await guild_ranking.ranking
@@ -47,7 +63,7 @@ export async function startNewMatch(
 export async function updateMatchOutcome(
   app: App,
   match: Match,
-  outcome?: number[],
+  outcome: number[],
   metadata?: MatchMetadata,
 ) {
   validateMatchData({
@@ -59,6 +75,7 @@ export async function updateMatchOutcome(
   await match.update({
     outcome,
     metadata,
+    status: outcome ? MatchStatus.Finished : MatchStatus.Ongoing,
   })
 
   if (outcome) {
@@ -116,7 +133,9 @@ export async function revertMatch(app: App, match: Match): Promise<void> {
     // The match may have a thread
     const thread_id = match.data.ongoing_match_channel_id
     if (thread_id) {
-      await app.discord.deleteChannel(thread_id)
+      await app.discord.editChannel(thread_id, {
+        locked: true,
+      })
     }
     await match.delete()
   }
@@ -127,7 +146,7 @@ export function validateMatchData<
 >(o: T): T {
   if (o.outcome) {
     if (o.team_players) {
-      if (o.outcome!.length !== o.team_players!.length)
+      if (o.outcome.length !== o.team_players.length)
         throw new UserError(`Match outcome and players length must match`)
     }
   }

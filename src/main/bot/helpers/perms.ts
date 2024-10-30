@@ -13,6 +13,18 @@ export function checkGuildInteraction<T extends D.APIBaseInteraction<any, any>>(
   return interaction as D.APIGuildInteractionWrapper<T>
 }
 
+export function checkGuildComponentInteraction<T extends D.APIInteraction>(
+  interaction: T,
+): D.APIMessageComponentGuildInteraction {
+  if (
+    !D.Utils.isMessageComponentInteraction(interaction) ||
+    !D.Utils.isMessageComponentGuildInteraction(interaction)
+  ) {
+    throw new UserError('Use this in a server')
+  }
+  return interaction
+}
+
 export async function hasAdminPerms(app: App, ctx: InteractionContext<any>) {
   const { has_perms } = await determineAdminPerms(app, ctx)
   return has_perms

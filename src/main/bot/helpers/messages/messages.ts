@@ -1,13 +1,15 @@
 import * as D from 'discord-api-types/v10'
 import { APIEmbed } from 'discord-api-types/v10'
-import type { Guild, GuildRanking, Match, Player, Ranking } from '../../../../database/models'
-import { Vote } from '../../../../database/models/matches'
+import { Guild, GuildRanking, Match, Ranking } from '../../../../database/models'
+import { MatchStatus, MatchTeamPlayer, Vote } from '../../../../database/models/matches'
 import { nonNullable } from '../../../../utils/utils'
 import { App } from '../../../app/App'
 import settings from '../../modules/admin/views/commands/settings'
 import { getMatchLogsChannel } from '../../modules/guilds/guilds'
+import { syncGuildRankingLbMessage } from '../../modules/leaderboard/leaderboard_message'
 import matches from '../../modules/matches/logging/views/commands/matches'
 import record_match from '../../modules/matches/management/views/commands/record_match'
+import settle_match from '../../modules/matches/management/views/commands/settle_match'
 import start_match from '../../modules/matches/management/views/commands/start_match'
 import challenge from '../../modules/matches/matchmaking/views/commands/challenge'
 import create_ranking from '../../modules/rankings/views/commands/create_ranking'
@@ -28,8 +30,9 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
         value:
           `Every player, match, and elo rating that this bot tracks belongs to a **ranking**.` +
           ` You might want to have a separate ranking for different games or gamemodes.` +
+          `` +
           `\n- ${await commandMention(app, create_ranking)}: create one or more rankings.` +
-          `\n- ${await commandMention(app, rankings, guild_id)} to view manage all rankings in this server.`,
+          `\n- ${await commandMention(app, rankings, guild_id)}: view manage all rankings in this server.`,
       },
       {
         name: `Recording Matches`,
@@ -48,9 +51,9 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
         name: `Managing Matches`,
         value:
           `View or manage matches with the following commands:` +
-          `\n- ${await commandMention(app, matches, guild_id)} \`id\`: View the match history for this server.` +
-          `\n  -Enter a match id to view a specific match. Admins can change a match's outcome or revert it.` +
-          ` Reverting a match undoes the effect it had on the players' ratings. ` +
+          `\n- ${await commandMention(app, matches, guild_id)}: View the match history for this server.` +
+          `\n  ${await commandMention(app, settle_match)}: Revert or set the outcome of a specific match. The \`match-id\` parameter is optional, and defaults to the last match that the selected player was in.` +
+          ` Reverting a match undoes the effect it had on the players' ratings.` +
           `\n> -# Note that changing a match's outcome may also affect the ratings of players who were not in the match, because of the way Elo is calculated.`,
       },
       {
@@ -127,6 +130,8 @@ export async function guildRankingDetails(app: App, guild_ranking: GuildRanking)
     ? (await getMatchLogsChannel(app, await guild_ranking.guild))?.id
     : undefined
 
+  const result = await syncGuildRankingLbMessage(app, guild_ranking)
+
   const message_link =
     guild_ranking.data.leaderboard_channel_id && guild_ranking.data.leaderboard_message_id
       ? await existingMessageLink(
@@ -155,8 +160,9 @@ export async function guildRankingDetails(app: App, guild_ranking: GuildRanking)
 // Matches
 export function ongoingMatch1v1Message(
   match: Match,
-  players: Player[],
+  team_players: MatchTeamPlayer[][],
 ): { content: string; embeds: D.APIEmbed[] } {
+  const players = team_players.map(team => team.map(p => p.player)).flat()
   const team_votes = nonNullable(match.data.team_votes, 'match.team_votes')
 
   function voteToString(user_id: string, vote: Vote) {
@@ -165,7 +171,7 @@ export function ongoingMatch1v1Message(
     }
 
     return (
-      `- -# **<@${user_id}> ` +
+      `**<@${user_id}> ` +
       {
         [Vote.Win]: 'claims win**',
         [Vote.Loss]: 'claims loss**',
@@ -182,20 +188,34 @@ export function ongoingMatch1v1Message(
 
   const best_of = match.data.metadata?.best_of ?? 1
 
-  const content = `${players.map(p => `<@${p.data.user_id}>`).join(` `)}`
+  const embeds: D.APIEmbed[] = []
 
-  const embed: D.APIEmbed = {
+  embeds.push({
     description:
       (best_of > 1
         ? `This match is a **best of ${best_of}**. Play all games, then report the results below. `
-        : `Play a game, then report the results below`) + `\nAn admin can resolve any disputes` + 
-      `\n\n`+ votes_str +  
-      ``,
+        : `Play a game, then report the results below`) + `\nAn admin can resolve any disputes`,
     color: Colors.EmbedBackground,
+  })
+
+  if (match.data.status === MatchStatus.Finished) {
+    embeds.push({
+      description: `Match concluded. Click Rematch to start another best of ${best_of}`,
+      color: Colors.Primary,
+    })
+  } else if (votes_str) {
+    embeds.push({
+      description: votes_str + ``,
+      color: Colors.EmbedBackground,
+    })
   }
 
+  const players_ping_text = team_players
+    .map(team => team.map(player => `<@${player.player.data.user_id}>`).join(', '))
+    .join(' vs ')
+
   return {
-    content,
-    embeds: [embed],
+    content: players_ping_text,
+    embeds,
   }
 }

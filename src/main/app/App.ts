@@ -13,7 +13,7 @@ import { AppEvents, getAppEvents } from './AppEvents'
 import { Config } from './Config'
 import { ViewModule } from './ViewModule'
 
-const direct_response_in_dev = true
+const direct_response_in_dev = false
 
 export class App {
   public db: DbClient

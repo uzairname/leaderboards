@@ -33,7 +33,7 @@ export default new GuildCommand(
     ]
 
     return new AppCommand({
-      ...points_cmd_signature.signature,
+      ...points_cmd_signature.config,
       options: options.concat(
         await guildRankingsOption(app, guild_id, 'ranking', {}, 'Ranking in which to add points'),
       ),

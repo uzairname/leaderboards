@@ -24,7 +24,7 @@ export default new GuildCommand(
   leaderboard_cmd_signature,
   async (app, guild_id) =>
     new AppCommand({
-      ...leaderboard_cmd_signature.signature,
+      ...leaderboard_cmd_signature.config,
       options: [(await guildRankingsOption(app, guild_id, optionnames.ranking)) || []].flat(),
     }),
   app =>
@@ -37,7 +37,7 @@ export default new GuildCommand(
           },
           async ctx => {
             ctx.state.save.ranking_id(ranking.data.id)
-            await ctx.edit((await leaderboardMessage(ranking)).as_response)
+            await ctx.edit((await leaderboardMessage(app, ranking)).as_response)
           },
         )
       }),

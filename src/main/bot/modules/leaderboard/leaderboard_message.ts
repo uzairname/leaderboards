@@ -2,6 +2,7 @@ import * as D from 'discord-api-types/v10'
 import type { Guild, GuildRanking, Ranking } from '../../../../database/models'
 import { GuildChannelData, MessageData } from '../../../../discord-framework'
 import { sentry } from '../../../../logging/sentry'
+import { nonNullable } from '../../../../utils/utils'
 import { type App } from '../../../app/App'
 import { Colors } from '../../helpers/constants'
 import { escapeMd, relativeTimestamp, space } from '../../helpers/strings'
@@ -21,7 +22,7 @@ export async function syncGuildRankingLbMessage(
   app: App,
   guild_ranking: GuildRanking,
   enable_if_disabled = false,
-) {
+): Promise<{ message: D.APIMessage; channel_id: string } | undefined> {
   if (!guild_ranking.data.display_settings?.leaderboard_message && !enable_if_disabled) return
 
   const guild = await guild_ranking.guild
@@ -30,7 +31,7 @@ export async function syncGuildRankingLbMessage(
   const result = await app.discord.utils.syncChannelMessage({
     target_channel_id: guild_ranking.data.leaderboard_channel_id,
     target_message_id: guild_ranking.data.leaderboard_message_id,
-    messageData: await leaderboardMessage(ranking),
+    messageData: await leaderboardMessage(app, ranking),
     channelData: () => lbChannelData(app, guild, ranking),
   })
 
@@ -42,7 +43,13 @@ export async function syncGuildRankingLbMessage(
     })
     sentry.debug(`synced leaderboard message. ${guild_ranking.data.leaderboard_message_id}`)
   }
-  return result
+
+  return {
+    message: result.message,
+    channel_id:
+      result.new_channel?.id ??
+      nonNullable(guild_ranking.data.leaderboard_channel_id, 'existing lb channel id'),
+  }
 }
 
 export async function disableGuildRankingLbMessage(app: App, guild_ranking: GuildRanking) {
@@ -84,18 +91,18 @@ export async function lbChannelData(
   }
 }
 
-export async function leaderboardMessage(ranking: Ranking): Promise<MessageData> {
-  const players = await getLeaderboardPlayers(ranking)
+export async function leaderboardMessage(app: App, ranking: Ranking): Promise<MessageData> {
+  const players = await getLeaderboardPlayers(app, ranking)
 
   let place = 0
   const max_rating_len = players[0]?.display_rating.toFixed(0).length ?? 0
 
   const players_text = players
     .map(p => {
-      const display_rating = p.display_rating.toFixed(0).padStart(max_rating_len)
+      const rating_text = `\`${p.display_rating.toFixed(0)}\``.padStart(max_rating_len + 2)
       if (p.provisional) {
-        return `-# ${space}?`
-       + `${space}\`${display_rating}\``
+        return `### -# ${space}?`
+       + `${space}${rating_text}`
        + `${space}<@${p.user_id}> ` // prettier-ignore
       }
       place++
@@ -105,7 +112,7 @@ export async function leaderboardMessage(ranking: Ranking): Promise<MessageData>
         else if (place==3) return `🥉`
         else return `${place}.${space}`
       })(place)}` 
-      + `${space}\`${display_rating}\``
+      + `${space}\`${rating_text}\``
       + `${space}<@${p.user_id}> ` // prettier-ignore
     })
     .join('\n\n')
