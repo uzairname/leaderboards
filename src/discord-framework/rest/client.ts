@@ -1,18 +1,20 @@
 import { DiscordAPIError, InternalRequest, REST, RequestData, RequestMethod } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging/sentry'
-import { truncateString } from '../../main/bot/helpers/strings'
+import { truncateString } from '../../main/bot/ui-helpers/strings'
 import { cache } from '../../utils/cache'
 import { DiscordCache } from './cache'
-import { DiscordAPIUtils } from './client_helpers'
+import { DiscordAPIUtils } from './client-helpers'
 import { DiscordErrors } from './errors'
 import { RESTPostAPIGuildForumThreadsResult } from './types'
 
 export class DiscordAPIClient extends REST {
+  readonly token: string
   readonly application_id: string
-  private readonly client_id: string
-  private readonly client_secret: string
+  readonly client_id: string
+  readonly client_secret: string
   readonly public_key: string
+
   readonly utils: DiscordAPIUtils
   readonly cache: DiscordCache
 
@@ -25,10 +27,12 @@ export class DiscordAPIClient extends REST {
   }) {
     super({ version: '10' })
     this.setToken(params.token)
+    this.token = params.token
     this.application_id = params.application_id
     this.client_id = params.client_id
     this.client_secret = params.client_secret
     this.public_key = params.public_key
+
     this.utils = new DiscordAPIUtils(this)
 
     if (!(cache['discord'] instanceof DiscordCache)) {
@@ -63,10 +67,7 @@ export class DiscordAPIClient extends REST {
     }
   }
 
-  async overwriteGuildCommands(
-    guild_id: string,
-    body: D.RESTPutAPIApplicationGuildCommandsJSONBody,
-  ) {
+  async replaceGuildCommands(guild_id: string, body: D.RESTPutAPIApplicationGuildCommandsJSONBody) {
     return (await this.fetch(
       RequestMethod.Put,
       D.Routes.applicationGuildCommands(this.application_id, guild_id),
@@ -74,7 +75,7 @@ export class DiscordAPIClient extends REST {
     )) as D.RESTPutAPIApplicationGuildCommandsResult
   }
 
-  async overwriteGlobalCommands(body: D.RESTPutAPIApplicationCommandsJSONBody) {
+  async replaceGlobalCommands(body: D.RESTPutAPIApplicationCommandsJSONBody) {
     return (await this.fetch(RequestMethod.Put, D.Routes.applicationCommands(this.application_id), {
       body,
     })) as D.RESTPutAPIApplicationCommandsResult
@@ -485,7 +486,7 @@ export class DiscordAPIClient extends REST {
           route: `Route: ${method?.toString()} ${route}`,
           'time taken': `${Date.now() - start_time}ms`,
           options: JSON.stringify(options),
-          response: truncateString(JSON.stringify(response) ?? '', 1500),
+          response: truncateString(JSON.stringify(response) ?? '', 500),
           error: JSON.stringify(error),
         },
       })

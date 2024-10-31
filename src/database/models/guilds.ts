@@ -12,6 +12,10 @@ export class Guild extends DbObject<GuildSelect> {
     db.cache.guilds[data.id] = this
   }
 
+  toString() {
+    return `[Guild ${this.data.id}: ${this.data.name}]`
+  }
+
   async update(data: Partial<Omit<GuildInsert, 'id'>>): Promise<this> {
     this.data = (
       await this.db.drizzle.update(Guilds).set(data).where(eq(Guilds.id, this.data.id)).returning()

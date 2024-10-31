@@ -34,7 +34,15 @@ export class Logger extends Toucan {
     this.request_name = `${this.request.method} ${new URL(this.request.url).pathname}`
 
     return new Promise<Response>((resolve, reject) => {
-      const timeout_ms = 20000
+      const warning_ms = 10000
+      const timeout_ms = 120000
+      setTimeout(() => {
+        this.captureMessage(
+          `${this.request_name} taking longer than ${warning_ms / 1000}s`,
+          'warning',
+        )
+      }, warning_ms)
+
       setTimeout(() => {
         reject(new RequestTimeoutError(this.request_name, timeout_ms))
       }, timeout_ms)
@@ -67,9 +75,10 @@ export class Logger extends Toucan {
       setRequestName: (name: string) => void
     }) => Promise<void>,
     onTimeout?: (e: RequestTimeoutError) => Promise<void>,
+    name?: string,
   ): void {
     let offload_caught_exception: unknown
-    let request_name = `${this.request_name} followup`
+    let request_name = `${this.request_name}${name ? `/${name}` : '/followup'}`
 
     const ctx = {
       setException: (e: unknown) => {
@@ -88,7 +97,15 @@ export class Logger extends Toucan {
     // try executing callback. If it takes longer than 20 seconds, log a timeout error. If not, cancel the timeout and log the result
     this.execution_context.waitUntil(
       new Promise<void>((resolve, reject) => {
-        const timeout_ms = 20000
+        const warning_ms = 10000
+        const timeout_ms = 120000
+        setTimeout(() => {
+          this.captureMessage(
+            `${this.request_name} taking longer than ${warning_ms / 1000}s`,
+            'warning',
+          )
+        }, warning_ms)
+
         setTimeout(async () => {
           const e = new RequestTimeoutError(request_name, timeout_ms)
           await onTimeout?.(e)

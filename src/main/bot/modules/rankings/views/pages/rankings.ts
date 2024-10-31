@@ -9,20 +9,21 @@ import {
   MessageView,
   StateContext,
 } from '../../../../../../discord-framework'
+import { sentry } from '../../../../../../logging/sentry'
 import { nonNullable, unflatten } from '../../../../../../utils/utils'
 import { App } from '../../../../../app/App'
 import { AppView } from '../../../../../app/ViewModule'
-import { Messages } from '../../../../helpers/messages'
-import { checkGuildInteraction, ensureAdminPerms } from '../../../../helpers/perms'
+import { Messages } from '../../../../ui-helpers/messages'
+import { checkGuildInteraction, ensureAdminPerms } from '../../../../ui-helpers/perms'
 import { getOrAddGuild } from '../../../guilds/guilds'
-import { guidePage, help_cmd_signature } from '../../../help/help_command'
+import { guidePage, help_cmd_signature } from '../../../help/help-command'
 import {
   createNewRankingInGuild,
   default_num_teams,
   default_players_per_team,
   max_ranking_name_length,
-} from '../../manage_rankings'
-import { ranking_settings_page_config, rankingSettingsPage } from './ranking_settings'
+} from '../../manage-rankings'
+import { ranking_settings_page_config, rankingSettingsPage } from './ranking-settings'
 
 export const rankings_page_config = new MessageView({
   custom_id_prefix: 'ar',
@@ -56,6 +57,7 @@ export async function rankingsPage(
 ): Promise<D.APIInteractionResponseCallbackData> {
   const guild_rankings = await app.db.guild_rankings.get({ guild_id: guild.data.id })
 
+  sentry.debug(`rankingsPage(${guild})`)
   const embeds = await Messages.allGuildRankingsText(app, guild, guild_rankings)
 
   const ranking_btns: D.APIButtonComponent[] = guild_rankings.map(item => {

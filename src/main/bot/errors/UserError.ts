@@ -18,4 +18,6 @@ export namespace UserErrors {
   }
 
   export class ValidationError extends UserError {}
+
+  export class OngoingMatchEror extends UserError {}
 }

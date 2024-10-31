@@ -1,16 +1,13 @@
-export abstract class DatabaseError extends Error {
+export abstract class DbError extends Error {
   constructor(message?: string) {
     super(message)
-    this.name = `${DatabaseError.name}.${this.constructor.name}`
+    this.name = `${DbError.name}.${this.constructor.name}`
   }
 }
 
 export namespace DbErrors {
-  export class ReferenceError extends DatabaseError {}
 
-  export class NotFoundError extends DatabaseError {}
+  export class NotFound extends DbError {}
 
-  export class ArgumentError extends DatabaseError {}
-
-  export class ValidationError extends DatabaseError {}
+  export class ValueError extends DbError {}
 }

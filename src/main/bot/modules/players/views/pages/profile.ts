@@ -2,10 +2,11 @@ import * as D from 'discord-api-types/v10'
 import { field, InteractionContext, MessageView } from '../../../../../../discord-framework'
 import { App } from '../../../../../app/App'
 import { AppView } from '../../../../../app/ViewModule'
-import { Colors } from '../../../../helpers/constants'
-import { checkGuildInteraction } from '../../../../helpers/perms'
-import { escapeMd, memberAvatarUrl } from '../../../../helpers/strings'
+import { Colors } from '../../../../ui-helpers/constants'
+import { checkGuildInteraction } from '../../../../ui-helpers/perms'
+import { escapeMd, memberAvatarUrl } from '../../../../ui-helpers/strings'
 import { matches_page_config } from '../../../matches/logging/views/pages/matches'
+import { calcDisplayRating } from '../../display'
 
 export const profile_page_config = new MessageView({
   name: 'Profile page',
@@ -60,6 +61,7 @@ export async function profileOverviewPage(
       (await Promise.all(
         players.map(async p => {
           const ranking = await p.ranking
+          const display_rating = await calcDisplayRating(app, ranking.data.elo_settings)(p.data)
           return {
             name: escapeMd(ranking.data.name),
             value: `Score: ${p.data.rating?.toFixed(0) ?? 'Unranked'}`,

@@ -1,8 +1,11 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand, field } from '../../../../../discord-framework'
 import { GuildCommand } from '../../../../app/ViewModule'
-import { guildRankingsOption, withSelectedRanking } from '../../../helpers/ranking_command_option'
-import { leaderboardMessage } from '../leaderboard_message'
+import {
+  guildRankingsOption,
+  withSelectedRanking,
+} from '../../../ui-helpers/ranking-command-option'
+import { leaderboardMessage } from '../leaderboard-message'
 
 const optionnames = {
   ranking: 'ranking',
@@ -29,7 +32,7 @@ export default new GuildCommand(
     }),
   app =>
     leaderboard_cmd_signature.onCommand(async ctx =>
-      withSelectedRanking(app, ctx, optionnames.ranking, async ranking => {
+      withSelectedRanking(app, ctx, optionnames.ranking, {}, async ranking => {
         return ctx.defer(
           {
             type: D.InteractionResponseType.DeferredChannelMessageWithSource,

@@ -1,5 +1,5 @@
-export { AccessToken, AccessTokensManager } from './access_tokens'
-export { GuildRanking, GuildRankingsManager } from './guild_rankings'
+export { AccessToken, AccessTokensManager } from './accesstokens'
+export { GuildRanking, GuildRankingsManager } from './guildrankings'
 export { Guild, GuildsManager } from './guilds'
 export { Match, MatchesManager } from './matches'
 export { Player, PlayersManager } from './players'

@@ -1,7 +1,7 @@
-import { eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
+import { eq, InferInsertModel, InferSelectModel, sql } from 'drizzle-orm'
 import { DbClient } from '../client'
 import { DbObject, DbObjectManager } from '../managers'
-import { Users } from '../schema'
+import { Players, QueueTeams, TeamPlayers, Users } from '../schema'
 
 export type UserSelect = InferSelectModel<typeof Users>
 export type UserInsert = InferInsertModel<typeof Users>
@@ -45,5 +45,21 @@ export class UsersManager extends DbObjectManager {
     if (result) {
       return new User(result, this.db)
     }
+  }
+
+  async removeFromQueues(id: string): Promise<number> {
+    const result = await this.db.drizzle
+      .delete(QueueTeams)
+      .where(
+        sql`${QueueTeams.team_id} in (
+          select ${TeamPlayers.team_id} from ${TeamPlayers}
+          where ${TeamPlayers.player_id} in (
+            select ${Players.id} from ${Players}
+            where ${Players.user_id} = ${id}
+          )
+        )`,
+      )
+      .returning() // prettier-ignore
+    return result.length
   }
 }

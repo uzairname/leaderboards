@@ -9,8 +9,6 @@ export class Config {
     Bot: '/invite',
   }
 
-  readonly OauthRedirectURI: string
-
   readonly DevGuildId = '1041458052055978024'
 
   readonly OwnerIds = ['991398096565182467', '375438205253713933']
@@ -21,26 +19,30 @@ export class Config {
     D.PermissionFlagsBits.ManageThreads |
     D.PermissionFlagsBits.ManageRoles
 
-  readonly features
-
   readonly ChallengeTimeoutMs = 1000 * 60 * 10
 
-  readonly display_mean_rating = 1000
-  readonly display_sd_offset = -0.6
-  readonly provisional_rd_threshold = 1
+  readonly DisplayMeanRating = 1000
+  readonly DisplaySdOffset = -0.6
+  
+  constructor(
+    readonly env: Env,
 
-  constructor(readonly env: Env) {
-    this.OauthRedirectURI = env.BASE_URL + `/oauth` + this.OauthRoutes.Redirect
+    readonly OauthRedirectURI = env.BASE_URL + `/oauth` + this.OauthRoutes.Redirect,
 
-    const is_dev = env.ENVIRONMENT === 'development'
+    readonly IsDev = env.ENVIRONMENT === 'development',
 
-    this.features = {
-      HelpReference: is_dev,
-      IsDev: is_dev,
-      ExperimentalCommands: is_dev,
+    readonly DirectResponse = IsDev ? true : true,
+
+    readonly features = {
+      GiveBotInvite: !IsDev,
+      HelpReference: IsDev,
+      ExperimentalCommands: IsDev,
       QueueMessage: false,
       DisableLogMatchesOption: false,
       MultipleTeamsPlayers: false,
-    }
-  }
+      RoleConnectionsElo: false,
+    },
+
+    readonly ProvisionalRdThreshold = IsDev ? 0.85 : 1,
+  ) {}
 }

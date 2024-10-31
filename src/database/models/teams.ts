@@ -64,7 +64,7 @@ export class Team extends DbObject<TeamSelect> {
   }
 
   async addToQueue(): Promise<void> {
-    // if already in queue
+    // if already in queue, updates time_created
     await this.db.drizzle
       .insert(QueueTeams)
       .values({ team_id: this.data.id })

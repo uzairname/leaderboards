@@ -1,6 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import type { MessageData } from '../rest/objects'
-import type { ViewState } from './view_state'
+import type { ViewState } from './view-state'
 import { AppCommand, BaseView, MessageView } from './views'
 
 export type AppCommandInteraction<CommandType extends D.ApplicationCommandType> =

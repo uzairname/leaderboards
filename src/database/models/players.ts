@@ -11,12 +11,21 @@ export type PlayerInsert = Omit<InferInsertModel<typeof Players>, 'id'>
 
 export type PlayerStats = {}
 
+export enum PlayerFlags {
+  None = 0,
+  Disabled = 1,
+}
+
 export class Player extends DbObject<PlayerSelect> {
   constructor(data: PlayerSelect, db: DbClient) {
     super(data, db)
     db.cache.players_by_id[data.id] = this
     db.cache.players[data.ranking_id] ??= {}
     db.cache.players[data.ranking_id][data.user_id] = this
+  }
+
+  toString() {
+    return `[Player ${this.data.id}: ${this.data.name} in ${this.data.ranking_id}]`
   }
 
   async update(data: Partial<Omit<PlayerInsert, 'user_id' | 'ranking_id'>>): Promise<this> {
@@ -56,13 +65,10 @@ export class Player extends DbObject<PlayerSelect> {
       .where(
         sql`${QueueTeams.team_id} in (
           select ${TeamPlayers.team_id} from ${TeamPlayers}
-          inner join ${Teams} on 
-            ${Teams.id} = ${TeamPlayers.team_id} 
-            and ${TeamPlayers.player_id} = ${this.data.id}
+          where ${TeamPlayers.player_id} = ${this.data.id}
         )`,
       )
       .returning() // prettier-ignore
-
     return result.length
   }
 }
@@ -85,7 +91,10 @@ export class PlayersManager extends DbObjectManager {
 
   async get(user_id: string, ranking: number): Promise<Player | undefined> {
     const cached_player = this.db.cache.players[ranking]?.[user_id]
-    if (cached_player) return cached_player
+    if (cached_player) {
+      sentry.debug(`cache hit for ${cached_player}`)
+      return cached_player
+    }
 
     const data = (
       await this.db.drizzle
@@ -102,7 +111,7 @@ export class PlayersManager extends DbObjectManager {
     if (cached_player) return cached_player
 
     const data = (await this.db.drizzle.select().from(Players).where(eq(Players.id, id)))[0]
-    if (!data) throw new DbErrors.NotFoundError(`Player ${id} doesn't exist`)
+    if (!data) throw new DbErrors.NotFound(`Player ${id} doesn't exist`)
     return new Player(data, this.db)
   }
 

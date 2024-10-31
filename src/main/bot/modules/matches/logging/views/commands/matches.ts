@@ -1,11 +1,11 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand } from '../../../../../../../discord-framework'
 import { GuildCommand } from '../../../../../../app/ViewModule'
-import { checkGuildInteraction } from '../../../../../helpers/perms'
+import { checkGuildInteraction } from '../../../../../ui-helpers/perms'
 import {
   guildRankingsOption,
   withOptionalSelectedRanking,
-} from '../../../../../helpers/ranking_command_option'
+} from '../../../../../ui-helpers/ranking-command-option'
 import { matches_page_config, matchesPage } from '../pages/matches'
 
 export const matches_command_signature = new AppCommand({
@@ -45,7 +45,7 @@ export default new GuildCommand(
   },
   app =>
     matches_command_signature.onCommand(async ctx =>
-      withOptionalSelectedRanking(app, ctx, optionnames.ranking, async ranking => {
+      withOptionalSelectedRanking(app, ctx, optionnames.ranking, {}, async ranking => {
         const user_option_value =
           (
             ctx.interaction.data.options?.find(o => o.name === optionnames.user) as
@@ -69,12 +69,11 @@ export default new GuildCommand(
 
             await ctx.edit(
               await matchesPage(
-                app,
-                matches_page_config.newState({
+                app,{
                   ranking_ids,
                   guild_id,
                   user_ids: user_option_value ? [user_option_value] : undefined,
-                }),
+                },
               ),
             )
           },

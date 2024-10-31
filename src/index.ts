@@ -1,9 +1,9 @@
 import { Router } from 'itty-router'
 import { initSentry, sentry } from './logging/sentry'
-import { apiRouter } from './main/api/api_router'
-import { authorize } from './main/api/authorize'
-import { oauthRouter } from './main/api/oauth'
-import { updateRouter } from './main/api/update_app'
+import apiRouter from './main/api/api-router'
+import authorize from './main/api/authorize'
+import oauthRouter from './main/api/oauth-router'
+import updateRouter from './main/api/update-router'
 import initApp from './main/initApp'
 import { runTests } from './main/test/test'
 

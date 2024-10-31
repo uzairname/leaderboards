@@ -3,7 +3,7 @@ import { json } from 'itty-router'
 import { sentry } from '../../logging/sentry'
 import { DiscordAPIClient } from '../rest/client'
 import { ViewErrors } from './errors'
-import { findView } from './find_view'
+import { findView } from './find-view'
 import {
   FindViewCallback,
   InteractionErrorCallback,
@@ -11,7 +11,7 @@ import {
   viewIsChatInputAppCommand,
 } from './types'
 import { verify } from './verify'
-import { ViewStateFactory } from './view_state'
+import { ViewStateFactory } from './view-state'
 
 export async function respondToInteraction(
   bot: DiscordAPIClient,
@@ -103,7 +103,7 @@ function logInteraction(interaction: D.APIInteraction) {
       name: interaction.data.name,
       type: interaction.data.type,
       guild_id: interaction.guild_id,
-      options,
+      options: JSON.stringify(options),
     }
   } else if (
     interaction.type === D.InteractionType.MessageComponent ||

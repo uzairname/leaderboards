@@ -1,25 +1,5 @@
-import { APIUser } from 'discord-api-types/v10'
-import { sql } from 'drizzle-orm'
-import { DbClient } from '../../database/client'
-import {
-  AccessTokens,
-  GuildRankings,
-  Guilds,
-  MatchPlayers,
-  MatchSummaryMessages,
-  Matches,
-  Players,
-  QueueTeams,
-  Rankings,
-  Settings,
-  TeamPlayers,
-  Teams,
-  Users,
-} from '../../database/schema'
-import { sentry } from '../../logging/sentry'
-import { assert, nonNullable } from '../../utils/utils'
+import { GuildRankings, Matches, MatchPlayers, Players } from '../../database/schema'
 import { App } from '../app/App'
-import { getOrCreatePlayer } from '../bot/modules/players/manage_players'
 
 class Test {
   @catchError(3)
@@ -48,56 +28,100 @@ export async function runTests(app: App): Promise<Response> {
   console.log('running tests')
 
   app.db.cache.clear()
-  await app.db.drizzle.delete(Rankings)
 
-  const guild = await getOrAddGuild(app, '1003698664767762575')
-  const ranking = await app.db.rankings.create({
-    name: 'ranking 1',
-    players_per_team: 2,
-    num_teams: 2,
-    elo_settings: {
-      initial_rating: 1000,
-      initial_rd: 300,
-    },
-  })
+  const _ = `
+  select * from (
+    select id from "Matches" where id in (
+      select "Matches".id from "Matches" 
+      inner join "MatchPlayers" on "Matches"."id"="match_id"
+      inner join "Players" on "MatchPlayers"."player_id"="Players"."id"
+      where ...
+    )
+    order by "time_finished" desc,"time_started" desc
+    limit _ offset _
+  ) as filtered
+  inner join "Matches" on "Matches".id=filtered.id
+  inner join "MatchPlayers" on "MatchPlayers".match_id="Matches".id
+  inner join "Players" on "Players"."id"="MatchPlayers"."player_id"
+  order by "time_finished" asc, "time_started" asc
+`
 
-  const guild_ranking = await app.db.guild_rankings.create(guild, ranking, {})
+  const filters = {
+    finished_on_or_after: undefined,
+    status: undefined,
+    ranking_ids: undefined,
+    player_ids: undefined,
+    user_ids: undefined,
+    guild_id: undefined,
+    limit: 6,
+    offset: 0,
+  }
 
-  sentry.debug(
-    `Created guild ranking with leaderboard_message: ${guild_ranking.data.display_settings?.leaderboard_message}`,
-  )
+  const where_sql_chunks: SQL[] = []
 
-  const guild_rankings1 = await app.db.guild_rankings.get({ guild_id: guild.data.id })
+  if (filters.finished_on_or_after) {
+    where_sql_chunks.push(gte(Matches.time_finished, filters.finished_on_or_after))
+  }
 
-  sentry.debug(
-    `guild rankings 1 with leaderboard_message: ${guild_rankings1[0].guild_ranking.data.display_settings?.leaderboard_message}`,
-  )
+  if (filters.status) {
+    where_sql_chunks.push(eq(Matches.status, filters.status))
+  }
 
-  await guild_ranking.update({ display_settings: { leaderboard_message: true } })
-  sentry.debug(`updated`)
+  if (filters.ranking_ids) {
+    where_sql_chunks.push(inArray(Matches.ranking_id, filters.ranking_ids))
+  }
 
-  const guild_rankings2 = await app.db.guild_rankings.get({ guild_id: guild.data.id })
+  if (filters.player_ids) {
+    where_sql_chunks.push(inArray(MatchPlayers.player_id, filters.player_ids))
+  }
 
-  sentry.debug(`after updating:`)
-  sentry.debug(
-    `guild rankings 1 with leaderboard_message: ${guild_rankings1[0].guild_ranking.data.display_settings?.leaderboard_message}`,
-  )
-  sentry.debug(
-    `guild rankings 2 with leaderboard_message: ${guild_rankings2[0].guild_ranking.data.display_settings?.leaderboard_message}`,
-  )
+  if (filters.user_ids) {
+    where_sql_chunks.push(inArray(Players.user_id, filters.user_ids))
+  }
 
-  await ranking.delete()
+  if (filters.guild_id) {
+    where_sql_chunks.push(eq(GuildRankings.guild_id, filters.guild_id))
+  }
 
-  const fetched_rankings = await app.db.guild_rankings.get({ guild_id: guild.data.id })
-  sentry.debug(`fetched rankings: ${fetched_rankings.length}. should be 0`)
+  const where_sql = and(...where_sql_chunks)
+
+  const filtered_matches = app.db.drizzle
+    .select({ _: Matches.id })
+    .from(Matches)
+    .innerJoin(MatchPlayers, eq(Matches.id, MatchPlayers.match_id))
+    .innerJoin(Players, eq(MatchPlayers.player_id, Players.id))
+    .innerJoin(GuildRankings, eq(Matches.ranking_id, GuildRankings.ranking_id))
+    .where(where_sql)
+  // .as('filtered')
+
+  const paged_matches = app.db.drizzle
+    .select({ id: Matches.id })
+    .from(Matches)
+    .where(inArray(Matches.id, filtered_matches))
+    .orderBy(desc(Matches.time_finished), desc(Matches.time_started))
+    .limit(filters.limit ?? -1)
+    .offset(filters.offset ?? 0)
+    .as('paged')
+
+  const final_query = app.db.drizzle
+    .select({ player: Players, match: Matches, match_player: MatchPlayers })
+    .from(paged_matches)
+    .innerJoin(Matches, eq(Matches.id, paged_matches.id))
+    .innerJoin(MatchPlayers, eq(Matches.id, MatchPlayers.match_id))
+    .innerJoin(Players, eq(MatchPlayers.player_id, Players.id))
+    .orderBy(asc(Matches.time_finished), asc(Matches.time_started))
+
+  const result = await final_query
+
+  console.log(result, result.length)
 
   // await testDatabase(app)
   // sentry.debug(`Tested Leaderboards app (${app.config.env.ENVIRONMENT})`)
   return new Response(`Successfully tested Leaderboards app`, { status: 200 })
 }
 
+import { and, asc, desc, eq, gte, inArray, SQL } from 'drizzle-orm'
 import { Rating, TrueSkill } from 'ts-trueskill'
-import { getOrAddGuild } from '../bot/modules/guilds/guilds'
 
 function testTs() {
   function getAdjustedBeta(baseBeta: number, best_of: number): number {
@@ -151,261 +175,3 @@ function testTs() {
 
   console.log(new_player_ratings.map(t => t.map(r => ({ mu: r.mu, sigma: r.sigma }))))
 }
-
-async function testDatabase(app: App) {
-  await resetDatabase(app.db)
-  // await testMatches(app)
-  // await testQueueTeams(app)
-  // await testQueue(app)
-  await testMatchScoring(app)
-}
-
-async function testQueue(app: App) {
-  await addData(app)
-  const ranking = (await getRankingInGuildByName(app, '98623457887', 'ranking 1')).ranking
-
-  const player1 = nonNullable(await app.db.players.get('100', ranking.data.id), 'player 100')
-  const player2 = nonNullable(await app.db.players.get('200', ranking.data.id), 'player 200')
-  const player3 = nonNullable(await app.db.players.get('300', ranking.data.id), 'player 300')
-
-  const team = await app.db.teams.create(ranking, {}, [player1])
-  await team.addToQueue()
-
-  await Promise.all([
-    new Promise<void>(async resolve => {
-      const team = await app.db.teams.create(ranking, {}, [player2])
-      await team.addToQueue()
-    }),
-    new Promise<void>(async resolve => {
-      const team = await app.db.teams.create(ranking, {}, [player3])
-      await team.addToQueue()
-    }),
-  ])
-}
-
-// async function testMatches(app: App) {
-//   await resetDatabase(app.db)
-//   await addData(app)
-
-//   const ranking = (await getRankingInGuildByName(app, '98623457887', 'ranking 1')).ranking
-
-//   const player100 = nonNullable(await app.db.players.get('100', ranking.data.id), 'player 100')
-//   const player200 = nonNullable(await app.db.players.get('200', ranking.data.id), 'player 200')
-//   const player300 = nonNullable(await app.db.players.get('300', ranking.data.id), 'player 300')
-//   const player400 = nonNullable(await app.db.players.get('400', ranking.data.id), 'player 400')
-
-//   const match_1_1 = await app.db.matches.create({
-//     ranking_id: 1,
-//     team_players: [
-//       [player100, player200],
-//       [player300, player400],
-//     ],
-//     outcome: [0, 1],
-//     time_started: new Date(),
-//     time_finished: new Date(),
-//   })
-
-//   const match_1_2 = await app.db.matches.create({
-//     ranking_id: 2,
-//     team_players: [
-//       [player100, player200],
-//       [player300, player400],
-//     ],
-//     outcome: [0, 1],
-//     time_started: new Date(),
-//     time_finished: new Date(),
-//   })
-
-//   const match_2_1 = await app.db.matches.create({
-//     ranking_id: 1,
-//     team_players: [
-//       [player100, player200],
-//       [player300, player400],
-//     ],
-//     outcome: [0, 1],
-//     time_started: new Date(),
-//     time_finished: new Date(),
-//   })
-// }
-
-async function testQueueTeams(app: App) {
-  sentry.debug('resetting database')
-  await resetDatabase(app.db)
-  sentry.debug('adding data')
-  await addData(app)
-
-  const ranking = (await getRankingInGuildByName(app, '98623457887', 'ranking 1')).ranking
-  const ranking2 = (await getRankingInGuildByName(app, '98623457887', 'ranking 2')).ranking
-
-  const player100 = nonNullable(await app.db.players.get('100', ranking.data.id), 'player 100')
-  const player200 = nonNullable(await app.db.players.get('200', ranking.data.id), 'player 200')
-  const player300 = nonNullable(await app.db.players.get('300', ranking.data.id), 'player 300')
-  const player400 = nonNullable(await app.db.players.get('400', ranking.data.id), 'player 400')
-  const player100_2 = nonNullable(await app.db.players.get('100', ranking2.data.id), 'player 100')
-  const player400_2 = nonNullable(await app.db.players.get('400', ranking2.data.id), 'player 400')
-
-  const team_1 = await app.db.teams.create(ranking, {}, [player100, player400])
-  await team_1.addToQueue()
-  // queue teams: team_1 (100, 400, ranking 1)
-
-  // the same players join the queue for ranking 2
-  const team_1_2 = await app.db.teams.create(ranking2, {}, [player100_2, player400_2])
-  await team_1_2.addToQueue()
-  // queue teams: team_1 (100, 400, ranking 1), team_1_2 (100, 400, ranking 2)
-
-  // user 200 and 300 join the queue for ranking 1
-  const team_2 = await app.db.teams.create(ranking, {}, [player200, player300])
-  await team_2.addToQueue()
-  // queue teams: team_1 (100, 400, ranking 1), team_1_2 (100, 400, ranking 2), team_2 (200, 300, ranking 1)
-
-  // user 100 and 300 join the queue for ranking 1
-  const team_3 = await app.db.teams.create(ranking, {}, [player100, player300])
-  const queue_team3 = await team_3.addToQueue()
-  // queue teams: team_1 (100, 400, ranking 1), team_1_2 (100, 400, ranking 2), team_2 (200, 300, ranking 1), team_3 (100, 300, ranking 1)
-
-  // add to queue again. shouldn't error
-  await team_3.addToQueue()
-
-  // get player 100's queue teams. should be team 1 and 3
-  const player100_queue_teams = await player100.teams()
-  assert(
-    player100_queue_teams.filter(t => t.in_queue).length == 2,
-    'player 100 should be in queue team 1 and 3',
-  )
-
-  // user 100 leaves the queue
-  assert(
-    (await player300.teams()).filter(t => t.in_queue).length == 2,
-    'player 300 should be in queue team 2 and 3',
-  )
-
-  await player100.removeTeamsFromQueue()
-  // queue teams: team_1_2 (100, 400, ranking 2), team_2 (200, 300, ranking 1)
-
-  assert(
-    (await player100.teams()).filter(t => t.in_queue).length == 0,
-    'player 200 should not be in queue',
-  )
-  assert(
-    (await player200.teams()).filter(t => t.in_queue).length == 1,
-    'player 200 should be in queue team 2',
-  )
-  assert(
-    (await player100_2.teams()).filter(t => t.in_queue).length == 1,
-    'player 100 should still be in queue team 1 ranking 2',
-  )
-}
-
-async function testMatchScoring(app: App) {
-  await resetDatabase(app.db)
-  sentry.debug('reset database')
-  await addData(app)
-  sentry.debug('added data')
-
-  const ranking = (await getRankingInGuildByName(app, '98623457887', 'ranking 1')).ranking
-  const player100 = await getOrCreatePlayer(app, '100', ranking)
-  const player200 = await getOrCreatePlayer(app, '200', ranking)
-  const player300 = await getOrCreatePlayer(app, '300', ranking)
-  const player400 = await getOrCreatePlayer(app, '400', ranking)
-
-  // const match = await createAndScoreMatch(
-  //   app,
-  //   ranking,
-  //   [
-  //     [player100, player200],
-  //     [player300, player400],
-  //   ],
-  //   [0, 1],
-  // )
-
-  // await updateMatch(app, match, [1, 0])
-
-  // sentry.debug(player100.data.id, player100.data.rating, player300.data.id, player300.data.rating)
-  // sentry.debug(
-  //   (await getRegisterPlayer(app, '100', ranking)).data.rating,
-  //   (await getRegisterPlayer(app, '300', ranking)).data.rating,
-  // )
-}
-
-async function getRankingInGuildByName(app: App, guild_id: string, name: string) {
-  const rankings = await app.db.guild_rankings.get({ guild_id: guild_id })
-  const ranking = rankings.find(r => r.ranking.data.name === name)
-  assert(ranking !== undefined, `ranking ${name} should exist`)
-  return ranking
-}
-
-async function resetDatabase(client: DbClient) {
-  await Promise.all([
-    client.drizzle.delete(MatchPlayers),
-    client.drizzle.delete(MatchSummaryMessages),
-    client.drizzle.delete(Matches),
-    client.drizzle.delete(QueueTeams),
-    client.drizzle.delete(TeamPlayers),
-    client.drizzle.delete(GuildRankings),
-    client.drizzle.execute(sql`ALTER SEQUENCE "AccessTokens_id_seq" RESTART WITH 1`),
-    client.drizzle.delete(AccessTokens),
-    client.drizzle.delete(Settings),
-  ])
-  await Promise.all([
-    client.drizzle.execute(sql`ALTER SEQUENCE "Matches_id_seq" RESTART WITH 1`),
-    client.drizzle.execute(sql`ALTER SEQUENCE "ActiveMatches_id_seq" RESTART WITH 1`),
-    client.drizzle.delete(Teams),
-    client.drizzle.delete(Players),
-    client.drizzle.delete(Guilds),
-  ])
-  await Promise.all([
-    client.drizzle.execute(sql`ALTER SEQUENCE "Teams_id_seq" RESTART WITH 1`),
-    client.drizzle.execute(sql`ALTER SEQUENCE "Players_id_seq" RESTART WITH 1`),
-    client.drizzle.delete(Rankings),
-    await client.drizzle.delete(Users),
-  ])
-  await Promise.all([client.drizzle.execute(sql`ALTER SEQUENCE "Rankings_id_seq" RESTART WITH 1`)])
-}
-
-async function addData(app: App) {
-  const guild1 = await app.db.guilds.create({ id: '98623457887', name: '.' })
-  await Promise.all([
-    app.db.users.getOrCreate({ id: '100', name: 'one' }),
-    app.db.users.getOrCreate({ id: '200', name: 'two' }),
-    app.db.users.getOrCreate({ id: '300', name: 'three' }),
-    app.db.users.getOrCreate({ id: '400', name: 'four' }),
-  ])
-
-  const ranking1 = await app.db.rankings.create({
-    name: 'ranking 1',
-    players_per_team: 2,
-    num_teams: 2,
-    elo_settings: {
-      initial_rating: 1000,
-      initial_rd: 300,
-    },
-  })
-
-  const ranking2 = await app.db.rankings.create({
-    name: 'ranking 2',
-    players_per_team: 2,
-    num_teams: 2,
-    elo_settings: {
-      initial_rating: 1000,
-      initial_rd: 300,
-    },
-  })
-
-  const guild_ranking_1 = await app.db.guild_rankings.create(guild1, ranking1, { is_admin: true })
-  const guild_ranking_2 = await app.db.guild_rankings.create(guild1, ranking2, { is_admin: true })
-
-  await Promise.all([
-    getOrCreatePlayer(app, { id: '100', global_name: 'p100' } as APIUser, ranking1),
-    getOrCreatePlayer(app, { id: '200', global_name: 'p200' } as APIUser, ranking1),
-    getOrCreatePlayer(app, { id: '300', global_name: 'p300' } as APIUser, ranking1),
-    getOrCreatePlayer(app, { id: '400', global_name: 'p400' } as APIUser, ranking1),
-    getOrCreatePlayer(app, { id: '100', global_name: 'p100' } as APIUser, ranking2),
-    getOrCreatePlayer(app, { id: '200', global_name: 'p200' } as APIUser, ranking2),
-    getOrCreatePlayer(app, { id: '300', global_name: 'p300' } as APIUser, ranking2),
-    getOrCreatePlayer(app, { id: '400', global_name: 'p400' } as APIUser, ranking2),
-  ])
-}
-
-// runTests().then((res) => {
-//   process.exit(0)
-// })

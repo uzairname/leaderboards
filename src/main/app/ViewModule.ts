@@ -7,7 +7,8 @@ import {
   type AnyAppCommand,
   type AnyView,
 } from '../../discord-framework'
-import { ViewState, ViewStateFactory } from '../../discord-framework/interactions/view_state'
+import { ViewState, ViewStateFactory } from '../../discord-framework/interactions/view-state'
+import { sentry } from '../../logging/sentry'
 import type { App } from './App'
 
 export class AppView<TView extends AnyView> {
@@ -29,7 +30,7 @@ export class AppView<TView extends AnyView> {
 export class GuildCommand<TView extends AnyChatInputAppCommand> extends AppView<TView> {
   constructor(
     base_signature: TView,
-    public resolveGuildSignature: (app: App, guild: Guild) => Promise<TView>,
+    public resolveGuildSignature: (app: App, guild: Guild) => Promise<TView | null>,
     resolveHandlers: (app: App) => TView,
   ) {
     super(base_signature, resolveHandlers)
@@ -74,24 +75,30 @@ export class ViewModule {
 
   async getAllCommandSignatures(app: App, guild?: Guild): Promise<AnyAppCommand[]> {
     if (guild) await app.db.guild_rankings.get({ guild_id: guild?.data.id }) // Cache guild rankings
-    return Promise.all(
+
+    const result = Promise.all(
       this.all_views.map(async v => {
         if (v.is_dev && !app.config.features.ExperimentalCommands) {
-          return []
+          return null
         }
         if (guild) {
-          if (v instanceof GuildCommand) return v.resolveGuildSignature(app, guild)
+          if (v instanceof GuildCommand) {
+            sentry.debug(`Resolving guild signature for ${v.base_signature.config.name}`)
+            return v.resolveGuildSignature(app, guild)
+          }
           // If we're looking for guild commands and it's a guild command, get its signature in the guild
         } else {
           if (!(v instanceof GuildCommand)) {
             // if we're not looking for guild commands and it's not a guild command, get its global signature
             const resolved = v.resolveHandlers(app)
-            return viewIsAppCommand(resolved) ? resolved : []
+            return viewIsAppCommand(resolved) ? resolved : null
           }
         }
-        return []
+        return null
       }),
-    ).then(cmds => cmds.flat())
+    ).then(cmds => cmds.filter((v): v is AnyAppCommand => v !== null))
+
+    return result
   }
 
   /**

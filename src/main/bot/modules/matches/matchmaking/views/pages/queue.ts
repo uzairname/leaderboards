@@ -8,10 +8,10 @@ import {
 } from '../../../../../../../discord-framework'
 import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
-import { Colors } from '../../../../../helpers/constants'
-import { checkGuildComponentInteraction } from '../../../../../helpers/perms'
-import { escapeMd, relativeTimestamp } from '../../../../../helpers/strings'
-import { userJoinQueue, userLeaveQueue } from '../../queue/queue_join_leave'
+import { Colors } from '../../../../../ui-helpers/constants'
+import { checkGuildComponentInteraction } from '../../../../../ui-helpers/perms'
+import { escapeMd, relativeTimestamp } from '../../../../../ui-helpers/strings'
+import { userJoinQueue, userLeaveQueue } from '../../queue/queue-teams'
 
 const queue_page_config = new MessageView({
   name: 'Queue Message',
@@ -59,7 +59,7 @@ export default new AppView(queue_page_config, app =>
           },
         },
         async ctx => {
-          const n_teams_removed = await userLeaveQueue(app, ranking_id, interaction.member.user)
+          const n_teams_removed = await userLeaveQueue(app, ranking_id, interaction.member.user.id)
           await ctx.edit({
             content: n_teams_removed ? 'You left the queue' : `You're not in the queue`,
           })

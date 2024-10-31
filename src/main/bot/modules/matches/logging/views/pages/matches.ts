@@ -1,10 +1,10 @@
 import * as D from 'discord-api-types/v10'
 import { MessageView, field } from '../../../../../../../discord-framework'
-import { ViewState } from '../../../../../../../discord-framework/interactions/view_state'
+import { ViewState } from '../../../../../../../discord-framework/interactions/view-state'
 import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
-import { Colors } from '../../../../../helpers/constants'
-import { matchSummaryEmbed } from '../../match_summary_message'
+import { Colors } from '../../../../../ui-helpers/constants'
+import { matchSummaryEmbed } from '../../match-summary-message'
 
 export const matches_page_config = new MessageView({
   custom_id_prefix: 'mh',
@@ -28,18 +28,20 @@ export default new AppView(matches_page_config, app =>
       },
       async ctx => {
         return void (ctx.state.data.message_sent ? ctx.edit : ctx.followup)(
-          await matchesPage(app, ctx.state.set.message_sent(true)),
+          await matchesPage(app, ctx.state.set.message_sent(true).data),
         )
       },
     )
   }),
 )
 
+
 export async function matchesPage(
   app: App,
-  state?: ViewState<typeof matches_page_config.state_schema>,
+  data: Parameters<typeof matches_page_config['newState']>[0],
 ): Promise<D.APIInteractionResponseCallbackData> {
-  state = state ?? matches_page_config.newState()
+
+  const state = matches_page_config.newState(data)
 
   state.saveAll({
     message_sent: true,

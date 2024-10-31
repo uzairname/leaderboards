@@ -1,8 +1,13 @@
 
 
-temp_data/*
-
+.env.*
 env.js
+
+test.sh
+./test.ts
+commit.txt
+prod.deploy.sh
+temp_data/*
 dump
 .wrangler
 temp.*
@@ -339,6 +344,3 @@ dist
 *.env
 .dev.vars
 .wrangler/
-test.sh
-./test.ts
-commit.txt

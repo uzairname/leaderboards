@@ -9,11 +9,11 @@ import {
 } from '../../../../../../../discord-framework'
 import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
-import { Colors } from '../../../../../helpers/constants'
-import { checkGuildInteraction } from '../../../../../helpers/perms'
-import { relativeTimestamp } from '../../../../../helpers/strings'
-import { getOrCreatePlayer } from '../../../../players/manage_players'
-import { start1v1SeriesThread } from '../../../ongoing-series/manage_ongoing_match'
+import { Colors } from '../../../../../ui-helpers/constants'
+import { checkGuildInteraction } from '../../../../../ui-helpers/perms'
+import { relativeTimestamp } from '../../../../../ui-helpers/strings'
+import { getOrCreatePlayer } from '../../../../players/manage-players'
+import { start1v1SeriesThread } from '../../../management/match-creation'
 
 export const challenge_message_signature = new MessageView({
   name: 'Challenge Message',
@@ -107,6 +107,22 @@ async function accept(
     return {
       type: D.InteractionResponseType.ChannelMessageWithSource,
       data: { content: `This challenge has expired`, flags: D.MessageFlags.Ephemeral },
+    }
+  }
+
+  // check challenges enabled
+  const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
+  if (!ranking.data.matchmaking_settings.direct_challenge_enabled) {
+    await app.discord.deleteMessageIfExists(
+      ctx.interaction.channel?.id,
+      ctx.interaction.message?.id,
+    )
+    return {
+      type: D.InteractionResponseType.ChannelMessageWithSource,
+      data: {
+        content: `The ranking **${ranking.data.name}** does not allow direct challenges`,
+        flags: D.MessageFlags.Ephemeral,
+      },
     }
   }
 

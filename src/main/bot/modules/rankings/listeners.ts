@@ -6,6 +6,6 @@ export default function (events: AppEvents) {
     sentry.debug(
       `GuildRankingsModified event received for guild ${guild.data.id}. Syncing discord commands`,
     )
-    await app.syncDiscordCommands(guild)
+    app.syncDiscordCommands(guild)
   })
 }

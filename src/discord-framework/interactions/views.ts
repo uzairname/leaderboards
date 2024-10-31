@@ -1,6 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging/sentry'
-import { checkGuildComponentInteraction } from '../../main/bot/helpers/perms'
+import { checkGuildComponentInteraction } from '../../main/bot/ui-helpers/perms'
 import { DiscordAPIClient } from '../rest/client'
 import { ViewErrors } from './errors'
 import type {
@@ -22,8 +22,8 @@ import type {
   StateContext,
   ViewAutocompleteCallback,
 } from './types'
-import type { StringDataSchema } from './utils/string_data'
-import { ViewState, ViewStateFactory } from './view_state'
+import type { StringDataSchema } from './utils/string-data'
+import { ViewState, ViewStateFactory } from './view-state'
 
 export abstract class BaseView<TSchema extends StringDataSchema = {}> {
   name: string
@@ -110,10 +110,12 @@ export abstract class BaseView<TSchema extends StringDataSchema = {}> {
       async timeout_error => {
         await discord.createFollowupMessage(interaction.token, onError(timeout_error).data)
       },
+      `Deferred`,
     )
   }
 
-  newState(data: { [K in keyof TSchema]?: TSchema[K]['write'] | null } = {}): ViewState<TSchema> {
+  // newState(data: { [K in keyof TSchema]?: TSchema[K]['write'] | null } = {}): ViewState<TSchema> {
+  newState(data: { [K in keyof TSchema]?: TSchema[K]['read'] | null } = {}): ViewState<TSchema> {
     return ViewStateFactory.fromView(this).setAll(data)
   }
 

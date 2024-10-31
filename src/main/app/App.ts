@@ -8,12 +8,11 @@ import {
   respondToInteraction,
 } from '../../discord-framework'
 import { sentry } from '../../logging/sentry'
-import { onViewError } from '../bot/errors/on_view_error'
+import onViewError from '../bot/errors/on-view-error'
 import { AppEvents, getAppEvents } from './AppEvents'
 import { Config } from './Config'
 import { ViewModule } from './ViewModule'
 
-const direct_response_in_dev = false
 
 export class App {
   public db: DbClient
@@ -36,6 +35,7 @@ export class App {
     )
 
     this.db = new DbClient(drizzle)
+    this.db.cache.clear()
 
     this.discord = new DiscordAPIClient({
       token: this.config.env.DISCORD_TOKEN,
@@ -56,12 +56,12 @@ export class App {
       request,
       this.views.getFindViewCallback(this),
       onViewError(this),
-      this.config.features.IsDev ? direct_response_in_dev : true,
+      this.config.DirectResponse,
     )
   }
 
   async syncDiscordCommands(guild?: Guild) {
-    return await overwriteDiscordCommandsWithViews(
+    overwriteDiscordCommandsWithViews(
       this.discord,
       await this.views.getAllCommandSignatures(this, guild),
       guild?.data.id,

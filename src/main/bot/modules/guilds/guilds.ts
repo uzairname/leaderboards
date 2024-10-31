@@ -3,7 +3,7 @@ import * as D from 'discord-api-types/v10'
 import { Guild } from '../../../../database/models'
 import { GuildChannelData, RoleData } from '../../../../discord-framework'
 import { App } from '../../../app/App'
-import { Colors } from '../../helpers/constants'
+import { Colors } from '../../ui-helpers/constants'
 
 export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> {
   let app_guild = await app.db.guilds.get(guild_id)
@@ -29,7 +29,7 @@ export async function addGuild(app: App, guild_id: string): Promise<Guild> {
 }
 
 export async function updateGuild(app: App, guild: Guild): Promise<void> {
-  await app.syncDiscordCommands(guild)
+  app.syncDiscordCommands(guild)
 }
 
 export async function communityEnabled(app: App, guild_id: string): Promise<boolean> {
