@@ -1,12 +1,13 @@
 import * as D from 'discord-api-types/v10'
-import type { Guild } from '../../../../database/models'
-import { GuildChannelData, MessageData } from '../../../../discord-framework'
-import { App } from '../../../app/App'
-import { Colors } from '../../ui-helpers/constants'
-import { commandMention } from '../../ui-helpers/strings'
-import { syncRankedCategory } from '../guilds/guilds'
-import matches from './logging/views/commands/matches'
-import { sentry } from '../../../../logging/sentry'
+import type { Guild } from '../../../../../database/models'
+import { GuildChannelData, MessageData } from '../../../../../discord-framework'
+import { sentry } from '../../../../../logging/sentry'
+import { App } from '../../../../app/App'
+import { Colors } from '../../../ui-helpers/constants'
+import { commandMention } from '../../../ui-helpers/strings'
+import { syncRankedCategory } from '../../guilds/guilds'
+import matches from './views/commands/matches'
+
 
 export async function syncMatchesChannel(app: App, guild: Guild): Promise<D.APIChannel> {
   sentry.debug(`syncMatchesChannel`, { guild_id: guild.data.id })

@@ -1,5 +1,5 @@
 import { Guild, GuildRanking, Match, Player, Ranking, Setting, Team, User } from './models'
-import { MatchTeamPlayer } from './models/matches'
+import { MatchPlayer } from './models/matches'
 
 export default class DbCache {
   setting: Setting | undefined
@@ -12,7 +12,7 @@ export default class DbCache {
   } = {}
   players: { [ranking_id: number]: { [user_id: string]: Player } } = {}
   players_by_id: { [id: string]: Player } = {}
-  match_team_players: { [match_id: string]: MatchTeamPlayer[][] } = {}
+  match_team_players: { [match_id: string]: MatchPlayer[][] } = {}
   matches: { [id: string]: Match } = {}
   teams: { [id: number]: Team } = {}
 

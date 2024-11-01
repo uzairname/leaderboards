@@ -23,7 +23,7 @@ export function rateTrueskill(
   // outcome is an array of 0s and 1s, where 0 means the team lost and 1 means the team won
   const team_ranks = outcome.map(score => 1 - score)
 
-  const env = new TrueSkill(elo_settings.initial_rating, elo_settings.initial_rd)
+  const env = new TrueSkill(elo_settings.prior_mu, elo_settings.prior_rd)
 
   env.beta = getAdjustedBeta(env.beta, best_of ?? 1)
 

@@ -6,7 +6,7 @@ import {
   guildRankingsOption,
   withOptionalSelectedRanking,
 } from '../../../../../ui-helpers/ranking-command-option'
-import { matches_page_config, matchesPage } from '../pages/matches'
+import { matchesPage } from '../pages/matches'
 
 export const matches_command_signature = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -68,13 +68,11 @@ export default new GuildCommand(
                 : undefined
 
             await ctx.edit(
-              await matchesPage(
-                app,{
-                  ranking_ids,
-                  guild_id,
-                  user_ids: user_option_value ? [user_option_value] : undefined,
-                },
-              ),
+              await matchesPage(app, {
+                ranking_ids,
+                guild_id,
+                user_ids: user_option_value ? [user_option_value] : undefined,
+              }),
             )
           },
         )

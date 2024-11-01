@@ -3,6 +3,7 @@ import * as D from 'discord-api-types/v10'
 import { DiscordAPIClient } from './client'
 import { GuildChannelData, MessageData, RoleData } from './objects'
 import { RESTPostAPIGuildForumThreadsResult } from './types'
+import { sentry } from '../../logging/sentry'
 
 export class DiscordAPIUtils {
   readonly bot: DiscordAPIClient
@@ -67,8 +68,10 @@ export class DiscordAPIUtils {
     channel: D.APIChannel
     is_new_channel: boolean
   }> {
+    sentry.debug(`syncGuildChannel ${params.target_channel_id}`)
     try {
-      if (params.channelData && params.target_channel_id) {
+      if (params.target_channel_id) {
+        sentry.debug(`editing channel`)
         // try to edit the channel
         const { data } = await params.channelData()
 
@@ -81,6 +84,7 @@ export class DiscordAPIUtils {
           is_new_channel: false,
         }
       } else if (params.target_channel_id) {
+        sentry.debug(`getting channel`)
         // don't edit the channel. Return if it exists.
         const channel = await this.bot.getChannel(params.target_channel_id)
         return {
@@ -96,6 +100,7 @@ export class DiscordAPIUtils {
         (e.code === D.RESTJSONErrorCodes.UnknownChannel ||
           e.code === D.RESTJSONErrorCodes.MissingAccess)
       ) {
+        sentry.debug(`Channel unavailable`)
         // we need to create the channel
       } else {
         throw e
@@ -138,25 +143,28 @@ export class DiscordAPIUtils {
       guild_id: string
       data: GuildChannelData
     }>
-    edit_if_exists?: boolean
+    no_edit?: boolean
   }): Promise<{
     message: D.APIMessage
     is_new_message?: boolean
     new_channel?: D.APIChannel
   }> {
+    sentry.debug(`syncChannelMessage ${params.target_channel_id} ${params.target_message_id}`)
     let new_channel: D.APIChannel | undefined = undefined
     try {
       let existing_message: D.APIMessage
-      if (params.edit_if_exists) {
+      if (params.no_edit) {
+        sentry.debug(`getting message`)
+        existing_message = await this.bot.getMessage(
+          params.target_channel_id || '0',
+          params.target_message_id || '0',
+        )
+      } else {
+        sentry.debug(`editing message`)
         existing_message = await this.bot.editMessage(
           params.target_channel_id || '0',
           params.target_message_id || '0',
           (await params.messageData()).as_patch,
-        )
-      } else {
-        existing_message = await this.bot.getMessage(
-          params.target_channel_id || '0',
-          params.target_message_id || '0',
         )
       }
       // channel and message exist
@@ -165,16 +173,18 @@ export class DiscordAPIUtils {
       }
     } catch (e) {
       if (!(e instanceof DiscordAPIError)) throw e
-      if ((e.code === D.RESTJSONErrorCodes.UnknownChannel ||
-        e.code === D.RESTJSONErrorCodes.MissingAccess) && params.channelData) {
+      if (
+        (e.code === D.RESTJSONErrorCodes.UnknownChannel ||
+         e.code === D.RESTJSONErrorCodes.MissingAccess) &&
+        params.channelData
+      ) {
+        sentry.debug(`Channel unavailable`)
         new_channel = (
           await this.syncGuildChannel({
             channelData: params.channelData,
           })
         ).channel
-      } else if (
-        !(e.code === D.RESTJSONErrorCodes.UnknownMessage)
-      ) {
+      } else if (!(e.code === D.RESTJSONErrorCodes.UnknownMessage)) {
         throw e
       }
     }

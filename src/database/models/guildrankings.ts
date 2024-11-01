@@ -111,9 +111,7 @@ export class GuildRankingsManager extends DbObjectManager {
           and(eq(GuildRankings.guild_id, by.guild_id), eq(GuildRankings.ranking_id, by.ranking_id)),
         )
       if (data.length == 0)
-        throw new DbErrors.NotFound(
-          `GuildRanking ${by.guild_id} ${by.ranking_id} doesn't exist`,
-        )
+        throw new DbErrors.NotFound(`GuildRanking ${by.guild_id} ${by.ranking_id} doesn't exist`)
       return new GuildRanking(data[0], this.db) as any
     } else if (by.guild_id) {
       const cached_rankings = this.db.cache.guild_guild_rankings[by.guild_id]

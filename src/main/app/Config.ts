@@ -23,7 +23,7 @@ export class Config {
 
   readonly DisplayMeanRating = 1000
   readonly DisplaySdOffset = -0.6
-  
+
   constructor(
     readonly env: Env,
 
@@ -32,6 +32,8 @@ export class Config {
     readonly IsDev = env.ENVIRONMENT === 'development',
 
     readonly DirectResponse = IsDev ? true : true,
+    // true: return a value directly.  
+    // false: call respond endpoint. 
 
     readonly features = {
       GiveBotInvite: !IsDev,
@@ -43,6 +45,6 @@ export class Config {
       RoleConnectionsElo: false,
     },
 
-    readonly ProvisionalRdThreshold = IsDev ? 0.85 : 1,
+    readonly ProvisionalRdThreshold = IsDev ? 1 : 1,
   ) {}
 }

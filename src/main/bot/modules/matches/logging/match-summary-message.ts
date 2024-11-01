@@ -2,14 +2,13 @@ import * as D from 'discord-api-types/v10'
 import { Guild, Match } from '../../../../../database/models'
 import { MatchStatus } from '../../../../../database/models/matches'
 import { MessageData } from '../../../../../discord-framework'
+import { sentry } from '../../../../../logging/sentry'
 import { maxIndex } from '../../../../../utils/utils'
 import { App } from '../../../../app/App'
 import { Colors } from '../../../ui-helpers/constants'
 import { emojis, escapeMd, relativeTimestamp, spaces } from '../../../ui-helpers/strings'
 import { getMatchPlayersDisplayStats } from '../../players/display'
-import { syncMatchesChannel } from '../matches-channel'
-import { sentry } from '../../../../../logging/sentry'
-import { sendGuildRankingQueueMessage } from '../matchmaking/queue/queue-messages'
+import { syncMatchesChannel } from './matches-channel'
 
 /**
  * Sync match summary messages for this match across all guilds the match's ranking is in
@@ -77,7 +76,7 @@ export async function matchSummaryMessageData(app: App, match: Match): Promise<M
   })
 }
 
-export async function matchSummaryEmbed(app: App, match: Match, include?: {}): Promise<D.APIEmbed> {
+export async function matchSummaryEmbed(app: App, match: Match, {}={}): Promise<D.APIEmbed> {
   sentry.debug(`matchSummaryEmbed`, { match_id: match.data.id })
 
   const ranking = await match.ranking()
@@ -87,16 +86,16 @@ export async function matchSummaryEmbed(app: App, match: Match, include?: {}): P
   const embed: D.APIEmbed = {
     description:
       `### Match ${match.data.number} in ${escapeMd(ranking.data.name)}` +
-      ({ 
-        [MatchStatus.Scored]: ``, 
-        [MatchStatus.Ongoing]: `\n**In Progress**`, 
-        [MatchStatus.Canceled]: `\n**Canceled**` 
-      })[match.data.status],
-    color: ({ 
+      {
+        [MatchStatus.Scored]: ``,
+        [MatchStatus.Ongoing]: `\n**In Progress**`,
+        [MatchStatus.Canceled]: `\n**Canceled**`,
+      }[match.data.status],
+    color: {
       [MatchStatus.Scored]: Colors.Primary,
-      [MatchStatus.Ongoing]: Colors.Yellow, 
+      [MatchStatus.Ongoing]: Colors.Yellow,
       [MatchStatus.Canceled]: Colors.EmbedBackground,
-    })[match.data.status],
+    }[match.data.status],
   }
 
   const fields: D.APIEmbedField[] = team_player_stats.map((team, team_num) => {
@@ -117,17 +116,16 @@ export async function matchSummaryEmbed(app: App, match: Match, include?: {}): P
 
       value: team
         .map(elo => {
-
           const rating_before_text = elo.before.is_provisional
             ? `unranked`
-            : `\`${elo.before.rating.toFixed(0)}\``
+            : `\`${elo.before.score.toFixed(0)}\``
 
           if (elo.after !== undefined) {
             const rating_after_text = elo.after.is_provisional
               ? `unranked`
-              : `**${elo.after.rating.toFixed(0)}**`
+              : `**${elo.after.score.toFixed(0)}**`
 
-            const diff = elo.after.rating - elo.before.rating
+            const diff = elo.after.score - elo.before.score
             const rating_diff_text =
               elo.after.is_provisional || elo.before.is_provisional
                 ? ``
@@ -140,7 +138,6 @@ export async function matchSummaryEmbed(app: App, match: Match, include?: {}): P
           } else {
             return `<@${elo.user_id}>` + `\n${rating_before_text}`
           }
-
         })
         .join('\n'),
       inline: true,

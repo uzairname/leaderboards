@@ -3,6 +3,7 @@ import { _, AppCommand, field, StateContext } from '../../../../../../discord-fr
 import { AppView } from '../../../../../app/ViewModule'
 import { UserErrors } from '../../../../errors/UserError'
 import { helper_page_config } from './test-helper'
+import { rescoreMatches } from '../../../matches/management/score-matches'
 
 const test_cmd_signature = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -71,17 +72,25 @@ const test_command = new AppView(test_cmd_signature, app =>
       ctx.state.save.original_user(user_id)
       ctx.state.save.counter(0)
 
-      const user =
-        (
-          ctx.interaction.data.options?.find(o => o.name === 'user') as
-            | D.APIApplicationCommandInteractionDataUserOption
-            | undefined
-        )?.value ?? true
+      const ranking = await app.db.rankings.get(13)
+
+      console.log(ranking.toString())
+      const guild = await app.db.guilds.get('1003698664767762575')
+    
+      const first_match = await app.db.matches.getMany({
+        ranking_ids: [ranking.data.id],
+        earliest_first: true,
+        limit: 1,
+      })
+    
+      console.log(first_match[0].match)
+    
+      await rescoreMatches(app, ranking)
 
       // const ephemeral = true
       return {
         type: D.InteractionResponseType.ChannelMessageWithSource,
-        data: testMessageData(ctx, true),
+        data: {content: 'rescored matches', flags: D.MessageFlags.Ephemeral},
       }
     })
     .onComponent(async ctx => {

@@ -8,6 +8,13 @@ import { Players, QueueTeams, TeamPlayers, Teams } from '../schema'
 
 export type PlayerSelect = InferSelectModel<typeof Players>
 export type PlayerInsert = Omit<InferInsertModel<typeof Players>, 'id'>
+export type PlayerUpdate = Partial<Omit<PlayerInsert, 'ranking_id' | 'user_id' | 'id'>>
+
+export type Rating = {
+  rating: number
+  rd: number
+  vol: number
+}
 
 export type PlayerStats = {}
 
@@ -118,5 +125,12 @@ export class PlayersManager extends DbObjectManager {
   async getByUser(user_id: string): Promise<Player[]> {
     const data = await this.db.drizzle.select().from(Players).where(eq(Players.user_id, user_id))
     return data.map(data => new Player(data, this.db))
+  }
+
+  async updateMany(data: {id: number, data: PlayerUpdate}[]) {
+
+    
+
+
   }
 }

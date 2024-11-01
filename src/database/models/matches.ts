@@ -8,6 +8,7 @@ import {
   eq,
   gte,
   inArray,
+  sql,
 } from 'drizzle-orm'
 import { Player, Ranking } from '.'
 import { sentry } from '../../logging/sentry'
@@ -16,6 +17,7 @@ import { DbErrors } from '../errors'
 import { DbObject, DbObjectManager } from '../managers'
 import { GuildRankings, MatchPlayers, MatchSummaryMessages, Matches, Players } from '../schema'
 import { PlayerSelect } from './players'
+import { PgColumn, PgDialect } from 'drizzle-orm/pg-core'
 
 export type MatchMetadata = {
   best_of: number
@@ -44,7 +46,7 @@ export type MatchSummaryMessageSelect = InferSelectModel<typeof MatchSummaryMess
 export type MatchPlayerSelect = InferSelectModel<typeof MatchPlayers>
 export type MatchPlayerInsert = InferInsertModel<typeof MatchPlayers>
 
-export type MatchTeamPlayer = { player: Player } & Omit<
+export type MatchPlayer = { player: Player } & Omit<
   MatchPlayerSelect,
   'match_id' | 'player_id' | 'team_num'
 >
@@ -56,14 +58,14 @@ export class Match extends DbObject<MatchSelect> {
   }
 
   toString() {
-    return `[Match ${this.data.id}: ranking ${this.data.time_started?.getDate() ?? this.data.time_finished?.getDate()}]`
+    return `[Match ${this.data.id}: ranking ${this.data.ranking_id} time ${this.data.time_started?.getDate() ?? this.data.time_finished?.getDate()}]`
   }
 
   async ranking(): Promise<Ranking> {
     return this.db.rankings.get(this.data.ranking_id)
   }
 
-  async teamPlayers(): Promise<MatchTeamPlayer[][]> {
+  async teamPlayers(): Promise<MatchPlayer[][]> {
     if (this.db.cache.match_team_players[this.data.id]) {
       sentry.debug(`cache hit for match team players ${this.data.id}`)
       return this.db.cache.match_team_players[this.data.id]
@@ -142,10 +144,11 @@ export class Match extends DbObject<MatchSelect> {
     return this
   }
 
-  async updatePlayerRatingsBefore(team_players: MatchTeamPlayer[][]): Promise<this> {
+  async updatePlayerRatingsBefore(team_players: MatchPlayer[][]): Promise<this> {
     await Promise.all(
-      team_players.flat().map(player =>
-        this.db.drizzle
+      team_players.flat().map(async player => {
+        sentry.debug(`updating player rating before for ${player.player.data.id} in match ${this.data.id}`)
+        await this.db.drizzle
           .update(MatchPlayers)
           .set({
             rating_before: player.rating_before,
@@ -156,7 +159,8 @@ export class Match extends DbObject<MatchSelect> {
               eq(MatchPlayers.match_id, this.data.id),
               eq(MatchPlayers.player_id, player.player.data.id),
             ),
-          ),
+          )
+      }
       ),
     )
 
@@ -177,12 +181,12 @@ export class Match extends DbObject<MatchSelect> {
    */
   async convertTeamPlayers(
     query_result: { player: PlayerSelect; match_player: MatchPlayerSelect }[],
-  ): Promise<MatchTeamPlayer[][] | null> {
+  ): Promise<MatchPlayer[][] | null> {
     const ranking = await this.db.rankings.get(query_result[0].player.ranking_id)
     const num_teams = ranking.data.num_teams
     const players_per_team = ranking.data.players_per_team
 
-    const team_players = Array.from({ length: num_teams }, () => [] as MatchTeamPlayer[])
+    const team_players = Array.from({ length: num_teams }, () => [] as MatchPlayer[])
 
     query_result.forEach(row => {
       team_players[row.match_player.team_num].push({
@@ -210,7 +214,9 @@ export class Match extends DbObject<MatchSelect> {
 
 export class MatchesManager extends DbObjectManager {
   async create(
-    data: Readonly<{ ranking: Ranking; team_players: MatchTeamPlayer[][] } & Omit<MatchInsert, 'ranking_id'>>,
+    data: Readonly<
+      { ranking: Ranking; team_players: MatchPlayer[][] } & Omit<MatchInsert, 'ranking_id'>
+    >,
   ): Promise<Match> {
     const data_copy = { ...data }
 
@@ -282,7 +288,10 @@ export class MatchesManager extends DbObjectManager {
   }
 
   /**
-   * Returns a list of matches, in order of in order of oldest to most recent
+   * Returns a list of matches, in order of in order of oldest to most recent.
+   * 
+   * earlient_first: Determines the order to use when applying limit and offset. 
+   *  Final result is always ascending by time_finished, time_started.
    */
   async getMany(filters: {
     finished_at_or_after?: Date
@@ -293,7 +302,8 @@ export class MatchesManager extends DbObjectManager {
     guild_id?: string
     limit?: number
     offset?: number
-  }): Promise<{ match: Match; team_players: MatchTeamPlayer[][] }[]> {
+    earliest_first?: boolean
+  }): Promise<{ match: Match; team_players: MatchPlayer[][] }[]> {
     sentry.debug(`getMany matches with filters: ${JSON.stringify(filters)}`)
 
     const conditions: SQL[] = []
@@ -325,8 +335,12 @@ export class MatchesManager extends DbObjectManager {
       .select({ id: Matches.id })
       .from(Matches)
       .where(inArray(Matches.id, filtered_matches))
-      .orderBy(desc(Matches.time_finished), desc(Matches.time_started))
-      .limit(filters.limit ?? -1)
+      // desc(Matches.time_finished), desc(Matches.time_started))
+      .orderBy(
+        // (filters.earliest_first ? asc : desc)(Matches.time_finished),
+        // (filters.earliest_first ? asc : desc)(Matches.time_started)
+        (filters.earliest_first ? asc : desc)(sql`coalesce(${Matches.time_finished}, ${Matches.time_started})`)
+      ).limit(filters.limit ?? -1)
       .offset(filters.offset ?? 0)
       .as('paged')
 
@@ -336,7 +350,10 @@ export class MatchesManager extends DbObjectManager {
       .innerJoin(Matches, eq(Matches.id, paged_matches.id))
       .innerJoin(MatchPlayers, eq(Matches.id, MatchPlayers.match_id))
       .innerJoin(Players, eq(MatchPlayers.player_id, Players.id))
-      .orderBy(asc(Matches.time_finished), asc(Matches.time_started))
+      // .orderBy(asc(Matches.time_finished), asc(Matches.time_started))
+      .orderBy(
+        asc(sql`coalesce(${Matches.time_finished}, ${Matches.time_started})`)
+      )
 
     const result = await final_query
 
@@ -361,7 +378,48 @@ export class MatchesManager extends DbObjectManager {
       await this.db.drizzle.delete(Matches).where(inArray(Matches.id, invalid_teams_match_ids))
       return this.getMany(filters)
     } else {
-      return matches as { match: Match; team_players: MatchTeamPlayer[][] }[]
+      return matches as { match: Match; team_players: MatchPlayer[][] }[]
     }
   }
+
+
+  async updateMatchPlayers(
+    match_players: { match_id: number, player: MatchPlayer}[]
+  ): Promise<void> {
+    sentry.debug(`updating ${match_players.length} match players`)
+    if (match_players.length === 0) return
+
+    const match_ids = match_players.map(mp => mp.match_id)
+    const player_ids = match_players.map(mp => mp.player.player.data.id)
+    const rating_before = match_players.map(mp => mp.player.rating_before)
+    const rd_before = match_players.map(mp => mp.player.rd_before)
+    const flags = match_players.map(mp => mp.player.flags)
+
+    const pg_dialect = new PgDialect()
+
+    const query = `with values as (
+      SELECT * 
+        FROM UNNEST(
+            ARRAY[${match_ids.join(',')}],      
+            ARRAY[${player_ids.join(',')}],
+            ARRAY[${rating_before.join(',')}],
+            ARRAY[${rd_before.join(',')}],
+            ARRAY[${flags.join(',')}]
+        ) AS v(a,b,c,d,e)` + pg_dialect.sqlToQuery(sql`
+      )
+      update ${MatchPlayers}
+      set 
+        rating_before = values.c,
+        rd_before = values.d,
+        flags = values.e
+      from values
+      where ${MatchPlayers.match_id} = values.a
+      and ${MatchPlayers.player_id} = values.b
+      `).sql
+
+    await this.db.drizzle.execute(query)
+
+  }
+
+
 }

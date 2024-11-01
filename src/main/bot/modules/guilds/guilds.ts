@@ -37,21 +37,6 @@ export async function communityEnabled(app: App, guild_id: string): Promise<bool
   return discord_guild.features.includes(D.GuildFeature.Community)
 }
 
-export async function getMatchLogsChannel(
-  app: App,
-  guild: Guild,
-): Promise<D.APIChannel | undefined> {
-  const channel_id = guild.data.matches_channel_id
-  if (channel_id) {
-    try {
-      return await app.discord.getChannel(channel_id)
-    } catch (e) {
-      if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.UnknownChannel)
-        return undefined
-      throw e
-    }
-  }
-}
 
 export async function syncRankedCategory(
   app: App,

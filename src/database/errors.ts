@@ -6,7 +6,6 @@ export abstract class DbError extends Error {
 }
 
 export namespace DbErrors {
-
   export class NotFound extends DbError {}
 
   export class ValueError extends DbError {}

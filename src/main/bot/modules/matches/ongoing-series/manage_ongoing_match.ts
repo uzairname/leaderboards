@@ -3,7 +3,7 @@ import { MatchStatus, Vote } from '../../../../../database/models/matches'
 import { sentry } from '../../../../../logging/sentry'
 import { App } from '../../../../app/App'
 import { UserError } from '../../../errors/UserError'
-import { cancelMatch, revertMatch } from '../management/manage-matches'
+import { cancelMatch } from '../management/manage-matches'
 import { finishAndScoreMatch } from '../management/score-matches'
 
 /**
@@ -47,5 +47,4 @@ export async function castPlayerVote(
     sentry.debug('scoring match')
     await finishAndScoreMatch(app, match, outcome)
   }
-
 }

@@ -186,11 +186,9 @@ export async function onCreateRankingModalSubmit(
   return {
     type: D.InteractionResponseType.UpdateMessage,
     data: await rankingSettingsPage(app, {
-      state: ranking_settings_page_config.newState({
         guild_id: ranking.new_guild_ranking.data.guild_id,
         ranking_id: ranking.new_guild_ranking.data.ranking_id,
       }),
-    }),
   }
 }
 

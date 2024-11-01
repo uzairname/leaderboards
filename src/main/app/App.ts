@@ -13,7 +13,6 @@ import { AppEvents, getAppEvents } from './AppEvents'
 import { Config } from './Config'
 import { ViewModule } from './ViewModule'
 
-
 export class App {
   public db: DbClient
   public discord: DiscordAPIClient

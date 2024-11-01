@@ -3,7 +3,7 @@ import { GuildRanking, Match, Player, Ranking } from '../../../../../database/mo
 import {
   MatchMetadata,
   MatchStatus,
-  MatchTeamPlayer,
+  MatchPlayer,
   Vote,
 } from '../../../../../database/models/matches'
 import { PlayerFlags } from '../../../../../database/models/players'
@@ -75,7 +75,7 @@ export async function start1v1SeriesThread(
 export async function startNewMatch(
   app: App,
   guild_ranking: GuildRanking,
-  team_players: MatchTeamPlayer[][],
+  team_players: MatchPlayer[][],
   metadata?: MatchMetadata,
 ): Promise<Match> {
   validateMatchData({ team_players })
@@ -116,7 +116,7 @@ export async function startNewMatch(
 export async function createAndScoreMatch(
   app: App,
   ranking: Ranking,
-  team_players: MatchTeamPlayer[][],
+  team_players: MatchPlayer[][],
   outcome: number[],
   time_started?: Date,
   time_finished?: Date,
@@ -157,7 +157,7 @@ export async function ensureNoActiveMatches(
   player_ids: number[],
   ranking_id: number,
 ): Promise<void> {
-  sentry.debug(`ensureNoActiveMatches: ${player_ids} in ${ranking_id}`)
+  sentry.debug(`ensureNoActiveMatches: players ${player_ids} in ranking ${ranking_id}`)
   // check if players are already in an active match
   const active_matches = await app.db.matches.getMany({
     player_ids: player_ids,
@@ -190,6 +190,7 @@ export async function ensurePlayersEnabled(
   players: Player[],
   ranking: Ranking,
 ): Promise<void> {
+  sentry.debug(`ensurePlayersEnabled: players ${players} in ranking ${ranking}`)
   const disabled_players = players.filter(p => p.data.flags & PlayerFlags.Disabled)
   if (disabled_players.length > 0) {
     throw new UserError(

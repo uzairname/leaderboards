@@ -111,7 +111,7 @@ export class TeamsManager extends DbObjectManager {
 }
 
 function calculateTeamRating(players: Player[], ranking: Ranking): number {
-  const initial_rating = nonNullable(ranking.data.elo_settings?.initial_rating, 'initial_rating')
+  const initial_rating = nonNullable(ranking.data.elo_settings?.prior_mu, 'initial_rating')
   return players.length > 0
     ? players.reduce((acc, player) => {
         const rating = player.data.rating ?? initial_rating

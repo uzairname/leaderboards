@@ -1,12 +1,11 @@
 import * as D from 'discord-api-types/v10'
 import { APIEmbed } from 'discord-api-types/v10'
 import { Guild, GuildRanking, Match, Ranking } from '../../../../database/models'
-import { MatchStatus, MatchTeamPlayer, Vote } from '../../../../database/models/matches'
+import { MatchStatus, MatchPlayer, Vote } from '../../../../database/models/matches'
 import { sentry } from '../../../../logging/sentry'
 import { nonNullable } from '../../../../utils/utils'
 import { App } from '../../../app/App'
 import settings from '../../modules/admin/views/commands/settings'
-import { getMatchLogsChannel } from '../../modules/guilds/guilds'
 import { syncGuildRankingLbMessage } from '../../modules/leaderboard/leaderboard-message'
 import matches from '../../modules/matches/logging/views/commands/matches'
 import record_match from '../../modules/matches/management/views/commands/record-match'
@@ -18,6 +17,7 @@ import create_ranking from '../../modules/rankings/views/commands/create-ranking
 import rankings from '../../modules/rankings/views/commands/rankings'
 import { Colors } from '../constants'
 import { commandMention, dateTimestamp, escapeMd, messageLink } from '../strings'
+import { syncMatchesChannel } from '../../modules/matches/logging/matches-channel'
 
 export const concise_description =
   'Tracks Elo ratings and matches for any game. Additional utilities for moderation, display, and statistics.'
@@ -103,7 +103,6 @@ export async function allGuildRankingsText(
       ...title_and_desc,
       fields: await Promise.all(
         guild_rankings.map(async item => {
-          sentry.debug(`Getting guild ranking description for ${item.guild_ranking}`)
           return {
             name: escapeMd(item.ranking.data.name),
             value: await guildRankingDescription(app, item.guild_ranking),
@@ -123,6 +122,7 @@ export async function guildRankingDescription(
   guild_ranking: GuildRanking,
   include_details = false,
 ): Promise<string> {
+  sentry.debug(`guildRankingDescription(${guild_ranking})`)
   guild_ranking = await app.db.guild_rankings.get({
     guild_id: guild_ranking.data.guild_id,
     ranking_id: guild_ranking.data.ranking_id,
@@ -134,10 +134,15 @@ export async function guildRankingDescription(
   const num_teams = ranking.data.num_teams
   const players_per_team = ranking.data.players_per_team
   const match_logs_channel_id = guild_ranking.data.display_settings?.log_matches
-    ? (await getMatchLogsChannel(app, await guild_ranking.guild))?.id
+    ? (await syncMatchesChannel(app, await guild_ranking.guild))?.id
     : undefined
 
-  const result = await syncGuildRankingLbMessage(app, guild_ranking, false, false)
+  const result = await syncGuildRankingLbMessage(
+    app,
+    guild_ranking, {
+    enable_if_disabled: false,
+    no_edit: true,
+  })
 
   const message_link = result
     ? messageLink(guild_ranking.data.guild_id, result.channel_id, result.message.id)
@@ -166,7 +171,7 @@ export async function guildRankingDescription(
 // Matches
 export function ongoingMatch1v1Message(
   match: Match,
-  team_players: MatchTeamPlayer[][],
+  team_players: MatchPlayer[][],
 ): { content: string; embeds: D.APIEmbed[] } {
   const players = team_players.map(team => team.map(p => p.player)).flat()
   const team_votes = nonNullable(match.data.team_votes, 'match.team_votes')

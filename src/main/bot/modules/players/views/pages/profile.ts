@@ -7,6 +7,7 @@ import { checkGuildInteraction } from '../../../../ui-helpers/perms'
 import { escapeMd, memberAvatarUrl } from '../../../../ui-helpers/strings'
 import { matches_page_config } from '../../../matches/logging/views/pages/matches'
 import { calcDisplayRating } from '../../display'
+import { ViewState } from '../../../../../../discord-framework/interactions/view-state'
 
 export const profile_page_config = new MessageView({
   name: 'Profile page',
@@ -33,6 +34,7 @@ export async function profileOverviewPage(
   app: App,
   ctx: InteractionContext<typeof profile_page_config>,
 ): Promise<D.APIInteractionResponseCallbackData> {
+
   const interaction = checkGuildInteraction(ctx.interaction)
 
   const target_user_id = ctx.state.get.user_id()
@@ -61,10 +63,10 @@ export async function profileOverviewPage(
       (await Promise.all(
         players.map(async p => {
           const ranking = await p.ranking
-          const display_rating = await calcDisplayRating(app, ranking.data.elo_settings)(p.data)
+          const display_rating = calcDisplayRating(app, ranking.data.elo_settings)(p.data)
           return {
             name: escapeMd(ranking.data.name),
-            value: `Score: ${p.data.rating?.toFixed(0) ?? 'Unranked'}`,
+            value: `Score: ${display_rating.score ?? 'Unranked'}`,
           }
         }),
       )) ?? [],

@@ -14,6 +14,27 @@ import {
   syncRankingLbMessages,
 } from '../leaderboard/leaderboard-message'
 
+
+export const default_num_teams = 2
+export const default_players_per_team = 1
+
+export const default_elo_settings: EloSettings = {
+  prior_mu: 50,
+  prior_rd: 50 / 3,
+}
+export const default_display_settings: GuildRankingDisplaySettings = {
+  log_matches: true,
+  leaderboard_message: true,
+}
+export const default_matchmaking_settings: MatchmakingSettings = {
+  queue_enabled: true,
+  direct_challenge_enabled: true,
+}
+
+export const max_ranking_name_length = 48
+export const max_num_teams = 4
+export const max_players_per_team = 12
+
 /**
  *
  * @param app
@@ -49,10 +70,7 @@ export async function createNewRankingInGuild(
     players_per_team: options.players_per_team || default_players_per_team,
     num_teams: options.num_teams || default_num_teams,
     elo_settings: options.elo_settings || default_elo_settings,
-    matchmaking_settings: options.matchmaking_settings || {
-      queue_enabled: true,
-      direct_challenge_enabled: true,
-    },
+    matchmaking_settings: options.matchmaking_settings || default_matchmaking_settings,
   })
 
   const new_guild_ranking = await app.db.guild_rankings.create(guild, new_ranking, {
@@ -122,25 +140,6 @@ export async function deleteRanking(app: App, ranking: Ranking): Promise<void> {
   )
 }
 
-export const default_num_teams = 2
-export const default_players_per_team = 1
-
-export const default_elo_settings: EloSettings = {
-  initial_rating: 50,
-  initial_rd: 50 / 3,
-}
-export const default_display_settings: GuildRankingDisplaySettings = {
-  log_matches: true,
-  leaderboard_message: true,
-}
-export const default_matchmaking_settings: MatchmakingSettings = {
-  queue_enabled: true,
-  direct_challenge_enabled: true,
-}
-
-export const max_ranking_name_length = 48
-export const max_num_teams = 4
-export const max_players_per_team = 12
 
 export function validateRankingOptions<T extends Partial<RankingInsert>>(o: T): T {
   if (o.name !== undefined) {

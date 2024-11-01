@@ -21,9 +21,14 @@ export async function syncRankingLbMessages(app: App, ranking: Ranking): Promise
 export async function syncGuildRankingLbMessage(
   app: App,
   guild_ranking: GuildRanking,
-  enable_if_disabled = false,
-  edit_if_exists = true,
+  {
+    // if true, will update the guild ranking's config to enable the lb message
+    enable_if_disabled=false,
+    // if true, will not edit the message if it already exists
+    no_edit=false,
+  } = {},
 ): Promise<{ message: D.APIMessage; channel_id: string } | undefined> {
+  sentry.debug(`syncGuildRankingLbMessage guild: ${guild_ranking}`)
   if (!guild_ranking.data.display_settings?.leaderboard_message && !enable_if_disabled) return
 
   const guild = await guild_ranking.guild
@@ -34,7 +39,7 @@ export async function syncGuildRankingLbMessage(
     target_message_id: guild_ranking.data.leaderboard_message_id,
     messageData: () => leaderboardMessage(app, ranking),
     channelData: () => lbChannelData(app, guild, ranking),
-    edit_if_exists,
+    no_edit,
   })
 
   if (result.is_new_message || result.new_channel) {
@@ -103,32 +108,32 @@ export async function leaderboardMessage(
   const players = await getLeaderboardPlayers(app, ranking)
 
   let place = 0
-  const max_rating_len = players[0]?.rating.toFixed(0).length ?? 0
+  const max_rating_len = players[0]?.score.toFixed(0).length ?? 0
 
   const players_text =
     players.length > 0
       ? players
-          .map(p => {
-            const rating_text = `\`${p.rating.toFixed(0)}\``.padStart(max_rating_len + 2)
-            if (p.is_provisional) {
-              return options?.show_provisional
-                ? `-# unranked\n-# ?` + `${space}${rating_text}` + `${space}<@${p.user_id}> `
-                : ''
-            } else {
-              place++
-              return (
-                `### ${(place => {
-                  if (place == 1) return `🥇`
-                  else if (place == 2) return `🥈`
-                  else if (place == 3) return `🥉`
-                  else return `${place}.${space}`
-                })(place)}` +
-                `${space}${rating_text}` +
-                `${space}<@${p.user_id}> `
-              )
-            }
-          })
-          .join('\n\n')
+        .map(p => {
+          const rating_text = `\`${p.score.toFixed(0)}\``.padStart(max_rating_len + 2)
+          if (p.is_provisional) {
+            return options?.show_provisional
+              ? `-# unranked\n-# ?` + `${space}${rating_text}` + `${space}<@${p.user_id}> `
+              : ''
+          } else {
+            place++
+            return (
+              `### ${(place => {
+                if (place == 1) return `🥇`
+                else if (place == 2) return `🥈`
+                else if (place == 3) return `🥉`
+                else return `${place}.${space}`
+              })(place)}` +
+              `${space}${rating_text}` +
+              `${space}<@${p.user_id}> `
+            )
+          }
+        })
+        .join('\n')
       : 'No players yet'
 
   const embed: D.APIEmbed = {

@@ -1,8 +1,8 @@
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../../../../../logging/sentry'
 import { App } from '../../../../../app/App'
-import { getOrCreatePlayer } from '../../../players/manage-players'
 import { UserError } from '../../../../errors/UserError'
+import { getOrCreatePlayer } from '../../../players/manage-players'
 
 /**
  * When a user uses a command or button to join a global queue for a ranking.

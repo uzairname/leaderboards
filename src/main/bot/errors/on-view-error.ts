@@ -1,6 +1,6 @@
 import { DiscordAPIError, RateLimitError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
-import { DbError, DbErrors } from '../../../database/errors'
+import { DbErrors } from '../../../database/errors'
 import { DiscordErrors } from '../../../discord-framework'
 import { ViewErrors } from '../../../discord-framework/interactions/errors'
 import { sentry } from '../../../logging/sentry'

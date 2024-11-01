@@ -4,8 +4,10 @@ import apiRouter from './main/api/api-router'
 import authorize from './main/api/authorize'
 import oauthRouter from './main/api/oauth-router'
 import updateRouter from './main/api/update-router'
-import initApp from './main/initApp'
+import initApp from './main/init-app'
 import { runTests } from './main/test/test'
+
+
 
 export default {
   fetch(request: Request, env: Env, execution_context: ExecutionContext) {

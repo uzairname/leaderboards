@@ -51,9 +51,6 @@ export default new GuildCommand(
         return ctx.defer(
           {
             type: D.InteractionResponseType.DeferredChannelMessageWithSource,
-            data: {
-              flags: D.MessageFlags.Ephemeral,
-            },
           },
           async ctx => {
             return void ctx.edit(

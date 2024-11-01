@@ -6,7 +6,7 @@ import { AppView } from '../../../../../app/ViewModule'
 import { Colors } from '../../../../ui-helpers/constants'
 import { checkGuildInteraction, ensureAdminPerms } from '../../../../ui-helpers/perms'
 import { getOrAddGuild } from '../../../guilds/guilds'
-import { syncMatchesChannel } from '../../../matches/matches-channel'
+import { syncMatchesChannel } from '../../../matches/logging/matches-channel'
 import {
   createNewRankingInGuild,
   default_num_teams,
@@ -93,11 +93,9 @@ export default new AppView(create_ranking_cmd_signature, app =>
 
         await ctx.followup(
           await rankingSettingsPage(app, {
-            state: ranking_settings_page_config.newState({
               guild_id: guild.data.id,
               ranking_id: ranking.new_ranking.data.id,
             }),
-          }),
         )
       },
     )

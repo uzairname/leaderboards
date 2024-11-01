@@ -21,6 +21,7 @@ import {
 } from '../../../leaderboard/leaderboard-message'
 import { deleteRanking, updateRanking } from '../../manage-rankings'
 import { rankingNameTextInput, rankingsPage } from './rankings'
+import { ViewState } from '../../../../../../discord-framework/interactions/view-state'
 
 export const ranking_settings_page_config = new MessageView({
   name: 'ranking settings',
@@ -52,13 +53,22 @@ export default new AppView(ranking_settings_page_config, app =>
     } else {
       return {
         type: D.InteractionResponseType.UpdateMessage,
-        data: await rankingSettingsPage(app, ctx),
+        data: await _rankingSettingsPage(app, ctx),
       }
     }
   }),
 )
 
+
 export async function rankingSettingsPage(
+  app: App,
+  data: ViewState<typeof ranking_settings_page_config.state_schema>['data'],
+) {
+  return _rankingSettingsPage(app, {state: ranking_settings_page_config.newState(data)})
+}
+
+
+async function _rankingSettingsPage(
   app: App,
   ctx: StateContext<typeof ranking_settings_page_config>,
 ): Promise<D.APIInteractionResponseCallbackData> {
@@ -189,7 +199,7 @@ async function onRenameModalSubmit(
         flags: D.MessageFlags.Ephemeral,
       })
 
-      return void Promise.all([ctx.edit(await rankingSettingsPage(app, ctx)), ctx.delete(res.id)])
+      return void Promise.all([ctx.edit(await _rankingSettingsPage(app, ctx)), ctx.delete(res.id)])
     },
   )
 }
@@ -217,14 +227,14 @@ async function toggleLiveLeaderboard(
           flags: D.MessageFlags.Ephemeral,
         })
       } else {
-        await syncGuildRankingLbMessage(app, guild_ranking, true)
+        await syncGuildRankingLbMessage(app, guild_ranking,{  enable_if_disabled: true })
         await ctx.followup({
           content: `The leaderboard message will now be updated live`,
           flags: D.MessageFlags.Ephemeral,
         })
       }
 
-      await ctx.edit(await rankingSettingsPage(app, ctx))
+      await ctx.edit(await _rankingSettingsPage(app, ctx))
     },
   )
 }
@@ -257,7 +267,7 @@ async function toggleChallenge(
         ctx,
       )
 
-      await ctx.edit(await rankingSettingsPage(app, ctx))
+      await ctx.edit(await _rankingSettingsPage(app, ctx))
     },
   )
 }

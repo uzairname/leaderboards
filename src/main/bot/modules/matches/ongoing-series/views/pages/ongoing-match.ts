@@ -111,37 +111,20 @@ export async function ongoingMatchPage(
     ])
   }
 
-  let buttons2: D.APIButtonComponent[] = []
-
-  // if (votes_agree) {
-  //   // finished. Add confirm button
-  //   if (match.data.status === MatchStatus.Ongoing) {
-  //     buttons2 = buttons2.concat([
-  //       {
-  //         type: D.ComponentType.Button,
-  //         style: D.ButtonStyle.Secondary,
-  //         label: `Confirm: ${truncateString(winner_name, 20)} won`,
-  //         custom_id: state.set.callback(confirm).cId(),
-  //       },
-  //     ])
-  //   }
-  // }
-
-  if (match.data.status === MatchStatus.Scored) {
-    buttons2 = buttons2.concat([
-      {
+  
+  if (match.data.status === MatchStatus.Scored || match.data.status === MatchStatus.Canceled) {
+    let buttons2: D.APIButtonComponent[] = []
+    buttons2.push({
         type: D.ComponentType.Button,
         style: D.ButtonStyle.Primary,
         label: `Rematch?`,
         custom_id: state.set.handler(rematch).cId(),
-      },
-    ])
-    components = components.concat([
-      {
-        type: D.ComponentType.ActionRow,
-        components: buttons2,
-      },
-    ])
+      })
+
+    components.push({
+      type: D.ComponentType.ActionRow,
+      components: buttons2,
+    })
   }
 
   return new MessageData({

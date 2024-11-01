@@ -3,7 +3,7 @@ import {
   MatchInsert,
   MatchMetadata,
   MatchStatus,
-  MatchTeamPlayer,
+  MatchPlayer,
 } from '../../../../../database/models/matches'
 import { App } from '../../../../app/App'
 import { UserError } from '../../../errors/UserError'
@@ -59,23 +59,22 @@ export async function revertMatch(app: App, match: Match): Promise<void> {
   )
 
   // If the match isn't finished, it had no effect on rankings
-  if (match.data.status !== MatchStatus.Scored) return 
+  if (match.data.status !== MatchStatus.Scored) return
 
   // Revert its effects on rankings
-  const player_ratings_before: Record<number, { rating: number; rd: number }> =
-    Object.fromEntries(
-      (await match.teamPlayers())
-        .map(t =>
-          t.map(p => [
-            p.player.data.id,
-            {
-              rating: p.rating_before,
-              rd: p.rd_before,
-            },
-          ]),
-        )
-        .flat(),
-    )
+  const player_ratings_before: Record<number, { rating: number; rd: number }> = Object.fromEntries(
+    (await match.teamPlayers())
+      .map(t =>
+        t.map(p => [
+          p.player.data.id,
+          {
+            rating: p.rating_before,
+            rd: p.rd_before,
+          },
+        ]),
+      )
+      .flat(),
+  )
 
   await match.delete()
 
@@ -87,7 +86,6 @@ export async function revertMatch(app: App, match: Match): Promise<void> {
     player_ratings_before,
   )
 }
-
 
 /**
  * Cancels an ongoing match.
@@ -107,11 +105,8 @@ export async function cancelMatch(app: App, match: Match): Promise<void> {
   }
 }
 
-
-
-
 export function validateMatchData<
-  T extends Partial<{ team_players: MatchTeamPlayer[][] } & MatchInsert>,
+  T extends Partial<{ team_players: MatchPlayer[][] } & MatchInsert>,
 >(o: T): T {
   if (o.outcome) {
     if (o.team_players) {

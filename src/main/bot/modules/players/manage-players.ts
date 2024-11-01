@@ -33,8 +33,8 @@ export async function getOrCreatePlayer(
 
     player = await app.db.players.create(app_user, ranking, {
       name: discord_user.global_name ?? discord_user.username,
-      rating: nonNullable(ranking.data.elo_settings?.initial_rating, 'initial_rating'),
-      rd: nonNullable(ranking.data.elo_settings?.initial_rd, 'initial_rd'),
+      rating: nonNullable(ranking.data.elo_settings?.prior_mu, 'initial_rating'),
+      rd: nonNullable(ranking.data.elo_settings?.prior_rd, 'initial_rd'),
     })
   }
 
@@ -54,7 +54,7 @@ export async function updatePlayerRating(app: App, player: Player, rating: numbe
       await updateUserRoleConnectionData(
         app,
         access_token,
-        display_rating.rating,
+        display_rating.score,
         ranking.data.name,
       )
     }

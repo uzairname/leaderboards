@@ -1,4 +1,4 @@
-import { GuildRankings, Matches, MatchPlayers, Players } from '../../database/schema'
+import { GuildRankings, Matches, MatchPlayers, Players, Rankings } from '../../database/schema'
 import { App } from '../app/App'
 
 class Test {
@@ -29,99 +29,108 @@ export async function runTests(app: App): Promise<Response> {
 
   app.db.cache.clear()
 
-  const _ = `
-  select * from (
-    select id from "Matches" where id in (
-      select "Matches".id from "Matches" 
-      inner join "MatchPlayers" on "Matches"."id"="match_id"
-      inner join "Players" on "MatchPlayers"."player_id"="Players"."id"
-      where ...
-    )
-    order by "time_finished" desc,"time_started" desc
-    limit _ offset _
-  ) as filtered
-  inner join "Matches" on "Matches".id=filtered.id
-  inner join "MatchPlayers" on "MatchPlayers".match_id="Matches".id
-  inner join "Players" on "Players"."id"="MatchPlayers"."player_id"
-  order by "time_finished" asc, "time_started" asc
-`
+  await testrescorematches(app)
 
-  const filters = {
-    finished_on_or_after: undefined,
-    status: undefined,
-    ranking_ids: undefined,
-    player_ids: undefined,
-    user_ids: undefined,
-    guild_id: undefined,
-    limit: 6,
-    offset: 0,
-  }
 
-  const where_sql_chunks: SQL[] = []
-
-  if (filters.finished_on_or_after) {
-    where_sql_chunks.push(gte(Matches.time_finished, filters.finished_on_or_after))
-  }
-
-  if (filters.status) {
-    where_sql_chunks.push(eq(Matches.status, filters.status))
-  }
-
-  if (filters.ranking_ids) {
-    where_sql_chunks.push(inArray(Matches.ranking_id, filters.ranking_ids))
-  }
-
-  if (filters.player_ids) {
-    where_sql_chunks.push(inArray(MatchPlayers.player_id, filters.player_ids))
-  }
-
-  if (filters.user_ids) {
-    where_sql_chunks.push(inArray(Players.user_id, filters.user_ids))
-  }
-
-  if (filters.guild_id) {
-    where_sql_chunks.push(eq(GuildRankings.guild_id, filters.guild_id))
-  }
-
-  const where_sql = and(...where_sql_chunks)
-
-  const filtered_matches = app.db.drizzle
-    .select({ _: Matches.id })
-    .from(Matches)
-    .innerJoin(MatchPlayers, eq(Matches.id, MatchPlayers.match_id))
-    .innerJoin(Players, eq(MatchPlayers.player_id, Players.id))
-    .innerJoin(GuildRankings, eq(Matches.ranking_id, GuildRankings.ranking_id))
-    .where(where_sql)
-  // .as('filtered')
-
-  const paged_matches = app.db.drizzle
-    .select({ id: Matches.id })
-    .from(Matches)
-    .where(inArray(Matches.id, filtered_matches))
-    .orderBy(desc(Matches.time_finished), desc(Matches.time_started))
-    .limit(filters.limit ?? -1)
-    .offset(filters.offset ?? 0)
-    .as('paged')
-
-  const final_query = app.db.drizzle
-    .select({ player: Players, match: Matches, match_player: MatchPlayers })
-    .from(paged_matches)
-    .innerJoin(Matches, eq(Matches.id, paged_matches.id))
-    .innerJoin(MatchPlayers, eq(Matches.id, MatchPlayers.match_id))
-    .innerJoin(Players, eq(MatchPlayers.player_id, Players.id))
-    .orderBy(asc(Matches.time_finished), asc(Matches.time_started))
-
-  const result = await final_query
-
-  console.log(result, result.length)
-
-  // await testDatabase(app)
-  // sentry.debug(`Tested Leaderboards app (${app.config.env.ENVIRONMENT})`)
   return new Response(`Successfully tested Leaderboards app`, { status: 200 })
 }
 
-import { and, asc, desc, eq, gte, inArray, SQL } from 'drizzle-orm'
+
+async function testMatchesQuery(app: App) {
+
+  const result = await app.db.matches.getMany({ranking_ids: [13]})
+
+  console.log(result.map(r => [r.match.data.time_finished, r.match.data.time_started]))  
+}
+
+
+async function testrescorematches(app: App) {
+
+  const ranking = await app.db.rankings.get(13)
+
+  console.log(ranking.toString())
+  const guild = await app.db.guilds.get('1003698664767762575')
+
+  const first_match = await app.db.matches.getMany({
+    ranking_ids: [ranking.data.id],
+    earliest_first: true,
+    limit: 1,
+  })
+
+  console.log(first_match[0].match)
+
+  await rescoreMatches(app, ranking)
+
+  
+
+  // const rankings = await app.db.drizzle.select().from(Rankings)
+  // const values = rankings.map(r => [r.id, r.num_teams, r.players_per_team])
+
+  // // unnest the values
+  // const num_teams = values.map(v => Math.random() * v[0])
+  // const players_per_team = values.map(v => Math.random() * v[1])
+
+  // const ranking_ids = rankings.map(r => r.id)
+
+  // console.log(num_teams)
+  // console.log(players_per_team)
+  
+  // // bulk update the rankings
+
+  // console.log(sql`
+  //   UPDATE ${Rankings}
+  //   SET num_teams = v.num_teams,
+  //       players_per_team = v.players_per_team
+  //   FROM (
+  //     VALUES (3, 1, 2),
+  //             (4, 1, 2)
+  //   ) AS v(id, num_teams, players_per_team)
+  //   WHERE ${Rankings.id} = v.id
+  // `)
+
+  // const match_ids = [2, 2, 3]
+  // const player_ids = [5, 6, 8]
+  // const rating_before = [30, 25, 28]
+  // const rd_before = [15, 10, 13]
+  // const flags = [0,1,0]
+
+  // const pg_dialect = new PgDialect()
+
+  // const query = `with values as (
+  // SELECT * 
+  //   FROM UNNEST(
+  //       ARRAY[${match_ids.join(',')}],      
+  //       ARRAY[${player_ids.join(',')}],
+  //       ARRAY[${rating_before.join(',')}],
+  //       ARRAY[${rd_before.join(',')}],
+  //       ARRAY[${flags.join(',')}]
+  //   ) AS v(a,b,c,d,e)` + pg_dialect.sqlToQuery(sql`
+  // )
+  // update ${MatchPlayers}
+  // set 
+  //   rating_before = values.c,
+  //   rd_before = values.d,
+  //   flags = values.e
+  // from values
+  // where ${MatchPlayers.match_id} = values.a
+  // and ${MatchPlayers.player_id} = values.b
+  // `).sql
+
+  // await app.db.drizzle.execute(query)
+  
+  // console.log(pg_dialect.sqlToQuery(sql`${MatchPlayers.rating_before}`).sql)
+  // console.log(query)
+  // await testDatabase(app)
+  // sentry.debug(`Tested Leaderboards app (${app.config.env.ENVIRONMENT})`)
+
+}
+
+
+
+import { and, asc, desc, eq, gte, inArray, sql, SQL } from 'drizzle-orm'
 import { Rating, TrueSkill } from 'ts-trueskill'
+import { rescoreMatches } from '../bot/modules/matches/management/score-matches'
+import { PgDialect } from 'drizzle-orm/pg-core'
 
 function testTs() {
   function getAdjustedBeta(baseBeta: number, best_of: number): number {

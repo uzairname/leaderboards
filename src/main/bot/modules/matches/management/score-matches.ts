@@ -1,5 +1,5 @@
 import { Match, Ranking } from '../../../../../database/models'
-import { MatchStatus, MatchTeamPlayer } from '../../../../../database/models/matches'
+import { MatchStatus, MatchPlayer } from '../../../../../database/models/matches'
 import { sentry } from '../../../../../logging/sentry'
 import { nonNullable } from '../../../../../utils/utils'
 import { App } from '../../../../app/App'
@@ -14,17 +14,17 @@ export async function finishAndScoreMatch(
   outcome: number[],
 ): Promise<Match> {
   if (match.data.status === MatchStatus.Scored) return match
-  
+
   const ranking = await match.ranking()
   const team_players = await match.teamPlayers()
   
-  const scored_match = await scoreMatch(app, match, team_players, ranking)
-
   await match.update({
     status: MatchStatus.Scored,
     time_finished: new Date(),
     outcome,
   })
+  
+  const scored_match = await scoreMatch(app, match, team_players, ranking)
 
   return scored_match
 }
@@ -32,7 +32,7 @@ export async function finishAndScoreMatch(
 export async function scoreMatch(
   app: App,
   match: Match,
-  team_players: MatchTeamPlayer[][],
+  team_players: MatchPlayer[][],
   ranking: Ranking,
 ): Promise<Match> {
   // calculate new player ratings
@@ -66,15 +66,14 @@ export async function scoreMatch(
   return match
 }
 
+
 export async function rescoreMatches(
   app: App,
   ranking: Ranking,
   finished_on_or_after?: Date,
-  affected_player_ratings: { [key: number]: { rating: number; rd: number } } = {},
+  _affected_player_ratings: Readonly<{ [key: number]: { rating: number; rd: number } }> = {},
 ) {
-  /*
-  update all players' score based on match history
-  */
+  let affected_player_ratings = {..._affected_player_ratings} // clone the object
 
   const matches = await app.db.matches.getMany({
     ranking_ids: [ranking.data.id],
@@ -82,12 +81,15 @@ export async function rescoreMatches(
     status: MatchStatus.Scored,
   })
 
-  sentry.debug(`rescoring ${matches.length} matches`)
+  sentry.debug(`rescoreMatches(${ranking}, on_or_after ${finished_on_or_after}). rescoring ${matches.length} matches`)
+
+  const recalculated_match_players: {match_id: number, player: MatchPlayer}[] = []
 
   for (const match of matches) {
     // get player ratings before
     if (!match.match.data.outcome) continue
     let player_ratings_before_changed: boolean = false
+
     const player_ratings_before = match.team_players.map(team =>
       team.map(current_player => {
         const player_id = current_player.player.data.id
@@ -98,6 +100,7 @@ export async function rescoreMatches(
             current_player.rd_before !== affected_player_ratings[player_id].rd)
         ) {
           player_ratings_before_changed = true
+          recalculated_match_players.push({match_id: match.match.data.id, player: current_player})
         }
 
         return {
@@ -108,10 +111,10 @@ export async function rescoreMatches(
       }),
     )
 
-    if (player_ratings_before_changed) {
-      // update match players' ratings and rd before
-      await match.match.updatePlayerRatingsBefore(player_ratings_before)
-    }
+    // if (player_ratings_before_changed) {
+    //   // update match players' ratings and rd before
+    //   await match.match.updatePlayerRatingsBefore(player_ratings_before)
+    // }
 
     const new_player_ratings = rateTrueskill(
       match.match.data.outcome,
@@ -130,9 +133,15 @@ export async function rescoreMatches(
         }
       })
     })
-
-    sentry.debug('affected player ratings: ', JSON.stringify(affected_player_ratings))
   }
+
+  await app.db.matches.updateMatchPlayers(recalculated_match_players)
+
+  const players_to_update: {id: number, rating: number, rd: number}[] = Object.entries(affected_player_ratings).map(([id, {rating, rd}]) => {
+    return {id: parseInt(id), rating, rd}
+  })
+
+  // await app.db.players.updateMany(players_to_update)
 
   // update all players' ratings
   await Promise.all(
@@ -141,4 +150,7 @@ export async function rescoreMatches(
       await updatePlayerRating(app, player, rating, rd)
     }),
   )
+
+  // update the leaderboard
+  await syncRankingLbMessages(app, ranking)
 }

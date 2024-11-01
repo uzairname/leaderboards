@@ -5,16 +5,16 @@ import { DbClient } from '../client'
 import { DbErrors } from '../errors'
 import { DbObject, DbObjectManager } from '../managers'
 import { Players, QueueTeams, Rankings, TeamPlayers, Teams } from '../schema'
-import { PlayerFlags } from './players'
 import { MatchMetadata } from './matches'
+import { PlayerFlags } from './players'
 
 export type RankingSelect = InferSelectModel<typeof Rankings>
 export type RankingInsert = Omit<InferInsertModel<typeof Rankings>, 'id'>
 export type RankingUpdate = Partial<RankingInsert>
 
 export type EloSettings = {
-  initial_rating: number
-  initial_rd: number
+  prior_mu: number
+  prior_rd: number
 }
 
 export type MatchmakingSettings = {
@@ -92,23 +92,31 @@ export class Ranking extends DbObject<RankingSelect> {
 
     // Choose n_teams queue teams to delete
     const team_ids_to_delete = await this.db.drizzle
-      .select({id: QueueTeams.team_id}).from(QueueTeams)
+      .select({ id: QueueTeams.team_id })
+      .from(QueueTeams)
       .innerJoin(Teams, eq(QueueTeams.team_id, Teams.id))
       .where(eq(Teams.ranking_id, this.data.id))
       .limit(num_teams)
 
     sentry.debug(`found ${team_ids_to_delete.length} teams: ${team_ids_to_delete.map(t => t.id)}`)
-    
+
     if (team_ids_to_delete.length < num_teams) return null
 
-    const result = await this.db.drizzle.delete(QueueTeams).where(
-      inArray(QueueTeams.team_id, team_ids_to_delete.map(t => t.id))
-    ).returning()
+    const result = await this.db.drizzle
+      .delete(QueueTeams)
+      .where(
+        inArray(
+          QueueTeams.team_id,
+          team_ids_to_delete.map(t => t.id),
+        ),
+      )
+      .returning()
 
     // select the resulting teams
     const team_ids = result.map(item => item.team_id)
     const data = await this.db.drizzle
-      .select({ player: Players, team: Teams }).from(TeamPlayers)
+      .select({ player: Players, team: Teams })
+      .from(TeamPlayers)
       .innerJoin(Teams, eq(Teams.id, TeamPlayers.team_id))
       .innerJoin(Players, eq(Players.id, TeamPlayers.player_id))
       .where(inArray(TeamPlayers.team_id, team_ids))

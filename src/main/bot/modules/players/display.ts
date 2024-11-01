@@ -1,21 +1,20 @@
 import { Match, Ranking } from '../../../../database/models'
 import { MatchStatus } from '../../../../database/models/matches'
 import { EloSettings } from '../../../../database/models/rankings'
-import { sentry } from '../../../../logging/sentry'
 import { nonNullable } from '../../../../utils/utils'
 import { App } from '../../../app/App'
 import { rateTrueskill } from '../matches/management/elo-calculation'
 
 export const calcDisplayRating =
   (app: App, elo_settings: EloSettings) => (data: { rating: number; rd: number }) => ({
-    rating: Math.max(
+    score: Math.max(
       0,
       Math.round(
         (data.rating + app.config.DisplaySdOffset * data.rd) *
-          (app.config.DisplayMeanRating / elo_settings.initial_rating),
+          (app.config.DisplayMeanRating / elo_settings.prior_mu),
       ),
     ),
-    is_provisional: data.rd > elo_settings.initial_rd * app.config.ProvisionalRdThreshold,
+    is_provisional: data.rd > elo_settings.prior_rd * app.config.ProvisionalRdThreshold,
   })
 
 export async function getLeaderboardPlayers(
@@ -24,7 +23,7 @@ export async function getLeaderboardPlayers(
 ): Promise<
   {
     user_id: string
-    rating: number
+    score: number
     is_provisional?: boolean
   }[]
 > {
@@ -44,8 +43,8 @@ export async function getMatchPlayersDisplayStats(
 ): Promise<
   {
     user_id: string
-    before: { rating: number; is_provisional?: boolean }
-    after?: { rating: number; is_provisional?: boolean }
+    before: { score: number; is_provisional?: boolean }
+    after?: { score: number; is_provisional?: boolean }
   }[][]
 > {
   const ranking = await match.ranking()

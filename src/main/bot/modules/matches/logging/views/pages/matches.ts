@@ -1,6 +1,5 @@
 import * as D from 'discord-api-types/v10'
 import { MessageView, field } from '../../../../../../../discord-framework'
-import { ViewState } from '../../../../../../../discord-framework/interactions/view-state'
 import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
 import { Colors } from '../../../../../ui-helpers/constants'
@@ -35,12 +34,10 @@ export default new AppView(matches_page_config, app =>
   }),
 )
 
-
 export async function matchesPage(
   app: App,
-  data: Parameters<typeof matches_page_config['newState']>[0],
+  data: Parameters<(typeof matches_page_config)['newState']>[0],
 ): Promise<D.APIInteractionResponseCallbackData> {
-
   const state = matches_page_config.newState(data)
 
   state.saveAll({

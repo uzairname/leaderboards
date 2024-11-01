@@ -37,23 +37,20 @@ export default new GuildCommand(
     return rankings_cmd_signature
       .onCommand(async ctx =>
         withOptionalSelectedRanking(app, ctx, ranking_option_name, {}, async ranking => {
-          if (ranking) {
-            return {
-              type: D.InteractionResponseType.ChannelMessageWithSource,
-              data: await rankingSettingsPage(app, {
-                state: ranking_settings_page_config.newState({
-                  ranking_id: ranking.data.id,
-                  guild_id: checkGuildInteraction(ctx.interaction).guild_id,
-                }),
+          return ctx.defer({
+            type: D.InteractionResponseType.DeferredChannelMessageWithSource,
+          }, async ctx => {
+            if (ranking) {
+              return void ctx.followup(await rankingSettingsPage(app, {
+                ranking_id: ranking.data.id,
+                guild_id: checkGuildInteraction(ctx.interaction).guild_id,
               }),
+              )
+            } else {
+              const guild = await getOrAddGuild(app, checkGuildInteraction(ctx.interaction).guild_id)
+              return void ctx.followup(await rankingsPage(app, guild))
             }
-          } else {
-            const guild = await getOrAddGuild(app, checkGuildInteraction(ctx.interaction).guild_id)
-            return {
-              type: D.InteractionResponseType.ChannelMessageWithSource,
-              data: await rankingsPage(app, guild),
-            }
-          }
+          })
         }),
       )
 
