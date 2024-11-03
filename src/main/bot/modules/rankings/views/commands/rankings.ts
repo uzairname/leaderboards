@@ -7,7 +7,7 @@ import {
   withOptionalSelectedRanking,
 } from '../../../../ui-helpers/ranking-command-option'
 import { getOrAddGuild } from '../../../guilds/guilds'
-import { ranking_settings_page_config, rankingSettingsPage } from '../pages/ranking-settings'
+import { rankingSettingsPage } from '../pages/ranking-settings'
 import { rankingsPage } from '../pages/rankings'
 
 const ranking_option_name = 'ranking'
@@ -37,31 +37,41 @@ export default new GuildCommand(
     return rankings_cmd_signature
       .onCommand(async ctx =>
         withOptionalSelectedRanking(app, ctx, ranking_option_name, {}, async ranking => {
-          return ctx.defer({
-            type: D.InteractionResponseType.DeferredChannelMessageWithSource,
-          }, async ctx => {
-            if (ranking) {
-              return void ctx.followup(await rankingSettingsPage(app, {
-                ranking_id: ranking.data.id,
-                guild_id: checkGuildInteraction(ctx.interaction).guild_id,
-              }),
-              )
-            } else {
-              const guild = await getOrAddGuild(app, checkGuildInteraction(ctx.interaction).guild_id)
-              return void ctx.followup(await rankingsPage(app, guild))
-            }
-          })
+          return ctx.defer(
+            {
+              type: D.InteractionResponseType.DeferredChannelMessageWithSource,
+            },
+            async ctx => {
+              const interaction = checkGuildInteraction(ctx.interaction)
+              if (ranking) {
+                return void ctx.followup(
+                  await rankingSettingsPage(app, {
+                    ranking_id: ranking.data.id,
+                    guild_id: checkGuildInteraction(ctx.interaction).guild_id,
+                    component_owner_id: interaction.member.user.id,
+                  }),
+                )
+              } else {
+                const guild = await getOrAddGuild(
+                  app,
+                  interaction.guild_id,
+                )
+                return void ctx.followup(await rankingsPage(app, guild, interaction.member.user.id))
+              }
+            },
+          )
         }),
       )
 
       .onComponent(async ctx => {
-        const guild = await getOrAddGuild(app, checkGuildInteraction(ctx.interaction).guild_id)
+        const interaction = checkGuildInteraction(ctx.interaction)
+        const guild = await getOrAddGuild(app, interaction.guild_id)
         return ctx.defer(
           {
             type: D.InteractionResponseType.ChannelMessageWithSource,
             data: { content: 'Loading...' },
           },
-          async ctx => ctx.edit(await rankingsPage(app, guild)),
+          async ctx => ctx.edit(await rankingsPage(app, guild, interaction.member.user.id)),
         )
       })
   },

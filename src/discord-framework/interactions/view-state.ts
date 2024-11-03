@@ -1,8 +1,9 @@
-import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
+// import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
 import { sentry } from '../../logging/sentry'
+import { LZString } from '../../utils/lzstring'
+import { StringData, StringDataSchema } from '../../utils/StringData'
 import { ViewErrors } from './errors'
 import { AnyView } from './types'
-import { StringData, StringDataSchema } from './utils/string-data'
 import { BaseView } from './views'
 
 export class ViewState<T extends StringDataSchema> extends StringData<T> {
@@ -21,7 +22,7 @@ export class ViewState<T extends StringDataSchema> extends StringData<T> {
   }
 
   cId(): string {
-    const encoded = compressToUTF16(`${this.view_id}.${super.encode()}`)
+    const encoded = LZString.compressToUTF16(`${this.view_id}.${super.encode()}`)
     if (encoded.length > 100) throw new ViewErrors.CustomIdTooLong(encoded)
     return encoded
   }
@@ -43,10 +44,9 @@ export abstract class ViewStateFactory<T extends StringDataSchema> extends ViewS
   }
 
   private static splitCustomId(custom_id: string): [string, string] {
-    const decompressed_custom_id = decompressFromUTF16(custom_id)
+    const decompressed_custom_id = LZString.decompressFromUTF16(custom_id)
 
-    if (!decompressed_custom_id)
-      throw new ViewErrors.InvalidEncodedCustomId(`Unable to decompress custom id ${custom_id}`)
+    if (!decompressed_custom_id) throw new ViewErrors.InvalidEncodedCustomId(custom_id)
 
     const [prefix, ...rest] = decompressed_custom_id.split('.')
     const encoded_data = rest.join('.')

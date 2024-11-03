@@ -1,4 +1,3 @@
-import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { Guild } from '../../../../database/models'
 import { GuildChannelData, RoleData } from '../../../../discord-framework'
@@ -6,21 +5,19 @@ import { App } from '../../../app/App'
 import { Colors } from '../../ui-helpers/constants'
 
 export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> {
-  let app_guild = await app.db.guilds.get(guild_id)
+  let app_guild = await app.db.guilds.fetch(guild_id)
   if (!app_guild) {
-    app_guild = await addGuild(app, guild_id)
+    app_guild = await registerGuild(app, guild_id)
   }
   return app_guild
 }
 
-export async function addGuild(app: App, guild_id: string): Promise<Guild> {
+export async function registerGuild(app: App, guild_id: string): Promise<Guild> {
   const discord_guild = await app.discord.getGuild(guild_id)
-  const guilds_version = (await app.db.settings.getOrUpdate()).data.versions.guilds
 
   const app_guild = await app.db.guilds.create({
     id: discord_guild.id,
     name: discord_guild.name,
-    version: guilds_version,
   })
   await updateGuild(app, app_guild)
 
@@ -36,7 +33,6 @@ export async function communityEnabled(app: App, guild_id: string): Promise<bool
   const discord_guild = await app.discord.getGuild(guild_id)
   return discord_guild.features.includes(D.GuildFeature.Community)
 }
-
 
 export async function syncRankedCategory(
   app: App,

@@ -60,7 +60,7 @@ export default (app: App) =>
     })
     .get('/invite-url', async () => new Response(inviteUrl(app)))
     .get('/leaderboard-message/:ranking_id', async request => {
-      const ranking = await app.db.rankings.get(parseInt(request.params.ranking_id))
+      const ranking = await app.db.rankings.fetch(parseInt(request.params.ranking_id))
 
       const str = (await leaderboardMessage(app, ranking)).as_post.embeds![0].description
 

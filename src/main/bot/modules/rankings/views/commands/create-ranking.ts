@@ -9,10 +9,10 @@ import { getOrAddGuild } from '../../../guilds/guilds'
 import { syncMatchesChannel } from '../../../matches/logging/matches-channel'
 import {
   createNewRankingInGuild,
-  default_num_teams,
   default_players_per_team,
+  default_teams_per_match,
 } from '../../manage-rankings'
-import { ranking_settings_page_config, rankingSettingsPage } from '../pages/ranking-settings'
+import { rankingSettingsPage } from '../pages/ranking-settings'
 
 export const create_ranking_cmd_signature = new AppCommand({
   name: 'create-ranking',
@@ -37,7 +37,7 @@ export default new AppView(create_ranking_cmd_signature, app =>
         ? [
             {
               name: 'num-teams',
-              description: `Number of teams per match. Default ${default_num_teams}`,
+              description: `Number of teams per match. Default ${default_teams_per_match}`,
               type: D.ApplicationCommandOptionType.Integer,
               required: false,
             },
@@ -72,7 +72,9 @@ export default new AppView(create_ranking_cmd_signature, app =>
 
         const ranking = await createNewRankingInGuild(app, guild, {
           name: nonNullable(options['name'], 'options.name'),
-          num_teams: options['num-teams'] ? parseInt(options['num-teams']) : default_num_teams,
+          teams_per_match: options['num-teams']
+            ? parseInt(options['num-teams'])
+            : default_teams_per_match,
           players_per_team: options['players-per-team']
             ? parseInt(options['players-per-team'])
             : default_players_per_team,
@@ -93,9 +95,10 @@ export default new AppView(create_ranking_cmd_signature, app =>
 
         await ctx.followup(
           await rankingSettingsPage(app, {
-              guild_id: guild.data.id,
-              ranking_id: ranking.new_ranking.data.id,
-            }),
+            guild_id: guild.data.id,
+            ranking_id: ranking.new_ranking.data.id,
+            component_owner_id: interaction.member.user.id,
+          }),
         )
       },
     )

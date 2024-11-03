@@ -1,4 +1,5 @@
 import { Router } from 'itty-router'
+import { Env } from './Env'
 import { initSentry, sentry } from './logging/sentry'
 import apiRouter from './main/api/api-router'
 import authorize from './main/api/authorize'
@@ -6,8 +7,6 @@ import oauthRouter from './main/api/oauth-router'
 import updateRouter from './main/api/update-router'
 import initApp from './main/init-app'
 import { runTests } from './main/test/test'
-
-
 
 export default {
   fetch(request: Request, env: Env, execution_context: ExecutionContext) {
@@ -32,17 +31,4 @@ export default {
 
     return sentry.withLogging(router.handle)
   },
-}
-
-export interface Env {
-  ENVIRONMENT: string
-  BASE_URL: string
-  DISCORD_TOKEN: string
-  PUBLIC_KEY: string
-  APPLICATION_ID: string
-  CLIENT_SECRET: string
-  SENTRY_DSN: string
-  APP_KEY: string
-  POSTGRES_URL: string
-  POSTGRES_READ_URL: string
 }

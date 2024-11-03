@@ -1,3 +1,11 @@
+export async function sequential<T>(promises: (() => Promise<T>)[]): Promise<T[]> {
+  const results: T[] = []
+  for (const promise of promises) {
+    results.push(await promise())
+  }
+  return results
+}
+
 export function nonNullable<T>(value: T, value_name?: string): NonNullable<T> {
   if (value === null || value === undefined)
     throw new Error(`${value_name || 'value'} is null or undefined`)

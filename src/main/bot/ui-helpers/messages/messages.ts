@@ -1,26 +1,28 @@
 import * as D from 'discord-api-types/v10'
 import { APIEmbed } from 'discord-api-types/v10'
-import { Guild, GuildRanking, Match, Ranking } from '../../../../database/models'
-import { MatchStatus, MatchPlayer, Vote } from '../../../../database/models/matches'
+import { Guild, GuildRanking, Match } from '../../../../database/models'
+import { PartialGuildRanking } from '../../../../database/models/guildrankings'
+import { MatchPlayer, MatchStatus, Vote } from '../../../../database/models/matches'
 import { sentry } from '../../../../logging/sentry'
 import { nonNullable } from '../../../../utils/utils'
 import { App } from '../../../app/App'
 import settings from '../../modules/admin/views/commands/settings'
 import { syncGuildRankingLbMessage } from '../../modules/leaderboard/leaderboard-message'
+import { syncMatchesChannel } from '../../modules/matches/logging/matches-channel'
 import matches from '../../modules/matches/logging/views/commands/matches'
 import record_match from '../../modules/matches/management/views/commands/record-match'
 import settle_match from '../../modules/matches/management/views/commands/settle-match'
 import start_match from '../../modules/matches/management/views/commands/start-match'
 import challenge from '../../modules/matches/matchmaking/views/commands/challenge'
 import { joinQueueCmd } from '../../modules/matches/matchmaking/views/commands/queue'
+import { rematch_timeout_ms } from '../../modules/matches/ongoing-math-thread/views/pages/ongoing-match'
 import create_ranking from '../../modules/rankings/views/commands/create-ranking'
 import rankings from '../../modules/rankings/views/commands/rankings'
 import { Colors } from '../constants'
 import { commandMention, dateTimestamp, escapeMd, messageLink } from '../strings'
-import { syncMatchesChannel } from '../../modules/matches/logging/matches-channel'
 
 export const concise_description =
-  'Tracks Elo ratings and matches for any game. Additional utilities for moderation, display, and statistics.'
+  'Tracks skill ratings and matches for any game. Additional utilities for moderation, display, and statistics.'
 
 export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
   const guild_id = guild?.data.id ?? '0'
@@ -30,7 +32,7 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
       {
         name: `Rankings`,
         value:
-          `Every player, match, and elo rating that this bot tracks belongs to a **ranking**.` +
+          `Every player, match, and rating that this bot tracks belongs to a **ranking**.` +
           ` You might want to have a separate ranking for different games or gamemodes.` +
           `` +
           `\n- ${await commandMention(app, create_ranking)}: create one or more rankings.` +
@@ -56,7 +58,7 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
           `\n- ${await commandMention(app, matches, guild_id)}: View the match history for this server.` +
           `\n  ${await commandMention(app, settle_match)}: Revert or set the outcome of a specific match. The \`match-id\` parameter is optional, and defaults to the last match that the selected player was in.` +
           ` Reverting a match undoes the effect it had on the players' ratings.` +
-          `\n> -# Note that changing a match's outcome may also affect the ratings of players who were not in the match, because of the way Elo is calculated.`,
+          `\n> -# Note that changing a match's outcome may also affect the ratings of players who were not in the match, because of the way ratings are calculated.`,
       },
       {
         name: `Admin & Settings`,
@@ -67,11 +69,11 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
           `\n> -# Note: You can edit and rename any channel, thread, or role that this bot creates as you like.`,
       },
       {
-        name: `Elo Ratings`,
+        name: `Skill Ratings`,
         value:
           `The bot tracks your estimated skill level as you play matches.` +
-          ` Winning against opponents comparatively better than you will award more points. Playing more games makes your rating more stable.` +
-          `\n> -# Elo ratings are based on [TrueSkill](https://en.wikipedia.org/wiki/TrueSkill), (the algorithm developed my Microsoft).` +
+          ` Winning against opponents comparatively better than you will award more points. Playing more games makes your rating more certain, and thus it will change more slowly.` +
+          `\n> -# Skill ratings are based on [TrueSkill](https://en.wikipedia.org/wiki/TrueSkill), (the algorithm developed my Microsoft).` +
           ` It's a Bayesian rating system that models a player's skill and skill certainty as a Gaussian distribution.` +
           ``,
       },
@@ -83,7 +85,7 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
 export async function allGuildRankingsText(
   app: App,
   guild: Guild,
-  guild_rankings: { guild_ranking: GuildRanking; ranking: Ranking }[],
+  guild_rankings: GuildRanking[],
 ): Promise<APIEmbed[]> {
   const title_and_desc =
     guild_rankings.length === 0
@@ -91,7 +93,7 @@ export async function allGuildRankingsText(
           title: `Welcome`,
           description:
             `${escapeMd(guild.data.name)} has no rankings set up.` +
-            `\nCreate a ranking in order to track elo ratings and host ranked matches for your server.`,
+            `\nCreate a ranking in order to track ratings and host ranked matches for your server.`,
         }
       : {
           title: `All Rankings`,
@@ -102,10 +104,10 @@ export async function allGuildRankingsText(
     {
       ...title_and_desc,
       fields: await Promise.all(
-        guild_rankings.map(async item => {
+        guild_rankings.map(async gr => {
           return {
-            name: escapeMd(item.ranking.data.name),
-            value: await guildRankingDescription(app, item.guild_ranking),
+            name: escapeMd((await gr.ranking.fetch()).data.name),
+            value: await guildRankingDescription(app, gr),
             inline: false,
           }
         }),
@@ -119,27 +121,23 @@ export async function allGuildRankingsText(
 
 export async function guildRankingDescription(
   app: App,
-  guild_ranking: GuildRanking,
+  p_guild_ranking: PartialGuildRanking,
   include_details = false,
 ): Promise<string> {
-  sentry.debug(`guildRankingDescription(${guild_ranking})`)
-  guild_ranking = await app.db.guild_rankings.get({
-    guild_id: guild_ranking.data.guild_id,
-    ranking_id: guild_ranking.data.ranking_id,
-  })
+  sentry.debug(`guildRankingDescription(${p_guild_ranking})`)
 
-  const ranking = await guild_ranking.ranking
+  const { guild_ranking, ranking } = await p_guild_ranking.fetch()
+
   const time_created = ranking.data.time_created
-
-  const num_teams = ranking.data.num_teams
+  const teams_per_match = ranking.data.teams_per_match
   const players_per_team = ranking.data.players_per_team
+
+  // Get the match logs channel if it's enabled
   const match_logs_channel_id = guild_ranking.data.display_settings?.log_matches
-    ? (await syncMatchesChannel(app, await guild_ranking.guild))?.id
+    ? (await syncMatchesChannel(app, guild_ranking.guild))?.id
     : undefined
 
-  const result = await syncGuildRankingLbMessage(
-    app,
-    guild_ranking, {
+  const result = await syncGuildRankingLbMessage(app, guild_ranking, {
     enable_if_disabled: false,
     no_edit: true,
   })
@@ -150,7 +148,7 @@ export async function guildRankingDescription(
 
   let text =
     `- Match type: **` +
-    new Array(num_teams).fill(players_per_team).join('v') +
+    new Array(teams_per_match).fill(players_per_team).join('v') +
     `**` +
     `\n- ` +
     (message_link ? `Live leaderboard: ${message_link}` : `Leaderboard not displayed anywhere`)
@@ -203,15 +201,17 @@ export function ongoingMatch1v1Message(
 
   embeds.push({
     description:
+      `This match is a **best of ${best_of}**.`+
       (best_of > 1
-        ? `This match is a **best of ${best_of}**. Play all games, then report the results below. `
-        : `Play a game, then report the results below`) + `\nAn admin can resolve any disputes`,
+        ? ` Play all games, then report the results below. `
+        : ` Play the game, then report the results below`) +
+      `\nAn admin can resolve any disputes`, // prettier-ignore
     color: Colors.EmbedBackground,
   })
 
-  if (match.data.status === MatchStatus.Scored) {
+  if (match.data.status === MatchStatus.Finished || match.data.status === MatchStatus.Canceled) {
     embeds.push({
-      description: `Match concluded. Click Rematch to start another best of ${best_of}`,
+      description: `Match concluded. Click Rematch in the next ${Math.round(rematch_timeout_ms / (1000 * 60))} minutes to start another best of ${best_of}`,
       color: Colors.Primary,
     })
   } else if (votes_str) {

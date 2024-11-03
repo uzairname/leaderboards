@@ -57,6 +57,20 @@
       "when": 1730346691713,
       "tag": "0007_great_glorian",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1730599974061,
+      "tag": "0008_modern_beast",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1730612653748,
+      "tag": "0009_left_thundra",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { and, eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { User } from '.'
+import { DbClient } from '../client'
 import { DbObject, DbObjectManager } from '../managers'
 import { AccessTokens } from '../schema'
 
@@ -7,7 +8,12 @@ export type AccessTokenSelect = InferSelectModel<typeof AccessTokens>
 export type AccessTokenInsert = Omit<InferInsertModel<typeof AccessTokens>, 'id'>
 export type AccessTokenUpdate = Partial<Omit<AccessTokenInsert, 'user_id'>>
 
-export class AccessToken extends DbObject<AccessTokenSelect> {
+export class AccessToken implements DbObject<AccessTokenSelect> {
+  constructor(
+    public data: AccessTokenSelect,
+    public db: DbClient,
+  ) {}
+
   async update(data: AccessTokenUpdate): Promise<this> {
     this.data = (
       await this.db.drizzle

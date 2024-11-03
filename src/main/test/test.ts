@@ -1,58 +1,109 @@
-import { GuildRankings, Matches, MatchPlayers, Players, Rankings } from '../../database/schema'
 import { App } from '../app/App'
-
-class Test {
-  @catchError(3)
-  async test() {
-    throw 1
-    return 'result'
-  }
-}
-
-function catchError(x: number) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    const originalMethod = descriptor.value
-
-    descriptor.value = async function (...args: any[]) {
-      try {
-        return await originalMethod.apply(this, args)
-      } catch (error) {
-        throw x
-      }
-    }
-    return descriptor
-  }
-}
 
 export async function runTests(app: App): Promise<Response> {
   console.log('running tests')
 
   app.db.cache.clear()
 
-  await testrescorematches(app)
-
+  await testmatchesquery(app)
 
   return new Response(`Successfully tested Leaderboards app`, { status: 200 })
 }
 
+async function testmatchesquery(app: App) {
+  const filters: {
+    finished_at_or_after?: Date | null
+    status?: MatchStatus
+    rankings?: PartialRanking[]
+    players?: PartialPlayer[]
+    users?: PartialUser[]
+    guild?: PartialGuild
+    limit?: number
+    offset?: number
+    earliest_first?: boolean
+  } = {}
 
-async function testMatchesQuery(app: App) {
+  const conditions: SQL[] = []
 
-  const result = await app.db.matches.getMany({ranking_ids: [13]})
+  if (filters.finished_at_or_after) {
+    // subtract 1 second to include the matches that finished at the exact time
+    const finished_at_or_after = new Date(filters.finished_at_or_after)
+    finished_at_or_after.setSeconds(finished_at_or_after.getSeconds() - 1)
+    conditions.push(gte(Matches.time_finished, finished_at_or_after))
+  }
 
-  console.log(result.map(r => [r.match.data.time_finished, r.match.data.time_started]))  
+  if (filters.status) conditions.push(eq(Matches.status, filters.status))
+
+  if (filters.rankings)
+    conditions.push(
+      inArray(
+        Matches.ranking_id,
+        filters.rankings.map(r => r.data.id),
+      ),
+    )
+
+  if (filters.players)
+    conditions.push(
+      inArray(
+        MatchPlayers.player_id,
+        filters.players.map(p => p.data.id),
+      ),
+    )
+
+  if (filters.users)
+    conditions.push(
+      inArray(
+        Players.user_id,
+        filters.users.map(u => u.data.id),
+      ),
+    )
+
+  if (filters.guild) conditions.push(eq(GuildRankings.guild_id, filters.guild.data.id))
+
+  const where_sql = and(...conditions)
+
+  const filtered_matches = app.db.drizzle
+    .select({ _: Matches.id })
+    .from(Matches)
+    .innerJoin(MatchPlayers, eq(Matches.id, MatchPlayers.match_id))
+    .innerJoin(Players, eq(MatchPlayers.player_id, Players.id))
+    .innerJoin(GuildRankings, eq(Matches.ranking_id, GuildRankings.ranking_id))
+    .where(where_sql)
+
+  const paged_matches = app.db.drizzle
+    .select({ id: Matches.id })
+    .from(Matches)
+    .where(inArray(Matches.id, filtered_matches))
+    .orderBy(
+      (filters.earliest_first ? asc : desc)(
+        sql`coalesce(${Matches.time_finished}, ${Matches.time_started})`,
+      ),
+    )
+    .limit(filters.limit ?? -1)
+    .offset(filters.offset ?? 0)
+    .as('paged')
+
+  const final_query = app.db.drizzle
+    .select({ player: Players, match: Matches, match_player: MatchPlayers })
+    .from(paged_matches)
+    .innerJoin(Matches, eq(Matches.id, paged_matches.id))
+    .innerJoin(MatchPlayers, eq(Matches.id, MatchPlayers.match_id))
+    .innerJoin(Players, eq(MatchPlayers.player_id, Players.id))
+    .orderBy(asc(sql`coalesce(${Matches.time_finished}, ${Matches.time_started})`))
+
+  const result = await final_query
+
+  console.log(result)
 }
 
-
 async function testrescorematches(app: App) {
-
-  const ranking = await app.db.rankings.get(13)
+  const ranking = await app.db.rankings.fetch(13)
 
   console.log(ranking.toString())
   const guild = await app.db.guilds.get('1003698664767762575')
 
   const first_match = await app.db.matches.getMany({
-    ranking_ids: [ranking.data.id],
+    rankings: [ranking],
     earliest_first: true,
     limit: 1,
   })
@@ -61,30 +112,28 @@ async function testrescorematches(app: App) {
 
   await rescoreMatches(app, ranking)
 
-  
-
   // const rankings = await app.db.drizzle.select().from(Rankings)
-  // const values = rankings.map(r => [r.id, r.num_teams, r.players_per_team])
+  // const values = rankings.map(r => [r.id, r.teams_per_match, r.players_per_team])
 
   // // unnest the values
-  // const num_teams = values.map(v => Math.random() * v[0])
+  // const teams_per_match = values.map(v => Math.random() * v[0])
   // const players_per_team = values.map(v => Math.random() * v[1])
 
   // const ranking_ids = rankings.map(r => r.id)
 
-  // console.log(num_teams)
+  // console.log(teams_per_match)
   // console.log(players_per_team)
-  
+
   // // bulk update the rankings
 
   // console.log(sql`
   //   UPDATE ${Rankings}
-  //   SET num_teams = v.num_teams,
+  //   SET teams_per_match = v.teams_per_match,
   //       players_per_team = v.players_per_team
   //   FROM (
   //     VALUES (3, 1, 2),
   //             (4, 1, 2)
-  //   ) AS v(id, num_teams, players_per_team)
+  //   ) AS v(id, teams_per_match, players_per_team)
   //   WHERE ${Rankings.id} = v.id
   // `)
 
@@ -97,9 +146,9 @@ async function testrescorematches(app: App) {
   // const pg_dialect = new PgDialect()
 
   // const query = `with values as (
-  // SELECT * 
+  // SELECT *
   //   FROM UNNEST(
-  //       ARRAY[${match_ids.join(',')}],      
+  //       ARRAY[${match_ids.join(',')}],
   //       ARRAY[${player_ids.join(',')}],
   //       ARRAY[${rating_before.join(',')}],
   //       ARRAY[${rd_before.join(',')}],
@@ -107,7 +156,7 @@ async function testrescorematches(app: App) {
   //   ) AS v(a,b,c,d,e)` + pg_dialect.sqlToQuery(sql`
   // )
   // update ${MatchPlayers}
-  // set 
+  // set
   //   rating_before = values.c,
   //   rd_before = values.d,
   //   flags = values.e
@@ -117,20 +166,22 @@ async function testrescorematches(app: App) {
   // `).sql
 
   // await app.db.drizzle.execute(query)
-  
+
   // console.log(pg_dialect.sqlToQuery(sql`${MatchPlayers.rating_before}`).sql)
   // console.log(query)
   // await testDatabase(app)
   // sentry.debug(`Tested Leaderboards app (${app.config.env.ENVIRONMENT})`)
-
 }
 
-
-
-import { and, asc, desc, eq, gte, inArray, sql, SQL } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, SQL, sql } from 'drizzle-orm'
 import { Rating, TrueSkill } from 'ts-trueskill'
+import { PartialGuild } from '../../database/models/guilds'
+import { MatchStatus } from '../../database/models/matches'
+import { PartialPlayer } from '../../database/models/players'
+import { PartialRanking } from '../../database/models/rankings'
+import { PartialUser } from '../../database/models/users'
+import { GuildRankings, Matches, MatchPlayers, Players } from '../../database/schema'
 import { rescoreMatches } from '../bot/modules/matches/management/score-matches'
-import { PgDialect } from 'drizzle-orm/pg-core'
 
 function testTs() {
   function getAdjustedBeta(baseBeta: number, best_of: number): number {
@@ -143,12 +194,12 @@ function testTs() {
 
   const team_ranks = outcome.map(score => 1 - score)
 
-  const elo_settings = {
-    initial_rating: 50,
-    initial_rd: 50 / 3,
+  const initial_rating = {
+    mu: 50,
+    rd: 50 / 3,
   }
 
-  const env = new TrueSkill(elo_settings.initial_rating, elo_settings.initial_rd)
+  const env = new TrueSkill(initial_rating.mu, initial_rating.rd)
 
   console.log(`Trueskill default beta: ${env.beta}, ${best_of}`)
 

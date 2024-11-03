@@ -13,6 +13,7 @@ export const help_cmd_signature = new AppCommand({
   name: 'help',
   description: 'All about this bot',
   state_schema: {
+    edit: field.Boolean(),
     page: field.Choice({
       overviewPage,
       guidePage,
@@ -31,58 +32,11 @@ export default new AppView(help_cmd_signature, app =>
     })
     .onComponent(async ctx => {
       return {
-        type: D.InteractionResponseType.UpdateMessage,
-        data: await ctx.state.get.page()(app, ctx),
+        type: ctx.state.is.edit() ? D.InteractionResponseType.UpdateMessage : D.InteractionResponseType.ChannelMessageWithSource,
+        data: await ctx.state.get.page()(app, {...ctx, state: ctx.state.set.edit(true)}),
       }
     }),
 )
-
-async function helpComponents(
-  app: App,
-  ctx: StateContext<typeof help_cmd_signature>,
-): Promise<D.APIActionRowComponent<D.APIMessageActionRowComponent>[]> {
-  let components: D.APIButtonComponent[] = []
-
-  components = components.concat([
-    {
-      type: D.ComponentType.Button,
-      custom_id: ctx.state.set.page(overviewPage).cId(),
-      label: 'Overview',
-      style: D.ButtonStyle.Secondary,
-      disabled: ctx.state.is.page(overviewPage),
-    },
-    {
-      type: D.ComponentType.Button,
-      custom_id: ctx.state.set.page(guidePage).cId(),
-      label: 'Guide',
-      style: D.ButtonStyle.Primary,
-      disabled: ctx.state.is.page(guidePage),
-    },
-  ])
-
-  const action_rows: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = [
-    {
-      type: D.ComponentType.ActionRow,
-      components,
-    },
-  ]
-
-  if (ctx.state.is.page(overviewPage) && app.config.features.GiveBotInvite) {
-    action_rows.push({
-      type: D.ComponentType.ActionRow,
-      components: [
-        {
-          type: D.ComponentType.Button,
-          url: inviteUrl(app),
-          label: 'Invite to Server',
-          style: D.ButtonStyle.Link,
-        },
-      ],
-    })
-  }
-
-  return action_rows
-}
 
 async function overviewPage(
   app: App,
@@ -130,4 +84,53 @@ export async function guidePage(
     components: await helpComponents(app, ctx),
     flags: D.MessageFlags.Ephemeral,
   }
+}
+
+
+
+async function helpComponents(
+  app: App,
+  ctx: StateContext<typeof help_cmd_signature>,
+): Promise<D.APIActionRowComponent<D.APIMessageActionRowComponent>[]> {
+  let components: D.APIButtonComponent[] = []
+
+  components = components.concat([
+    {
+      type: D.ComponentType.Button,
+      custom_id: ctx.state.set.page(overviewPage).cId(),
+      label: 'Overview',
+      style: D.ButtonStyle.Secondary,
+      disabled: ctx.state.is.page(overviewPage),
+    },
+    {
+      type: D.ComponentType.Button,
+      custom_id: ctx.state.set.page(guidePage).cId(),
+      label: 'Guide',
+      style: D.ButtonStyle.Primary,
+      disabled: ctx.state.is.page(guidePage),
+    },
+  ])
+
+  const action_rows: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = [
+    {
+      type: D.ComponentType.ActionRow,
+      components,
+    },
+  ]
+
+  if (ctx.state.is.page(overviewPage) && app.config.features.GiveBotInvite) {
+    action_rows.push({
+      type: D.ComponentType.ActionRow,
+      components: [
+        {
+          type: D.ComponentType.Button,
+          url: inviteUrl(app),
+          label: 'Invite to Server',
+          style: D.ButtonStyle.Link,
+        },
+      ],
+    })
+  }
+
+  return action_rows
 }

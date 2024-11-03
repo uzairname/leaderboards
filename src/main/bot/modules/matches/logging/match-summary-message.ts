@@ -1,5 +1,6 @@
 import * as D from 'discord-api-types/v10'
-import { Guild, Match } from '../../../../../database/models'
+import { Match } from '../../../../../database/models'
+import { PartialGuild } from '../../../../../database/models/guilds'
 import { MatchStatus } from '../../../../../database/models/matches'
 import { MessageData } from '../../../../../discord-framework'
 import { sentry } from '../../../../../logging/sentry'
@@ -14,9 +15,10 @@ import { syncMatchesChannel } from './matches-channel'
  * Sync match summary messages for this match across all guilds the match's ranking is in
  */
 export async function syncMatchSummaryMessages(app: App, match: Match): Promise<void> {
-  sentry.debug(`syncMatchSummaryMessages`, { match_id: match.data.id })
-  const guild_rankings = await app.db.guild_rankings.get({ ranking_id: match.data.ranking_id })
+  sentry.debug(`syncMatchSummaryMessages ${match}`)
+  const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: match.data.ranking_id })
 
+  sentry.debug(`${guild_rankings.length} guild rankings`)
   await Promise.all(
     guild_rankings.map(async item => {
       await syncMatchSummaryMessage(app, match, item.guild)
@@ -30,12 +32,12 @@ export async function syncMatchSummaryMessages(app: App, match: Match): Promise<
 export async function syncMatchSummaryMessage(
   app: App,
   match: Match,
-  guild: Guild,
+  p_guild: PartialGuild,
 ): Promise<D.APIMessage> {
-  sentry.debug(`syncMatchSummaryMessage`, { match_id: match.data.id, guild_id: guild.data.id })
+  sentry.debug(`syncMatchSummaryMessage ${match}, ${p_guild}`)
   // Check whether match logging is enabled for this guild ranking
-  const guild_ranking = await app.db.guild_rankings.get({
-    guild_id: guild.data.id,
+  const { guild_ranking, guild } = await app.db.guild_rankings.fetch({
+    guild_id: p_guild.data.id,
     ranking_id: match.data.ranking_id,
   })
 
@@ -47,22 +49,21 @@ export async function syncMatchSummaryMessage(
     throw new Error(`Not implemented`)
   }
 
-  const matches_channel = await syncMatchesChannel(app, guild)
-
-  const stored_message = await match.getSummaryMessage(guild.data.id)
-
-  sentry.debug(`stored_message`, { stored_message })
+  const summary_message = await match.getSummaryMessage(guild.data.id)
 
   const sync_message_result = await app.discord.utils.syncChannelMessage({
-    target_channel_id: matches_channel.id,
-    target_message_id: stored_message?.message_id,
+    target_channel_id: guild.data.matches_channel_id,
+    target_message_id: summary_message?.message_id,
     messageData: () => matchSummaryMessageData(app, match),
+    getChannel: () => syncMatchesChannel(app, guild, true),
   })
+
+  sentry.debug(`sync_message_result ${JSON.stringify(sync_message_result)}`)
 
   if (sync_message_result.is_new_message) {
     await match.updateSummaryMessage(
       guild.data.id,
-      matches_channel.id,
+      sync_message_result.channel_id,
       sync_message_result.message.id,
     )
   }
@@ -76,10 +77,10 @@ export async function matchSummaryMessageData(app: App, match: Match): Promise<M
   })
 }
 
-export async function matchSummaryEmbed(app: App, match: Match, {}={}): Promise<D.APIEmbed> {
+export async function matchSummaryEmbed(app: App, match: Match, { } = {}): Promise<D.APIEmbed> {
   sentry.debug(`matchSummaryEmbed`, { match_id: match.data.id })
 
-  const ranking = await match.ranking()
+  const ranking = await match.ranking.fetch()
 
   const team_player_stats = await getMatchPlayersDisplayStats(app, match)
 
@@ -87,13 +88,13 @@ export async function matchSummaryEmbed(app: App, match: Match, {}={}): Promise<
     description:
       `### Match ${match.data.number} in ${escapeMd(ranking.data.name)}` +
       {
-        [MatchStatus.Scored]: ``,
+        [MatchStatus.Finished]: ``,
         [MatchStatus.Ongoing]: `\n**In Progress**`,
         [MatchStatus.Canceled]: `\n**Canceled**`,
       }[match.data.status],
     color: {
-      [MatchStatus.Scored]: Colors.Primary,
-      [MatchStatus.Ongoing]: Colors.Yellow,
+      [MatchStatus.Finished]: Colors.Primary,
+      [MatchStatus.Ongoing]: Colors.Pending,
       [MatchStatus.Canceled]: Colors.EmbedBackground,
     }[match.data.status],
   }
@@ -115,28 +116,32 @@ export async function matchSummaryEmbed(app: App, match: Match, {}={}): Promise<
       })(match.data.outcome),
 
       value: team
-        .map(elo => {
-          const rating_before_text = elo.before.is_provisional
-            ? `unranked`
-            : `\`${elo.before.score.toFixed(0)}\``
+        .map(p => {
+          const rating_before_text = p.before.is_provisional
+            ? `\`${p.before.rating.toFixed(0)}?\``
+            : `\`${p.before.rating.toFixed(0)}\``
 
-          if (elo.after !== undefined) {
-            const rating_after_text = elo.after.is_provisional
-              ? `unranked`
-              : `**${elo.after.score.toFixed(0)}**`
+          if (p.after !== undefined) {
+            const rating_after_text = p.after.is_provisional
+              ? `**${p.after.rating.toFixed(0)}?**`
+              : `**${p.after.rating.toFixed(0)}**`
 
-            const diff = elo.after.score - elo.before.score
+            const diff = p.after.rating - p.before.rating
+
             const rating_diff_text =
-              elo.after.is_provisional || elo.before.is_provisional
-                ? ``
-                : `\n-# ${spaces(2)}(${(parseInt(diff.toFixed(0)) > 0 ? '+' : '') + diff.toFixed(0)})`
+              p.after.is_provisional
+                ? `\n-# (unranked)`
+                : p.before.is_provisional
+                  ? ``
+                  : `\n-# ${spaces(2)}(${(parseInt(diff.toFixed(0)) > 0 ? '+' : '') + diff.toFixed(0)})`
 
             return (
-              `<@${elo.user_id}>` +
+              `<@${p.user_id}>` +
               `\n${rating_before_text} → ${rating_after_text}${rating_diff_text}`
             )
           } else {
-            return `<@${elo.user_id}>` + `\n${rating_before_text}`
+            const provisional_text = p.before.is_provisional ? `\n-# (unranked)` : ``
+            return `<@${p.user_id}>` + `\n${rating_before_text}${provisional_text}`
           }
         })
         .join('\n'),

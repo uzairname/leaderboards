@@ -1,20 +1,9 @@
 import * as D from 'discord-api-types/v10'
-import type { AnyChatInputAppCommand, DiscordErrors } from '../../../discord-framework'
+import type { AnyChatInputAppCommand } from '../../../discord-framework'
 import type { App } from '../../app/App'
 import { AnyGuildCommand, AppView } from '../../app/ViewModule'
 
 export const github_url = 'https://github.com/uzairname/leaderboards'
-
-export function botPermisssionsErrorMessage(app: App, e: DiscordErrors.BotPermissions): string {
-  let msg = "I'm missing some permissions"
-
-  const missing_perms = e.missingPermissionsNames
-
-  if (missing_perms.length > 0) {
-    msg = `I'm missing the following permissions: ${permsToString(missing_perms)}`
-  }
-  return msg + `\n[Click here to re-invite me with the required perms](${inviteUrl(app)})`
-}
 
 export const emojis = {
   green_triangle: `<:green_triangle:1198069662353735740>`,

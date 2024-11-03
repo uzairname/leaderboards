@@ -7,10 +7,9 @@ import {
   withSelectedRanking,
 } from '../../../../../ui-helpers/ranking-command-option'
 import { escapeMd } from '../../../../../ui-helpers/strings'
-import { getOrCreatePlayer } from '../../../../players/manage-players'
-import { ensureNoActiveMatches, ensurePlayersEnabled } from '../../../management/match-creation'
+import { getRegisterPlayer } from '../../../../players/manage-players'
 import { findMatchFromQueue } from '../../queue/queue-matchmaking'
-import { userJoinQueue, userLeaveAllQueues } from '../../queue/queue-teams'
+import { userJoinQueue } from '../../queue/queue-teams'
 
 export const join_queue_cmd_config = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -32,8 +31,12 @@ export const joinQueueCmd = new GuildCommand(
   },
   app =>
     join_queue_cmd_config.onCommand(async ctx =>
-      withSelectedRanking(app, ctx, optionnames.ranking, {}, async ranking => {
+      withSelectedRanking(app, ctx, optionnames.ranking, {}, async p_ranking => {
         const interaction = checkGuildInteraction(ctx.interaction)
+        const { guild, ranking, guild_ranking } = await app.db.guild_rankings.fetch({
+          ranking_id: p_ranking.data.id,
+          guild_id: interaction.guild_id,
+        })
 
         return ctx.defer(
           {
@@ -41,11 +44,9 @@ export const joinQueueCmd = new GuildCommand(
             data: { flags: D.MessageFlags.Ephemeral },
           },
           async ctx => {
-            const player = await getOrCreatePlayer(app, interaction.member.user.id, ranking)
-            await ensureNoActiveMatches(app, [player.data.id], ranking.data.id)
-            await ensurePlayersEnabled(app, [player], ranking)
+            // const player = await getRegisterPlayer(app, interaction.member.user, ranking)
 
-            const { rejoined } = await userJoinQueue(app, ranking.data.id, interaction.member.user)
+            const { rejoined } = await userJoinQueue(app, ranking, interaction.member.user)
             await ctx.followup({
               content:
                 (rejoined ? `You are already in the queue` : 'You joined the queue') +
@@ -53,7 +54,7 @@ export const joinQueueCmd = new GuildCommand(
               flags: D.MessageFlags.Ephemeral,
             })
 
-            await findMatchFromQueue(app, ranking, interaction.guild_id)
+            await findMatchFromQueue(app, guild_ranking)
           },
         )
       }),
@@ -77,7 +78,8 @@ export const leaveQueueCmd = new AppView(leave_queue_cmd_config, app =>
       },
       async ctx => {
         const interaction = checkGuildInteraction(ctx.interaction)
-        const n_teams_removed = await userLeaveAllQueues(app, interaction.member.user.id)
+        const user = app.db.users.get(interaction.member.user.id)
+        const n_teams_removed = await user.removeFromQueues()
         await ctx.edit({
           content: n_teams_removed ? 'You left the queue' : `You're not in the queue`,
         })

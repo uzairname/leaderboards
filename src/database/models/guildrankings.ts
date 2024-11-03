@@ -1,24 +1,40 @@
 import { and, eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { Guild, Ranking } from '.'
-import { sentry } from '../../logging/sentry'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
-import { DbObject, DbObjectManager } from '../managers'
+import { DbObjectManager } from '../managers'
 import { GuildRankings, Guilds, Rankings } from '../schema'
+import { PartialGuild } from './guilds'
+import { PartialRanking } from './rankings'
 
-export class GuildRanking extends DbObject<GuildRankingSelect> {
-  constructor(data: GuildRankingSelect, db: DbClient) {
-    super(data, db)
-    db.cache.guild_rankings[data.guild_id] ??= {}
-    db.cache.guild_rankings[data.guild_id][data.ranking_id] = this
+export class PartialGuildRanking {
+
+  constructor(
+    public data: { guild_id: string; ranking_id: number },
+    public db: DbClient
+  ) {
   }
 
   toString() {
     return `[GuildRanking ${this.data.guild_id}, ${this.data.ranking_id}]`
   }
 
-  async update(data: Partial<Omit<GuildRankingInsert, 'guild_id' | 'ranking_id'>>): Promise<this> {
-    this.data = (
+  async fetch(): Promise<{ guild: Guild; guild_ranking: GuildRanking; ranking: Ranking }> {
+    return this.db.guild_rankings.fetch(this.data)
+  }
+
+  get guild(): PartialGuild {
+    return this.db.guilds.get(this.data.guild_id)
+  }
+
+  get ranking(): PartialRanking {
+    return this.db.rankings.get(this.data.ranking_id)
+  }
+
+  async update(
+    data: Partial<Omit<GuildRankingInsert, 'guild_id' | 'ranking_id'>>,
+  ): Promise<GuildRanking> {
+    const new_data = (
       await this.db.drizzle
         .update(GuildRankings)
         .set(data)
@@ -30,25 +46,24 @@ export class GuildRanking extends DbObject<GuildRankingSelect> {
         )
         .returning()
     )[0]
-    return this
+    this.data = new_data
+    return new GuildRanking(new_data, this.db)
   }
+}
 
-  get guild(): Promise<Guild> {
-    return this.db.guilds.get(this.data.guild_id).then(guild => {
-      if (!guild) throw new DbErrors.NotFound(`Guild ${this.data.guild_id} not found`)
-      return guild
-    })
-  }
-
-  get ranking(): Promise<Ranking> {
-    return this.db.rankings.get(this.data.ranking_id).then(ranking => {
-      if (!ranking) throw new DbErrors.NotFound(`Ranking ${this.data.ranking_id} not found`)
-      return ranking
-    })
+export class GuildRanking extends PartialGuildRanking {
+  constructor(
+    public data: GuildRankingSelect,
+    public db: DbClient,
+  ) {
+    super(data, db)
+    this.db.cache.guild_rankings.set(this.data.guild_id, this, this.data.ranking_id)
+    this.db.cache.guild_rankings_by_guild.delete(this.data.guild_id)
   }
 }
 
 export class GuildRankingsManager extends DbObjectManager {
+
   // when creating, pass in guild and ranking objects instead of ids
   async create(
     guild: Guild,
@@ -66,12 +81,6 @@ export class GuildRankingsManager extends DbObjectManager {
         .returning()
     )[0]
     const new_guild_ranking = new GuildRanking(new_data, this.db)
-
-    this.db.cache.guild_guild_rankings[guild.data.id] ??= []
-    this.db.cache.guild_guild_rankings[guild.data.id].push({
-      guild_ranking: new_guild_ranking,
-      ranking,
-    })
     return new_guild_ranking
   }
 
@@ -87,60 +96,92 @@ export class GuildRankingsManager extends DbObjectManager {
     return new GuildRanking(data.GuildRankings, this.db)
   }
 
-  async get<By extends { guild_id?: string; ranking_id?: number }>(
+  get(guild_id: string, ranking_id: number): PartialGuildRanking {
+    return new PartialGuildRanking({ guild_id, ranking_id }, this.db)
+  }
+
+  async fetch<By extends { guild_id?: string; ranking_id?: number }>(
     by: By,
   ): Promise<
     By extends { guild_id: string }
       ? By extends { ranking_id: number }
-        ? GuildRanking
+        ? { guild: Guild; guild_ranking: GuildRanking; ranking: Ranking }
         : { ranking: Ranking; guild_ranking: GuildRanking }[]
       : By extends { ranking_id: number }
         ? { guild: Guild; guild_ranking: GuildRanking }[]
         : never
   > {
     if (by.guild_id && by.ranking_id) {
-      const cached_guild_ranking = this.db.cache.guild_rankings[by.guild_id]?.[by.ranking_id]
-      if (cached_guild_ranking) {
-        sentry.debug(`Cache hit for ${cached_guild_ranking}`)
-        return cached_guild_ranking as any
+      if (
+        this.db.cache.guild_rankings.has(by.guild_id, by.ranking_id) &&
+        this.db.cache.guilds.has(by.guild_id) &&
+        this.db.cache.rankings.has(by.ranking_id)
+      ) {
+        return {
+          guild: this.db.cache.guilds.get(by.guild_id)!,
+          guild_ranking: this.db.cache.guild_rankings.get(by.guild_id, by.ranking_id)!,
+          ranking: this.db.cache.rankings.get(by.ranking_id)!,
+        } as any
       }
+
+      const data = (
+        await this.db.drizzle
+          .select()
+          .from(GuildRankings)
+          .where(
+            and(
+              eq(GuildRankings.guild_id, by.guild_id),
+              eq(GuildRankings.ranking_id, by.ranking_id),
+            ),
+          )
+          .innerJoin(Rankings, eq(Rankings.id, GuildRankings.ranking_id))
+          .innerJoin(Guilds, eq(Guilds.id, GuildRankings.guild_id))
+      )[0]
+
+      if (!data)
+        throw new DbErrors.NotFound(`GuildRanking ${by.guild_id} ${by.ranking_id} doesn't exist`)
+
+      const result: { guild: Guild; guild_ranking: GuildRanking; ranking: Ranking } = {
+        guild: new Guild(data.Guilds, this.db),
+        guild_ranking: new GuildRanking(data.GuildRankings, this.db),
+        ranking: new Ranking(data.Rankings, this.db),
+      }
+      return result as any
+    } else if (by.guild_id) {
+      if (this.db.cache.guild_rankings_by_guild.has(by.guild_id)) {
+        return this.db.cache.guild_rankings_by_guild.get(by.guild_id)! as any
+      }
+
       const data = await this.db.drizzle
         .select()
-        .from(GuildRankings)
-        .where(
-          and(eq(GuildRankings.guild_id, by.guild_id), eq(GuildRankings.ranking_id, by.ranking_id)),
-        )
-      if (data.length == 0)
-        throw new DbErrors.NotFound(`GuildRanking ${by.guild_id} ${by.ranking_id} doesn't exist`)
-      return new GuildRanking(data[0], this.db) as any
-    } else if (by.guild_id) {
-      const cached_rankings = this.db.cache.guild_guild_rankings[by.guild_id]
-      if (cached_rankings) {
-        sentry.debug(`Cache hit for guild_rankings guild:${by.guild_id}`)
-        return cached_rankings as any
-      }
-      const data = await this.db.drizzle
-        .select({ ranking: Rankings, guild_ranking: GuildRankings })
         .from(GuildRankings)
         .where(eq(GuildRankings.guild_id, by.guild_id))
         .innerJoin(Rankings, eq(GuildRankings.ranking_id, Rankings.id))
 
-      const result = data.map(d => ({
-        guild_ranking: new GuildRanking(d.guild_ranking, this.db),
-        ranking: new Ranking(d.ranking, this.db),
-      })) as any
-      this.db.cache.guild_guild_rankings[by.guild_id] = result
-      return result
+      const result: { guild_ranking: GuildRanking; ranking: Ranking }[] = data.map(d => ({
+        guild_ranking: new GuildRanking(d.GuildRankings, this.db),
+        ranking: new Ranking(d.Rankings, this.db),
+      }))
+
+      this.db.cache.guild_rankings_by_guild.set(by.guild_id, result)
+      return result as any
     } else if (by.ranking_id) {
+      if (this.db.cache.guild_rankings_by_ranking.has(by.ranking_id)) {
+        return this.db.cache.guild_rankings_by_ranking.get(by.ranking_id)! as any
+      }
+
       const data = await this.db.drizzle
         .select()
         .from(GuildRankings)
         .where(eq(GuildRankings.ranking_id, by.ranking_id))
         .innerJoin(Guilds, eq(GuildRankings.guild_id, Guilds.id))
-      return data.map(d => ({
-        guild_ranking: new GuildRanking(d.GuildRankings, this.db),
+
+      const result: { guild: Guild; guild_ranking: GuildRanking }[] = data.map(d => ({
         guild: new Guild(d.Guilds, this.db),
-      })) as any
+        guild_ranking: new GuildRanking(d.GuildRankings, this.db),
+      }))
+      this.db.cache.guild_rankings_by_ranking.set(by.ranking_id, result)
+      return result as any
     } else {
       throw new DbErrors.ValueError(`Must specify guild_id or ranking_id`)
     }

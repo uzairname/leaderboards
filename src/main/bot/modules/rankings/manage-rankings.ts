@@ -1,12 +1,14 @@
 import { Guild, GuildRanking, Ranking } from '../../../../database/models'
 import { GuildRankingDisplaySettings } from '../../../../database/models/guildrankings'
 import {
-  EloSettings,
   MatchmakingSettings,
+  PartialRanking,
   RankingInsert,
   RankingUpdate,
+  Rating,
 } from '../../../../database/models/rankings'
 import { DeferContext } from '../../../../discord-framework'
+import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../app/App'
 import { UserError, UserErrors } from '../../errors/UserError'
 import {
@@ -14,14 +16,14 @@ import {
   syncRankingLbMessages,
 } from '../leaderboard/leaderboard-message'
 
-
-export const default_num_teams = 2
+export const default_teams_per_match = 2
 export const default_players_per_team = 1
 
-export const default_elo_settings: EloSettings = {
-  prior_mu: 50,
-  prior_rd: 50 / 3,
+export const default_initial_rating: Rating = {
+  mu: 50,
+  rd: 50 / 3,
 }
+
 export const default_display_settings: GuildRankingDisplaySettings = {
   log_matches: true,
   leaderboard_message: true,
@@ -32,7 +34,7 @@ export const default_matchmaking_settings: MatchmakingSettings = {
 }
 
 export const max_ranking_name_length = 48
-export const max_num_teams = 4
+export const max_teams_per_match = 4
 export const max_players_per_team = 12
 
 /**
@@ -47,9 +49,9 @@ export async function createNewRankingInGuild(
   guild: Guild,
   options: {
     name: string
-    num_teams?: number
+    teams_per_match?: number
     players_per_team?: number
-    elo_settings?: EloSettings
+    initial_rating?: Rating
     display_settings?: GuildRankingDisplaySettings
     matchmaking_settings?: MatchmakingSettings
   },
@@ -68,8 +70,8 @@ export async function createNewRankingInGuild(
   const new_ranking = await app.db.rankings.create({
     name: options.name,
     players_per_team: options.players_per_team || default_players_per_team,
-    num_teams: options.num_teams || default_num_teams,
-    elo_settings: options.elo_settings || default_elo_settings,
+    teams_per_match: options.teams_per_match || default_teams_per_match,
+    initial_rating: options.initial_rating || default_initial_rating,
     matchmaking_settings: options.matchmaking_settings || default_matchmaking_settings,
   })
 
@@ -87,22 +89,28 @@ export async function createNewRankingInGuild(
 
 export async function updateRanking(
   app: App,
-  ranking: Ranking,
+  ranking: PartialRanking,
   options: RankingUpdate,
   ctx?: DeferContext<any>,
 ): Promise<void> {
   validateRankingOptions(options)
   await ranking.update(options)
-  const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
+  const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
 
   for (const item of guild_rankings) {
+    sentry.debug('item.guildranking', item.guild_ranking)
     if (options.name || options.matchmaking_settings) {
       app.config.IsDev &&
         ctx?.followup({ content: `syncing commands for guild ${item.guild.data.name}`, flags: 64 })
-      app.syncDiscordCommands(item.guild)
+      await app.syncDiscordCommands(item.guild)
     }
     app.config.IsDev &&
-      ctx?.followup({ content: `syncing lb for guild ${item.guild.data.name}`, flags: 64 })
+      ctx?.followup({
+        content: `syncing lb for guild ${item.guild.data.name}, ${item.guild}, ${item.guild_ranking}`,
+        flags: 64,
+      })
+
+    sentry.debug(item.guild_ranking)
     await syncGuildRankingLbMessage(app, item.guild_ranking)
   }
   app.config.IsDev && ctx?.followup({ content: `done`, flags: 64 })
@@ -122,7 +130,7 @@ export async function updateRanking(
 }
 
 export async function deleteRanking(app: App, ranking: Ranking): Promise<void> {
-  const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
+  const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
   await Promise.all(
     guild_rankings.map(async item => {
       await app.discord.deleteMessageIfExists(
@@ -140,7 +148,6 @@ export async function deleteRanking(app: App, ranking: Ranking): Promise<void> {
   )
 }
 
-
 export function validateRankingOptions<T extends Partial<RankingInsert>>(o: T): T {
   if (o.name !== undefined) {
     if (!o.name) throw new UserError(`Ranking name cannot be empty`)
@@ -149,12 +156,14 @@ export function validateRankingOptions<T extends Partial<RankingInsert>>(o: T): 
       throw new UserError(`Ranking names must be ${max_ranking_name_length} characters or less`)
   }
 
-  if (o.num_teams !== undefined) {
-    if (!o.num_teams || isNaN(o.num_teams))
+  if (o.teams_per_match !== undefined) {
+    if (!o.teams_per_match || isNaN(o.teams_per_match))
       throw new UserErrors.ValidationError(`Number of teams must be a number`)
 
-    if (o.num_teams < 2 || o.num_teams > max_num_teams)
-      throw new UserErrors.ValidationError(`Number of teams must be between 2 and ${max_num_teams}`)
+    if (o.teams_per_match < 2 || o.teams_per_match > max_teams_per_match)
+      throw new UserErrors.ValidationError(
+        `Number of teams must be between 2 and ${max_teams_per_match}`,
+      )
   }
 
   if (o.players_per_team !== undefined) {

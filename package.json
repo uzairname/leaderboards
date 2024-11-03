@@ -20,8 +20,8 @@
     "discord-api-types": "^0.37.102",
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.35.3",
+    "glicko2-lite": "^4.0.0",
     "itty-router": "^4.2.2",
-    "lz-string": "^1.5.0",
     "toucan-js": "^3.4.0",
     "ts-trueskill": "^5.0.1"
   }

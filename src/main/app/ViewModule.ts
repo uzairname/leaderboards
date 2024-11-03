@@ -1,4 +1,4 @@
-import { Guild } from '../../database/models'
+import { PartialGuild } from '../../database/models/guilds'
 import {
   AnyChatInputAppCommand,
   FindViewCallback,
@@ -9,6 +9,7 @@ import {
 } from '../../discord-framework'
 import { ViewState, ViewStateFactory } from '../../discord-framework/interactions/view-state'
 import { sentry } from '../../logging/sentry'
+import { sequential } from '../../utils/utils'
 import type { App } from './App'
 
 export class AppView<TView extends AnyView> {
@@ -30,7 +31,7 @@ export class AppView<TView extends AnyView> {
 export class GuildCommand<TView extends AnyChatInputAppCommand> extends AppView<TView> {
   constructor(
     base_signature: TView,
-    public resolveGuildSignature: (app: App, guild: Guild) => Promise<TView | null>,
+    public resolveGuildSignature: (app: App, guild: PartialGuild) => Promise<TView | null>,
     resolveHandlers: (app: App) => TView,
   ) {
     super(base_signature, resolveHandlers)
@@ -73,11 +74,9 @@ export class ViewModule {
       .state
   }
 
-  async getAllCommandSignatures(app: App, guild?: Guild): Promise<AnyAppCommand[]> {
-    if (guild) await app.db.guild_rankings.get({ guild_id: guild?.data.id }) // Cache guild rankings
-
-    const result = Promise.all(
-      this.all_views.map(async v => {
+  async getAllCommandSignatures(app: App, guild?: PartialGuild): Promise<AnyAppCommand[]> {
+    const cmds = await sequential(
+      this.all_views.map(v => async () => {
         if (v.is_dev && !app.config.features.ExperimentalCommands) {
           return null
         }
@@ -86,7 +85,6 @@ export class ViewModule {
             sentry.debug(`Resolving guild signature for ${v.base_signature.config.name}`)
             return v.resolveGuildSignature(app, guild)
           }
-          // If we're looking for guild commands and it's a guild command, get its signature in the guild
         } else {
           if (!(v instanceof GuildCommand)) {
             // if we're not looking for guild commands and it's not a guild command, get its global signature
@@ -96,9 +94,9 @@ export class ViewModule {
         }
         return null
       }),
-    ).then(cmds => cmds.filter((v): v is AnyAppCommand => v !== null))
+    )
 
-    return result
+    return cmds.filter((v): v is AnyAppCommand => v !== null)
   }
 
   /**

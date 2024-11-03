@@ -1,48 +1,47 @@
-import { DiscordAPIError, RateLimitError } from '@discordjs/rest'
+import { RateLimitError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
-import { DbErrors } from '../../../database/errors'
 import { DiscordErrors } from '../../../discord-framework'
-import { ViewErrors } from '../../../discord-framework/interactions/errors'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../app/App'
 import { Colors } from '../ui-helpers/constants'
-import { botPermisssionsErrorMessage } from '../ui-helpers/strings'
-import { UserError } from './UserError'
+import { UserError, UserErrors } from './UserError'
 
-export default (app: App) =>
-  function (
+export function onViewError(app: App) {
+  return function (
     e: unknown,
     setSentryException?: (e: unknown) => void,
   ): D.APIInteractionResponseChannelMessageWithSource {
+    // Convert the error to a title and message to respond with
     let description: string
-    let title: string
-    if (e instanceof DiscordErrors.BotPermissions) {
-      title = 'Missing permissions'
-      description = botPermisssionsErrorMessage(app, e)
-    } else if (e instanceof DiscordAPIError) {
-      title = `Error: ${e.message}`
+    let title: string = 'Error'
+    if (e instanceof UserError) {
       description = e.message
+    } else if (e instanceof DiscordErrors.BotPermissions) {
+      return onViewError(app)(new UserErrors.BotPermissions(app, e))
     } else if (e instanceof RateLimitError) {
       title = 'Being Rate limited'
       description = `Try again in ${e.timeToReset / 1000} seconds`
-    } else if (
-      e instanceof UserError ||
-      e instanceof DbErrors.NotFound ||
-      e instanceof DiscordErrors.ForumInNonCommunityServer
-    ) {
-      title = 'Error'
-      description = e.message ?? e.constructor.name
-    } else if (
-      e instanceof ViewErrors.UnknownView ||
-      e instanceof ViewErrors.InvalidEncodedCustomId
-    ) {
-      title = 'Error'
-      description = 'Unrecognized command or component'
+    } else if (e instanceof Error) {
+      description = `${e.name ?? e.constructor.name}: ${e.message ?? e}`
     } else {
-      title = 'Error'
       description = 'An unexpected error occured'
+    }
 
+    // Log the error
+    if (e instanceof UserError) {
+      sentry.addBreadcrumb({
+        message: 'UserError',
+        level: 'info',
+        data: {
+          message: e.message,
+          stack: e.stack,
+        },
+      })
+    } else {
+      // If not a user error, it is unexpected
+      setSentryException !== undefined ? setSentryException(e) : sentry.setException(e)
       if (app.config.IsDev) {
+        // If in dev, add the error to the description
         description =
           description +
           `\n\`\`\`json
@@ -64,21 +63,9 @@ export default (app: App) =>
       }
     }
 
-    if (!(e instanceof UserError)) {
-      setSentryException !== undefined ? setSentryException(e) : sentry.setException(e)
-    } else {
-      sentry.addBreadcrumb({
-        message: 'AppError',
-        level: 'info',
-        data: {
-          message: e.message,
-          stack: e.stack,
-        },
-      })
-    }
-
     return errorResponse(title, description)
   }
+}
 
 function errorResponse(
   title: string,

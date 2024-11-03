@@ -25,10 +25,10 @@ const leaderboard_cmd_signature = new AppCommand({
 
 export default new GuildCommand(
   leaderboard_cmd_signature,
-  async (app, guild_id) =>
+  async (app, guild) =>
     new AppCommand({
       ...leaderboard_cmd_signature.config,
-      options: [(await guildRankingsOption(app, guild_id, optionnames.ranking)) || []].flat(),
+      options: [(await guildRankingsOption(app, guild, optionnames.ranking)) || []].flat(),
     }),
   app =>
     leaderboard_cmd_signature.onCommand(async ctx =>
@@ -40,7 +40,7 @@ export default new GuildCommand(
           },
           async ctx => {
             ctx.state.save.ranking_id(ranking.data.id)
-            await ctx.edit((await leaderboardMessage(app, ranking)).as_response)
+            await ctx.edit((await leaderboardMessage(app, await ranking.fetch())).as_response)
           },
         )
       }),

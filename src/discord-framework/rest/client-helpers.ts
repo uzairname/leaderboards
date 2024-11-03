@@ -1,15 +1,15 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
+import { sentry } from '../../logging/sentry'
 import { DiscordAPIClient } from './client'
 import { GuildChannelData, MessageData, RoleData } from './objects'
 import { RESTPostAPIGuildForumThreadsResult } from './types'
-import { sentry } from '../../logging/sentry'
 
 export class DiscordAPIUtils {
-  readonly bot: DiscordAPIClient
+  readonly discord: DiscordAPIClient
 
   constructor(bot: DiscordAPIClient) {
-    this.bot = bot
+    this.discord = bot
   }
 
   async syncRole(params: {
@@ -22,7 +22,7 @@ export class DiscordAPIUtils {
   }> {
     try {
       if (params.target_role_id) {
-        const edited_role = await this.bot.editRole(
+        const edited_role = await this.discord.editRole(
           params.guild_id,
           params.target_role_id,
           (await params.roleData()).patchdata,
@@ -36,7 +36,10 @@ export class DiscordAPIUtils {
       if (!(e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.UnknownRole)) throw e
     }
     // role doesn't exist
-    const new_role = await this.bot.makeRole(params.guild_id, (await params.roleData()).postdata)
+    const new_role = await this.discord.makeRole(
+      params.guild_id,
+      (await params.roleData()).postdata,
+    )
     return {
       role: new_role,
       is_new_role: true,
@@ -49,7 +52,7 @@ export class DiscordAPIUtils {
   }): Promise<D.APIRole | void> {
     try {
       if (!params.target_role_id) return
-      return await this.bot.deleteRole(params.guild_id, params.target_role_id)
+      return await this.discord.deleteRole(params.guild_id, params.target_role_id)
     } catch (e) {
       if (!(e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.UnknownRole)) {
         throw e
@@ -71,28 +74,18 @@ export class DiscordAPIUtils {
     sentry.debug(`syncGuildChannel ${params.target_channel_id}`)
     try {
       if (params.target_channel_id) {
-        sentry.debug(`editing channel`)
         // try to edit the channel
         const { data } = await params.channelData()
 
-        const channel = (await this.bot.editChannel(
+        const channel = (await this.discord.editChannel(
           params.target_channel_id,
           data.patchdata,
         )) as D.APIChannel
+
         return {
           channel,
           is_new_channel: false,
         }
-      } else if (params.target_channel_id) {
-        sentry.debug(`getting channel`)
-        // don't edit the channel. Return if it exists.
-        const channel = await this.bot.getChannel(params.target_channel_id)
-        return {
-          channel,
-          is_new_channel: false,
-        }
-      } else {
-        // existing channel unspecified
       }
     } catch (e) {
       if (
@@ -109,7 +102,7 @@ export class DiscordAPIUtils {
 
     const { guild_id, data, create_reason: reason } = await params.channelData()
     return {
-      channel: await this.bot.createGuildChannel(guild_id, data.postdata, reason),
+      channel: await this.discord.createGuildChannel(guild_id, data.postdata, reason),
       is_new_channel: true,
     }
   }
@@ -117,7 +110,7 @@ export class DiscordAPIUtils {
   async deleteChannelIfExists(target_channel_id?: string | null): Promise<D.APIChannel | void> {
     try {
       if (!target_channel_id) return
-      return await this.bot.deleteChannel(target_channel_id)
+      return await this.discord.deleteChannel(target_channel_id)
     } catch (e) {
       if (!(e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.UnknownChannel)) {
         throw e
@@ -139,14 +132,12 @@ export class DiscordAPIUtils {
     target_channel_id?: string | null
     target_message_id?: string | null
     messageData: () => Promise<MessageData>
-    channelData?: () => Promise<{
-      guild_id: string
-      data: GuildChannelData
-    }>
+    getChannel: () => Promise<D.APIChannel>
     no_edit?: boolean
   }): Promise<{
     message: D.APIMessage
     is_new_message?: boolean
+    channel_id: string
     new_channel?: D.APIChannel
   }> {
     sentry.debug(`syncChannelMessage ${params.target_channel_id} ${params.target_message_id}`)
@@ -154,48 +145,45 @@ export class DiscordAPIUtils {
     try {
       let existing_message: D.APIMessage
       if (params.no_edit) {
-        sentry.debug(`getting message`)
-        existing_message = await this.bot.getMessage(
+        existing_message = await this.discord.getMessage(
           params.target_channel_id || '0',
           params.target_message_id || '0',
         )
       } else {
-        sentry.debug(`editing message`)
-        existing_message = await this.bot.editMessage(
+        existing_message = await this.discord.editMessage(
           params.target_channel_id || '0',
           params.target_message_id || '0',
           (await params.messageData()).as_patch,
         )
       }
-      // channel and message exist
       return {
         message: existing_message,
+        channel_id: params.target_channel_id!,
       }
     } catch (e) {
       if (!(e instanceof DiscordAPIError)) throw e
       if (
-        (e.code === D.RESTJSONErrorCodes.UnknownChannel ||
-         e.code === D.RESTJSONErrorCodes.MissingAccess) &&
-        params.channelData
+        e.code === D.RESTJSONErrorCodes.UnknownChannel ||
+        e.code === D.RESTJSONErrorCodes.MissingAccess
       ) {
-        sentry.debug(`Channel unavailable`)
-        new_channel = (
-          await this.syncGuildChannel({
-            channelData: params.channelData,
-          })
-        ).channel
-      } else if (!(e.code === D.RESTJSONErrorCodes.UnknownMessage)) {
+        new_channel = await params.getChannel()
+        // channel unavailable
+      } else if (e.code === D.RESTJSONErrorCodes.UnknownMessage) {
+      } else {
         throw e
       }
     }
+
     // channel exists, but message doesn't
-    const new_message = await this.bot.createMessage(
-      new_channel?.id || params.target_channel_id!,
+    const channel_id = new_channel?.id || params.target_channel_id!
+    const new_message = await this.discord.createMessage(
+      channel_id,
       (await params.messageData()).as_post,
     )
     return {
       message: new_message,
       is_new_message: true,
+      channel_id,
       new_channel,
     }
   }
@@ -215,7 +203,7 @@ export class DiscordAPIUtils {
     try {
       if (params.target_thread_id) {
         // Don't edit the thread. Return if it exists.
-        const thread = await this.bot.getChannel(params.target_thread_id)
+        const thread = await this.discord.getChannel(params.target_thread_id)
         return {
           thread,
           is_new_thread: false,
@@ -229,7 +217,7 @@ export class DiscordAPIUtils {
     // channel exists, but thread doesn't
 
     const new_thread_data = await params.new_thread()
-    const new_thread = await this.bot.createPublicThread(
+    const new_thread = await this.discord.createPublicThread(
       new_thread_data.body,
       new_thread_data.channel.id,
       params.message.id,
@@ -270,7 +258,7 @@ export class DiscordAPIUtils {
       if (params.update_message && params.target_thread_id && params.target_message_id) {
         // Try to edit the message
         const body = await params.update_message()
-        const message = await this.bot.editMessage(
+        const message = await this.discord.editMessage(
           params.target_thread_id,
           params.target_message_id,
           body,
@@ -281,7 +269,7 @@ export class DiscordAPIUtils {
         }
       } else if (params.target_thread_id) {
         // Don't edit. Return if it exists.
-        const message = await this.bot.getMessage(
+        const message = await this.discord.getMessage(
           params.target_thread_id,
           params.target_message_id || '0',
         )
@@ -300,7 +288,7 @@ export class DiscordAPIUtils {
       ) {
         if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.UnknownMessage) {
           // thread exists, without the message
-          await this.bot.deleteThread(params.target_thread_id || '0')
+          await this.discord.deleteThread(params.target_thread_id || '0')
         }
         // thread and message don't exist
       } else {
@@ -312,7 +300,7 @@ export class DiscordAPIUtils {
     const { target_forum_id, body } = await params.new_post()
     try {
       if (target_forum_id) {
-        const new_post = await this.bot.createForumPost(target_forum_id, body)
+        const new_post = await this.discord.createForumPost(target_forum_id, body)
         return {
           message: new_post.message,
           new_post,
@@ -333,7 +321,7 @@ export class DiscordAPIUtils {
       })
     ).channel
 
-    const new_post = await this.bot.createForumPost(new_forum.id, body)
+    const new_post = await this.discord.createForumPost(new_forum.id, body)
     return {
       message: new_post.message,
       new_post: new_post,

@@ -7,7 +7,7 @@ import {
   guildRankingsOption,
   withOptionalSelectedRanking,
 } from '../../../ui-helpers/ranking-command-option'
-import { getOrCreatePlayer, setUserDisabled } from '../manage-players'
+import { getRegisterPlayer, setUserDisabled as setIsUserDisabled } from '../manage-players'
 
 export const disable_player_cmd_config = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -50,7 +50,7 @@ export default new GuildCommand(
   app =>
     disable_player_cmd_config.onCommand(async ctx =>
       withOptionalSelectedRanking(app, ctx, 'ranking', {}, async ranking => {
-        const user_option_value = nonNullable(
+        const selected_user_id = nonNullable(
           ctx.interaction.data.options?.find(
             o => o.name === 'player',
           ) as D.APIApplicationCommandInteractionDataUserOption,
@@ -64,44 +64,35 @@ export default new GuildCommand(
               | undefined
           )?.value === 'yes'
 
+        // Get the selected ranking and player(s) to act on.
         const { players, rankings } = await (async () => {
           if (ranking) {
-            const player = await getOrCreatePlayer(app, user_option_value, ranking)
-            return { players: [player], rankings: [ranking] }
+            // A ranking was selected
+            const player = await getRegisterPlayer(app, selected_user_id, ranking)
+            return { players: [player], rankings: [await ranking.fetch()] }
           } else {
+            // No ranking was selected. Act on all rankings in the guild.
             const interaction = checkGuildInteraction(ctx.interaction)
-            const rankings = await app.db.guild_rankings.get({
+            const guild_rankings = await app.db.guild_rankings.fetch({
               guild_id: interaction.guild_id,
             })
             return {
               players: await Promise.all(
-                rankings.map(guild_ranking =>
-                  getOrCreatePlayer(app, user_option_value, guild_ranking.ranking),
-                ),
+                guild_rankings.map(item => getRegisterPlayer(app, selected_user_id, item.ranking)),
               ).then(players => players.filter((p): p is NonNullable<typeof p> => !!p)),
-              rankings: rankings.map(r => r.ranking),
+              rankings: guild_rankings.map(r => r.ranking),
             }
           }
         })()
 
-        if (unban_yes) {
-          await Promise.all(players.map(player => setUserDisabled(app, player, false)))
-          return {
-            type: D.InteractionResponseType.ChannelMessageWithSource,
-            data: {
-              content: `Unbanned <@${user_option_value}> from ${rankings.map(r => r.data.name).join(', ')}`,
-              flags: D.MessageFlags.Ephemeral,
-            },
-          }
-        } else {
-          await Promise.all(players.map(player => setUserDisabled(app, player, true)))
-          return {
-            type: D.InteractionResponseType.ChannelMessageWithSource,
-            data: {
-              content: `Banned <@${user_option_value}> from ${rankings.map(r => r.data.name).join(', ')}`,
-              flags: D.MessageFlags.Ephemeral,
-            },
-          }
+        await Promise.all(players.map(player => setIsUserDisabled(app, player, unban_yes)))
+
+        return {
+          type: D.InteractionResponseType.ChannelMessageWithSource,
+          data: {
+            content: `${unban_yes ? `Unbanned` : `Banned`} <@${selected_user_id}> from ${rankings.map(r => r.data.name).join(', ')}`,
+            flags: D.MessageFlags.Ephemeral,
+          },
         }
       }),
     ),

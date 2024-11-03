@@ -1,9 +1,6 @@
 import * as D from 'discord-api-types/v10'
-import { Guild } from '../../../../../../../database/models'
 import { AppCommand } from '../../../../../../../discord-framework'
-import { sentry } from '../../../../../../../logging/sentry'
 import { nonNullable } from '../../../../../../../utils/utils'
-import { App } from '../../../../../../app/App'
 import { GuildCommand } from '../../../../../../app/ViewModule'
 import { checkGuildInteraction } from '../../../../../ui-helpers/perms'
 import {
@@ -11,7 +8,8 @@ import {
   withSelectedRanking,
 } from '../../../../../ui-helpers/ranking-command-option'
 import { getOrAddGuild } from '../../../../guilds/guilds'
-import { getOrCreatePlayer } from '../../../../players/manage-players'
+import { getRegisterPlayer } from '../../../../players/manage-players'
+import { getChallengeEnabledRankings } from '../../main'
 import { challenge_message_signature, challengeMessage } from '../pages/challenge'
 
 const optionnames = {
@@ -26,32 +24,12 @@ export const challenge_cmd_signature = new AppCommand({
   description: 'Challenge someone to a 1v1',
 })
 
-const get1v1EnabledRankings = async (app: App, guild: Guild) => {
-  const guild_rankings = await app.db.guild_rankings.get({ guild_id: guild.data.id })
-
-  sentry.debug(
-    `Challenge command available. ${guild_rankings.map(i => i.ranking.data.matchmaking_settings.direct_challenge_enabled)}`,
-  )
-
-  const result = guild_rankings.filter(
-    i => i.ranking.data.matchmaking_settings.direct_challenge_enabled,
-  )
-  sentry.debug(`Challenge command: ${result.length} rankings available `)
-
-  return result
-}
-
 export default new GuildCommand(
   challenge_cmd_signature,
   async (app, guild) => {
-    const result = (await get1v1EnabledRankings(app, guild)).map(i => ({
-      id: i.ranking.data.id,
-      name: i.ranking.data.name,
-    }))
+    const result = (await getChallengeEnabledRankings(app, guild)).map(i => i.ranking)
 
-    if (result.length == 0) {
-      return null
-    }
+    if (result.length == 0) return null
 
     return new AppCommand({
       ...challenge_cmd_signature.config,
@@ -71,7 +49,7 @@ export default new GuildCommand(
         .concat({
           type: D.ApplicationCommandOptionType.Number,
           name: optionnames.best_of,
-          description: 'Best of how many games? This affects elo calculation',
+          description: 'Best of how many games? This affects rating calculation',
           required: false,
           choices: [
             { name: '1', value: 1 },
@@ -89,7 +67,7 @@ export default new GuildCommand(
         ctx,
         optionnames.ranking,
         {
-          available_guild_rankings: await get1v1EnabledRankings(
+          available_guild_rankings: await getChallengeEnabledRankings(
             app,
             await getOrAddGuild(app, checkGuildInteraction(ctx.interaction).guild_id),
           ),
@@ -105,7 +83,7 @@ export default new GuildCommand(
             },
             async ctx => {
               const interaction = checkGuildInteraction(ctx.interaction)
-              const initiator = await getOrCreatePlayer(app, interaction.member.user.id, ranking)
+              const initiator = await getRegisterPlayer(app, interaction.member.user.id, ranking)
 
               const opponent_id = nonNullable(
                 ctx.interaction.data.options?.find(

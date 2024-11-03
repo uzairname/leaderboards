@@ -1,5 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import type { Guild } from '../../../../../database/models'
+import { PartialGuild } from '../../../../../database/models/guilds'
 import { GuildChannelData, MessageData } from '../../../../../discord-framework'
 import { sentry } from '../../../../../logging/sentry'
 import { App } from '../../../../app/App'
@@ -8,11 +9,16 @@ import { commandMention } from '../../../ui-helpers/strings'
 import { syncRankedCategory } from '../../guilds/guilds'
 import matches from './views/commands/matches'
 
+export async function syncMatchesChannel(
+  app: App,
+  p_guild: PartialGuild,
+  force_create?: boolean,
+): Promise<D.APIChannel> {
+  const guild = await p_guild.fetch()
+  sentry.debug(`syncMatchesChannel (${guild})`)
 
-export async function syncMatchesChannel(app: App, guild: Guild): Promise<D.APIChannel> {
-  sentry.debug(`syncMatchesChannel`, { guild_id: guild.data.id })
   const sync_channel_result = await app.discord.utils.syncGuildChannel({
-    target_channel_id: guild.data.matches_channel_id,
+    target_channel_id: force_create ? null : guild.data.matches_channel_id,
     channelData: () => matchLogsChannelData(app, guild),
   })
 
@@ -30,7 +36,10 @@ export async function syncMatchesChannel(app: App, guild: Guild): Promise<D.APIC
   return sync_channel_result.channel
 }
 
-async function matchesChannelDescriptionMessageData(app: App, guild: Guild): Promise<MessageData> {
+async function matchesChannelDescriptionMessageData(
+  app: App,
+  guild: PartialGuild,
+): Promise<MessageData> {
   const matches_cmd_mention = await commandMention(app, matches, guild.data.id)
 
   const msg = new MessageData({

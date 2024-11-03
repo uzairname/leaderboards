@@ -7,6 +7,7 @@ import {
   MessageView,
   StateContext,
 } from '../../../../../../discord-framework'
+import { ViewState } from '../../../../../../discord-framework/interactions/view-state'
 import { nonNullable } from '../../../../../../utils/utils'
 import { App } from '../../../../../app/App'
 import { AppView } from '../../../../../app/ViewModule'
@@ -21,12 +22,13 @@ import {
 } from '../../../leaderboard/leaderboard-message'
 import { deleteRanking, updateRanking } from '../../manage-rankings'
 import { rankingNameTextInput, rankingsPage } from './rankings'
-import { ViewState } from '../../../../../../discord-framework/interactions/view-state'
+import { UserErrors } from '../../../../errors/UserError'
 
 export const ranking_settings_page_config = new MessageView({
   name: 'ranking settings',
   custom_id_prefix: 'rs',
   state_schema: {
+    component_owner_id: field.String(),
     guild_id: field.String(),
     ranking_id: field.Int(),
     callback: field.Choice({
@@ -37,17 +39,17 @@ export const ranking_settings_page_config = new MessageView({
       toggleChallenge,
       onDeleteBtn,
       onDeleteConfirmBtn,
-      // eloSettingsPage,
-      // onSettingSelect,
-      // onLbChannelSelect,
-      // sendQueueMessage,
     }),
-    // selected_channel_id: field.String(),
   },
 })
 
 export default new AppView(ranking_settings_page_config, app =>
   ranking_settings_page_config.onComponent(async ctx => {
+    const interaction = checkGuildInteraction(ctx.interaction)
+    if (ctx.state.data.component_owner_id && ctx.state.data.component_owner_id !== interaction.member.user.id) {
+      throw new UserErrors.NotComponentOwner(ctx.state.data.component_owner_id)
+    }
+
     if (ctx.state.data.callback) {
       return ctx.state.data.callback(app, ctx)
     } else {
@@ -59,24 +61,20 @@ export default new AppView(ranking_settings_page_config, app =>
   }),
 )
 
-
 export async function rankingSettingsPage(
   app: App,
   data: ViewState<typeof ranking_settings_page_config.state_schema>['data'],
 ) {
-  return _rankingSettingsPage(app, {state: ranking_settings_page_config.newState(data)})
+  return _rankingSettingsPage(app, { state: ranking_settings_page_config.newState(data) })
 }
-
 
 async function _rankingSettingsPage(
   app: App,
   ctx: StateContext<typeof ranking_settings_page_config>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  const guild_ranking = await app.db.guild_rankings.get({
-    guild_id: ctx.state.get.guild_id(),
-    ranking_id: ctx.state.get.ranking_id(),
-  })
-  const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
+  const { guild_ranking, ranking } = await app.db.guild_rankings
+    .get(ctx.state.get.guild_id(), ctx.state.get.ranking_id())
+    .fetch()
 
   const embed: D.APIEmbed = {
     title: `Ranking Settings`,
@@ -155,7 +153,7 @@ async function sendAllGuildRankingsPage(
     },
     async ctx => {
       const guild = await getOrAddGuild(app, ctx.state.get.guild_id())
-      return void ctx.edit(await rankingsPage(app, guild))
+      return void ctx.edit(await rankingsPage(app, guild, ctx.state.data.component_owner_id))
     },
   )
 }
@@ -164,7 +162,7 @@ async function rename(
   app: App,
   ctx: ComponentContext<typeof ranking_settings_page_config>,
 ): Promise<ChatInteractionResponse> {
-  const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
+  const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
   return {
     type: D.InteractionResponseType.Modal,
     data: {
@@ -186,7 +184,7 @@ async function onRenameModalSubmit(
       type: D.InteractionResponseType.DeferredMessageUpdate,
     },
     async ctx => {
-      const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
+      const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
       const old_name = ranking.data.name
       const name = nonNullable(
         getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)['name']?.value,
@@ -214,10 +212,9 @@ async function toggleLiveLeaderboard(
       type: D.InteractionResponseType.DeferredMessageUpdate,
     },
     async ctx => {
-      const guild_ranking = await app.db.guild_rankings.get({
-        guild_id: ctx.state.get.guild_id(),
-        ranking_id: ctx.state.get.ranking_id(),
-      })
+      const { guild_ranking } = await app.db.guild_rankings
+        .get(ctx.state.get.guild_id(), ctx.state.get.ranking_id())
+        .fetch()
 
       // send and enable the leaderboard message if it's disabled
       if (guild_ranking.data.display_settings?.leaderboard_message) {
@@ -227,7 +224,7 @@ async function toggleLiveLeaderboard(
           flags: D.MessageFlags.Ephemeral,
         })
       } else {
-        await syncGuildRankingLbMessage(app, guild_ranking,{  enable_if_disabled: true })
+        await syncGuildRankingLbMessage(app, guild_ranking, { enable_if_disabled: true })
         await ctx.followup({
           content: `The leaderboard message will now be updated live`,
           flags: D.MessageFlags.Ephemeral,
@@ -249,12 +246,13 @@ async function toggleChallenge(
       type: D.InteractionResponseType.DeferredMessageUpdate,
     },
     async ctx => {
-      const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
+      const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
 
       const matchmaking_settings = ranking.data.matchmaking_settings
 
       app.config.IsDev &&
         (await ctx.followup({ content: `Updating granking ${ranking.data.name}`, flags: 64 }))
+
       await updateRanking(
         app,
         ranking,
@@ -277,7 +275,7 @@ async function onDeleteBtn(
   ctx: ComponentContext<typeof ranking_settings_page_config>,
 ): Promise<ChatInteractionResponse> {
   await ensureAdminPerms(app, ctx)
-  const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
+  const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
   return {
     type: D.InteractionResponseType.UpdateMessage,
     data: {
@@ -323,11 +321,11 @@ async function onDeleteConfirmBtn(
     },
     async ctx => {
       const interaction = checkGuildInteraction(ctx.interaction)
-      const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
+      const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
       await deleteRanking(app, ranking)
 
       const guild = await getOrAddGuild(app, interaction.guild_id)
-      await ctx.edit(await rankingsPage(app, guild))
+      await ctx.edit(await rankingsPage(app, guild, interaction.member.user.id))
 
       return void ctx.followup({
         flags: D.MessageFlags.Ephemeral,
@@ -337,7 +335,7 @@ async function onDeleteConfirmBtn(
   )
 }
 
-async function eloSettingsPage(
+async function ratingSettingsPage(
   app: App,
   ctx: ComponentContext<typeof ranking_settings_page_config>,
 ): Promise<ChatInteractionResponse> {
@@ -346,7 +344,7 @@ async function eloSettingsPage(
     data: {
       embeds: [
         {
-          title: 'Elo Settings',
+          title: 'Rating Settings',
           description: `These settings affect how players' ratings are calculated`,
           color: Colors.EmbedBackground,
         },

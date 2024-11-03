@@ -4,15 +4,22 @@ import { nonNullable } from '../../utils/utils'
 import { DbClient } from '../client'
 import { DbObject, DbObjectManager } from '../managers'
 import { Players, QueueTeams, TeamPlayers, Teams } from '../schema'
+import { PartialRanking } from './rankings'
 
 export type TeamSelect = InferSelectModel<typeof Teams>
 export type TeamInsert = Omit<InferInsertModel<typeof Teams>, 'id'>
 export type TeamUpdate = Partial<Omit<TeamInsert, 'ranking_id'>>
 
-export class Team extends DbObject<TeamSelect> {
-  constructor(data: TeamSelect, db: DbClient) {
-    super(data, db)
-    db.cache.teams[data.id] = this
+export class Team implements DbObject<TeamSelect> {
+  constructor(
+    public data: TeamSelect,
+    public db: DbClient,
+  ) {
+    db.cache.teams.set(data.id, this)
+  }
+
+  get ranking(): PartialRanking {
+    return this.db.rankings.get(this.data.ranking_id)
   }
 
   async players(): Promise<Player[]> {
@@ -57,9 +64,7 @@ export class Team extends DbObject<TeamSelect> {
   }
 
   protected async updateRating(): Promise<void> {
-    const players = await this.players()
-    const ranking = await this.db.rankings.get(this.data.ranking_id)
-    const rating = calculateTeamRating(players, ranking)
+    const rating = calculateTeamRating(await this.players(), await this.ranking.fetch())
     await this.update({ rating })
   }
 
@@ -100,9 +105,8 @@ export class TeamsManager extends DbObjectManager {
     return team
   }
 
-  async get(id: number): Promise<Team | undefined> {
-    const cached_team = this.db.cache.teams[id]
-    if (cached_team) return cached_team
+  async fetch(id: number): Promise<Team | undefined> {
+    if (this.db.cache.teams.has(id)) return this.db.cache.teams.get(id)!
     const data = (await this.db.drizzle.select().from(Teams).where(eq(Teams.id, id)))[0]
     if (data) {
       return new Team(data, this.db)
@@ -111,10 +115,10 @@ export class TeamsManager extends DbObjectManager {
 }
 
 function calculateTeamRating(players: Player[], ranking: Ranking): number {
-  const initial_rating = nonNullable(ranking.data.elo_settings?.prior_mu, 'initial_rating')
+  const initial_rating = nonNullable(ranking.data.initial_rating.mu, 'initial_rating')
   return players.length > 0
     ? players.reduce((acc, player) => {
-        const rating = player.data.rating ?? initial_rating
+        const rating = player.data.rating.mu ?? initial_rating
         return acc + rating
       }, 0) / players.length
     : initial_rating

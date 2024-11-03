@@ -1,40 +1,44 @@
 import { Match, Ranking } from '../../../../database/models'
 import { MatchStatus } from '../../../../database/models/matches'
-import { EloSettings } from '../../../../database/models/rankings'
+import { Rating } from '../../../../database/models/rankings'
 import { nonNullable } from '../../../../utils/utils'
 import { App } from '../../../app/App'
-import { rateTrueskill } from '../matches/management/elo-calculation'
+import { rateTrueskill } from '../matches/management/rating-calculation'
 
-export const calcDisplayRating =
-  (app: App, elo_settings: EloSettings) => (data: { rating: number; rd: number }) => ({
-    score: Math.max(
-      0,
-      Math.round(
-        (data.rating + app.config.DisplaySdOffset * data.rd) *
-          (app.config.DisplayMeanRating / elo_settings.prior_mu),
-      ),
+export const calcDisplayRating = (app: App, initial_rating: Rating) => (rating: Rating) => ({
+  rating: Math.max(
+    0,
+    Math.round(
+      (rating.mu + app.config.DisplaySdOffset * rating.rd) *
+        (app.config.DisplayMeanRating / initial_rating.mu),
     ),
-    is_provisional: data.rd > elo_settings.prior_rd * app.config.ProvisionalRdThreshold,
-  })
+  ),
+  is_provisional: rating.rd > initial_rating.rd * app.config.ProvisionalRdThreshold,
+})
 
-export async function getLeaderboardPlayers(
+export async function getOrderedLeaderboardPlayers(
   app: App,
   ranking: Ranking,
 ): Promise<
   {
     user_id: string
-    score: number
+    rating: number
     is_provisional?: boolean
   }[]
 > {
-  const players = await ranking.getOrderedTopPlayers()
+  const players = await ranking.players()
 
-  const elo_settings = ranking.data.elo_settings
+  const initial_rating = ranking.data.initial_rating
 
-  return players.map(player => ({
+  const players_display = players.map(player => ({
     user_id: player.data.user_id,
-    ...calcDisplayRating(app, elo_settings)(player.data),
+    ...calcDisplayRating(app, initial_rating)(player.data.rating),
   }))
+
+  // sort by display score
+  players_display.sort((a, b) => b.rating - a.rating)
+
+  return players_display
 }
 
 export async function getMatchPlayersDisplayStats(
@@ -43,33 +47,31 @@ export async function getMatchPlayersDisplayStats(
 ): Promise<
   {
     user_id: string
-    before: { score: number; is_provisional?: boolean }
-    after?: { score: number; is_provisional?: boolean }
+    before: { rating: number; is_provisional?: boolean }
+    after?: { rating: number; is_provisional?: boolean }
   }[][]
 > {
-  const ranking = await match.ranking()
-  const team_players = await match.teamPlayers()
+  const ranking = await match.ranking.fetch()
+  const team_players = await match.players()
 
-  const elo_settings = ranking.data.elo_settings
+  const initial_rating = ranking.data.initial_rating
 
   const new_ratings =
-    match.data.status === MatchStatus.Scored
+    match.data.status === MatchStatus.Finished
       ? rateTrueskill(
           nonNullable(match.data.outcome, 'match.outcome'),
           team_players,
-          ranking.data.elo_settings,
+          ranking.data.initial_rating,
           match.data.metadata?.best_of,
         )
       : undefined
 
-  const display = calcDisplayRating(app, elo_settings)
+  const display = calcDisplayRating(app, initial_rating)
 
   const result = team_players.map((team, i) =>
     team.map((match_player, j) => {
-      const before = display({ rating: match_player.rating_before, rd: match_player.rd_before })
-      const after = new_ratings
-        ? display({ rating: new_ratings[i][j].new_rating, rd: new_ratings[i][j].new_rd })
-        : undefined
+      const before = display(match_player.rating)
+      const after = new_ratings ? display(new_ratings[i][j]) : undefined
 
       return {
         user_id: match_player.player.data.user_id,

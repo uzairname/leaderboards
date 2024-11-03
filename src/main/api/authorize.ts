@@ -1,4 +1,4 @@
-import { Env } from '../..'
+import { Env } from '../../Env'
 
 export default (env: Env) => (request: Request) => {
   if (request.headers.get('Authorization') !== env.APP_KEY) {

@@ -9,4 +9,6 @@ export namespace DbErrors {
   export class NotFound extends DbError {}
 
   export class ValueError extends DbError {}
+
+  export class MissingMatchPlayers extends DbError {}
 }

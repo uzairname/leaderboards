@@ -1,11 +1,160 @@
-function nonNullable<T>(value: T, value_name?: string): NonNullable<T> {
-  if (value === null || value === undefined)
-    throw new Error(`${value_name || 'value'} is null or undefined`)
-  return value
-}
-
 export type StringDataSchema = {
   [k: string]: Field<unknown>
+}
+
+export namespace field {
+  export function Enum<T extends { [key: string]: null }>(options: T) {
+    return new EnumField<T>(options)
+  }
+  export function Choice<T extends { [key: string]: any }>(options: T) {
+    return new ChoiceField<T>(options)
+  }
+  export function ListValue(options: any[]) {
+    return new ListValueField(options)
+  }
+  export function Array<T>(field: Field<T>) {
+    return new ArrayField<T>(field)
+  }
+  export function String() {
+    return new StringField()
+  }
+  export function Int() {
+    return new IntegerField()
+  }
+  export function Float(precision?: number) {
+    return new FloatField(precision)
+  }
+  export function Boolean() {
+    return new BooleanField()
+  }
+  export function Date() {
+    return new DateField()
+  }
+  export function Object<TSchema extends StringDataSchema>(schema: TSchema) {
+    return new StringDataDataField<TSchema>(schema)
+  }
+  export function StringData<TSchema extends StringDataSchema>(schema: TSchema) {
+    return new StringDataField<TSchema>(schema)
+  }
+}
+
+abstract class Field<ReadT> {
+  read = null as ReadT
+  // write = null as WriteT
+  abstract compress(value: ReadT): string
+  abstract decompress(compressed: string): ReadT
+}
+
+class EnumField<T extends { [key: string]: null }> extends Field<keyof T> {
+  private id_keys = {} as { [key: string]: keyof T }
+  private key_ids = {} as { [K in keyof T]: string }
+  constructor(private keys: T) {
+    super()
+    let i = 0
+    for (const key in keys) {
+      const key_id = i.toString(36)
+      this.id_keys[key_id] = key
+      this.key_ids[key] = key_id
+      i++
+    }
+  }
+  compress(key: keyof T) {
+    if (!this.keys.hasOwnProperty(key)) throw new Error(`Option ${key.toString()} doesn't exist`)
+    return this.key_ids[key]
+  }
+  decompress = (value: string) => this.id_keys[value]
+}
+
+class ChoiceField<T extends { [key: string]: any }> extends Field<T[keyof T]> {
+  private id_keys = {} as { [key: string]: keyof T }
+  private key_ids = {} as { [K in keyof T]: string }
+  constructor(private values: T) {
+    super()
+    let i = 0
+    for (const key in values) {
+      const value_id = i.toString(36)
+      this.id_keys[value_id] = key
+      this.key_ids[key] = value_id
+      i++
+    }
+  }
+  compress(value: T[keyof T]) {
+    const matching = Object.entries(this.values).filter(([k, v]) => v == value)
+    if (matching.length != 1) throw new Error(`No unique key with value "${value.toString()}"`)
+    return this.key_ids[matching[0][0]]
+  }
+  decompress = (value: string) => this.values[this.id_keys[value]]
+}
+
+class ListValueField<T> extends Field<T> {
+  constructor(private values: T[]) {
+    super()
+  }
+  compress(value: T) {
+    const index = this.values.indexOf(value)
+    if (index === -1) throw new Error(`Value ${value} doesn't exist`)
+    return index.toString(36)
+  }
+  decompress = (value: string) => this.values[parseInt(value, 36)]
+}
+
+class ArrayField<T> extends Field<NonNullable<T>[]> {
+  constructor(private field: Field<T>) {
+    super()
+  }
+  compress = (value: NonNullable<T>[]) => arrayToString(value.map(v => this.field.compress(v)))
+  decompress = (compressed: string) =>
+    stringToArray(compressed).map(v =>
+      nonNullable(this.field.decompress(v), 'decompressed list element'),
+    )
+}
+
+class StringField extends Field<string | undefined> {
+  compress = (value: string) => value
+  decompress = (value: string) => value
+}
+
+class IntegerField extends Field<number | undefined> {
+  compress = (value: number) => value.toString(36)
+  decompress = (value: string) => parseInt(value, 36)
+}
+
+class FloatField extends Field<number | undefined> {
+  constructor(private precision: number = 4) {
+    super()
+  }
+  compress = (value: number) => value.toPrecision(this.precision)
+  decompress = (value: string) => parseFloat(value)
+}
+
+class BooleanField extends Field<boolean | undefined> {
+  compress = (value: boolean) => (value ? 't' : '')
+  decompress = (value: string) => value === 't'
+}
+
+class DateField extends Field<Date | undefined> {
+  compress = (value: Date) => (Math.floor(value.getTime() / 1000) - 1735707600).toString(36)
+  decompress = (value: string) => new Date((parseInt(value, 36) + 1735707600) * 1000)
+  // 1735707600 is the unix timestamp of 1/1/2025.
+}
+
+class StringDataDataField<TSchema extends StringDataSchema> extends Field<
+  StringData<TSchema>['data']
+> {
+  constructor(private schema: TSchema) {
+    super()
+  }
+  compress = (value: StringData<TSchema>['data']) =>
+    new StringData(this.schema).saveAll(value).encode()
+  decompress = (value: string) => new StringData(this.schema, value).data
+}
+
+class StringDataField<TSchema extends StringDataSchema> extends Field<StringData<TSchema>> {
+  constructor(private schema: TSchema) {
+    super()
+  }
+  compress = (value: StringData<TSchema>) => value.encode()
+  decompress = (value: string) => new StringData(this.schema, value)
 }
 
 export class StringData<TSchema extends StringDataSchema> {
@@ -140,10 +289,6 @@ export class StringData<TSchema extends StringDataSchema> {
   }
 }
 
-const delimiter = 'q'
-const escape_char = 'z'
-const array_encode_shift = 1
-
 function stringToArray(str: string) {
   if (str.length == 0) return []
   str = shiftString(str, -array_encode_shift)
@@ -182,6 +327,10 @@ function arrayToString(array: string[]) {
   return shiftString(res, array_encode_shift)
 }
 
+const delimiter = 'q'
+const escape_char = 'z'
+const array_encode_shift = 1
+
 function shiftString(str: string, shift: number): string {
   return str
     .split('')
@@ -189,157 +338,8 @@ function shiftString(str: string, shift: number): string {
     .join('')
 }
 
-abstract class Field<ReadT> {
-  read = null as ReadT
-  // write = null as WriteT
-  abstract compress(value: ReadT): string
-  abstract decompress(compressed: string): ReadT
-}
-
-class EnumField<T extends { [key: string]: null }> extends Field<keyof T> {
-  private id_keys = {} as { [key: string]: keyof T }
-  private key_ids = {} as { [K in keyof T]: string }
-  constructor(private keys: T) {
-    super()
-    let i = 0
-    for (const key in keys) {
-      const key_id = i.toString(36)
-      this.id_keys[key_id] = key
-      this.key_ids[key] = key_id
-      i++
-    }
-  }
-  compress(key: keyof T) {
-    if (!this.keys.hasOwnProperty(key)) throw new Error(`Option ${key.toString()} doesn't exist`)
-    return this.key_ids[key]
-  }
-  decompress = (value: string) => this.id_keys[value]
-}
-
-class ChoiceField<T extends { [key: string]: any }> extends Field<T[keyof T]> {
-  private id_keys = {} as { [key: string]: keyof T }
-  private key_ids = {} as { [K in keyof T]: string }
-  constructor(private values: T) {
-    super()
-    let i = 0
-    for (const key in values) {
-      const value_id = i.toString(36)
-      this.id_keys[value_id] = key
-      this.key_ids[key] = value_id
-      i++
-    }
-  }
-  compress(value: T[keyof T]) {
-    const matching = Object.entries(this.values).filter(([k, v]) => v == value)
-    if (matching.length != 1) throw new Error(`No unique key with value "${value.toString()}"`)
-    return this.key_ids[matching[0][0]]
-  }
-  decompress = (value: string) => this.values[this.id_keys[value]]
-}
-
-class ListValueField<T> extends Field<T> {
-  constructor(private values: T[]) {
-    super()
-  }
-  compress(value: T) {
-    const index = this.values.indexOf(value)
-    if (index === -1) throw new Error(`Value ${value} doesn't exist`)
-    return index.toString(36)
-  }
-  decompress = (value: string) => this.values[parseInt(value, 36)]
-}
-
-class ArrayField<T> extends Field<NonNullable<T>[]> {
-  constructor(private field: Field<T>) {
-    super()
-  }
-  compress = (value: NonNullable<T>[]) => arrayToString(value.map(v => this.field.compress(v)))
-  decompress = (compressed: string) =>
-    stringToArray(compressed).map(v =>
-      nonNullable(this.field.decompress(v), 'decompressed list element'),
-    )
-}
-
-class StringField extends Field<string | undefined> {
-  compress = (value: string) => value
-  decompress = (value: string) => value
-}
-
-class IntegerField extends Field<number | undefined> {
-  compress = (value: number) => value.toString(36)
-  decompress = (value: string) => parseInt(value, 36)
-}
-
-class FloatField extends Field<number | undefined> {
-  constructor(private precision: number = 4) {
-    super()
-  }
-  compress = (value: number) => value.toPrecision(this.precision)
-  decompress = (value: string) => parseFloat(value)
-}
-
-class BooleanField extends Field<boolean | undefined> {
-  compress = (value: boolean) => (value ? 't' : '')
-  decompress = (value: string) => value === 't'
-}
-
-class DateField extends Field<Date | undefined> {
-  compress = (value: Date) => (Math.floor(value.getTime() / 1000) - 1735707600).toString(36)
-  decompress = (value: string) => new Date((parseInt(value, 36) + 1735707600) * 1000)
-  // 1735707600 is the unix timestamp of 1/1/2025.
-}
-
-class StringDataDataField<TSchema extends StringDataSchema> extends Field<
-  StringData<TSchema>['data']
-> {
-  constructor(private schema: TSchema) {
-    super()
-  }
-  compress = (value: StringData<TSchema>['data']) =>
-    new StringData(this.schema, '').saveAll(value).encode()
-  decompress = (value: string) => new StringData(this.schema, value).data
-}
-
-class StringDataField<TSchema extends StringDataSchema> extends Field<StringData<TSchema>> {
-  constructor(private schema: TSchema) {
-    super()
-  }
-  compress = (value: StringData<TSchema>) => value.encode()
-  decompress = (value: string) => new StringData(this.schema, value)
-}
-
-export namespace field {
-  export function Enum<T extends { [key: string]: null }>(options: T) {
-    return new EnumField(options)
-  }
-  export function Choice<T extends { [key: string]: any }>(options: T) {
-    return new ChoiceField(options)
-  }
-  export function ListValue(options: any[]) {
-    return new ListValueField(options)
-  }
-  export function Array<T>(field: Field<T>) {
-    return new ArrayField(field)
-  }
-  export function String() {
-    return new StringField()
-  }
-  export function Int() {
-    return new IntegerField()
-  }
-  export function Float(precision?: number) {
-    return new FloatField(precision)
-  }
-  export function Boolean() {
-    return new BooleanField()
-  }
-  export function Date() {
-    return new DateField()
-  }
-  export function Object<TSchema extends StringDataSchema>(schema: TSchema) {
-    return new StringDataDataField(schema)
-  }
-  export function StringData<TSchema extends StringDataSchema>(schema: TSchema) {
-    return new StringDataField(schema)
-  }
+function nonNullable<T>(value: T, value_name?: string): NonNullable<T> {
+  if (value === null || value === undefined)
+    throw new Error(`${value_name || 'value'} is null or undefined`)
+  return value
 }

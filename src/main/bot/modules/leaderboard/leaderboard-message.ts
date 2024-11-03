@@ -1,16 +1,18 @@
 import * as D from 'discord-api-types/v10'
 import type { Guild, GuildRanking, Ranking } from '../../../../database/models'
-import { GuildChannelData, MessageData } from '../../../../discord-framework'
+import { PartialGuildRanking } from '../../../../database/models/guildrankings'
+import { MessageData } from '../../../../discord-framework'
 import { sentry } from '../../../../logging/sentry'
 import { nonNullable } from '../../../../utils/utils'
 import { type App } from '../../../app/App'
 import { Colors } from '../../ui-helpers/constants'
 import { escapeMd, relativeTimestamp, space } from '../../ui-helpers/strings'
 import { syncRankedCategory } from '../guilds/guilds'
-import { getLeaderboardPlayers } from '../players/display'
+import { getOrderedLeaderboardPlayers } from '../players/display'
 
 export async function syncRankingLbMessages(app: App, ranking: Ranking): Promise<void> {
-  const guild_rankings = await app.db.guild_rankings.get({ ranking_id: ranking.data.id })
+  sentry.debug(`syncRankingLbMessages ranking: ${ranking.data.id}`)
+  const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
   await Promise.all(
     guild_rankings.map(async guild_ranking => {
       await syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)
@@ -20,25 +22,25 @@ export async function syncRankingLbMessages(app: App, ranking: Ranking): Promise
 
 export async function syncGuildRankingLbMessage(
   app: App,
-  guild_ranking: GuildRanking,
+  p_guild_ranking: PartialGuildRanking,
   {
     // if true, will update the guild ranking's config to enable the lb message
-    enable_if_disabled=false,
+    enable_if_disabled = false,
     // if true, will not edit the message if it already exists
-    no_edit=false,
+    no_edit = false,
   } = {},
 ): Promise<{ message: D.APIMessage; channel_id: string } | undefined> {
-  sentry.debug(`syncGuildRankingLbMessage guild: ${guild_ranking}`)
-  if (!guild_ranking.data.display_settings?.leaderboard_message && !enable_if_disabled) return
+  sentry.debug(`syncGuildRankingLbMessage ${p_guild_ranking}`)
 
-  const guild = await guild_ranking.guild
-  const ranking = await guild_ranking.ranking
+  const { guild, ranking, guild_ranking } = await p_guild_ranking.fetch()
+
+  if (!guild_ranking.data.display_settings?.leaderboard_message && !enable_if_disabled) return
 
   const result = await app.discord.utils.syncChannelMessage({
     target_channel_id: guild_ranking.data.leaderboard_channel_id,
     target_message_id: guild_ranking.data.leaderboard_message_id,
     messageData: () => leaderboardMessage(app, ranking),
-    channelData: () => lbChannelData(app, guild, ranking),
+    getChannel: () => sendLbChannel(app, guild, ranking),
     no_edit,
   })
 
@@ -48,7 +50,6 @@ export async function syncGuildRankingLbMessage(
       leaderboard_message_id: result.is_new_message ? result.message.id : undefined,
       display_settings: { ...guild_ranking.data.display_settings, leaderboard_message: true },
     })
-    sentry.debug(`synced leaderboard message. ${guild_ranking.data.leaderboard_message_id}`)
   }
 
   return {
@@ -72,30 +73,22 @@ export async function disableGuildRankingLbMessage(app: App, guild_ranking: Guil
   })
 }
 
-export async function lbChannelData(
+export async function sendLbChannel(
   app: App,
   guild: Guild,
   ranking: Ranking,
-): Promise<{
-  guild_id: string
-  data: GuildChannelData
-  reason?: string
-}> {
+): Promise<D.APIChannel> {
   const category = (await syncRankedCategory(app, guild)).channel
-  return {
-    guild_id: guild.data.id,
-    data: new GuildChannelData({
-      type: D.ChannelType.GuildText,
-      parent_id: category.id,
-      name: `${escapeMd(ranking.data.name)} Leaderboard`,
-      topic: 'This leaderboard is displayed and updated live here',
-      permission_overwrites: leaderboardChannelPermissionOverwrites(
-        guild.data.id,
-        app.discord.application_id,
-      ),
-    }),
-    reason: `Leaderboard channel for ${ranking.data.name}`,
-  }
+  return await app.discord.createGuildChannel(guild.data.id, {
+    type: D.ChannelType.GuildText,
+    parent_id: category.id,
+    name: `${escapeMd(ranking.data.name)} Leaderboard`,
+    topic: 'This leaderboard is displayed and updated live here',
+    permission_overwrites: leaderboardChannelPermissionOverwrites(
+      guild.data.id,
+      app.discord.application_id,
+    ),
+  })
 }
 
 export async function leaderboardMessage(
@@ -105,35 +98,35 @@ export async function leaderboardMessage(
     show_provisional?: boolean
   },
 ): Promise<MessageData> {
-  const players = await getLeaderboardPlayers(app, ranking)
+  const players = await getOrderedLeaderboardPlayers(app, ranking)
 
   let place = 0
-  const max_rating_len = players[0]?.score.toFixed(0).length ?? 0
+  const max_rating_len = players[0]?.rating.toFixed(0).length ?? 0
 
   const players_text =
     players.length > 0
       ? players
-        .map(p => {
-          const rating_text = `\`${p.score.toFixed(0)}\``.padStart(max_rating_len + 2)
-          if (p.is_provisional) {
-            return options?.show_provisional
-              ? `-# unranked\n-# ?` + `${space}${rating_text}` + `${space}<@${p.user_id}> `
-              : ''
-          } else {
-            place++
-            return (
-              `### ${(place => {
-                if (place == 1) return `🥇`
-                else if (place == 2) return `🥈`
-                else if (place == 3) return `🥉`
-                else return `${place}.${space}`
-              })(place)}` +
-              `${space}${rating_text}` +
-              `${space}<@${p.user_id}> `
-            )
-          }
-        })
-        .join('\n')
+          .map(p => {
+            const rating_text = `\`${p.rating.toFixed(0)}\``.padStart(max_rating_len + 2)
+            if (p.is_provisional) {
+              return options?.show_provisional
+                ? `-# unranked\n-# ?` + `${space}${rating_text}` + `${space}<@${p.user_id}> `
+                : ''
+            } else {
+              place++
+              return (
+                `### ${(place => {
+                  if (place == 1) return `🥇`
+                  else if (place == 2) return `🥈`
+                  else if (place == 3) return `🥉`
+                  else return `${place}.${space}`
+                })(place)}` +
+                `${space}${rating_text}` +
+                `${space}<@${p.user_id}> `
+              )
+            }
+          })
+          .join('\n')
       : 'No players yet'
 
   const embed: D.APIEmbed = {

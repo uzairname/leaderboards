@@ -1,5 +1,7 @@
 import * as D from 'discord-api-types/v10'
-import { Guild, GuildRanking, Ranking } from '../../../database/models'
+import { GuildRanking } from '../../../database/models'
+import { PartialGuild } from '../../../database/models/guilds'
+import { PartialRanking, Ranking } from '../../../database/models/rankings'
 import type {
   AnyAppCommand,
   CommandInteractionResponse,
@@ -10,6 +12,7 @@ import { UserError } from '../errors/UserError'
 import { getOrAddGuild } from '../modules/guilds/guilds'
 import { rankingsPage } from '../modules/rankings/views/pages/rankings'
 import { checkGuildInteraction } from './perms'
+import { sentry } from '../../../logging/sentry'
 
 export const create_ranking_choice_value = 'create'
 
@@ -18,28 +21,25 @@ export const create_ranking_choice_value = 'create'
  */
 export async function guildRankingsOption(
   app: App,
-  guild: Guild,
+  guild: PartialGuild,
   ranking_option_name = 'ranking',
   options?: {
     optional?: boolean
-    available_choices?: { id: number; name: string }[]
+    available_choices?: Ranking[]
   },
   description: string = 'Select a ranking',
-): Promise<D.APIApplicationCommandOption[]> {
+): Promise<D.APIApplicationCommandBasicOption[]> {
   const rankings_choices =
     options?.available_choices ??
-    (await app.db.guild_rankings.get({ guild_id: guild.data.id })).map(i => ({
-      id: i.ranking.data.id,
-      name: i.ranking.data.name,
-    }))
+    (await app.db.guild_rankings.fetch({ guild_id: guild.data.id })).map(i => i.ranking)
 
   if (rankings_choices.length == 1 && !options?.optional) {
     return []
   }
 
   const choices = rankings_choices.map(item => ({
-    name: item.name,
-    value: item.id.toString(),
+    name: item.data.name,
+    value: item.data.id.toString(),
   }))
 
   if (choices.length == 0) {
@@ -62,12 +62,13 @@ export async function withOptionalSelectedRanking(
   ctx: InteractionContext<AnyAppCommand, D.APIChatInputApplicationCommandInteraction>,
   ranking_option_name: string,
   options: {
+    subcommand?: string
     available_guild_rankings?: {
-      ranking: Ranking
+      ranking: PartialRanking
       guild_ranking: GuildRanking
     }[]
   },
-  callback: (ranking: Ranking | undefined) => Promise<CommandInteractionResponse>,
+  callback: (ranking: PartialRanking | undefined) => Promise<CommandInteractionResponse>,
 ): Promise<CommandInteractionResponse> {
   return _withSelectedRanking(app, ctx, ranking_option_name, options, callback)
 }
@@ -77,13 +78,15 @@ export async function withSelectedRanking(
   ctx: InteractionContext<AnyAppCommand, D.APIChatInputApplicationCommandInteraction>,
   ranking_option_name: string,
   options: {
+    subcommand?: string
     available_guild_rankings?: {
-      ranking: Ranking
+      ranking: PartialRanking
       guild_ranking: GuildRanking
     }[]
   },
-  callback: (ranking: Ranking) => Promise<CommandInteractionResponse>,
+  callback: (ranking: PartialRanking) => Promise<CommandInteractionResponse>,
 ): Promise<CommandInteractionResponse> {
+  sentry.debug(`withSelectedRanking`)
   return _withSelectedRanking(
     app,
     ctx,
@@ -99,24 +102,44 @@ async function _withSelectedRanking(
   ctx: InteractionContext<AnyAppCommand, D.APIChatInputApplicationCommandInteraction>,
   ranking_option_name: string,
   options: {
+    subcommand?: string
     available_guild_rankings?: {
-      ranking: Ranking
+      ranking: PartialRanking
       guild_ranking: GuildRanking
     }[]
   },
-  callback: (ranking: Ranking | undefined) => Promise<CommandInteractionResponse>,
+  callback: (ranking: PartialRanking | undefined) => Promise<CommandInteractionResponse>,
   required = false,
 ): Promise<CommandInteractionResponse> {
   const interaction = checkGuildInteraction(ctx.interaction)
 
-  const ranking_option_value = (
-    interaction.data.options?.find(o => o.name === ranking_option_name) as
-      | D.APIApplicationCommandInteractionDataStringOption
-      | undefined
-  )?.value
+  let ranking_option_value: string | undefined
+
+  sentry.addBreadcrumb({
+    message: `_withSelectedRanking}`,
+    data: {
+      options,
+      interaction: interaction.data
+    }
+  })
+  if (options.subcommand) {
+    const subcmd_options = interaction.data.options as D.APIApplicationCommandInteractionDataSubcommandOption[]
+    const subcmd = subcmd_options.find(o => o.name === options.subcommand)
+    ranking_option_value = (
+      subcmd?.options?.find(o => o.name === ranking_option_name) as
+        | D.APIApplicationCommandInteractionDataStringOption
+        | undefined
+    )?.value
+  } else {
+    ranking_option_value = (
+      interaction.data.options?.find(o => o.name === ranking_option_name) as
+        | D.APIApplicationCommandInteractionDataStringOption
+        | undefined
+    )?.value
+  }
 
   if (ranking_option_value && parseInt(ranking_option_value)) {
-    var ranking = await app.db.rankings.get(parseInt(ranking_option_value))
+    var ranking: PartialRanking = await app.db.rankings.fetch(parseInt(ranking_option_value))
   } else {
     if (!required) {
       return callback(undefined)
@@ -124,7 +147,7 @@ async function _withSelectedRanking(
     const available_guild_rankings =
       options.available_guild_rankings !== undefined
         ? options.available_guild_rankings
-        : await app.db.guild_rankings.get({
+        : await app.db.guild_rankings.fetch({
             guild_id: interaction.guild_id,
           })
     if (available_guild_rankings.length == 1) {
@@ -133,7 +156,7 @@ async function _withSelectedRanking(
       const guild = await getOrAddGuild(app, interaction.guild_id)
       return {
         type: D.InteractionResponseType.ChannelMessageWithSource,
-        data: await rankingsPage(app, guild),
+        data: await rankingsPage(app, guild, interaction.member?.user.id ?? interaction.member.user.id),
       }
     } else {
       throw new UserError('Please specify a ranking')

@@ -3,17 +3,18 @@ import {
   ChatInteractionResponse,
   ComponentContext,
   field,
-  InteractionContext,
   MessageData,
   MessageView,
+  StateContext,
 } from '../../../../../../../discord-framework'
 import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
 import { Colors } from '../../../../../ui-helpers/constants'
 import { checkGuildInteraction } from '../../../../../ui-helpers/perms'
 import { relativeTimestamp } from '../../../../../ui-helpers/strings'
-import { getOrCreatePlayer } from '../../../../players/manage-players'
-import { start1v1SeriesThread } from '../../../management/match-creation'
+import { getRegisterPlayer } from '../../../../players/manage-players'
+import { start1v1SeriesThread } from '../../../ongoing-math-thread/manage-ongoing-match'
+import { sequential } from '../../../../../../../utils/utils'
 
 export const challenge_message_signature = new MessageView({
   name: 'Challenge Message',
@@ -41,7 +42,7 @@ export default new AppView(challenge_message_signature, app =>
 
 export async function challengeMessage(
   app: App,
-  ctx: InteractionContext<typeof challenge_message_signature>,
+  ctx: StateContext<typeof challenge_message_signature>,
 ): Promise<MessageData> {
   const initiator_id = ctx.state.get.initiator_id()
   const opponent_id = ctx.state.get.opponent_id()
@@ -49,7 +50,7 @@ export async function challengeMessage(
   const expires_at = new Date(ctx.state.get.time_sent().getTime() + app.config.ChallengeTimeoutMs)
   const best_of = ctx.state.get.best_of()
 
-  const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
+  const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
 
   const content = `### <@${initiator_id}> challenges <@${opponent_id}> to a 1v1`
 
@@ -110,8 +111,12 @@ async function accept(
     }
   }
 
-  // check challenges enabled
-  const ranking = await app.db.rankings.get(ctx.state.get.ranking_id())
+  // Check whether direct challenges are enabled in this ranking
+  const interaction = checkGuildInteraction(ctx.interaction)
+  const { guild_ranking, ranking } = await app.db.guild_rankings
+    .get(interaction.guild_id, ctx.state.get.ranking_id())
+    .fetch()
+
   if (!ranking.data.matchmaking_settings.direct_challenge_enabled) {
     await app.discord.deleteMessageIfExists(
       ctx.interaction.channel?.id,
@@ -126,13 +131,11 @@ async function accept(
     }
   }
 
-  const interaction = checkGuildInteraction(ctx.interaction)
-
-  const is_opponent = ctx.state.is.opponent_id(interaction.member.user.id)
-
-  if (!is_opponent || ctx.state.is.opponent_accepted())
+  // ensure that the acceptor is the opponent, and that the challenge hasn't been accepted yet
+  if (!ctx.state.is.opponent_id(interaction.member.user.id) || ctx.state.is.opponent_accepted())
     return { type: D.InteractionResponseType.DeferredMessageUpdate }
 
+  // accept the challenge
   return ctx.defer(
     {
       type: D.InteractionResponseType.DeferredMessageUpdate,
@@ -140,28 +143,24 @@ async function accept(
     async ctx => {
       ctx.state.save.opponent_accepted(true)
 
-      const guild_ranking = await app.db.guild_rankings.get({
-        guild_id: interaction.guild_id,
-        ranking_id: ctx.state.get.ranking_id(),
-      })
+      // User ids that will participate in the match
+      const user_ids = [[ctx.state.get.initiator_id()], [ctx.state.get.opponent_id()]]
 
-      const team_player_ids = [[ctx.state.get.initiator_id()], [ctx.state.get.opponent_id()]]
-
-      const team_players = await Promise.all(
-        team_player_ids.map(async team =>
-          Promise.all(team.map(id => getOrCreatePlayer(app, id, guild_ranking.data.ranking_id))),
-        ),
+      // Register them as players in the ranking
+      const players = await sequential(
+        user_ids.map(team => () => sequential(team.map((i) => () => getRegisterPlayer(app, i, ranking)))),
       )
 
-      const { match, thread } = await start1v1SeriesThread(
+      // Start the match
+      const { thread } = await start1v1SeriesThread(
         app,
         guild_ranking,
-        team_players,
-        ctx.state.get.best_of(),
+        players,
+        ctx.state.data.best_of,
       )
 
+      // Update the challenge message
       ctx.state.save.ongoing_match_channel_id(thread.id)
-
       await ctx.edit((await challengeMessage(app, ctx)).as_response)
     },
   )

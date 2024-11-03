@@ -1,7 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { Guild } from '../../../../../../database/models'
 import {
-  _,
   ChatInteractionResponse,
   ComponentContext,
   field,
@@ -13,14 +12,15 @@ import { sentry } from '../../../../../../logging/sentry'
 import { nonNullable, unflatten } from '../../../../../../utils/utils'
 import { App } from '../../../../../app/App'
 import { AppView } from '../../../../../app/ViewModule'
+import { UserErrors } from '../../../../errors/UserError'
 import { Messages } from '../../../../ui-helpers/messages'
 import { checkGuildInteraction, ensureAdminPerms } from '../../../../ui-helpers/perms'
 import { getOrAddGuild } from '../../../guilds/guilds'
 import { guidePage, help_cmd_signature } from '../../../help/help-command'
 import {
   createNewRankingInGuild,
-  default_num_teams,
   default_players_per_team,
+  default_teams_per_match,
   max_ranking_name_length,
 } from '../../manage-rankings'
 import { ranking_settings_page_config, rankingSettingsPage } from './ranking-settings'
@@ -29,24 +29,26 @@ export const rankings_page_config = new MessageView({
   custom_id_prefix: 'ar',
   name: 'rankings',
   state_schema: {
-    from_page: field.Enum({
-      creating_new: _,
-    }),
+    owner_id: field.String(),
     callback: field.Choice({
       createRankingModal,
       onCreateRankingModalSubmit,
     }),
-    input_name: field.String(),
-    input_players_per_team: field.Int(),
-    input_num_teams: field.Int(),
-    leaderboard_message: field.Boolean(),
-    queue_message: field.Boolean(),
-    log_matches: field.Boolean(),
+    new_ranking_input: field.Object({
+      name: field.String(),
+      teams_per_match: field.Int(),
+      players_per_team: field.Int(),
+    }),
   },
 })
 
 export default new AppView(rankings_page_config, (app: App) =>
   rankings_page_config.onComponent(async ctx => {
+    // check if the user is the page user
+    const interaction = checkGuildInteraction(ctx.interaction)
+    if (ctx.state.data.owner_id && ctx.state.data.owner_id !== interaction.member.user.id) {
+      throw new UserErrors.NotComponentOwner(ctx.state.data.owner_id)
+    }
     return ctx.state.get.callback()(app, ctx)
   }),
 )
@@ -54,21 +56,30 @@ export default new AppView(rankings_page_config, (app: App) =>
 export async function rankingsPage(
   app: App,
   guild: Guild,
+  component_owner_id?: string,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  const guild_rankings = await app.db.guild_rankings.get({ guild_id: guild.data.id })
-
   sentry.debug(`rankingsPage(${guild})`)
-  const embeds = await Messages.allGuildRankingsText(app, guild, guild_rankings)
 
-  const ranking_btns: D.APIButtonComponent[] = guild_rankings.map(item => {
+  const state = rankings_page_config.newState({ owner_id: component_owner_id })
+
+  const grs = await app.db.guild_rankings.fetch({ guild_id: guild.data.id })
+
+  const embeds = await Messages.allGuildRankingsText(
+    app,
+    guild,
+    grs.map(gr => gr.guild_ranking),
+  )
+
+  const ranking_btns: D.APIButtonComponent[] = grs.map(gr => {
     return {
       type: D.ComponentType.Button,
-      label: item.ranking.data.name || 'Unnamed Ranking',
+      label: gr.ranking.data.name,
       style: D.ButtonStyle.Primary,
       custom_id: ranking_settings_page_config
         .newState({
-          ranking_id: item.ranking.data.id,
-          guild_id: item.guild_ranking.data.guild_id,
+          ranking_id: gr.ranking.data.id,
+          guild_id: gr.guild_ranking.data.guild_id,
+          component_owner_id,
         })
         .cId(),
     }
@@ -88,7 +99,7 @@ export async function rankingsPage(
       {
         type: D.ComponentType.Button,
         style: D.ButtonStyle.Success,
-        custom_id: rankings_page_config.newState({ callback: createRankingModal }).cId(),
+        custom_id: state.set.callback(createRankingModal).cId(),
         label: 'New Ranking',
         emoji: {
           name: '➕',
@@ -97,7 +108,7 @@ export async function rankingsPage(
     ],
   }
 
-  if (guild_rankings.length === 0) {
+  if (grs.length === 0) {
     last_action_row.components.push({
       type: D.ComponentType.Button,
       style: D.ButtonStyle.Primary,
@@ -118,7 +129,7 @@ export function createRankingModal(
   app: App,
   ctx: StateContext<typeof rankings_page_config>,
 ): D.APIModalInteractionResponse {
-  let components = [rankingNameTextInput(ctx.state.data.input_name)]
+  let components = [rankingNameTextInput(ctx.state.data.new_ranking_input?.name)]
 
   if (app.config.features.MultipleTeamsPlayers) {
     components = components.concat([
@@ -128,9 +139,9 @@ export function createRankingModal(
           {
             type: D.ComponentType.TextInput,
             style: D.TextInputStyle.Short,
-            custom_id: 'num_teams',
+            custom_id: 'teams_per_match',
             label: 'Number of teams per match',
-            placeholder: `${ctx.state.data.input_num_teams ?? default_num_teams}`,
+            placeholder: `${ctx.state.data.new_ranking_input?.teams_per_match ?? default_teams_per_match}`,
             required: false,
           },
         ],
@@ -143,7 +154,7 @@ export function createRankingModal(
             style: D.TextInputStyle.Short,
             custom_id: 'players_per_team',
             label: 'Players per team',
-            placeholder: `${ctx.state.data.input_players_per_team ?? default_players_per_team}`,
+            placeholder: `${ctx.state.data.new_ranking_input?.players_per_team ?? default_players_per_team}`,
             required: false,
           },
         ],
@@ -175,8 +186,8 @@ export async function onCreateRankingModalSubmit(
 
   const ranking = await createNewRankingInGuild(app, guild, {
     name,
-    num_teams: modal_input['num_teams']?.value
-      ? parseInt(modal_input['num_teams'].value)
+    teams_per_match: modal_input['teams_per_match']?.value
+      ? parseInt(modal_input['teams_per_match'].value)
       : undefined,
     players_per_team: modal_input['players_per_team']?.value
       ? parseInt(modal_input['players_per_team'].value)
@@ -186,9 +197,10 @@ export async function onCreateRankingModalSubmit(
   return {
     type: D.InteractionResponseType.UpdateMessage,
     data: await rankingSettingsPage(app, {
-        guild_id: ranking.new_guild_ranking.data.guild_id,
-        ranking_id: ranking.new_guild_ranking.data.ranking_id,
-      }),
+      guild_id: ranking.new_guild_ranking.data.guild_id,
+      ranking_id: ranking.new_guild_ranking.data.ranking_id,
+      component_owner_id: interaction.member.user.id,
+    }),
   }
 }
 

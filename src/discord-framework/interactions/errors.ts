@@ -6,7 +6,11 @@ export class ViewError extends Error {
 }
 
 export namespace ViewErrors {
-  export class UnknownView extends ViewError {}
+  export class UnknownView extends ViewError {
+    constructor() {
+      super(`Unrecognized command or component. It may be outdated`)
+    }
+  }
 
   export class InvalidViewType extends ViewError {
     constructor() {
@@ -20,7 +24,11 @@ export namespace ViewErrors {
     }
   }
 
-  export class InvalidEncodedCustomId extends ViewError {}
+  export class InvalidEncodedCustomId extends ViewError {
+    constructor(custom_id: string) {
+      super(`Unable to decompress custom id '${custom_id}'`)
+    }
+  }
 
   export class InvalidCustomId extends ViewError {}
 

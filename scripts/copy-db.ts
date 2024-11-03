@@ -32,28 +32,35 @@ async function copy_values() {
 
   const to_guild_id = "1003698664767762575"
   
+  // copy guild
   const guild = await fromDb.select().from(Guilds).where(eq(Guilds.id, from_guild_id))
   await toDb.insert(Guilds).values(guild.map(g => ({...g , id: to_guild_id}))).onConflictDoNothing()
 
+  // copy ranking
   const ranking = await fromDb.select().from(Rankings).where(eq(Rankings.id, ranking_id))
   await toDb.insert(Rankings).values(ranking).onConflictDoNothing()
 
+  // copy guild_ranking
   const guild_ranking = await fromDb.select().from(GuildRankings).where(
     and(eq(GuildRankings.guild_id, guild[0].id), eq(GuildRankings.ranking_id, ranking_id))
   )
   await toDb.insert(GuildRankings).values(guild_ranking.map(gr => ({...gr, guild_id: to_guild_id}))).onConflictDoNothing()
 
+  // copy all users
   const users = await fromDb.select().from(Users)
   await toDb.insert(Users).values(users).onConflictDoNothing()
 
+  // copy players in the ranking
   const players = await fromDb.select().from(Players)
     .where(eq(Players.ranking_id, ranking_id))
   await toDb.insert(Players).values(players).onConflictDoNothing()
 
+  // copy all matches in the ranking
   const matches = await fromDb.select().from(Matches)
     .where(eq(Matches.ranking_id, ranking_id))
   await toDb.insert(Matches).values(matches).onConflictDoNothing()
 
+  // copy all match_players for the matches in the ranking
   const match_players = await fromDb.select().from(MatchPlayers)
     .innerJoin(Matches, eq(Matches.id, MatchPlayers.match_id))
     .where(eq(Matches.ranking_id, ranking_id))

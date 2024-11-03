@@ -1,13 +1,13 @@
 import * as D from 'discord-api-types/v10'
 import { AppCommand } from '../../../../../../../discord-framework'
-import { sentry } from '../../../../../../../logging/sentry'
 import { AppView } from '../../../../../../app/ViewModule'
 import { UserError } from '../../../../../errors/UserError'
 import { checkGuildInteraction, ensureAdminPerms } from '../../../../../ui-helpers/perms'
 import { commandMention } from '../../../../../ui-helpers/strings'
 import matchesCmd from '../../../logging/views/commands/matches'
 import { matchesPage } from '../../../logging/views/pages/matches'
-import { revertMatch, updateMatchOutcome } from '../../manage-matches'
+import { revertMatch } from '../../score-matches'
+import { updateMatchOutcome } from '../../score-matches'
 import { manageMatchPage } from '../pages/manage-match'
 
 const optionnames = {
@@ -57,19 +57,19 @@ export default new AppView(settle_match_cmd_signature, app =>
     await ensureAdminPerms(app, ctx)
     const interaction = checkGuildInteraction(ctx.interaction)
 
-    const match_id_option_value = (
+    const selected_match_id = (
       ctx.interaction.data.options?.find(o => o.name === optionnames.match_id) as
         | D.APIApplicationCommandInteractionDataIntegerOption
         | undefined
     )?.value
 
-    const user_id_option_value = (
+    const selected_user_id = (
       ctx.interaction.data.options?.find(o => o.name === optionnames.user) as
         | D.APIApplicationCommandInteractionDataUserOption
         | undefined
     )?.value
 
-    const action_option_value = (
+    const selected_action_value = (
       ctx.interaction.data.options?.find(o => o.name === optionnames.action) as
         | D.APIApplicationCommandInteractionDataStringOption
         | undefined
@@ -81,71 +81,76 @@ export default new AppView(settle_match_cmd_signature, app =>
         data: { flags: D.MessageFlags.Ephemeral },
       },
       async ctx => {
+        // Determine the match to act on, from the input. Also get its players
         const { match, team_players } = await (async function () {
-          if (match_id_option_value) {
-            const match = await app.db.matches.get(match_id_option_value, interaction.guild_id)
-            return { match, team_players: await match.teamPlayers() }
-          } else if (user_id_option_value) {
-            // get the user's latest match in this guild
+          if (selected_match_id) {
+            // match id was provided.
+            const match = await app.db.matches.fetch(selected_match_id, interaction.guild_id)
+            return { match, team_players: await match.players() }
+          } else if (selected_user_id) {
+            const selected_user = app.db.users.get(selected_user_id)
+            const guild = app.db.guilds.get(interaction.guild_id)
+            // user id was provided. get their latest match in the guild
             const matches = await app.db.matches.getMany({
-              guild_id: interaction.guild_id,
-              user_ids: [user_id_option_value],
+              guild,
+              users: [selected_user],
               limit: 1,
             })
             if (matches.length === 0) {
               throw new UserError(
-                `<@${user_id_option_value}> has not played any matches in this server`,
+                `<@${selected_user_id}> has not played any matches in this server`,
               )
             }
             return matches[0]
           } else {
             throw new UserError(
-              `Either ${optionnames.match_id} or ${optionnames.user} must be specified`,
+              `Please specify either ${optionnames.match_id} or ${optionnames.user}`,
             )
           }
         })()
 
-        if (action_option_value) {
-          sentry.debug(`Action option value: ${action_option_value}`)
-          if (action_option_value === `revert`) {
+        // Act on the match, based on the selected action or match
+        if (selected_action_value) {
+          if (selected_action_value === `revert`) {
+            // Revert the match
             await revertMatch(app, match)
             return void ctx.followup({ content: `Match reverted`, flags: D.MessageFlags.Ephemeral })
-          } else if (action_option_value === `set winner`) {
-            sentry.debug(`Setting winner for match ${match.data.id}`)
-
-            if (!user_id_option_value) {
+          } else if (selected_action_value === `set winner`) {
+            // Set the winner of the match. The user must be specified
+            if (!selected_user_id) {
               return void ctx.edit({
-                content: `Specify the winner of this match`,
+                content: `Please specify the winner of this match`,
                 flags: D.MessageFlags.Ephemeral,
               })
             }
 
             const new_winning_team_index = team_players.findIndex(team =>
-              team.some(p => p.player.data.user_id === user_id_option_value),
+              team.some(p => p.player.data.user_id === selected_user_id),
             )
             const new_outcome = Array.from({ length: team_players.length }, (_, i) =>
               i === new_winning_team_index ? 1 : 0,
             )
-            sentry.debug(`Setting outcome: from ${match.data.outcome} to ${new_outcome}`)
 
-            await updateMatchOutcome(app, match, new_outcome)
+            await updateMatchOutcome(app, match, new_outcome, { check_rescore: true })
 
             return void ctx.followup({
               content: `Match winner set`,
               flags: D.MessageFlags.Ephemeral,
             })
           }
-        } else if (match_id_option_value) {
-          await ctx.edit(await manageMatchPage(app, ctx, match_id_option_value))
+        } else if (selected_match_id) {
+          // Match was selected, but no action. Show the match settings page
+          await ctx.edit(await manageMatchPage(app, ctx, selected_match_id))
         } else {
+          // No action or match was selected. Show the matches page
           await ctx.edit(
             await matchesPage(app, {
               guild_id: interaction.guild_id,
-              user_ids: user_id_option_value ? [user_id_option_value] : undefined,
+              user_ids: selected_user_id ? [selected_user_id] : undefined,
             }),
           )
           return void ctx.followup({
-            content: `Please select a match id and/or a user. Type ${commandMention(app, matchesCmd, interaction.guild_id)}`,
+            content: `Please select a match to settle. Type ${commandMention(app, matchesCmd, interaction.guild_id)} to see all matches`,
             flags: D.MessageFlags.Ephemeral,
           })
         }

@@ -15,7 +15,8 @@ import { UserError } from '../../../../../errors/UserError'
 import { Colors } from '../../../../../ui-helpers/constants'
 import { hasAdminPerms } from '../../../../../ui-helpers/perms'
 import { matchSummaryEmbed } from '../../../logging/match-summary-message'
-import { revertMatch, updateMatchOutcome } from '../../manage-matches'
+import { revertMatch } from '../../score-matches'
+import { updateMatchOutcome } from '../../score-matches'
 
 export const manage_match_page_config = new MessageView({
   custom_id_prefix: 'm',
@@ -88,7 +89,7 @@ async function manageMatchPageData(
   ctx: InteractionContext<typeof manage_match_page_config>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const match_id = ctx.state.get.match_id()
-  const match = await app.db.matches.get(match_id)
+  const match = await app.db.matches.fetch(match_id)
   const embed = await matchSummaryEmbed(app, match)
 
   ctx.state.save.on_page(true)
@@ -127,7 +128,7 @@ async function onSettingSelect(
 ): Promise<ChatInteractionResponse> {
   const value = (ctx.interaction.data as D.APIMessageStringSelectInteractionData).values[0]
   if (!value) return { type: D.InteractionResponseType.DeferredMessageUpdate }
-  const match = await app.db.matches.get(ctx.state.get.match_id())
+  const match = await app.db.matches.fetch(ctx.state.get.match_id())
   return setting_select_menu_options[value](app, match).callback(app, ctx)
 }
 
@@ -135,8 +136,8 @@ async function matchOutcomeModal(
   app: App,
   ctx: ComponentContext<typeof manage_match_page_config>,
 ): Promise<D.APIModalInteractionResponse> {
-  const match = await app.db.matches.get(ctx.state.get.match_id())
-  const teams = await match.teamPlayers()
+  const match = await app.db.matches.fetch(ctx.state.get.match_id())
+  const teams = await match.players()
   return {
     type: D.InteractionResponseType.Modal,
     data: {
@@ -170,17 +171,16 @@ async function onMatchOutcomeModalSubmit(
       type: D.InteractionResponseType.DeferredMessageUpdate,
     },
     async ctx => {
-      const match = await app.db.matches.get(ctx.state.get.match_id())
-      const ranking = await match.ranking()
-      const num_teams = nonNullable(ranking.data.num_teams, 'num_teams')
-
       const modal_inputs = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
 
-      const new_outcome = match.data.outcome ?? new Array<number>(num_teams).fill(0)
+      // validate and save the selected outcome from the modal submission
+      const match = await app.db.matches.fetch(ctx.state.get.match_id())
+      const ranking = await match.ranking.fetch()
+      const new_outcome =
+        match.data.outcome ?? new Array<number>(ranking.data.teams_per_match).fill(0)
 
       for (const [k, v] of Object.entries(modal_inputs)) {
         const team_num = parseInt(k)
-
         const score = parseFloat(v?.value ?? '')
         if (isNaN(score)) {
           throw new UserError(`Enter a number for each team's relative score`)
@@ -188,7 +188,8 @@ async function onMatchOutcomeModalSubmit(
         new_outcome[team_num] = score
       }
 
-      await updateMatchOutcome(app, match, new_outcome)
+      // update the match
+      await updateMatchOutcome(app, match, new_outcome, { check_rescore: true })
 
       return void ctx.edit(await manageMatchPageData(app, ctx))
     },
@@ -236,7 +237,7 @@ async function onRevertConfirm(
   app: App,
   ctx: ComponentContext<typeof manage_match_page_config>,
 ): Promise<ChatInteractionResponse> {
-  const match = await app.db.matches.get(ctx.state.get.match_id())
+  const match = await app.db.matches.fetch(ctx.state.get.match_id())
   return ctx.defer(
     {
       type: D.InteractionResponseType.DeferredMessageUpdate,

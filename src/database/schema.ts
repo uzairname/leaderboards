@@ -5,8 +5,9 @@ import { Vote } from './models/matches'
 import { MatchMetadata } from './models/matches'
 import { Player, PlayerFlags, PlayerStats } from './models/players'
 import { Versions } from './models/settings'
-import { EloSettings, MatchmakingSettings } from './models/rankings'
+import { Rating, MatchmakingSettings } from './models/rankings'
 import { GuildRankingDisplaySettings } from './models/guildrankings'
+import { unique } from 'drizzle-orm/mysql-core'
 
 export const Settings = pgTable('Settings', {
   id: integer('id').primaryKey().default(1),
@@ -20,14 +21,14 @@ export const Users = pgTable('Users', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   time_created: timestamp('time_created').notNull().defaultNow(),
-  linked_roles_ranking_id: integer('linked_roles_ranking_id') // delete
+  linked_roles_ranking_id: integer('linked_roles_ranking_id')
 })
 
 
 export const AccessTokens = pgTable('AccessTokens', {
   id: serial('id').primaryKey(),
   user_id: text('user_id').notNull().references(() => Users.id, {onDelete: 'cascade'}),
-  data: jsonb('data').$type<RESTPostOAuth2AccessTokenResult>().notNull(),
+  data: jsonb('data').notNull().$type<RESTPostOAuth2AccessTokenResult>(),
   expires_at: timestamp('expires_at').notNull(),
   time_created: timestamp('time_created').notNull().defaultNow(),
 }, (table) => ({
@@ -39,7 +40,6 @@ export const Guilds = pgTable('Guilds', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   time_created: timestamp('time_created').notNull().defaultNow(),
-  version: integer('version').notNull().default(1),
   admin_role_id: text('admin_role_id'),
   category_id: text('category_id'),
   matches_channel_id: text('matches_channel_id'),
@@ -51,8 +51,8 @@ export const Rankings = pgTable('Rankings', {
   name: text('name').notNull(),
   time_created: timestamp('time_created').notNull().defaultNow(),
   players_per_team: integer('players_per_team').notNull(),
-  num_teams: integer('num_teams').notNull(),
-  elo_settings: jsonb('elo_settings').notNull().$type<EloSettings>(), // make not null
+  teams_per_match: integer('teams_per_match').notNull(),
+  initial_rating: jsonb('initial_rating').notNull().$type<Rating>(), // make not null
   matchmaking_settings: jsonb('matchmaking_settings').notNull().$type<MatchmakingSettings>(),
 })
 
@@ -76,14 +76,11 @@ export const Players = pgTable('Players', {
   ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, { onDelete: 'cascade' }),
   time_created: timestamp('time_created').notNull().defaultNow(),
   name: text('name').notNull(),
-  rating: real('rating').notNull(),
-  rd: real('rd').notNull(),
+  rating: jsonb('rating').notNull().$type<Rating>(),
   flags: integer('flags').notNull().$type<PlayerFlags>().default(0),
   stats: jsonb('stats').$type<PlayerStats>(),
 }, (table) => { return {
-  user_idx: index('player_user_id_index').on(table.user_id),
-  ranking_idx: index('player_ranking_id_index').on(table.ranking_id),
-  rating_idx: index('player_rating_index').on(table.rating),
+  unique: uniqueIndex('player_user_id_ranking_id_unique').on(table.user_id, table.ranking_id),
 }})
 
 
@@ -143,8 +140,7 @@ export const MatchPlayers = pgTable('MatchPlayers', {
   match_id: integer('match_id').notNull().references(() => Matches.id, { onDelete: 'cascade' }),
   player_id: integer('player_id').notNull().references(() => Players.id, { onDelete: 'cascade' }),
   team_num: integer('team_num').notNull(),
-  rating_before: real('rating_before').notNull(),
-  rd_before: real('rd_before').notNull(),
+  rating: jsonb('rating').notNull().$type<Rating>(),
   flags: integer('flags').notNull().$type<PlayerFlags>().default(0),
 }, (table) => ({
   cpk: primaryKey({ columns: [table.match_id, table.player_id] }),

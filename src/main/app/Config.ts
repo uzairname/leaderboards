@@ -1,5 +1,5 @@
 import * as D from 'discord-api-types/v10'
-import { Env } from '../..'
+import { Env } from '../../Env'
 
 export class Config {
   readonly OauthRoutes = {
@@ -32,8 +32,8 @@ export class Config {
     readonly IsDev = env.ENVIRONMENT === 'development',
 
     readonly DirectResponse = IsDev ? true : true,
-    // true: return a value directly.  
-    // false: call respond endpoint. 
+    // true: return a value directly.
+    // false: call respond endpoint.
 
     readonly features = {
       GiveBotInvite: !IsDev,
@@ -42,9 +42,9 @@ export class Config {
       QueueMessage: false,
       DisableLogMatchesOption: false,
       MultipleTeamsPlayers: false,
-      RoleConnectionsElo: false,
+      RatingRoleConnections: false,
     },
 
-    readonly ProvisionalRdThreshold = IsDev ? 1 : 1,
+    readonly ProvisionalRdThreshold = IsDev ? 0.9 : 1,
   ) {}
 }

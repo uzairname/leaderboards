@@ -8,8 +8,7 @@ export default (app: App) =>
   Router({ base: '/update' })
     .post('/', async () => {
       await app.db.settings.getOrUpdate({
-        last_updated: true,
-        guilds: true,
+        last_updated: new Date(),
       })
 
       const [_, guild_names] = await Promise.all([
@@ -38,8 +37,8 @@ export default (app: App) =>
       if (!request.params.guild_id) {
         throw new Error('Guild ID not provided')
       }
-      app.syncDiscordCommands(await getOrAddGuild(app, request.params.guild_id))
-      const guild = await app.db.guilds.get(request.params.guild_id)
+      const guild = await getOrAddGuild(app, request.params.guild_id)
+      app.syncDiscordCommands(guild)
       return new Response(`Updated leaderborads app in guild ${guild?.data.name}`, { status: 200 })
     })
     .all('*', () => new Response('Init endpoint not found', { status: 404 }))

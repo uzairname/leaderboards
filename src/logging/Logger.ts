@@ -1,5 +1,6 @@
+import { EventHint } from '@sentry/types'
 import { Toucan } from 'toucan-js'
-import { Env } from '..'
+import { Env } from '../Env'
 import { cache } from '../utils/cache'
 import { isInt } from '../utils/utils'
 import { RequestTimeoutError } from './errors'
@@ -82,11 +83,6 @@ export class Logger extends Toucan {
 
     const ctx = {
       setException: (e: unknown) => {
-        this.addBreadcrumb({
-          message: `Caught exception`,
-          level: 'error',
-          data: { e },
-        })
         offload_caught_exception = e
       },
       setRequestName: (name: string) => {
@@ -98,7 +94,7 @@ export class Logger extends Toucan {
     this.execution_context.waitUntil(
       new Promise<void>((resolve, reject) => {
         const warning_ms = 10000
-        const timeout_ms = 120000
+        const timeout_ms = 30000
         setTimeout(() => {
           this.captureMessage(
             `${this.request_name} taking longer than ${warning_ms / 1000}s`,
@@ -107,8 +103,12 @@ export class Logger extends Toucan {
         }, warning_ms)
 
         setTimeout(async () => {
+          this.captureMessage(
+            `${this.request_name} taking longer than ${timeout_ms / 1000}s`,
+            'warning',
+          )
           const e = new RequestTimeoutError(request_name, timeout_ms)
-          await onTimeout?.(e)
+          onTimeout?.(e)
           reject(e)
         }, timeout_ms)
 
@@ -127,6 +127,15 @@ export class Logger extends Toucan {
           this.captureException(e)
         }),
     )
+  }
+
+  captureException(exception: unknown, hint?: EventHint): string {
+    this.addBreadcrumb({
+      message: `Exception`,
+      level: 'error',
+      data: { exception },
+    })
+    return super.captureException(exception, hint)
   }
 
   setException(exception: unknown): void {

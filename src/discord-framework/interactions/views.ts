@@ -1,6 +1,7 @@
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging/sentry'
 import { checkGuildComponentInteraction } from '../../main/bot/ui-helpers/perms'
+import type { StringDataSchema } from '../../utils/StringData'
 import { DiscordAPIClient } from '../rest/client'
 import { ViewErrors } from './errors'
 import type {
@@ -22,7 +23,6 @@ import type {
   StateContext,
   ViewAutocompleteCallback,
 } from './types'
-import type { StringDataSchema } from './utils/string-data'
 import { ViewState, ViewStateFactory } from './view-state'
 
 export abstract class BaseView<TSchema extends StringDataSchema = {}> {

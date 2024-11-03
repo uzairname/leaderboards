@@ -7,8 +7,8 @@ import {
   guildRankingsOption,
   withSelectedRanking,
 } from '../../../../../ui-helpers/ranking-command-option'
-import { getOrCreatePlayer } from '../../../../players/manage-players'
-import { start1v1SeriesThread } from '../../match-creation'
+import { getRegisterPlayer } from '../../../../players/manage-players'
+import { start1v1SeriesThread } from '../../../ongoing-math-thread/manage-ongoing-match'
 
 export const start_match_cmd_signature = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -17,8 +17,6 @@ export const start_match_cmd_signature = new AppCommand({
   custom_id_prefix: 'sm',
   state_schema: {
     ranking_id: field.Int(),
-    num_teams: field.Int(),
-    players_per_team: field.Int(),
   },
 })
 
@@ -31,7 +29,7 @@ const optionnames = {
 export default new GuildCommand(
   start_match_cmd_signature,
   async (app, guild) => {
-    const options: D.APIApplicationCommandOption[] = [
+    const options: D.APIApplicationCommandBasicOption[] = [
       {
         name: optionnames.player1,
         description: `Player 1`,
@@ -59,7 +57,7 @@ export default new GuildCommand(
   },
   app =>
     start_match_cmd_signature.onCommand(async ctx =>
-      withSelectedRanking(app, ctx, optionnames.ranking, {}, async ranking =>
+      withSelectedRanking(app, ctx, optionnames.ranking, {}, async p_ranking =>
         ctx.defer(
           {
             type: D.InteractionResponseType.DeferredChannelMessageWithSource,
@@ -69,11 +67,13 @@ export default new GuildCommand(
             const interaction = checkGuildInteraction(ctx.interaction)
             await ensureAdminPerms(app, ctx)
 
-            ctx.state.save.ranking_id(ranking.data.id)
-            ctx.state.save.players_per_team(ranking.data.players_per_team)
-            ctx.state.save.num_teams(ranking.data.num_teams)
+            const ranking = await p_ranking.fetch()
 
-            if (ctx.state.is.players_per_team(1) && ctx.state.is.num_teams(2)) {
+            ctx.state.saveAll({
+              ranking_id: ranking.data.id,
+            })
+
+            if (ranking.data.players_per_team === 1 && ranking.data.teams_per_match === 2) {
               // If this is a 1v1 ranking, check if both players were selected
 
               const p1_id = (
@@ -91,20 +91,15 @@ export default new GuildCommand(
               if (p1_id && p2_id) {
                 // start a match
 
-                const guild_ranking = await app.db.guild_rankings.get({
-                  guild_id: interaction.guild_id,
-                  ranking_id: ranking.data.id,
-                })
-
                 const team_players = await Promise.all(
                   [[p1_id], [p2_id]].map(async team => {
-                    return Promise.all(team.map(id => getOrCreatePlayer(app, id, ranking)))
+                    return Promise.all(team.map(id => getRegisterPlayer(app, id, ranking)))
                   }),
                 )
 
                 const { match, thread } = await start1v1SeriesThread(
                   app,
-                  guild_ranking,
+                  app.db.guild_rankings.get(interaction.guild_id, ranking.data.id),
                   team_players,
                 )
 

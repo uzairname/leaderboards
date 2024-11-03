@@ -7,7 +7,6 @@ import { checkGuildInteraction } from '../../../../ui-helpers/perms'
 import { escapeMd, memberAvatarUrl } from '../../../../ui-helpers/strings'
 import { matches_page_config } from '../../../matches/logging/views/pages/matches'
 import { calcDisplayRating } from '../../display'
-import { ViewState } from '../../../../../../discord-framework/interactions/view-state'
 
 export const profile_page_config = new MessageView({
   name: 'Profile page',
@@ -34,7 +33,6 @@ export async function profileOverviewPage(
   app: App,
   ctx: InteractionContext<typeof profile_page_config>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-
   const interaction = checkGuildInteraction(ctx.interaction)
 
   const target_user_id = ctx.state.get.user_id()
@@ -46,10 +44,11 @@ export async function profileOverviewPage(
   const is_requesting_user = interaction.member.user.id === target_user_id
 
   // find all of the user's players that are in a ranking that the guild has
-  const guild_rankings = await app.db.guild_rankings.get({
+  const guild_rankings = await app.db.guild_rankings.fetch({
     guild_id: checkGuildInteraction(ctx.interaction).guild_id,
   })
-  const players = (await app.db.players.getByUser(target_user_id)).filter(p =>
+  const user = app.db.users.get(target_user_id)
+  const players = (await user.players()).filter(p =>
     guild_rankings.some(r => r.ranking.data.id === p.data.ranking_id),
   )
 
@@ -62,11 +61,11 @@ export async function profileOverviewPage(
     fields:
       (await Promise.all(
         players.map(async p => {
-          const ranking = await p.ranking
-          const display_rating = calcDisplayRating(app, ranking.data.elo_settings)(p.data)
+          const ranking = await p.ranking()
+          const display_rating = calcDisplayRating(app, ranking.data.initial_rating)(p.data.rating)
           return {
             name: escapeMd(ranking.data.name),
-            value: `Score: ${display_rating.score ?? 'Unranked'}`,
+            value: `Score: ${display_rating.rating ?? 'Unranked'}`,
           }
         }),
       )) ?? [],

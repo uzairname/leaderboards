@@ -7,20 +7,20 @@ export type SettingSelect = InferSelectModel<typeof Settings>
 export type SettingUpdate = Partial<Omit<SettingSelect, 'id'>>
 
 export interface Versions {
-  guilds: number
+  db: number
 }
 
-export class Setting extends DbObject<SettingSelect> {
-  constructor(data: SettingSelect, db: any) {
-    super(data, db)
+export class Setting implements DbObject<SettingSelect> {
+  constructor(
+    public data: SettingSelect,
+    public db: any,
+  ) {
     db.cache.setting = this
   }
 }
 
 export class SettingsManager extends DbObjectManager {
-  async getOrUpdate(
-    update?: { last_updated?: boolean } & Record<keyof Versions, boolean>,
-  ): Promise<Setting> {
+  async getOrUpdate(update?: SettingUpdate): Promise<Setting> {
     const id = 1
 
     var data: SettingSelect
@@ -28,24 +28,11 @@ export class SettingsManager extends DbObjectManager {
     if (update) {
       const current_setting = await this.getOrUpdate()
 
-      // Update the last_updated field if specified
-      const last_updated = update.last_updated ? new Date() : current_setting.data.last_updated
-
-      // Updated versions, with defaults for missing or invalid fields
-      const updated_versions = {
-        guilds: current_setting.data.versions.guilds + (update.guilds ? 1 : 0),
-      }
-
       data = (
-        await this.db.drizzle
-          .update(Settings)
-          .set({ last_updated: last_updated, versions: updated_versions })
-          .where(eq(Settings.id, id))
-          .returning()
+        await this.db.drizzle.update(Settings).set(update).where(eq(Settings.id, id)).returning()
       )[0]
     } else {
-      const cached_setting = this.db.cache.setting
-      if (cached_setting) return cached_setting
+      if (this.db.cache.setting) return this.db.cache.setting
 
       // No guarantee that the versions field will be of the correct type in the database
       const result = (
@@ -56,14 +43,14 @@ export class SettingsManager extends DbObjectManager {
         data = (
           await this.db.drizzle
             .insert(Settings)
-            .values({ id, versions: { guilds: 1 } })
+            .values({ id, versions: { db: 1 } })
             .returning()
         )[0]
       } else {
         data = {
           ...result,
           versions: {
-            guilds: isInt(result.versions.guilds) ? result.versions.guilds : 1,
+            db: isInt(result.versions.guilds) ? result.versions.guilds : 1,
           },
         }
       }

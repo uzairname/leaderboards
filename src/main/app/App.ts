@@ -1,4 +1,4 @@
-import { Env } from '../..'
+import { Env } from '../../Env'
 import { DbClient } from '../../database/client'
 import { getNeonDrizzleClient } from '../../database/drizzle-client'
 import { Guild } from '../../database/models'
@@ -8,7 +8,7 @@ import {
   respondToInteraction,
 } from '../../discord-framework'
 import { sentry } from '../../logging/sentry'
-import onViewError from '../bot/errors/on-view-error'
+import { onViewError } from '../bot/errors/on-view-error'
 import { AppEvents, getAppEvents } from './AppEvents'
 import { Config } from './Config'
 import { ViewModule } from './ViewModule'

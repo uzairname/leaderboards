@@ -1,32 +1,33 @@
+import { CacheMap } from '../utils/CacheMap'
 import { Guild, GuildRanking, Match, Player, Ranking, Setting, Team, User } from './models'
 import { MatchPlayer } from './models/matches'
 
+// prettier-ignore
 export default class DbCache {
-  setting: Setting | undefined
-  users: { [id: string]: User } = {}
-  guilds: { [id: string]: Guild } = {}
-  rankings: { [id: number]: Ranking } = {}
-  guild_rankings: { [guild_id: string]: { [ranking_id: number]: GuildRanking } } = {}
-  guild_guild_rankings: {
-    [guild_id: string]: { ranking: Ranking; guild_ranking: GuildRanking }[]
-  } = {}
-  players: { [ranking_id: number]: { [user_id: string]: Player } } = {}
-  players_by_id: { [id: string]: Player } = {}
-  match_team_players: { [match_id: string]: MatchPlayer[][] } = {}
-  matches: { [id: string]: Match } = {}
-  teams: { [id: number]: Team } = {}
+  setting: Setting | undefined = undefined
+  users = new CacheMap<string, User>('user')
+  guilds = new CacheMap<string, Guild>('guild')
+  rankings = new CacheMap<number, Ranking>('ranking')
+  guild_rankings = new CacheMap<string, GuildRanking, number>('guild ranking')
+  guild_rankings_by_guild = new CacheMap<string, { guild_ranking: GuildRanking; ranking: Ranking }[]>('guild rankings in guild')
+  guild_rankings_by_ranking = new CacheMap<number, { guild_ranking: GuildRanking; guild: Guild }[]>('guild rankings for ranking')
+  players = new CacheMap<number, Player>('player')
+  players_by_ranking_user = new CacheMap<number, Player, string>('player')
+  match_players = new CacheMap<number, MatchPlayer[][]>('players for match')
+  matches = new CacheMap<number, Match>('match')
+  teams = new CacheMap<number, Team>('team')
 
   clear() {
     this.setting = undefined
-    this.users = {}
-    this.guilds = {}
-    this.rankings = {}
-    this.guild_rankings = {}
-    this.guild_guild_rankings = {}
-    this.players = {}
-    this.players_by_id = {}
-    this.match_team_players = {}
-    this.matches = {}
-    this.teams = {}
+    this.users.clear()
+    this.guilds.clear()
+    this.rankings.clear()
+    this.guild_rankings.clear()
+    this.guild_rankings_by_guild.clear()
+    this.players.clear()
+    this.players_by_ranking_user.clear()
+    this.match_players.clear()
+    this.matches.clear()
+    this.teams.clear()
   }
 }
