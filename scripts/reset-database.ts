@@ -14,23 +14,6 @@ async function resetDatabase() {
 
   const db = getNeonDrizzleClient(nonNullable(process.env.POSTGRES_URL, 'postgres_url'))
 
-  // await db.execute(sql`
-  //   DROP TABLE drizzle.__drizzle_migrations;
-  //   DROP TABLE "MatchPlayers";
-  //   DROP TABLE "MatchSummaryMessages";
-  //   DROP TABLE "Matches";
-  //   DROP TABLE "QueueTeams";
-  //   DROP TABLE "TeamPlayers";
-  //   DROP TABLE "Teams";
-  //   DROP TABLE "Players";
-  //   DROP TABLE "GuildRankings";
-  //   DROP TABLE "Rankings";
-  //   DROP TABLE "Guilds";
-  //   DROP TABLE "AccessTokens";
-  //   DROP TABLE "Users";
-  //   DROP TABLE "Settings";
-  // `)
-
   await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`)
   await db.execute(sql`DROP TABLE IF EXISTS "MatchPlayers"`)
   await db.execute(sql`DROP TABLE IF EXISTS "MatchSummaryMessages"`)

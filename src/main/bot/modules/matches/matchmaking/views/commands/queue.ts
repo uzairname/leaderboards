@@ -7,19 +7,18 @@ import {
   withSelectedRanking,
 } from '../../../../../ui-helpers/ranking-command-option'
 import { escapeMd } from '../../../../../ui-helpers/strings'
-import { getRegisterPlayer } from '../../../../players/manage-players'
 import { findMatchFromQueue } from '../../queue/queue-matchmaking'
 import { userJoinQueue } from '../../queue/queue-teams'
+
+const optionnames = {
+  ranking: 'ranking',
+}
 
 export const join_queue_cmd_config = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
   name: 'join',
   description: `Join the matchmaking queue for a ranking`,
 })
-
-const optionnames = {
-  ranking: 'ranking',
-}
 
 export const joinQueueCmd = new GuildCommand(
   join_queue_cmd_config,
@@ -64,7 +63,7 @@ export const joinQueueCmd = new GuildCommand(
 export const leave_queue_cmd_config = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
   name: 'leave',
-  description: `Leave all queues matchmaking queues you are in`,
+  description: `Leave all matchmaking queues you are in`,
 })
 
 export const leaveQueueCmd = new AppView(leave_queue_cmd_config, app =>
@@ -72,9 +71,7 @@ export const leaveQueueCmd = new AppView(leave_queue_cmd_config, app =>
     return ctx.defer(
       {
         type: D.InteractionResponseType.DeferredChannelMessageWithSource,
-        data: {
-          flags: D.MessageFlags.Ephemeral,
-        },
+        data: { flags: D.MessageFlags.Ephemeral },
       },
       async ctx => {
         const interaction = checkGuildInteraction(ctx.interaction)

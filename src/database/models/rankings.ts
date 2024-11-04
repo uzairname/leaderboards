@@ -12,12 +12,6 @@ export type RankingSelect = InferSelectModel<typeof Rankings>
 export type RankingInsert = Omit<InferInsertModel<typeof Rankings>, 'id'>
 export type RankingUpdate = Partial<RankingInsert>
 
-// export type Rating = {
-//   mu: number
-//   rd: number
-//   vol: number
-// }
-
 export type Rating = {
   mu: number
   rd: number
@@ -26,6 +20,7 @@ export type Rating = {
 
 export type MatchmakingSettings = {
   queue_enabled?: boolean
+  default_best_of?: number
   direct_challenge_enabled?: boolean
   default_metadata?: MatchMetadata
 }

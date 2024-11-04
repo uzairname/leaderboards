@@ -20,6 +20,7 @@ import create_ranking from '../../modules/rankings/views/commands/create-ranking
 import rankings from '../../modules/rankings/views/commands/rankings'
 import { Colors } from '../constants'
 import { commandMention, dateTimestamp, escapeMd, messageLink } from '../strings'
+import { default_best_of } from '../../modules/rankings/manage-rankings'
 
 export const concise_description =
   'Tracks skill ratings and matches for any game. Additional utilities for moderation, display, and statistics.'
@@ -160,7 +161,8 @@ export async function guildRankingDescription(
       `\n- Matchmaking queue (${await commandMention(app, joinQueueCmd, guild_ranking.data.guild_id)}): ` +
       (ranking.data.matchmaking_settings.queue_enabled ? `**Enabled**` : `**Disabled**`) +
       `\n- Direct challenges (${await commandMention(app, challenge, guild_ranking.data.guild_id)}): ` +
-      (ranking.data.matchmaking_settings.direct_challenge_enabled ? `**Enabled**` : `**Disabled**`)
+      (ranking.data.matchmaking_settings.direct_challenge_enabled ? `**Enabled**` : `**Disabled**`) + 
+      `\n- By default, new matches are a best of **${ranking.data.matchmaking_settings.default_best_of ?? default_best_of}**`
   }
 
   return text

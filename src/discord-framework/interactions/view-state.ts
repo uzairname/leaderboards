@@ -1,4 +1,3 @@
-// import { compressToUTF16, decompressFromUTF16 } from 'lz-string'
 import { sentry } from '../../logging/sentry'
 import { LZString } from '../../utils/lzstring'
 import { StringData, StringDataSchema } from '../../utils/StringData'
@@ -8,11 +7,9 @@ import { BaseView } from './views'
 
 export class ViewState<T extends StringDataSchema> extends StringData<T> {
   set = {} as {
-    // [K in keyof T]: (value: T[K]['write'] | null | undefined) => ViewState<T>
     [K in keyof T]: (value: T[K]['read'] | null | undefined) => ViewState<T>
   }
 
-  // setAll(data: { [K in keyof T]?: T[K]['write'] | null }): ViewState<T> {
   setAll(data: { [K in keyof T]?: T[K]['read'] | null }): ViewState<T> {
     return this.copy().saveAll(data)
   }

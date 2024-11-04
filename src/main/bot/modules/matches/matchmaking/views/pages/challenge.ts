@@ -15,6 +15,7 @@ import { relativeTimestamp } from '../../../../../ui-helpers/strings'
 import { getRegisterPlayer } from '../../../../players/manage-players'
 import { start1v1SeriesThread } from '../../../ongoing-math-thread/manage-ongoing-match'
 import { sequential } from '../../../../../../../utils/utils'
+import { default_best_of } from '../../../../rankings/manage-rankings'
 
 export const challenge_message_signature = new MessageView({
   name: 'Challenge Message',
@@ -48,9 +49,9 @@ export async function challengeMessage(
   const opponent_id = ctx.state.get.opponent_id()
 
   const expires_at = new Date(ctx.state.get.time_sent().getTime() + app.config.ChallengeTimeoutMs)
-  const best_of = ctx.state.get.best_of()
-
+  
   const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
+  const best_of = ctx.state.get.best_of() ?? ranking.data.matchmaking_settings.default_best_of ?? default_best_of
 
   const content = `### <@${initiator_id}> challenges <@${opponent_id}> to a 1v1`
 

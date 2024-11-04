@@ -5,9 +5,39 @@ export async function runTests(app: App): Promise<Response> {
 
   app.db.cache.clear()
 
-  await testmatchesquery(app)
+  await testlb(app)
 
   return new Response(`Successfully tested Leaderboards app`, { status: 200 })
+}
+
+async function testlb(app: App) {
+
+  const guild_ranking = app.db.guild_rankings.get('1003698664767762575', 6)
+  const player = await app.db.players.fetch(40)
+
+  await setPlayerDisabled(app, player, !(player.data.flags & PlayerFlags.Disabled))
+  // await syncGuildRankingLbMessage(app, guild_ranking)
+
+}
+
+
+
+async function testrescorematches(app: App) {
+  const ranking = app.db.rankings.get(13)
+  const guild = app.db.guilds.get('1003698664767762575')
+
+  console.log(ranking.toString())
+
+  const first_match = await app.db.matches.getMany({
+    rankings: [ranking],
+    earliest_first: true,
+    limit: 1,
+  })
+
+  console.log(first_match[0].match)
+
+  await rescoreMatches(app, ranking)
+
 }
 
 async function testmatchesquery(app: App) {
@@ -96,92 +126,19 @@ async function testmatchesquery(app: App) {
   console.log(result)
 }
 
-async function testrescorematches(app: App) {
-  const ranking = await app.db.rankings.fetch(13)
 
-  console.log(ranking.toString())
-  const guild = await app.db.guilds.get('1003698664767762575')
-
-  const first_match = await app.db.matches.getMany({
-    rankings: [ranking],
-    earliest_first: true,
-    limit: 1,
-  })
-
-  console.log(first_match[0].match)
-
-  await rescoreMatches(app, ranking)
-
-  // const rankings = await app.db.drizzle.select().from(Rankings)
-  // const values = rankings.map(r => [r.id, r.teams_per_match, r.players_per_team])
-
-  // // unnest the values
-  // const teams_per_match = values.map(v => Math.random() * v[0])
-  // const players_per_team = values.map(v => Math.random() * v[1])
-
-  // const ranking_ids = rankings.map(r => r.id)
-
-  // console.log(teams_per_match)
-  // console.log(players_per_team)
-
-  // // bulk update the rankings
-
-  // console.log(sql`
-  //   UPDATE ${Rankings}
-  //   SET teams_per_match = v.teams_per_match,
-  //       players_per_team = v.players_per_team
-  //   FROM (
-  //     VALUES (3, 1, 2),
-  //             (4, 1, 2)
-  //   ) AS v(id, teams_per_match, players_per_team)
-  //   WHERE ${Rankings.id} = v.id
-  // `)
-
-  // const match_ids = [2, 2, 3]
-  // const player_ids = [5, 6, 8]
-  // const rating_before = [30, 25, 28]
-  // const rd_before = [15, 10, 13]
-  // const flags = [0,1,0]
-
-  // const pg_dialect = new PgDialect()
-
-  // const query = `with values as (
-  // SELECT *
-  //   FROM UNNEST(
-  //       ARRAY[${match_ids.join(',')}],
-  //       ARRAY[${player_ids.join(',')}],
-  //       ARRAY[${rating_before.join(',')}],
-  //       ARRAY[${rd_before.join(',')}],
-  //       ARRAY[${flags.join(',')}]
-  //   ) AS v(a,b,c,d,e)` + pg_dialect.sqlToQuery(sql`
-  // )
-  // update ${MatchPlayers}
-  // set
-  //   rating_before = values.c,
-  //   rd_before = values.d,
-  //   flags = values.e
-  // from values
-  // where ${MatchPlayers.match_id} = values.a
-  // and ${MatchPlayers.player_id} = values.b
-  // `).sql
-
-  // await app.db.drizzle.execute(query)
-
-  // console.log(pg_dialect.sqlToQuery(sql`${MatchPlayers.rating_before}`).sql)
-  // console.log(query)
-  // await testDatabase(app)
-  // sentry.debug(`Tested Leaderboards app (${app.config.env.ENVIRONMENT})`)
-}
 
 import { and, asc, desc, eq, gte, inArray, SQL, sql } from 'drizzle-orm'
 import { Rating, TrueSkill } from 'ts-trueskill'
 import { PartialGuild } from '../../database/models/guilds'
 import { MatchStatus } from '../../database/models/matches'
-import { PartialPlayer } from '../../database/models/players'
+import { PartialPlayer, PlayerFlags } from '../../database/models/players'
 import { PartialRanking } from '../../database/models/rankings'
 import { PartialUser } from '../../database/models/users'
 import { GuildRankings, Matches, MatchPlayers, Players } from '../../database/schema'
 import { rescoreMatches } from '../bot/modules/matches/management/score-matches'
+import { syncGuildRankingLbMessage } from '../bot/modules/leaderboard/leaderboard-message'
+import { setPlayerDisabled } from '../bot/modules/players/manage-players'
 
 function testTs() {
   function getAdjustedBeta(baseBeta: number, best_of: number): number {

@@ -1,4 +1,4 @@
-import { EventHint } from '@sentry/types'
+import { Breadcrumb, BreadcrumbHint, EventHint } from '@sentry/types'
 import { Toucan } from 'toucan-js'
 import { Env } from '../Env'
 import { cache } from '../utils/cache'
@@ -127,6 +127,10 @@ export class Logger extends Toucan {
           this.captureException(e)
         }),
     )
+  }
+
+  addBreadcrumb(breadcrumb: Breadcrumb, hint?: BreadcrumbHint): void {
+    super.addBreadcrumb(breadcrumb, hint)
   }
 
   captureException(exception: unknown, hint?: EventHint): string {

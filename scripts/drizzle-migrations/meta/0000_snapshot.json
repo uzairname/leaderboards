@@ -1,4 +1,6 @@
 {
+  "id": "b3c3d6fe-f416-471a-9ec7-44b62fad07d7",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -34,101 +36,45 @@
           "name": "time_created",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "access_tokens_user_id_index": {
+          "name": "access_tokens_user_id_index",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "AccessTokens_user_id_Users_id_fk": {
           "name": "AccessTokens_user_id_Users_id_fk",
           "tableFrom": "AccessTokens",
+          "tableTo": "Users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "Users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "public.ActiveMatches": {
-      "name": "ActiveMatches",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "ranking_id": {
-          "name": "ranking_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "time_created": {
-          "name": "time_created",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "now()"
-        },
-        "status": {
-          "name": "status",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "team_players": {
-          "name": "team_players",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "team_votes": {
-          "name": "team_votes",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "channel_id": {
-          "name": "channel_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "message_id": {
-          "name": "message_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "ActiveMatches_ranking_id_Rankings_id_fk": {
-          "name": "ActiveMatches_ranking_id_Rankings_id_fk",
-          "tableFrom": "ActiveMatches",
-          "columnsFrom": [
-            "ranking_id"
-          ],
-          "tableTo": "Rankings",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "checkConstraints": {}
     },
     "public.GuildRankings": {
       "name": "GuildRankings",
@@ -150,7 +96,7 @@
           "name": "time_created",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         },
         "is_admin": {
@@ -171,12 +117,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "ongoing_matches_channel_id": {
-          "name": "ongoing_matches_channel_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "display_settings": {
           "name": "display_settings",
           "type": "jsonb",
@@ -189,40 +129,41 @@
         "GuildRankings_guild_id_Guilds_id_fk": {
           "name": "GuildRankings_guild_id_Guilds_id_fk",
           "tableFrom": "GuildRankings",
+          "tableTo": "Guilds",
           "columnsFrom": [
             "guild_id"
           ],
-          "tableTo": "Guilds",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "GuildRankings_ranking_id_Rankings_id_fk": {
           "name": "GuildRankings_ranking_id_Rankings_id_fk",
           "tableFrom": "GuildRankings",
+          "tableTo": "Rankings",
           "columnsFrom": [
             "ranking_id"
           ],
-          "tableTo": "Rankings",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "GuildRankings_guild_id_ranking_id": {
-          "name": "GuildRankings_guild_id_ranking_id",
+        "GuildRankings_guild_id_ranking_id_pk": {
+          "name": "GuildRankings_guild_id_ranking_id_pk",
           "columns": [
             "guild_id",
             "ranking_id"
           ]
         }
       },
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "checkConstraints": {}
     },
     "public.Guilds": {
       "name": "Guilds",
@@ -238,13 +179,13 @@
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "time_created": {
           "name": "time_created",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         },
         "admin_role_id": {
@@ -259,8 +200,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "match_results_channel_id": {
-          "name": "match_results_channel_id",
+        "matches_channel_id": {
+          "name": "matches_channel_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -269,7 +210,8 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "checkConstraints": {}
     },
     "public.MatchPlayers": {
       "name": "MatchPlayers",
@@ -291,26 +233,20 @@
           "name": "team_num",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "rating_before": {
-          "name": "rating_before",
-          "type": "real",
+        "rating": {
+          "name": "rating",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "rd_before": {
-          "name": "rd_before",
-          "type": "real",
+        "flags": {
+          "name": "flags",
+          "type": "integer",
           "primaryKey": false,
-          "notNull": false
-        },
-        "time_created": {
-          "name": "time_created",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "now()"
+          "notNull": true,
+          "default": 0
         }
       },
       "indexes": {},
@@ -318,40 +254,41 @@
         "MatchPlayers_match_id_Matches_id_fk": {
           "name": "MatchPlayers_match_id_Matches_id_fk",
           "tableFrom": "MatchPlayers",
+          "tableTo": "Matches",
           "columnsFrom": [
             "match_id"
           ],
-          "tableTo": "Matches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "MatchPlayers_player_id_Players_id_fk": {
           "name": "MatchPlayers_player_id_Players_id_fk",
           "tableFrom": "MatchPlayers",
+          "tableTo": "Players",
           "columnsFrom": [
             "player_id"
           ],
-          "tableTo": "Players",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "MatchPlayers_match_id_player_id": {
-          "name": "MatchPlayers_match_id_player_id",
+        "MatchPlayers_match_id_player_id_pk": {
+          "name": "MatchPlayers_match_id_player_id_pk",
           "columns": [
             "match_id",
             "player_id"
           ]
         }
       },
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "checkConstraints": {}
     },
     "public.MatchSummaryMessages": {
       "name": "MatchSummaryMessages",
@@ -369,11 +306,17 @@
           "primaryKey": false,
           "notNull": true
         },
+        "channel_id": {
+          "name": "channel_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "message_id": {
           "name": "message_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         }
       },
       "indexes": {},
@@ -381,40 +324,41 @@
         "MatchSummaryMessages_match_id_Matches_id_fk": {
           "name": "MatchSummaryMessages_match_id_Matches_id_fk",
           "tableFrom": "MatchSummaryMessages",
+          "tableTo": "Matches",
           "columnsFrom": [
             "match_id"
           ],
-          "tableTo": "Matches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "MatchSummaryMessages_guild_id_Guilds_id_fk": {
           "name": "MatchSummaryMessages_guild_id_Guilds_id_fk",
           "tableFrom": "MatchSummaryMessages",
+          "tableTo": "Guilds",
           "columnsFrom": [
             "guild_id"
           ],
-          "tableTo": "Guilds",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "MatchSummaryMessages_match_id_guild_id": {
-          "name": "MatchSummaryMessages_match_id_guild_id",
+        "MatchSummaryMessages_match_id_guild_id_pk": {
+          "name": "MatchSummaryMessages_match_id_guild_id_pk",
           "columns": [
             "match_id",
             "guild_id"
           ]
         }
       },
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "checkConstraints": {}
     },
     "public.Matches": {
       "name": "Matches",
@@ -438,12 +382,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "team_players": {
-          "name": "team_players",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "time_started": {
           "name": "time_started",
           "type": "timestamp",
@@ -453,6 +391,24 @@
         "time_finished": {
           "name": "time_finished",
           "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "team_votes": {
+          "name": "team_votes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ongoing_match_channel_id": {
+          "name": "ongoing_match_channel_id",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -471,6 +427,7 @@
       },
       "indexes": {
         "match_ranking_id_index": {
+          "name": "match_ranking_id_index",
           "columns": [
             {
               "expression": "ranking_id",
@@ -479,30 +436,60 @@
               "nulls": "last"
             }
           ],
-          "with": {},
-          "name": "match_ranking_id_index",
           "isUnique": false,
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
+        },
+        "match_time_finished_index": {
+          "name": "match_time_finished_index",
+          "columns": [
+            {
+              "expression": "time_finished",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "match_time_started_index": {
+          "name": "match_time_started_index",
+          "columns": [
+            {
+              "expression": "time_started",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "Matches_ranking_id_Rankings_id_fk": {
           "name": "Matches_ranking_id_Rankings_id_fk",
           "tableFrom": "Matches",
+          "tableTo": "Rankings",
           "columnsFrom": [
             "ranking_id"
           ],
-          "tableTo": "Rankings",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "checkConstraints": {}
     },
     "public.Players": {
       "name": "Players",
@@ -530,26 +517,27 @@
           "name": "time_created",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "rating": {
           "name": "rating",
-          "type": "real",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "rd": {
-          "name": "rd",
-          "type": "real",
+        "flags": {
+          "name": "flags",
+          "type": "integer",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": 0
         },
         "stats": {
           "name": "stats",
@@ -559,23 +547,15 @@
         }
       },
       "indexes": {
-        "player_user_id_index": {
+        "player_user_id_ranking_id_unique": {
+          "name": "player_user_id_ranking_id_unique",
           "columns": [
             {
               "expression": "user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
-            }
-          ],
-          "with": {},
-          "name": "player_user_id_index",
-          "isUnique": false,
-          "method": "btree",
-          "concurrently": false
-        },
-        "player_ranking_id_index": {
-          "columns": [
+            },
             {
               "expression": "ranking_id",
               "isExpression": false,
@@ -583,43 +563,43 @@
               "nulls": "last"
             }
           ],
-          "with": {},
-          "name": "player_ranking_id_index",
-          "isUnique": false,
+          "isUnique": true,
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "Players_user_id_Users_id_fk": {
           "name": "Players_user_id_Users_id_fk",
           "tableFrom": "Players",
+          "tableTo": "Users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "Users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "Players_ranking_id_Rankings_id_fk": {
           "name": "Players_ranking_id_Rankings_id_fk",
           "tableFrom": "Players",
+          "tableTo": "Rankings",
           "columnsFrom": [
             "ranking_id"
           ],
-          "tableTo": "Rankings",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "checkConstraints": {}
     },
     "public.QueueTeams": {
       "name": "QueueTeams",
@@ -635,7 +615,7 @@
           "name": "time_created",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         }
       },
@@ -644,19 +624,20 @@
         "QueueTeams_team_id_Teams_id_fk": {
           "name": "QueueTeams_team_id_Teams_id_fk",
           "tableFrom": "QueueTeams",
+          "tableTo": "Teams",
           "columnsFrom": [
             "team_id"
           ],
-          "tableTo": "Teams",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "checkConstraints": {}
     },
     "public.Rankings": {
       "name": "Rankings",
@@ -672,38 +653,45 @@
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "time_created": {
           "name": "time_created",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         },
         "players_per_team": {
           "name": "players_per_team",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "num_teams": {
-          "name": "num_teams",
+        "teams_per_match": {
+          "name": "teams_per_match",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "elo_settings": {
-          "name": "elo_settings",
+        "initial_rating": {
+          "name": "initial_rating",
           "type": "jsonb",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
+        },
+        "matchmaking_settings": {
+          "name": "matchmaking_settings",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "checkConstraints": {}
     },
     "public.Settings": {
       "name": "Settings",
@@ -716,12 +704,18 @@
           "notNull": true,
           "default": 1
         },
-        "last_deployed": {
-          "name": "last_deployed",
+        "last_updated": {
+          "name": "last_updated",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
+        },
+        "versions": {
+          "name": "versions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
         },
         "config": {
           "name": "config",
@@ -733,7 +727,8 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "checkConstraints": {}
     },
     "public.TeamPlayers": {
       "name": "TeamPlayers",
@@ -755,7 +750,7 @@
           "name": "time_created",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         }
       },
@@ -764,40 +759,41 @@
         "TeamPlayers_team_id_Teams_id_fk": {
           "name": "TeamPlayers_team_id_Teams_id_fk",
           "tableFrom": "TeamPlayers",
+          "tableTo": "Teams",
           "columnsFrom": [
             "team_id"
           ],
-          "tableTo": "Teams",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "TeamPlayers_player_id_Players_id_fk": {
           "name": "TeamPlayers_player_id_Players_id_fk",
           "tableFrom": "TeamPlayers",
+          "tableTo": "Players",
           "columnsFrom": [
             "player_id"
           ],
-          "tableTo": "Players",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "TeamPlayers_team_id_player_id": {
-          "name": "TeamPlayers_team_id_player_id",
+        "TeamPlayers_team_id_player_id_pk": {
+          "name": "TeamPlayers_team_id_player_id_pk",
           "columns": [
             "team_id",
             "player_id"
           ]
         }
       },
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "checkConstraints": {}
     },
     "public.Teams": {
       "name": "Teams",
@@ -819,7 +815,7 @@
           "name": "time_created",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         },
         "rating": {
@@ -840,19 +836,20 @@
         "Teams_ranking_id_Rankings_id_fk": {
           "name": "Teams_ranking_id_Rankings_id_fk",
           "tableFrom": "Teams",
+          "tableTo": "Rankings",
           "columnsFrom": [
             "ranking_id"
           ],
-          "tableTo": "Rankings",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "checkConstraints": {}
     },
     "public.Users": {
       "name": "Users",
@@ -868,13 +865,13 @@
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "time_created": {
           "name": "time_created",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         },
         "linked_roles_ranking_id": {
@@ -887,17 +884,17 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "checkConstraints": {}
     }
   },
   "enums": {},
   "schemas": {},
+  "sequences": {},
+  "views": {},
   "_meta": {
+    "columns": {},
     "schemas": {},
-    "tables": {},
-    "columns": {}
-  },
-  "id": "a7fea04c-8d8b-4e50-b5b4-1ef934d6705f",
-  "prevId": "00000000-0000-0000-0000-000000000000",
-  "sequences": {}
+    "tables": {}
+  }
 }

@@ -7,7 +7,7 @@ import { sentry } from '../../../../../logging/sentry'
 import { maxIndex } from '../../../../../utils/utils'
 import { App } from '../../../../app/App'
 import { Colors } from '../../../ui-helpers/constants'
-import { emojis, escapeMd, relativeTimestamp, spaces } from '../../../ui-helpers/strings'
+import { emojis, escapeMd, relativeTimestamp, space, spaces } from '../../../ui-helpers/strings'
 import { getMatchPlayersDisplayStats } from '../../players/display'
 import { syncMatchesChannel } from './matches-channel'
 
@@ -15,10 +15,8 @@ import { syncMatchesChannel } from './matches-channel'
  * Sync match summary messages for this match across all guilds the match's ranking is in
  */
 export async function syncMatchSummaryMessages(app: App, match: Match): Promise<void> {
-  sentry.debug(`syncMatchSummaryMessages ${match}`)
   const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: match.data.ranking_id })
-
-  sentry.debug(`${guild_rankings.length} guild rankings`)
+  sentry.debug(`syncMatchSummaryMessages ${match} in ${guild_rankings.length} guilds`)
   await Promise.all(
     guild_rankings.map(async item => {
       await syncMatchSummaryMessage(app, match, item.guild)
@@ -58,8 +56,6 @@ export async function syncMatchSummaryMessage(
     getChannel: () => syncMatchesChannel(app, guild, true),
   })
 
-  sentry.debug(`sync_message_result ${JSON.stringify(sync_message_result)}`)
-
   if (sync_message_result.is_new_message) {
     await match.updateSummaryMessage(
       guild.data.id,
@@ -78,7 +74,6 @@ export async function matchSummaryMessageData(app: App, match: Match): Promise<M
 }
 
 export async function matchSummaryEmbed(app: App, match: Match, { } = {}): Promise<D.APIEmbed> {
-  sentry.debug(`matchSummaryEmbed`, { match_id: match.data.id })
 
   const ranking = await match.ranking.fetch()
 
@@ -119,21 +114,19 @@ export async function matchSummaryEmbed(app: App, match: Match, { } = {}): Promi
         .map(p => {
           const rating_before_text = p.before.is_provisional
             ? `\`${p.before.rating.toFixed(0)}?\``
-            : `\`${p.before.rating.toFixed(0)}\``
+            : `${p.before.rating.toFixed(0)}`
 
           if (p.after !== undefined) {
             const rating_after_text = p.after.is_provisional
-              ? `**${p.after.rating.toFixed(0)}?**`
+              ? `\`${p.after.rating.toFixed(0)}?\``
               : `**${p.after.rating.toFixed(0)}**`
 
             const diff = p.after.rating - p.before.rating
 
             const rating_diff_text =
               p.after.is_provisional
-                ? `\n-# (unranked)`
-                : p.before.is_provisional
-                  ? ``
-                  : `\n-# ${spaces(2)}(${(parseInt(diff.toFixed(0)) > 0 ? '+' : '') + diff.toFixed(0)})`
+                ? `\n-# ${space}(unranked)`
+                : `\n-# ${spaces(2)}(${(parseInt(diff.toFixed(0)) > 0 ? '+' : '') + diff.toFixed(0)})`
 
             return (
               `<@${p.user_id}>` +

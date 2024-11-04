@@ -40,7 +40,6 @@ export namespace field {
 
 abstract class Field<ReadT> {
   read = null as ReadT
-  // write = null as WriteT
   abstract compress(value: ReadT): string
   abstract decompress(compressed: string): ReadT
 }
@@ -165,16 +164,13 @@ export class StringData<TSchema extends StringDataSchema> {
   }
 
   is = {} as {
-    // [K in keyof TSchema]: (value?: TSchema[K]['write'] | null) => boolean
     [K in keyof TSchema]: (value?: TSchema[K]['read'] | null) => boolean
   }
 
   save = {} as {
-    // [K in keyof TSchema]: (value: TSchema[K]['write'] | null | undefined) => this
     [K in keyof TSchema]: (value: TSchema[K]['read'] | null | undefined) => this
   }
 
-  // saveAll(data: { [K in keyof TSchema]?: TSchema[K]['write'] | null }): this {
   saveAll(data: { [K in keyof TSchema]?: TSchema[K]['read'] | null }): this {
     Object.entries(data).forEach(([key, value]) => {
       if (!this.save[key]) return
@@ -184,11 +180,9 @@ export class StringData<TSchema extends StringDataSchema> {
   }
 
   set = {} as {
-    // [K in keyof TSchema]: (value: TSchema[K]['write'] | null | undefined) => StringData<TSchema>
     [K in keyof TSchema]: (value: TSchema[K]['read'] | null | undefined) => StringData<TSchema>
   }
 
-  // setAll(data: { [K in keyof TSchema]?: TSchema[K]['write'] | null }): StringData<TSchema> {
   setAll(data: { [K in keyof TSchema]?: TSchema[K]['read'] | null }): StringData<TSchema> {
     return this.copy().saveAll(data)
   }

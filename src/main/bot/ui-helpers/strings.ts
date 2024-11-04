@@ -40,7 +40,7 @@ export function dateTimestamp(time: Date): string {
 }
 
 /**
- * Escapes special Discord markdown characters: ( ` * _ ~ < : \ )
+ * Escapes special Discord markdown characters: ( ` * _ ~ < : \ # )
  */
 export function escapeMd(str: string | undefined | null): string {
   if (!str) return ''
@@ -52,6 +52,8 @@ export function escapeMd(str: string | undefined | null): string {
     .replace(/`/g, '\\`')
     .replace(/</g, '\\<')
     .replace(/:/g, '\\:')
+    .replace(/#/g, '\\#')
+    
 }
 
 export const space = `⠀` // U+2800: Braille Pattern Blank

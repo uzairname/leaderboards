@@ -18,6 +18,7 @@ import {
 
 export const default_teams_per_match = 2
 export const default_players_per_team = 1
+export const default_best_of = 1
 
 export const default_initial_rating: Rating = {
   mu: 50,
@@ -59,7 +60,7 @@ export async function createNewRankingInGuild(
   new_guild_ranking: GuildRanking
   new_ranking: Ranking
 }> {
-  options = validateRankingOptions(options)
+  validateRankingOptions(options)
 
   // make sure a ranking from this guild with the same name doesn't already exist
   const same_name_ranking = await app.db.guild_rankings.getByName(guild.data.id, options.name)
@@ -100,20 +101,12 @@ export async function updateRanking(
   for (const item of guild_rankings) {
     sentry.debug('item.guildranking', item.guild_ranking)
     if (options.name || options.matchmaking_settings) {
-      app.config.IsDev &&
-        ctx?.followup({ content: `syncing commands for guild ${item.guild.data.name}`, flags: 64 })
       await app.syncDiscordCommands(item.guild)
     }
-    app.config.IsDev &&
-      ctx?.followup({
-        content: `syncing lb for guild ${item.guild.data.name}, ${item.guild}, ${item.guild_ranking}`,
-        flags: 64,
-      })
 
     sentry.debug(item.guild_ranking)
     await syncGuildRankingLbMessage(app, item.guild_ranking)
   }
-  app.config.IsDev && ctx?.followup({ content: `done`, flags: 64 })
 
   // const result = await Promise.all(
   //   guild_rankings.map(item =>
@@ -148,12 +141,11 @@ export async function deleteRanking(app: App, ranking: Ranking): Promise<void> {
   )
 }
 
-export function validateRankingOptions<T extends Partial<RankingInsert>>(o: T): T {
+export function validateRankingOptions(o: Partial<RankingInsert>): void {
   if (o.name !== undefined) {
-    if (!o.name) throw new UserError(`Ranking name cannot be empty`)
-
     if (o.name.length > max_ranking_name_length)
       throw new UserError(`Ranking names must be ${max_ranking_name_length} characters or less`)
+    if (o.name.length == 0) throw new UserError(`Ranking name cannot be empty`)
   }
 
   if (o.teams_per_match !== undefined) {
@@ -175,5 +167,14 @@ export function validateRankingOptions<T extends Partial<RankingInsert>>(o: T): 
       )
   }
 
-  return o
+  if (o.matchmaking_settings !== undefined) {
+    if (o.matchmaking_settings.default_best_of !== undefined) {
+      if (!o.matchmaking_settings.default_best_of ||
+          isNaN(o.matchmaking_settings.default_best_of) ||
+          o.matchmaking_settings.default_best_of < 1 ||
+          o.matchmaking_settings.default_best_of % 2 == 0)
+        throw new UserErrors.ValidationError(`Best of must be a positive odd number`)
+    }
+
+  }
 }

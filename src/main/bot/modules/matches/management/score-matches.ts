@@ -17,7 +17,7 @@ import { rateTrueskill, Scorer } from './rating-calculation'
 
 /**
  * Updates a match's outcome and recalculates player ratings. Sets its status to finished.
- * If it wasn't scored yet, sets time finished to now.
+ * If it wasn't finished yet, sets time finished to now.
  */
 export async function updateMatchOutcome(
   app: App,
@@ -47,11 +47,12 @@ export async function updateMatchOutcome(
   })
 
   await rescoreMatches(app, match.ranking, { finished_on_or_after: match.data.time_finished })
+  await syncMatchSummaryMessages(app, match)
 }
 
 
 /**
- * Cancels an ongoing match. Sets the time finished to now and status to canceled.
+ * Cancels a match that hasn't been finished. Sets the time finished to now and status to canceled.
  */
 export async function cancelMatch(app: App, match: Match): Promise<void> {
   sentry.debug(`cancelMatch: ${match}`)
@@ -108,58 +109,8 @@ export async function revertMatch(app: App, match: Match): Promise<void> {
   )
 }
 
-
 /**
- * For a finished match, calculates new player ratings, and updates the ratings of the players involved in the match
- * @param match A finished match with an outcome.
- * @param check_rescore If true, will recalculate ratings based on all subsequent matches.
- * Set this to false if this match is the latest match played by the players involved.
- */
-export async function scoreMatch(
-  app: App,
-  match: Match,
-  team_players: MatchPlayer[][],
-  check_rescore: boolean = false,
-): Promise<void> {
-  sentry.debug(`scoreMatch: ${match}`)
-
-  if (match.data.status !== MatchStatus.Finished || !match.data.outcome) {
-    throw new Error('Cannot score an unfinished match')
-  }
-
-  const ranking = await match.ranking.fetch()
-
-  await rescoreMatches(app, ranking, { finished_on_or_after: match.data.time_finished })
-  if (check_rescore) {
-  } else {
-    // const outcome = match.data.outcome
-    // // calculate new player ratings
-    // const new_player_ratings = rateTrueskill(
-    //   outcome,
-    //   team_players,
-    //   ranking.data.initial_rating,
-    //   match.data.metadata?.best_of,
-    // )
-    // await updatePlayers(
-    //   app,
-    //   team_players
-    //     .map((team, i) =>
-    //       team.map((player, j) => ({
-    //         player: player.player,
-    //         update: {
-    //           rating: new_player_ratings[i][j],
-    //         },
-    //       })),
-    //     )
-    //     .flat(),
-    // )
-    // await syncRankingLbMessages(app, ranking)
-    // await syncMatchSummaryMessages(app, match)
-    // return match
-  }
-}
-
-/**
+ * Recalculate ratings in the ranking based on all matches after the specified date.
  * @param affected_ratings A map of player IDs to their ratings before any of these matches were scored
  *  The running recalculation of player ratings.
  *  This object is updated as matches are processed
@@ -245,14 +196,6 @@ export async function rescoreMatches(
 
   // update all players' ratings
   await updatePlayerRatings(app, new_players)
-
-  // update the leaderboard
-  await syncRankingLbMessages(app, ranking)
-
-  // update the last n match summary messages
-  const n = 5
-  const matches_to_sync = matches.slice(-n)
-  await Promise.all(matches_to_sync.map(m => syncMatchSummaryMessages(app, m.match)))
 } 
 
 

@@ -9,8 +9,9 @@ import { Colors } from '../../ui-helpers/constants'
 import { escapeMd, relativeTimestamp, space } from '../../ui-helpers/strings'
 import { syncRankedCategory } from '../guilds/guilds'
 import { getOrderedLeaderboardPlayers } from '../players/display'
+import { PartialRanking } from '../../../../database/models/rankings'
 
-export async function syncRankingLbMessages(app: App, ranking: Ranking): Promise<void> {
+export async function syncRankingLbMessages(app: App, ranking: PartialRanking): Promise<void> {
   sentry.debug(`syncRankingLbMessages ranking: ${ranking.data.id}`)
   const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
   await Promise.all(

@@ -16,9 +16,6 @@ import {
 export class DbClient {
   public readonly cache: DbCache
 
-  // select: DrizzleClient['select']
-  // read: DrizzleClient
-
   constructor(readonly drizzle: DrizzleClient) {
     if (cache.db && cache.db instanceof DbCache) {
       this.cache = cache.db
@@ -26,10 +23,6 @@ export class DbClient {
       this.cache = new DbCache()
     }
     cache.db = this.cache
-
-    // this.select = drizzle.select
-    // this.select = drizzle_read ? drizzle_read.select : drizzle.select
-    // this.read = drizzle_read ?? drizzle
   }
 
   settings = new SettingsManager(this)

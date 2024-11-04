@@ -63,9 +63,13 @@ export async function profileOverviewPage(
         players.map(async p => {
           const ranking = await p.ranking()
           const display_rating = calcDisplayRating(app, ranking.data.initial_rating)(p.data.rating)
+          const rating_text = display_rating.is_provisional 
+            ? `${display_rating.rating}? (Unranked)`
+            : `${display_rating.rating}`
+
           return {
             name: escapeMd(ranking.data.name),
-            value: `Score: ${display_rating.rating ?? 'Unranked'}`,
+            value: `Score: ${rating_text}`,
           }
         }),
       )) ?? [],

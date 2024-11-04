@@ -21,8 +21,9 @@ import {
   syncGuildRankingLbMessage,
 } from '../../../leaderboard/leaderboard-message'
 import { deleteRanking, updateRanking } from '../../manage-rankings'
-import { rankingNameTextInput, rankingsPage } from './rankings'
+import { rankingSettingsModal, rankingsPage } from './rankings'
 import { UserErrors } from '../../../../errors/UserError'
+import { sentry } from '../../../../../../logging/sentry'
 
 export const ranking_settings_page_config = new MessageView({
   name: 'ranking settings',
@@ -33,8 +34,8 @@ export const ranking_settings_page_config = new MessageView({
     ranking_id: field.Int(),
     callback: field.Choice({
       sendAllGuildRankingsPage,
-      rename,
-      onRenameModalSubmit,
+      sendSettingsModal,
+      onSettingsModalSubmit,
       toggleLiveLeaderboard,
       toggleChallenge,
       onDeleteBtn,
@@ -90,9 +91,9 @@ async function _rankingSettingsPage(
     components: [
       {
         type: D.ComponentType.Button,
-        label: `Rename`,
+        label: `Edit`,
         style: D.ButtonStyle.Primary,
-        custom_id: ctx.state.set.callback(rename).cId(),
+        custom_id: ctx.state.set.callback(sendSettingsModal).cId(),
       },
       {
         type: D.ComponentType.Button,
@@ -158,22 +159,27 @@ async function sendAllGuildRankingsPage(
   )
 }
 
-async function rename(
+async function sendSettingsModal(
   app: App,
   ctx: ComponentContext<typeof ranking_settings_page_config>,
 ): Promise<ChatInteractionResponse> {
   const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
+  sentry.debug(`${ctx.state.get.ranking_id()}`)
+  sentry.debug(`sendsettingsmodal ${ranking.data.name}`)
   return {
     type: D.InteractionResponseType.Modal,
     data: {
-      custom_id: ctx.state.set.callback(onRenameModalSubmit).cId(),
-      title: `Rename ${ranking.data.name}`,
-      components: [rankingNameTextInput()],
+      custom_id: ctx.state.set.callback(onSettingsModalSubmit).cId(),
+      title: `Edit ${ranking.data.name}`,
+      components: rankingSettingsModal({
+        name: { current: ranking.data.name },
+        best_of: { current: ranking.data.matchmaking_settings?.default_best_of }
+      }),
     },
   }
 }
 
-async function onRenameModalSubmit(
+async function onSettingsModalSubmit(
   app: App,
   ctx: ComponentContext<typeof ranking_settings_page_config>,
 ): Promise<ChatInteractionResponse> {
@@ -184,20 +190,28 @@ async function onRenameModalSubmit(
       type: D.InteractionResponseType.DeferredMessageUpdate,
     },
     async ctx => {
+      const modal_input = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
       const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
-      const old_name = ranking.data.name
-      const name = nonNullable(
-        getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)['name']?.value,
-        'input name',
-      )
 
-      await updateRanking(app, ranking, { name })
-      const res = await ctx.followup({
-        content: `Renamed ${escapeMd(old_name)} to ${escapeMd(name)}`,
-        flags: D.MessageFlags.Ephemeral,
-      })
+      // determine whether the user had any input for the fields. If not, set them to undefined so they are not updated
+      const new_name_str = modal_input['name']?.value
+      const new_name = new_name_str ? new_name_str : undefined
 
-      return void Promise.all([ctx.edit(await _rankingSettingsPage(app, ctx)), ctx.delete(res.id)])
+      const best_of_int = parseInt(modal_input['best_of']?.value ?? '')
+
+      sentry.debug(`onSettingsModalSubmit ${ranking.data.name} ${new_name} ${best_of_int}`)
+
+      const new_matchmaking_settings = {
+        ...ranking.data.matchmaking_settings,
+        default_best_of: !(isNaN(best_of_int)) ? best_of_int : ranking.data.matchmaking_settings.default_best_of,
+      }
+
+      await updateRanking(app, ranking, { 
+        name: new_name,
+        matchmaking_settings: new_matchmaking_settings,
+       })
+
+      return ctx.edit(await _rankingSettingsPage(app, ctx))
     },
   )
 }
@@ -249,9 +263,6 @@ async function toggleChallenge(
       const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
 
       const matchmaking_settings = ranking.data.matchmaking_settings
-
-      app.config.IsDev &&
-        (await ctx.followup({ content: `Updating granking ${ranking.data.name}`, flags: 64 }))
 
       await updateRanking(
         app,

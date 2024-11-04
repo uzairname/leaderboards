@@ -17,9 +17,9 @@ export async function start1v1SeriesThread(
   players: Player[][],
   best_of?: number,
 ): Promise<{ match: Match; thread: APIChannel }> {
-  const { guild, ranking } = guild_ranking
+  const { guild, ranking } = await guild_ranking.fetch()
 
-  const match = await startNewMatch(app, ranking, players, { best_of: best_of ?? 1 })
+  const match = await startNewMatch(app, ranking, players, best_of)
 
   const match_message = await syncMatchSummaryMessage(app, match, guild)
 

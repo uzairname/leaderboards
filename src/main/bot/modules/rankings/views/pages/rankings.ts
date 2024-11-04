@@ -34,10 +34,11 @@ export const rankings_page_config = new MessageView({
       createRankingModal,
       onCreateRankingModalSubmit,
     }),
-    new_ranking_input: field.Object({
+    modal_input: field.Object({
       name: field.String(),
       teams_per_match: field.Int(),
       players_per_team: field.Int(),
+      best_of: field.Int(),
     }),
   },
 })
@@ -129,38 +130,15 @@ export function createRankingModal(
   app: App,
   ctx: StateContext<typeof rankings_page_config>,
 ): D.APIModalInteractionResponse {
-  let components = [rankingNameTextInput(ctx.state.data.new_ranking_input?.name)]
 
-  if (app.config.features.MultipleTeamsPlayers) {
-    components = components.concat([
-      {
-        type: D.ComponentType.ActionRow,
-        components: [
-          {
-            type: D.ComponentType.TextInput,
-            style: D.TextInputStyle.Short,
-            custom_id: 'teams_per_match',
-            label: 'Number of teams per match',
-            placeholder: `${ctx.state.data.new_ranking_input?.teams_per_match ?? default_teams_per_match}`,
-            required: false,
-          },
-        ],
-      },
-      {
-        type: D.ComponentType.ActionRow,
-        components: [
-          {
-            type: D.ComponentType.TextInput,
-            style: D.TextInputStyle.Short,
-            custom_id: 'players_per_team',
-            label: 'Players per team',
-            placeholder: `${ctx.state.data.new_ranking_input?.players_per_team ?? default_players_per_team}`,
-            required: false,
-          },
-        ],
-      },
-    ])
-  }
+
+  let components = rankingSettingsModal({
+    name: {
+      current: ctx.state.data.modal_input?.name
+    },
+    best_of: {},
+    team_size: app.config.features.AllowNon1v1 ? {} : undefined
+  })
 
   return {
     type: D.InteractionResponseType.Modal,
@@ -179,7 +157,7 @@ export async function onCreateRankingModalSubmit(
   await ensureAdminPerms(app, ctx)
 
   const modal_input = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
-  const name = nonNullable(modal_input['name'], 'modal_input.name').value
+  const name = nonNullable(modal_input['name'], 'input name').value
 
   const interaction = checkGuildInteraction(ctx.interaction)
   const guild = await getOrAddGuild(app, interaction.guild_id)
@@ -192,6 +170,11 @@ export async function onCreateRankingModalSubmit(
     players_per_team: modal_input['players_per_team']?.value
       ? parseInt(modal_input['players_per_team'].value)
       : undefined,
+    matchmaking_settings: {
+      default_best_of: modal_input['best_of']?.value
+        ? parseInt(modal_input['best_of'].value)
+        : 1
+    }
   })
 
   return {
@@ -204,32 +187,97 @@ export async function onCreateRankingModalSubmit(
   }
 }
 
-export function rankingNameTextInput(
-  existing_name?: string,
-): D.APIActionRowComponent<D.APITextInputComponent> {
+/**
+ * If name is specified and current name is not provided, it will be required
+ * @param include Which fields to include, along with their current value
+ * @returns 
+ */
+export function rankingSettingsModal(
+  include: {
+    name?: { current?: string }
+    best_of?: { current?: number }
+    team_size?: {
+      players_per_team?: number
+      teams_per_match?: number
+    }
+  }
+): D.APIActionRowComponent<D.APITextInputComponent>[] {
   const example_names = [
-    // `Starcraft 2v2`,
-    // `Valorant 5s`,
     `Smash 1v1`,
     `Boosts Only`,
     `Ping Pong 1v1`,
     `Chess`,
   ]
 
-  return {
-    type: D.ComponentType.ActionRow,
-    components: [
-      {
-        type: D.ComponentType.TextInput,
-        style: D.TextInputStyle.Short,
-        custom_id: 'name',
-        label: 'Name',
-        placeholder:
-          existing_name ??
-          `e.g. ${example_names[Math.floor(Math.random() * example_names.length)]}`,
-        max_length: max_ranking_name_length,
-        required: !existing_name,
-      },
-    ],
+  const components: D.APIActionRowComponent<D.APIModalActionRowComponent>[] = []
+
+  sentry.debug(`${JSON.stringify(include)}`)
+
+  if (include.name) {
+    components.push({
+      type: D.ComponentType.ActionRow,
+      components: [
+        {
+          type: D.ComponentType.TextInput,
+          style: D.TextInputStyle.Short,
+          custom_id: 'name',
+          label: 'Name',
+          placeholder: include?.name?.current ??
+            `e.g. ${example_names[Math.floor(Math.random() * example_names.length)]}`,
+          max_length: max_ranking_name_length,
+          required: !include?.name?.current,
+        },
+      ],
+    })
   }
+
+  if (include.team_size) {
+    components.push(
+      {
+        type: D.ComponentType.ActionRow,
+        components: [
+          {
+            type: D.ComponentType.TextInput,
+            style: D.TextInputStyle.Short,
+            custom_id: 'teams_per_match',
+            label: 'Number of teams per match',
+            placeholder: `${include.team_size.teams_per_match ?? default_teams_per_match}`,
+            required: false,
+          },
+        ],
+      })
+      components.push({
+        type: D.ComponentType.ActionRow,
+        components: [
+          {
+            type: D.ComponentType.TextInput,
+            style: D.TextInputStyle.Short,
+            custom_id: 'players_per_team',
+            label: 'Players per team',
+            placeholder: `${include.team_size.players_per_team ?? default_players_per_team}`,
+            required: false,
+          },
+        ],
+      },
+    )
+
+  }
+
+  if (include?.best_of) {
+    components.push({
+      type: D.ComponentType.ActionRow,
+      components: [
+        {
+          type: D.ComponentType.TextInput,
+          style: D.TextInputStyle.Short,
+          custom_id: 'best_of',
+          label: 'By default, matches are best of:',
+          placeholder: include?.best_of?.current?.toString() ?? '1',
+          required: false,
+        },
+      ],
+    })
+  }
+
+  return components
 }

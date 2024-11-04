@@ -41,10 +41,10 @@ export class Config {
       ExperimentalCommands: IsDev,
       QueueMessage: false,
       DisableLogMatchesOption: false,
-      MultipleTeamsPlayers: false,
+      AllowNon1v1: false,
       RatingRoleConnections: false,
     },
 
-    readonly ProvisionalRdThreshold = IsDev ? 0.9 : 1,
+    readonly ProvisionalRdThreshold = IsDev ? 0.9 : 0.85,
   ) {}
 }

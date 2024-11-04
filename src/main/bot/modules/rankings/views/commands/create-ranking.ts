@@ -33,7 +33,7 @@ export default new AppView(create_ranking_cmd_signature, app =>
         },
       ] as D.APIApplicationCommandOption[]
     ).concat(
-      app.config.features.MultipleTeamsPlayers
+      app.config.features.AllowNon1v1
         ? [
             {
               name: 'num-teams',

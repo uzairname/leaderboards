@@ -21,6 +21,7 @@ import { PartialGuild } from './guilds'
 import { PartialPlayer, PlayerSelect } from './players'
 import { PartialRanking } from './rankings'
 import { PartialUser } from './users'
+import { sequential } from '../../utils/utils'
 
 export type MatchMetadata = {
   best_of: number
@@ -360,10 +361,7 @@ export class MatchesManager extends DbObjectManager {
       .select({ id: Matches.id })
       .from(Matches)
       .where(inArray(Matches.id, filtered_matches))
-      // desc(Matches.time_finished), desc(Matches.time_started))
       .orderBy(
-        // (filters.earliest_first ? asc : desc)(Matches.time_finished),
-        // (filters.earliest_first ? asc : desc)(Matches.time_started)
         (filters.earliest_first ? asc : desc)(
           sql`coalesce(${Matches.time_finished}, ${Matches.time_started})`,
         ),
@@ -378,7 +376,6 @@ export class MatchesManager extends DbObjectManager {
       .innerJoin(Matches, eq(Matches.id, paged_matches.id))
       .innerJoin(MatchPlayers, eq(Matches.id, MatchPlayers.match_id))
       .innerJoin(Players, eq(MatchPlayers.player_id, Players.id))
-      // .orderBy(asc(Matches.time_finished), asc(Matches.time_started))
       .orderBy(asc(sql`coalesce(${Matches.time_finished}, ${Matches.time_started})`))
 
     const result = await final_query
@@ -387,8 +384,8 @@ export class MatchesManager extends DbObjectManager {
 
     const match_ids = Array.from(new Set(result.map(r => r.match.id)))
 
-    const matches = await Promise.all(
-      match_ids.map(async match_id => {
+    const matches = await sequential(
+      match_ids.map(match_id => async () => {
         const match_players = result.filter(r => r.match.id === match_id)
         const match = new Match(match_players[0].match, this.db)
         try {

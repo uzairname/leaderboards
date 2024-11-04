@@ -36,6 +36,7 @@ export async function respondToInteraction(
     .catch(e => onError(e))
 
   if (direct_response) {
+    sentry.debug(`responding`)
     return json(response)
   }
 

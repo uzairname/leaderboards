@@ -10,6 +10,7 @@ import { PartialRanking } from '../../../../../database/models/rankings'
 import { sentry } from '../../../../../logging/sentry'
 import { App } from '../../../../app/App'
 import { UserError, UserErrors } from '../../../errors/UserError'
+import { default_best_of } from '../../rankings/manage-rankings'
 import { validateMatchData } from './score-matches'
 import { rescoreMatches } from './score-matches'
 
@@ -18,10 +19,12 @@ import { rescoreMatches } from './score-matches'
  */
 export async function startNewMatch(
   app: App,
-  ranking: PartialRanking,
+  p_ranking: PartialRanking,
   players: Player[][],
-  metadata?: MatchMetadata,
+  best_of?: number,
 ): Promise<Match> {
+  const ranking = await p_ranking.fetch()
+
   const match_players = players.map((team, i) =>
     team.map((p, i) => ({
       player: p,
@@ -51,7 +54,9 @@ export async function startNewMatch(
     team_players: shuffled_team_players,
     team_votes: match_players.map(_ => Vote.Undecided),
     status: MatchStatus.Ongoing,
-    metadata,
+    metadata: {
+      best_of: best_of ?? ranking.data.matchmaking_settings.default_best_of ?? default_best_of
+    }
   })
 
   return match

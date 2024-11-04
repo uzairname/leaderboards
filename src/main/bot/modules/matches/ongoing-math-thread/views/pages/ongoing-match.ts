@@ -58,7 +58,7 @@ export async function ongoingMatchPage(
   const team_players = await match.players()
 
   if (
-    !app.config.features.MultipleTeamsPlayers &&
+    !app.config.features.AllowNon1v1 &&
     !(team_players.length === 2 && team_players.every(t => t.length === 1))
   ) {
     throw new Error(`Invalid match team dimensions ${team_players}`)

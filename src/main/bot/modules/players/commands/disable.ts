@@ -7,7 +7,7 @@ import {
   guildRankingsOption,
   withOptionalSelectedRanking,
 } from '../../../ui-helpers/ranking-command-option'
-import { getRegisterPlayer, setUserDisabled as setIsUserDisabled } from '../manage-players'
+import { getRegisterPlayer, setPlayerDisabled as setIsUserDisabled } from '../manage-players'
 
 export const disable_player_cmd_config = new AppCommand({
   type: D.ApplicationCommandType.ChatInput,
@@ -85,15 +85,14 @@ export default new GuildCommand(
           }
         })()
 
-        await Promise.all(players.map(player => setIsUserDisabled(app, player, unban_yes)))
+        await Promise.all(players.map(player => setIsUserDisabled(app, player, !unban_yes)))
 
         return {
           type: D.InteractionResponseType.ChannelMessageWithSource,
           data: {
-            content: `${unban_yes ? `Unbanned` : `Banned`} <@${selected_user_id}> from ${rankings.map(r => r.data.name).join(', ')}`,
-            flags: D.MessageFlags.Ephemeral,
+            content: `You have ${unban_yes ? `unbanned` : `banned`} <@${selected_user_id}> from participating in ${rankings.map(r => r.data.name).join(', ')}`,
           },
         }
       }),
     ),
-).dev()
+)

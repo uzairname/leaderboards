@@ -86,7 +86,6 @@ export async function withSelectedRanking(
   },
   callback: (ranking: PartialRanking) => Promise<CommandInteractionResponse>,
 ): Promise<CommandInteractionResponse> {
-  sentry.debug(`withSelectedRanking`)
   return _withSelectedRanking(
     app,
     ctx,
@@ -116,12 +115,13 @@ async function _withSelectedRanking(
   let ranking_option_value: string | undefined
 
   sentry.addBreadcrumb({
-    message: `_withSelectedRanking}`,
+    message: `_withSelectedRanking`,
     data: {
-      options,
-      interaction: interaction.data
+      options: options,
+      interaction: JSON.stringify(interaction.data),
     }
   })
+
   if (options.subcommand) {
     const subcmd_options = interaction.data.options as D.APIApplicationCommandInteractionDataSubcommandOption[]
     const subcmd = subcmd_options.find(o => o.name === options.subcommand)

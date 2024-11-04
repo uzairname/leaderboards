@@ -57,8 +57,8 @@ export async function updatePlayerRatings(
   app: App,
   update: { player: PartialPlayer; rating: Rating }[],
 ) {
-  sentry.debug(`updatePlayers, ${update.map(u => u.player.data.id)}`)
-  const rankings_affected = new Set<Ranking>()
+  sentry.debug(`updatePlayerRatings, ${update.map(u => u.player.data.id)}`)
+  const ranking_ids_affected = new Set<number>()
 
   const result = await Promise.all([
     // Update player ratings
@@ -70,7 +70,7 @@ export async function updatePlayerRatings(
           const ranking = await player.ranking()
 
           // store affected rankings for later leaderboard update
-          rankings_affected.add(ranking)
+          ranking_ids_affected.add(ranking.data.id)
 
           if (app.config.features.RatingRoleConnections) {
 
@@ -97,40 +97,19 @@ export async function updatePlayerRatings(
   ])
 
   // update ranking leaderboards
-  sentry.debug(`updatePlayers, updating ${rankings_affected.size} leaderboards`)
+  sentry.debug(`updatePlayers, updating ${ranking_ids_affected.size} leaderboards`)
   await Promise.all(
-    Array.from(rankings_affected).map(ranking => syncRankingLbMessages(app, ranking)),
+    Array.from(ranking_ids_affected).map(ranking => syncRankingLbMessages(app, app.db.rankings.get(ranking))),
   )
 }
 
-// export async function updatePlayerRating(app: App, player: Player, rating: number, rd: number) {
-//   await player.update({ rating, rd })
-//   const ranking = await player.ranking
-
-//   if (app.config.features.RatingRoleConnections) {
-//     const display_rating = calcDisplayRating(app, ranking.data.initial_rating)(player.data)
-//     const access_token = await getUserAccessToken(app, player.data.user_id, [
-//       D.OAuth2Scopes.RoleConnectionsWrite,
-//     ])
-//     if (access_token) {
-//       await updateUserRoleConnectionData(
-//         app,
-//         access_token,
-//         display_rating.score,
-//         ranking.data.name,
-//       )
-//     }
-//   }
-// }
-
-
-export async function setUserDisabled(app: App, player: Player, disabled: boolean) {
+export async function setPlayerDisabled(app: App, player: Player, disabled: boolean) {
+  sentry.debug(`setPlayerDisabled ${disabled} ${player.data.flags}, ${player.data.flags | PlayerFlags.Disabled}, ${player.data.flags & ~PlayerFlags.Disabled}`)
   await player.update({
     flags: disabled
       ? player.data.flags | PlayerFlags.Disabled
       : player.data.flags & ~PlayerFlags.Disabled,
   })
 
-  const ranking = await player.ranking()
-  await syncRankingLbMessages(app, ranking)
+  await syncRankingLbMessages(app, await player.ranking())
 }

@@ -11,6 +11,11 @@ export const dev_cmd_signature = new AppCommand({
   description: 'Test command',
 })
 
+const subcommand_names = {
+  clear_cache: 'clear-cache',
+  rescore: 'rescore',
+  lb: 'lb',
+}
 const ranking_option_name = 'ranking'
 
 export default new GuildCommand(dev_cmd_signature,
@@ -20,13 +25,19 @@ export default new GuildCommand(dev_cmd_signature,
       options: [
         {
           type: D.ApplicationCommandOptionType.Subcommand,
-          name: 'clear-cache',
+          name: subcommand_names.clear_cache,
           description: 'Clear cache',
         },
         {
           type: D.ApplicationCommandOptionType.Subcommand,
-          name: 'rescore',
+          name: subcommand_names.rescore,
           description: 'Rescore all matches',
+          options: await guildRankingsOption(app, guild, ranking_option_name),
+        },
+        {
+          type: D.ApplicationCommandOptionType.Subcommand,
+          name: subcommand_names.lb,
+          description: 'Show full leaderboard',
           options: await guildRankingsOption(app, guild, ranking_option_name),
         }
       ],
@@ -40,7 +51,7 @@ export default new GuildCommand(dev_cmd_signature,
       const subcommand_option_name = subcommand_options[0].name
   
       switch (subcommand_option_name) {
-        case 'clear-cache':
+        case subcommand_names.clear_cache:
           app.db.cache.clear()
           return {
             type: D.InteractionResponseType.ChannelMessageWithSource,
@@ -48,23 +59,19 @@ export default new GuildCommand(dev_cmd_signature,
               content: `cleared cache`,
             },
           }
-          break
-        case 'rescore':
-          sentry.debug(`a`)
-          return await withSelectedRanking(app, ctx, ranking_option_name, {subcommand: 'rescor'}, async p_ranking => {
-
-            const ranking = await p_ranking.fetch()
-            sentry.debug(`rescore ing ${ranking.data.name}`)
-            await rescoreMatches(app, ranking, {reset_rating_to_initial: true})
-            return {
-              type: D.InteractionResponseType.ChannelMessageWithSource,
-              data: {
-                content: `rescored ${ranking.data.name}`,
-                flags: D.MessageFlags.Ephemeral,
-              },
-            }
+        case subcommand_names.rescore:
+          return await withSelectedRanking(app, ctx, ranking_option_name, {subcommand: subcommand_names.rescore}, async ranking => {
+            
+            return ctx.defer({
+              type: D.InteractionResponseType.DeferredChannelMessageWithSource,
+              data: {flags: D.MessageFlags.Ephemeral}
+            }, async ctx => {
+              await rescoreMatches(app, ranking, {reset_rating_to_initial: true})
+              return ctx.edit({
+                content: `rescored ${(await ranking.fetch()).data.name}`
+              })
+            })
           })
-          break
       }
   
       throw new Error('Unknown subcommand')
