@@ -1,13 +1,14 @@
 import * as D from 'discord-api-types/v10'
-import { AppCommand, field, InteractionContext } from '../../../../../../discord-framework'
+import { CommandView,  InteractionContext } from '../../../../../../discord-framework'
 import { App } from '../../../../../app/App'
 import { AppView } from '../../../../../app/ViewModule'
 import { Colors } from '../../../../ui-helpers/constants'
-import { checkGuildInteraction, ensureAdminPerms } from '../../../../ui-helpers/perms'
+import { ensureAdminPerms } from '../../../../ui-helpers/perms'
 import { getOrAddGuild, syncGuildAdminRole } from '../../../guilds/guilds'
-import { rankings_cmd_signature } from '../../../rankings/views/commands/rankings'
+import { rankings_cmd_signature } from '../../../rankings/views/commands/rankings-cmd'
+import { field } from '../../../../../../utils/StringData'
 
-export const settings_cmd_signature = new AppCommand({
+export const settings_cmd_signature = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
 
   custom_id_prefix: 's',
@@ -78,14 +79,13 @@ async function onAdminRoleBtn(
 ): Promise<D.APIInteractionResponseCallbackData> {
   await ensureAdminPerms(app, ctx)
 
-  const interaction = checkGuildInteraction(ctx.interaction)
-  const guild = await getOrAddGuild(app, interaction.guild_id)
+  const guild = await getOrAddGuild(app, ctx.interaction.guild_id)
 
   const role_result = await syncGuildAdminRole(app, guild)
 
   await app.discord.addRoleToMember(
-    interaction.guild_id,
-    interaction.member.user.id,
+    ctx.interaction.guild_id,
+    ctx.interaction.member.user.id,
     role_result.role.id,
   )
 

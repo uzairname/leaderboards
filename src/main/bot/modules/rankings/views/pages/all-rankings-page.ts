@@ -1,29 +1,35 @@
 import * as D from 'discord-api-types/v10'
-import { Guild } from '../../../../../../database/models'
 import {
+  AnyGuildInteractionContext,
   ChatInteractionResponse,
   ComponentContext,
-  field,
   getModalSubmitEntries,
   MessageView,
   StateContext,
 } from '../../../../../../discord-framework'
 import { sentry } from '../../../../../../logging/sentry'
-import { nonNullable, unflatten } from '../../../../../../utils/utils'
+import {
+  intOrUndefined,
+  nonNullable,
+  strOrUndefined,
+  unflatten,
+} from '../../../../../../utils/utils'
 import { App } from '../../../../../app/App'
 import { AppView } from '../../../../../app/ViewModule'
 import { UserErrors } from '../../../../errors/UserError'
 import { Messages } from '../../../../ui-helpers/messages'
-import { checkGuildInteraction, ensureAdminPerms } from '../../../../ui-helpers/perms'
+import { ensureAdminPerms } from '../../../../ui-helpers/perms'
 import { getOrAddGuild } from '../../../guilds/guilds'
 import { guidePage, help_cmd_signature } from '../../../help/help-command'
 import {
   createNewRankingInGuild,
+  default_best_of,
   default_players_per_team,
   default_teams_per_match,
   max_ranking_name_length,
 } from '../../manage-rankings'
-import { ranking_settings_page_config, rankingSettingsPage } from './ranking-settings'
+import { ranking_settings_page_config, rankingSettingsPage } from './ranking-settings-page'
+import { field } from '../../../../../../utils/StringData'
 
 export const rankings_page_config = new MessageView({
   custom_id_prefix: 'ar',
@@ -32,7 +38,7 @@ export const rankings_page_config = new MessageView({
     owner_id: field.String(),
     callback: field.Choice({
       createRankingModal,
-      onCreateRankingModalSubmit,
+      createRankingModalSubmit,
     }),
     modal_input: field.Object({
       name: field.String(),
@@ -41,24 +47,27 @@ export const rankings_page_config = new MessageView({
       best_of: field.Int(),
     }),
   },
+  guild_only: true,
 })
 
 export default new AppView(rankings_page_config, (app: App) =>
   rankings_page_config.onComponent(async ctx => {
-    // check if the user is the page user
-    const interaction = checkGuildInteraction(ctx.interaction)
-    if (ctx.state.data.owner_id && ctx.state.data.owner_id !== interaction.member.user.id) {
+    if (ctx.state.data.owner_id && ctx.state.data.owner_id !== ctx.interaction.member.user.id) {
       throw new UserErrors.NotComponentOwner(ctx.state.data.owner_id)
     }
     return ctx.state.get.callback()(app, ctx)
   }),
 )
 
-export async function rankingsPage(
+export async function allRankingsPage(
   app: App,
-  guild: Guild,
-  component_owner_id?: string,
+  ctx: AnyGuildInteractionContext,
 ): Promise<D.APIInteractionResponseCallbackData> {
+  // const interaction = checkGuildComponentInteraction(ctx.interaction)
+  const interaction = ctx.interaction
+  const guild = await getOrAddGuild(app, interaction.guild_id)
+  const component_owner_id = interaction.member.user.id
+
   sentry.debug(`rankingsPage(${guild})`)
 
   const state = rankings_page_config.newState({ owner_id: component_owner_id })
@@ -126,88 +135,78 @@ export async function rankingsPage(
   }
 }
 
+/**
+ * Create ranking modal view: this is the Ranking Settings Modal with the name field required
+ */
 export function createRankingModal(
   app: App,
   ctx: StateContext<typeof rankings_page_config>,
 ): D.APIModalInteractionResponse {
-
-
   let components = rankingSettingsModal({
     name: {
-      current: ctx.state.data.modal_input?.name
+      current: ctx.state.data.modal_input?.name,
     },
     best_of: {},
-    team_size: app.config.features.AllowNon1v1 ? {} : undefined
+    team_size: app.config.features.AllowNon1v1 ? {} : undefined,
   })
 
   return {
     type: D.InteractionResponseType.Modal,
     data: {
-      custom_id: ctx.state.set.callback(onCreateRankingModalSubmit).cId(),
+      custom_id: ctx.state.set.callback(createRankingModalSubmit).cId(),
       title: 'Create a new ranking',
       components,
     },
   }
 }
 
-export async function onCreateRankingModalSubmit(
+export async function createRankingModalSubmit(
   app: App,
   ctx: ComponentContext<typeof rankings_page_config>,
 ): Promise<ChatInteractionResponse> {
-  await ensureAdminPerms(app, ctx)
+  return ctx.defer(
+    {
+      type: D.InteractionResponseType.DeferredMessageUpdate,
+    },
+    async ctx => {
+      await ensureAdminPerms(app, ctx)
 
-  const modal_input = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
-  const name = nonNullable(modal_input['name'], 'input name').value
+      const modal_input = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
 
-  const interaction = checkGuildInteraction(ctx.interaction)
-  const guild = await getOrAddGuild(app, interaction.guild_id)
+      const { ranking } = await createNewRankingInGuild(app, ctx.interaction.guild_id, {
+        name: nonNullable(strOrUndefined(modal_input['name']?.value), 'input name'),
+        teams_per_match: intOrUndefined(modal_input['teams_per_match']?.value),
+        players_per_team: intOrUndefined(modal_input['players_per_team']?.value),
+        matchmaking_settings: {
+          default_best_of: intOrUndefined(modal_input['best_of']?.value) ?? default_best_of,
+        },
+      })
 
-  const ranking = await createNewRankingInGuild(app, guild, {
-    name,
-    teams_per_match: modal_input['teams_per_match']?.value
-      ? parseInt(modal_input['teams_per_match'].value)
-      : undefined,
-    players_per_team: modal_input['players_per_team']?.value
-      ? parseInt(modal_input['players_per_team'].value)
-      : undefined,
-    matchmaking_settings: {
-      default_best_of: modal_input['best_of']?.value
-        ? parseInt(modal_input['best_of'].value)
-        : 1
-    }
-  })
-
-  return {
-    type: D.InteractionResponseType.UpdateMessage,
-    data: await rankingSettingsPage(app, {
-      guild_id: ranking.new_guild_ranking.data.guild_id,
-      ranking_id: ranking.new_guild_ranking.data.ranking_id,
-      component_owner_id: interaction.member.user.id,
-    }),
-  }
+      await ctx.edit(
+        await rankingSettingsPage({
+          app,
+          ctx,
+          ranking_id: ranking.data.id,
+        }),
+      )
+    },
+  )
 }
 
 /**
  * If name is specified and current name is not provided, it will be required
  * @param include Which fields to include, along with their current value
- * @returns 
+ * @returns
  */
-export function rankingSettingsModal(
-  include: {
-    name?: { current?: string }
-    best_of?: { current?: number }
-    team_size?: {
-      players_per_team?: number
-      teams_per_match?: number
-    }
+export function rankingSettingsModal(include: {
+  name?: { current?: string }
+  best_of?: { current?: number }
+  team_size?: {
+    players_per_team?: number
+    teams_per_match?: number
   }
-): D.APIActionRowComponent<D.APITextInputComponent>[] {
-  const example_names = [
-    `Smash 1v1`,
-    `Boosts Only`,
-    `Ping Pong 1v1`,
-    `Chess`,
-  ]
+}): D.APIActionRowComponent<D.APITextInputComponent>[] {
+  const example_names = [`Smash 1v1`, `Boosts Only`, `Ping Pong 1v1`, `Chess`]
 
   const components: D.APIActionRowComponent<D.APIModalActionRowComponent>[] = []
 
@@ -222,7 +221,8 @@ export function rankingSettingsModal(
           style: D.TextInputStyle.Short,
           custom_id: 'name',
           label: 'Name',
-          placeholder: include?.name?.current ??
+          placeholder:
+            include?.name?.current ??
             `e.g. ${example_names[Math.floor(Math.random() * example_names.length)]}`,
           max_length: max_ranking_name_length,
           required: !include?.name?.current,
@@ -232,35 +232,32 @@ export function rankingSettingsModal(
   }
 
   if (include.team_size) {
-    components.push(
-      {
-        type: D.ComponentType.ActionRow,
-        components: [
-          {
-            type: D.ComponentType.TextInput,
-            style: D.TextInputStyle.Short,
-            custom_id: 'teams_per_match',
-            label: 'Number of teams per match',
-            placeholder: `${include.team_size.teams_per_match ?? default_teams_per_match}`,
-            required: false,
-          },
-        ],
-      })
-      components.push({
-        type: D.ComponentType.ActionRow,
-        components: [
-          {
-            type: D.ComponentType.TextInput,
-            style: D.TextInputStyle.Short,
-            custom_id: 'players_per_team',
-            label: 'Players per team',
-            placeholder: `${include.team_size.players_per_team ?? default_players_per_team}`,
-            required: false,
-          },
-        ],
-      },
-    )
-
+    components.push({
+      type: D.ComponentType.ActionRow,
+      components: [
+        {
+          type: D.ComponentType.TextInput,
+          style: D.TextInputStyle.Short,
+          custom_id: 'teams_per_match',
+          label: 'Number of teams per match',
+          placeholder: `${include.team_size.teams_per_match ?? default_teams_per_match}`,
+          required: false,
+        },
+      ],
+    })
+    components.push({
+      type: D.ComponentType.ActionRow,
+      components: [
+        {
+          type: D.ComponentType.TextInput,
+          style: D.TextInputStyle.Short,
+          custom_id: 'players_per_team',
+          label: 'Players per team',
+          placeholder: `${include.team_size.players_per_team ?? default_players_per_team}`,
+          required: false,
+        },
+      ],
+    })
   }
 
   if (include?.best_of) {

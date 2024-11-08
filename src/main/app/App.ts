@@ -14,26 +14,35 @@ import { Config } from './Config'
 import { ViewModule } from './ViewModule'
 
 export class App {
-  public db: DbClient
-  public discord: DiscordAPIClient
   public config: Config
-  public views: ViewModule
+  public discord: DiscordAPIClient
+  public db: DbClient
   public events: AppEvents
 
   constructor(
-    env: Env,
-    all_views: ViewModule,
-    all_event_listeners: ((events: AppEvents) => void)[],
+    public env: Env,
+    public views: ViewModule,
+    public all_event_listeners: ((events: AppEvents) => void)[],
+    {
+      db,
+      config,
+    }: {
+      db?: DbClient
+      config?: Config
+    } = {},
   ) {
-    this.config = new Config(env)
+    this.config = config ?? new Config(env)
 
-    const drizzle = getNeonDrizzleClient(
-      this.config.env.POSTGRES_URL,
-      this.config.env.POSTGRES_READ_URL,
-      sentry,
-    )
-
-    this.db = new DbClient(drizzle)
+    if (db) {
+      this.db = db
+    } else {
+      const drizzle = getNeonDrizzleClient(
+        this.config.env.POSTGRES_URL,
+        this.config.env.POSTGRES_READ_URL,
+        sentry,
+      )
+      this.db = new DbClient(drizzle)
+    }
     this.db.cache.clear()
 
     this.discord = new DiscordAPIClient({
@@ -43,8 +52,6 @@ export class App {
       client_secret: this.config.env.CLIENT_SECRET,
       public_key: this.config.env.PUBLIC_KEY,
     })
-
-    this.views = all_views
 
     this.events = getAppEvents(this, all_event_listeners)
   }

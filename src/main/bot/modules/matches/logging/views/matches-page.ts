@@ -1,9 +1,10 @@
 import * as D from 'discord-api-types/v10'
-import { MessageView, field } from '../../../../../../../discord-framework'
-import { App } from '../../../../../../app/App'
-import { AppView } from '../../../../../../app/ViewModule'
-import { Colors } from '../../../../../ui-helpers/constants'
-import { matchSummaryEmbed } from '../../match-summary-message'
+import { MessageView, } from '../../../../../../discord-framework'
+import { App } from '../../../../../app/App'
+import { AppView } from '../../../../../app/ViewModule'
+import { Colors } from '../../../../ui-helpers/constants'
+import { matchSummaryEmbed } from '../match-summary-message'
+import { field } from '../../../../../../utils/StringData'
 
 export const matches_page_config = new MessageView({
   custom_id_prefix: 'mh',
@@ -47,19 +48,13 @@ export async function matchesPage(
 
   const matches_per_page = 5
 
-  const players = state.data.player_ids?.map(id => app.db.players.get(id))
-  const users = state.data.user_ids?.map(id => app.db.users.get(id))
-  const rankings = state.data.ranking_ids?.map(id => app.db.rankings.get(id))
-  const guild = state.data.guild_id ? app.db.guilds.get(state.data.guild_id) : undefined
-
   const matches = await app.db.matches.getMany({
-    players,
-    users,
-    rankings,
-    guild,
+    player_ids: state.data.player_ids,
+    user_ids: state.data.user_ids,
+    ranking_ids: state.data.ranking_ids,
+    guild_id: state.data.guild_id,
     limit: matches_per_page + 1, // +1 to check if there are more pages
     offset: (state.data.page_num ?? 0) * matches_per_page,
-    // status: MatchStatus.Finished,
   })
 
   // determine if on last page

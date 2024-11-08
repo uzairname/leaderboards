@@ -83,7 +83,7 @@ export class DiscordAPIClient extends REST {
 
   // USERS
 
-  async fetchUser(user_id: string) {
+  async getUser(user_id: string) {
     return (await this.fetch(RequestMethod.Get, D.Routes.user(user_id))) as D.RESTGetAPIUserResult
   }
 
@@ -252,11 +252,15 @@ export class DiscordAPIClient extends REST {
     )) as D.RESTGetAPIGuildResult
   }
 
-  async getGuildMember(guild_id: string, user_id: string) {
-    return (await this.fetch(
-      RequestMethod.Get,
-      D.Routes.guildMember(guild_id, user_id),
-    )) as D.RESTGetAPIGuildMemberResult
+  async getGuildMember(guild_id: string, user_id: string): Promise<D.APIGuildMember | undefined> {
+    try {
+      return (await this.fetch(
+        RequestMethod.Get,
+        D.Routes.guildMember(guild_id, user_id),
+      )) as D.RESTGetAPIGuildMemberResult
+    } catch (e) {
+      if (!(e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.UnknownMember)) throw e
+    }
   }
 
   // GUILD ROLES

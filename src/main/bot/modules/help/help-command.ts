@@ -1,13 +1,14 @@
 import * as D from 'discord-api-types/v10'
-import { AppCommand, InteractionContext, StateContext, field } from '../../../../discord-framework'
+import { CommandView, InteractionContext, StateContext } from '../../../../discord-framework'
 import { App } from '../../../app/App'
 import { AppView } from '../../../app/ViewModule'
 import { Colors } from '../../ui-helpers/constants'
 import { Messages } from '../../ui-helpers/messages'
 import { dateTimestamp, github_url, inviteUrl } from '../../ui-helpers/strings'
 import { getOrAddGuild } from '../guilds/guilds'
+import { field } from '../../../../utils/StringData'
 
-export const help_cmd_signature = new AppCommand({
+export const help_cmd_signature = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
   custom_id_prefix: 'h',
   name: 'help',
@@ -32,8 +33,10 @@ export default new AppView(help_cmd_signature, app =>
     })
     .onComponent(async ctx => {
       return {
-        type: ctx.state.is.edit() ? D.InteractionResponseType.UpdateMessage : D.InteractionResponseType.ChannelMessageWithSource,
-        data: await ctx.state.get.page()(app, {...ctx, state: ctx.state.set.edit(true)}),
+        type: ctx.state.is.edit()
+          ? D.InteractionResponseType.UpdateMessage
+          : D.InteractionResponseType.ChannelMessageWithSource,
+        data: await ctx.state.get.page()(app, { ...ctx, state: ctx.state.set.edit(true) }),
       }
     }),
 )
@@ -85,8 +88,6 @@ export async function guidePage(
     flags: D.MessageFlags.Ephemeral,
   }
 }
-
-
 
 async function helpComponents(
   app: App,

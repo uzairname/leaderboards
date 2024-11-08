@@ -2,13 +2,13 @@ import * as D from 'discord-api-types/v10'
 import { json } from 'itty-router'
 import { sentry } from '../../logging/sentry'
 import { DiscordAPIClient } from '../rest/client'
-import { ViewErrors } from './errors'
+import { InteractionErrors } from './errors'
 import { findView } from './find-view'
 import {
   FindViewCallback,
   InteractionErrorCallback,
-  viewIsAppCommand,
-  viewIsChatInputAppCommand,
+  viewIsChatInputCommand,
+  viewIsCommand,
 } from './types'
 import { verify } from './verify'
 import { ViewStateFactory } from './view-state'
@@ -44,7 +44,9 @@ export async function respondToInteraction(
     category: 'Sending interaction response',
     data: { response: JSON.stringify(response) },
   })
+
   await bot.createInteractionResponse(interaction.id, interaction.token, response)
+
   return new Response('OK', { status: 200 })
 }
 
@@ -65,13 +67,13 @@ async function respond(
     const view = findView(findViewCallback, interaction)
 
     if (interaction.type === D.InteractionType.ApplicationCommand) {
-      if (viewIsAppCommand(view)) return view.respondToCommand(interaction, bot, onError)
-      throw new ViewErrors.InvalidViewType()
+      if (viewIsCommand(view)) return view.respondToCommand(interaction, bot, onError)
+      throw new InteractionErrors.InvalidViewType()
     }
 
     if (interaction.type === D.InteractionType.ApplicationCommandAutocomplete) {
-      if (viewIsChatInputAppCommand(view)) return view.respondToAutocomplete(interaction)
-      throw new ViewErrors.InvalidViewType()
+      if (viewIsChatInputCommand(view)) return view.respondToAutocomplete(interaction)
+      throw new InteractionErrors.InvalidViewType()
     }
   }
 

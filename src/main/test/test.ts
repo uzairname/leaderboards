@@ -5,39 +5,27 @@ export async function runTests(app: App): Promise<Response> {
 
   app.db.cache.clear()
 
-  await testlb(app)
-
   return new Response(`Successfully tested Leaderboards app`, { status: 200 })
 }
 
 async function testlb(app: App) {
-
   const guild_ranking = app.db.guild_rankings.get('1003698664767762575', 6)
   const player = await app.db.players.fetch(40)
 
   await setPlayerDisabled(app, player, !(player.data.flags & PlayerFlags.Disabled))
   // await syncGuildRankingLbMessage(app, guild_ranking)
-
 }
-
-
 
 async function testrescorematches(app: App) {
   const ranking = app.db.rankings.get(13)
-  const guild = app.db.guilds.get('1003698664767762575')
+  console.log(`${ranking}`)
 
-  console.log(ranking.toString())
+  await rescoreMatches(app, ranking, {})
+  // const res = await getOrderedLeaderboardPlayers(app, ranking)
 
-  const first_match = await app.db.matches.getMany({
-    rankings: [ranking],
-    earliest_first: true,
-    limit: 1,
-  })
-
-  console.log(first_match[0].match)
-
-  await rescoreMatches(app, ranking)
-
+  // console.log(res)
+  // const guild = app.db.guilds.get('1003698664767762575')
+  // console.log(ranking.toString())
 }
 
 async function testmatchesquery(app: App) {
@@ -126,8 +114,6 @@ async function testmatchesquery(app: App) {
   console.log(result)
 }
 
-
-
 import { and, asc, desc, eq, gte, inArray, SQL, sql } from 'drizzle-orm'
 import { Rating, TrueSkill } from 'ts-trueskill'
 import { PartialGuild } from '../../database/models/guilds'
@@ -136,8 +122,7 @@ import { PartialPlayer, PlayerFlags } from '../../database/models/players'
 import { PartialRanking } from '../../database/models/rankings'
 import { PartialUser } from '../../database/models/users'
 import { GuildRankings, Matches, MatchPlayers, Players } from '../../database/schema'
-import { rescoreMatches } from '../bot/modules/matches/management/score-matches'
-import { syncGuildRankingLbMessage } from '../bot/modules/leaderboard/leaderboard-message'
+import { rescoreMatches } from '../bot/modules/matches/management/manage-matches'
 import { setPlayerDisabled } from '../bot/modules/players/manage-players'
 
 function testTs() {

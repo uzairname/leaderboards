@@ -34,10 +34,12 @@ async function copy_values() {
   
   // copy guild
   const guild = await fromDb.select().from(Guilds).where(eq(Guilds.id, from_guild_id))
+  await toDb.delete(Guilds).where(eq(Guilds.id, to_guild_id))
   await toDb.insert(Guilds).values(guild.map(g => ({...g , id: to_guild_id, name: "Dev Testing"}))).onConflictDoNothing()
 
   // copy ranking
   const ranking = await fromDb.select().from(Rankings).where(eq(Rankings.id, ranking_id))
+  await toDb.delete(Rankings).where(eq(Rankings.id, ranking_id))
   await toDb.insert(Rankings).values(ranking).onConflictDoNothing()
 
   // copy guild_ranking

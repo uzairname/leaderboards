@@ -1,5 +1,3 @@
-import { sentry } from '../logging/sentry'
-
 /**
  * Map with optional secondary key
  */

@@ -1,11 +1,11 @@
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging/sentry'
 import type { DiscordAPIClient } from '../rest/client'
-import { AnyAppCommand, viewIsChatInputAppCommand } from './types'
+import { AnyCommandView, viewIsChatInputCommand } from './types'
 
 export function overwriteDiscordCommandsWithViews(
   bot: DiscordAPIClient,
-  commands: AnyAppCommand[],
+  commands: AnyCommandView[],
   guild_id?: string,
 ): void {
   const commands_data = commands.map(appCommandToJSONBody)
@@ -38,9 +38,9 @@ export function overwriteDiscordCommandsWithViews(
 }
 
 export function appCommandToJSONBody(
-  view: AnyAppCommand,
+  view: AnyCommandView,
 ): D.RESTPostAPIApplicationGuildCommandsJSONBody {
-  if (viewIsChatInputAppCommand(view) && view.config.description.length > 100) {
+  if (viewIsChatInputCommand(view) && view.config.description.length > 100) {
     throw new Error(`Description for command ${view.config.custom_id_prefix} > 100 characters`)
   }
 

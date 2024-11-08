@@ -1,5 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { Env } from '../../Env'
+import { rateTrueskill } from '../bot/modules/matches/management/rating-calculation'
 
 export class Config {
   readonly OauthRoutes = {
@@ -19,11 +20,6 @@ export class Config {
     D.PermissionFlagsBits.ManageThreads |
     D.PermissionFlagsBits.ManageRoles
 
-  readonly ChallengeTimeoutMs = 1000 * 60 * 10
-
-  readonly DisplayMeanRating = 1000
-  readonly DisplaySdOffset = -0.6
-
   constructor(
     readonly env: Env,
 
@@ -32,8 +28,8 @@ export class Config {
     readonly IsDev = env.ENVIRONMENT === 'development',
 
     readonly DirectResponse = IsDev ? true : true,
-    // true: return a value directly.
-    // false: call respond endpoint.
+    // true: Return a value directly.
+    // false: Rall respond endpoint. Requests will get canceled. Will log interaction response errors in sentry.
 
     readonly features = {
       GiveBotInvite: !IsDev,
@@ -45,6 +41,17 @@ export class Config {
       RatingRoleConnections: false,
     },
 
-    readonly ProvisionalRdThreshold = IsDev ? 0.9 : 0.85,
+    readonly ProvisionalRdThreshold = IsDev ? 0.85 : 0.85,
+
+    readonly DisplayMeanRating = IsDev ? 1000 : 1000,
+    readonly DisplaySdOffset = IsDev ? -0.6 : -0.6,
+
+    readonly defaultScorer = rateTrueskill,
+
+    readonly RematchTimeoutMs = 1000 * 60 * 30,
+
+    readonly ChallengeTimeoutMs = 1000 * 60 * 10,
+
+    readonly QueueJoinTimeoutMs = IsDev ? 1000 * 60 * 0.2 : 1000 * 60 * 20,
   ) {}
 }

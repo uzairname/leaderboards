@@ -1,10 +1,10 @@
 import * as D from 'discord-api-types/v10'
 import {
+  AnyGuildInteractionContext,
   ChatInteractionResponse,
   ComponentContext,
   InteractionContext,
   MessageView,
-  field,
 } from '../../../../../../discord-framework'
 import {
   ViewState,
@@ -12,8 +12,8 @@ import {
 } from '../../../../../../discord-framework/interactions/view-state'
 import { App } from '../../../../../app/App'
 import { AppView } from '../../../../../app/ViewModule'
-import { checkGuildInteraction } from '../../../../ui-helpers/perms'
 import views from '../../../all-views'
+import { field } from '../../../../../../utils/StringData'
 
 export const select_channel_page_config = new MessageView({
   name: 'select channel',
@@ -32,6 +32,7 @@ export const select_channel_page_config = new MessageView({
       onPrevBtn,
     }),
   },
+  guild_only: true,
 })
 
 export function selectChannelView(app: App) {
@@ -51,7 +52,7 @@ export function selectChannelView(app: App) {
 
 export async function sendSelectChannelPage(
   app: App,
-  ctx: InteractionContext<any>,
+  ctx: AnyGuildInteractionContext,
   data: ViewState<typeof select_channel_page_config.state_schema>['data'],
   message?: string,
 ): Promise<D.APIInteractionResponseCallbackData> {
@@ -70,9 +71,9 @@ async function selectChannelPage(
   ctx: InteractionContext<typeof select_channel_page_config>,
   message?: string,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  const channels = (
-    await app.discord.getGuildChannels(checkGuildInteraction(ctx.interaction).guild_id)
-  ).filter(c => !ctx.state.data.text_only || c.type === D.ChannelType.GuildText)
+  const channels = (await app.discord.getGuildChannels(ctx.interaction.guild_id)).filter(
+    c => !ctx.state.data.text_only || c.type === D.ChannelType.GuildText,
+  )
 
   let btns: D.APIButtonComponent[] = [
     {

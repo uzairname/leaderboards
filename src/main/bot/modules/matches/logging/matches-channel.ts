@@ -7,7 +7,7 @@ import { App } from '../../../../app/App'
 import { Colors } from '../../../ui-helpers/constants'
 import { commandMention } from '../../../ui-helpers/strings'
 import { syncRankedCategory } from '../../guilds/guilds'
-import matches from './views/commands/matches'
+import matches from './views/matches-cmd'
 
 export async function syncMatchesChannel(
   app: App,

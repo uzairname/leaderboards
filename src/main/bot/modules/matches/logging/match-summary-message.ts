@@ -7,7 +7,7 @@ import { sentry } from '../../../../../logging/sentry'
 import { maxIndex } from '../../../../../utils/utils'
 import { App } from '../../../../app/App'
 import { Colors } from '../../../ui-helpers/constants'
-import { emojis, escapeMd, relativeTimestamp, space, spaces } from '../../../ui-helpers/strings'
+import { emojis, escapeMd, relativeTimestamp, spaces } from '../../../ui-helpers/strings'
 import { getMatchPlayersDisplayStats } from '../../players/display'
 import { syncMatchesChannel } from './matches-channel'
 
@@ -73,8 +73,9 @@ export async function matchSummaryMessageData(app: App, match: Match): Promise<M
   })
 }
 
-export async function matchSummaryEmbed(app: App, match: Match, { } = {}): Promise<D.APIEmbed> {
+async function conciseMatchSummary(app: App, match: Match) {}
 
+export async function matchSummaryEmbed(app: App, match: Match, {} = {}): Promise<D.APIEmbed> {
   const ranking = await match.ranking.fetch()
 
   const team_player_stats = await getMatchPlayersDisplayStats(app, match)
@@ -97,7 +98,7 @@ export async function matchSummaryEmbed(app: App, match: Match, { } = {}): Promi
   const fields: D.APIEmbedField[] = team_player_stats.map((team, team_num) => {
     return {
       name: (outcome => {
-        if (outcome) {
+        if (match.data.status === MatchStatus.Finished && outcome) {
           const winning_team_index = maxIndex(outcome)
           const is_draw = winning_team_index === -1
           return is_draw
@@ -123,9 +124,10 @@ export async function matchSummaryEmbed(app: App, match: Match, { } = {}): Promi
 
             const diff = p.after.rating - p.before.rating
 
-            const rating_diff_text =
-              p.after.is_provisional
-                ? `\n-# ${space}(unranked)`
+            const rating_diff_text = p.after.is_provisional
+              ? `\n-# (unranked)`
+              : p.before.is_provisional
+                ? ``
                 : `\n-# ${spaces(2)}(${(parseInt(diff.toFixed(0)) > 0 ? '+' : '') + diff.toFixed(0)})`
 
             return (

@@ -2,7 +2,6 @@ import * as D from 'discord-api-types/v10'
 import { MatchStatus, Vote } from '../../../../../../../database/models/matches'
 import {
   DeferContext,
-  field,
   MessageData,
   MessageView,
 } from '../../../../../../../discord-framework'
@@ -13,14 +12,8 @@ import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
 import { UserError } from '../../../../../errors/UserError'
 import { Messages } from '../../../../../ui-helpers/messages'
-import {
-  checkGuildComponentInteraction,
-  checkGuildInteraction,
-} from '../../../../../ui-helpers/perms'
 import { castPlayerVote, start1v1SeriesThread } from '../../manage-ongoing-match'
-import { isContextMenuApplicationCommandInteraction } from 'discord-api-types/utils/v10'
-
-export const rematch_timeout_ms = 1000 * 60 * 30 // 20 minutes
+import { field } from '../../../../../../../utils/StringData'
 
 export const ongoing_series_page_config = new MessageView({
   name: 'Ongoing series message',
@@ -64,7 +57,7 @@ export async function ongoingMatchPage(
     throw new Error(`Invalid match team dimensions ${team_players}`)
   }
 
-  const message = Messages.ongoingMatch1v1Message(match, team_players)
+  const message = Messages.ongoingMatch1v1Message(app, match, team_players)
 
   let components: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = []
 
@@ -110,9 +103,8 @@ export async function ongoingMatchPage(
       },
     ])
   } else if (
-    (match.data.status === MatchStatus.Finished ||
-    match.data.status === MatchStatus.Canceled) &&
-    !state.data.teams_to_rematch?.every(v => v)
+    match.data.status === MatchStatus.Finished ||
+    match.data.status === MatchStatus.Canceled
   ) {
     components = components.concat([
       {
@@ -136,10 +128,9 @@ export async function ongoingMatchPage(
 }
 
 async function vote(app: App, ctx: DeferContext<typeof ongoing_series_page_config>): Promise<void> {
-  const interaction = checkGuildInteraction(ctx.interaction as D.APIMessageComponentInteraction)
   const match = await app.db.matches.fetch(ctx.state.get.match_id())
 
-  await castPlayerVote(app, match, interaction.member.user.id, ctx.state.get.claim())
+  await castPlayerVote(app, match, ctx.interaction.member.user.id, ctx.state.get.claim())
 
   if (match.data.status === MatchStatus.Finished) {
     // The match was finished and scored
@@ -151,8 +142,7 @@ async function vote(app: App, ctx: DeferContext<typeof ongoing_series_page_confi
   }
   if (match.data.status === MatchStatus.Finished || match.data.status === MatchStatus.Canceled) {
     const thread_id = match.data.ongoing_match_channel_id
-    if (thread_id) 
-      await app.discord.editChannel(thread_id, { archived: true })
+    if (thread_id) await app.discord.editChannel(thread_id, { archived: true })
   }
 
   await ctx.edit((await ongoingMatchPage(app, ctx.state)).as_response)
@@ -162,12 +152,11 @@ async function rematch(
   app: App,
   ctx: DeferContext<typeof ongoing_series_page_config>,
 ): Promise<void> {
-  const interaction = checkGuildComponentInteraction(ctx.interaction)
-  const match = await app.db.matches.fetch(ctx.state.get.match_id())
-  const team_players = await match.players()
+  const old_match = await app.db.matches.fetch(ctx.state.get.match_id())
+  const team_players = await old_match.players()
 
   // check if user is in the match
-  const user_id = interaction.member.user.id
+  const user_id = ctx.interaction.member.user.id
   const team_index = team_players.findIndex(team =>
     team.some(p => p.player.data.user_id === user_id),
   )
@@ -189,28 +178,29 @@ async function rematch(
     // Everyone wants to rematch.
 
     // Check if the rematch hasn't timed out
-    const expres_at = new Date(
-      (match.data.time_finished?.getTime() ?? Date.now()) + rematch_timeout_ms,
+    const expires_at = new Date(
+      (old_match.data.time_finished?.getTime() ?? Date.now()) + app.config.RematchTimeoutMs,
     )
-    if (new Date() > expres_at) {
+    if (new Date() > expires_at) {
       throw new UserError(`Rematch window has expired`)
     }
 
     // archive thread
-    match.data.ongoing_match_channel_id  && await app.discord.editChannel(match.data.ongoing_match_channel_id, {archived: true})
-    
+    old_match.data.ongoing_match_channel_id &&
+      (await app.discord.editChannel(old_match.data.ongoing_match_channel_id, { archived: true }))
+
     // start the new match
     const { guild_ranking } = await app.db.guild_rankings.fetch({
-      guild_id: interaction.guild_id,
-      ranking_id: match.data.ranking_id,
+      guild_id: ctx.interaction.guild_id,
+      ranking_id: old_match.data.ranking_id,
     })
     const { thread } = await start1v1SeriesThread(
       app,
       guild_ranking,
       team_players.map(t => t.map(p => p.player)),
-      match.data.metadata?.best_of,
+      old_match.data.metadata?.best_of,
     )
-
+    ctx.state.save.teams_to_rematch(null)
 
     await ctx.send({
       content: `New match started in <#${thread.id}>`,

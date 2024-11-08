@@ -13,15 +13,13 @@ import {
 import { PgDialect } from 'drizzle-orm/pg-core'
 import { Player } from '.'
 import { sentry } from '../../logging/sentry'
+import { sequential } from '../../utils/utils'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
 import { DbObject, DbObjectManager } from '../managers'
 import { GuildRankings, MatchPlayers, MatchSummaryMessages, Matches, Players } from '../schema'
-import { PartialGuild } from './guilds'
-import { PartialPlayer, PlayerSelect } from './players'
+import { PlayerSelect } from './players'
 import { PartialRanking } from './rankings'
-import { PartialUser } from './users'
-import { sequential } from '../../utils/utils'
 
 export type MatchMetadata = {
   best_of: number
@@ -151,31 +149,6 @@ export class Match implements DbObject<MatchSelect> {
     }
   }
 
-  async updatePlayerRatingsBefore(team_players: MatchPlayer[][]): Promise<this> {
-    await Promise.all(
-      team_players.flat().map(async player => {
-        sentry.debug(
-          `updating player rating before for ${player.player.data.id} in match ${this.data.id}`,
-        )
-        await this.db.drizzle
-          .update(MatchPlayers)
-          .set({
-            rating: player.rating,
-          })
-          .where(
-            and(
-              eq(MatchPlayers.match_id, this.data.id),
-              eq(MatchPlayers.player_id, player.player.data.id),
-            ),
-          )
-      }),
-    )
-
-    this.db.cache.match_players.delete(this.data.id)
-
-    return this
-  }
-
   async delete(): Promise<void> {
     await this.db.drizzle.delete(Matches).where(eq(Matches.id, this.data.id))
     this.db.cache.matches.delete(this.data.id)
@@ -302,10 +275,10 @@ export class MatchesManager extends DbObjectManager {
   async getMany(filters: {
     finished_at_or_after?: Date | null
     status?: MatchStatus
-    rankings?: PartialRanking[]
-    players?: PartialPlayer[]
-    users?: PartialUser[]
-    guild?: PartialGuild
+    ranking_ids?: number[]
+    player_ids?: number[]
+    user_ids?: string[]
+    guild_id?: string
     limit?: number
     offset?: number
     earliest_first?: boolean
@@ -321,31 +294,13 @@ export class MatchesManager extends DbObjectManager {
 
     if (filters.status) conditions.push(eq(Matches.status, filters.status))
 
-    if (filters.rankings)
-      conditions.push(
-        inArray(
-          Matches.ranking_id,
-          filters.rankings.map(r => r.data.id),
-        ),
-      )
+    if (filters.ranking_ids) conditions.push(inArray(Matches.ranking_id, filters.ranking_ids))
 
-    if (filters.players)
-      conditions.push(
-        inArray(
-          MatchPlayers.player_id,
-          filters.players.map(p => p.data.id),
-        ),
-      )
+    if (filters.player_ids) conditions.push(inArray(MatchPlayers.player_id, filters.player_ids))
 
-    if (filters.users)
-      conditions.push(
-        inArray(
-          Players.user_id,
-          filters.users.map(u => u.data.id),
-        ),
-      )
+    if (filters.user_ids) conditions.push(inArray(Players.user_id, filters.user_ids))
 
-    if (filters.guild) conditions.push(eq(GuildRankings.guild_id, filters.guild.data.id))
+    if (filters.guild_id) conditions.push(eq(GuildRankings.guild_id, filters.guild_id))
 
     const where_sql = and(...conditions)
 
@@ -380,8 +335,6 @@ export class MatchesManager extends DbObjectManager {
 
     const result = await final_query
 
-    console.log(result)
-
     const match_ids = Array.from(new Set(result.map(r => r.match.id)))
 
     const matches = await sequential(
@@ -411,16 +364,23 @@ export class MatchesManager extends DbObjectManager {
     }
   }
 
+  /**
+   * Updates match players based on a set of keys: matches and player ids,
+   * and values: ratings and flags
+   */
   async updateMatchPlayers(
-    match_players: { match_id: number; player: MatchPlayer }[],
+    match_players: { match_id: number; update: MatchPlayer }[],
   ): Promise<void> {
     sentry.debug(`updating ${match_players.length} match players`)
+    // match_players.map(mp => console.log(mp.player.rating.mu, mp.player.player.data.name))
     if (match_players.length === 0) return
 
     const match_ids = match_players.map(mp => mp.match_id)
-    const player_ids = match_players.map(mp => mp.player.player.data.id)
-    const ratings = match_players.map(mp => `'${JSON.stringify(mp.player.rating)}'`)
-    const flags = match_players.map(mp => mp.player.flags)
+    const player_ids = match_players.map(mp => mp.update.player.data.id)
+    const ratings = match_players.map(mp => `'${JSON.stringify(mp.update.rating)}'`)
+    const flags = match_players.map(mp => mp.update.flags)
+
+    console.log(match_ids, player_ids, ratings, flags)
 
     const pg_dialect = new PgDialect()
 

@@ -1,15 +1,16 @@
 import * as D from 'discord-api-types/v10'
 import type { Guild, GuildRanking, Ranking } from '../../../../database/models'
 import { PartialGuildRanking } from '../../../../database/models/guildrankings'
+import { PartialRanking } from '../../../../database/models/rankings'
 import { MessageData } from '../../../../discord-framework'
 import { sentry } from '../../../../logging/sentry'
 import { nonNullable } from '../../../../utils/utils'
 import { type App } from '../../../app/App'
 import { Colors } from '../../ui-helpers/constants'
-import { escapeMd, relativeTimestamp, space } from '../../ui-helpers/strings'
+import { commandMention, escapeMd, relativeTimestamp, space } from '../../ui-helpers/strings'
 import { syncRankedCategory } from '../guilds/guilds'
 import { getOrderedLeaderboardPlayers } from '../players/display'
-import { PartialRanking } from '../../../../database/models/rankings'
+import leaderboardCmd from './views/leaderboard-cmd'
 
 export async function syncRankingLbMessages(app: App, ranking: PartialRanking): Promise<void> {
   sentry.debug(`syncRankingLbMessages ranking: ${ranking.data.id}`)
@@ -40,7 +41,10 @@ export async function syncGuildRankingLbMessage(
   const result = await app.discord.utils.syncChannelMessage({
     target_channel_id: guild_ranking.data.leaderboard_channel_id,
     target_message_id: guild_ranking.data.leaderboard_message_id,
-    messageData: () => leaderboardMessage(app, ranking),
+    messageData: () =>
+      leaderboardMessage(app, ranking, {
+        guild_id: guild.data.id,
+      }),
     getChannel: () => sendLbChannel(app, guild, ranking),
     no_edit,
   })
@@ -96,7 +100,8 @@ export async function leaderboardMessage(
   app: App,
   ranking: Ranking,
   options?: {
-    show_provisional?: boolean
+    guild_id?: string
+    full?: boolean
   },
 ): Promise<MessageData> {
   const players = await getOrderedLeaderboardPlayers(app, ranking)
@@ -108,11 +113,11 @@ export async function leaderboardMessage(
     players.length > 0
       ? players
           .map(p => {
-            const rating_text = `\`${p.rating.toFixed(0)}\``.padStart(max_rating_len + 2)
+            const rating_text = `\`${p.rating.toFixed(0)}\``.padStart(
+              max_rating_len + 2 - `${place}`.length,
+            )
             if (p.is_provisional) {
-              return options?.show_provisional
-                ? `-# unranked\n-# ?` + `${space}${rating_text}` + `${space}<@${p.user_id}> `
-                : ''
+              return null
             } else {
               place++
               return (
@@ -127,17 +132,51 @@ export async function leaderboardMessage(
               )
             }
           })
+          .filter(Boolean)
           .join('\n')
       : 'No players yet'
+  const embeds: D.APIEmbed[] = []
 
-  const embed: D.APIEmbed = {
+  embeds.push({
     title: `${escapeMd(ranking.data.name)} Leaderboard`,
-    description: players_text + `\n\n-# Last updated ${relativeTimestamp(new Date())}`,
+    description:
+      players_text +
+      `\n-# Last updated ${relativeTimestamp(new Date(Date.now()))}. ` +
+      (options?.full
+        ? ``
+        : `Use ${await commandMention(app, leaderboardCmd, options?.guild_id)} to see the full leaderboard.`),
     color: Colors.Primary,
+  })
+
+  const players_provisional_text = options?.full
+    ? players
+        .map(p => {
+          const rating_text = `\`${p.rating.toFixed(0)}?\``
+          if (p.is_provisional) {
+            return `-# ${rating_text}${space}<@${p.user_id}>`
+          } else {
+            return ''
+          }
+        })
+        .filter(Boolean)
+        .join('\n')
+    : ``
+
+  const explanation_text =
+    `\n-# Unranked players are given a provisional rating and` +
+    ` are hidden from the main leaderboard until they play more games.`
+
+  if (players_provisional_text) {
+    embeds[0].fields = [
+      {
+        name: 'Unranked',
+        value: players_provisional_text + explanation_text,
+      },
+    ]
   }
 
   return new MessageData({
-    embeds: [embed],
+    embeds,
   })
 }
 

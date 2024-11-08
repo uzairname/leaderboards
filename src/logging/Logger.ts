@@ -16,6 +16,7 @@ export class Logger extends Toucan {
     private request: Request,
     env: Env,
     private execution_context: ExecutionContext,
+    private timeout_ms: number = 30000,
   ) {
     super({
       dsn: env.SENTRY_DSN,
@@ -34,28 +35,7 @@ export class Logger extends Toucan {
     this.setTag('request_num', `${cache.request_num}`)
     this.request_name = `${this.request.method} ${new URL(this.request.url).pathname}`
 
-    return new Promise<Response>((resolve, reject) => {
-      const warning_ms = 10000
-      const timeout_ms = 120000
-      setTimeout(() => {
-        this.captureMessage(
-          `${this.request_name} taking longer than ${warning_ms / 1000}s`,
-          'warning',
-        )
-      }, warning_ms)
-
-      setTimeout(() => {
-        reject(new RequestTimeoutError(this.request_name, timeout_ms))
-      }, timeout_ms)
-
-      handler(this.request)
-        .then(res => {
-          resolve(res)
-        })
-        .catch(e => {
-          reject(e)
-        })
-    })
+    return handler(this.request)
       .then(res => {
         if (this.caught_exception) {
           this.captureException(this.caught_exception)
@@ -66,7 +46,7 @@ export class Logger extends Toucan {
       })
       .catch(e => {
         this.captureException(e)
-        return new Response(`Internal Server Error ${e}`, { status: 500 })
+        return new Response(`Internal Server Error: ${e}`, { status: 500 })
       })
   }
 
@@ -90,43 +70,36 @@ export class Logger extends Toucan {
       },
     }
 
-    // try executing callback. If it takes longer than 20 seconds, log a timeout error. If not, cancel the timeout and log the result
-    this.execution_context.waitUntil(
-      new Promise<void>((resolve, reject) => {
-        const warning_ms = 10000
-        const timeout_ms = 30000
-        setTimeout(() => {
-          this.captureMessage(
-            `${this.request_name} taking longer than ${warning_ms / 1000}s`,
-            'warning',
-          )
-        }, warning_ms)
+    // try executing callback. If it takes too long, log a timeout error. If not, cancel the timeout and log the result
+    let timeout: NodeJS.Timeout
+    const timeout_promise = new Promise<void>(() => {
+      timeout = setTimeout(() => {
+        const e = new RequestTimeoutError(request_name, this.timeout_ms)
+        this.captureMessage(
+          `${request_name} taking longer than ${this.timeout_ms / 1000}s`,
+          'warning',
+        )
+        onTimeout?.(e)
+      }, this.timeout_ms)
+    })
 
-        setTimeout(async () => {
-          this.captureMessage(
-            `${this.request_name} taking longer than ${timeout_ms / 1000}s`,
-            'warning',
-          )
-          const e = new RequestTimeoutError(request_name, timeout_ms)
-          onTimeout?.(e)
-          reject(e)
-        }, timeout_ms)
-
-        this.debug(`Offloading "${request_name}"`)
-
-        callback(ctx).catch(reject).finally(resolve)
+    const callback_promise = callback(ctx)
+      .then(() => {
+        if (offload_caught_exception) {
+          this.captureException(offload_caught_exception)
+        } else {
+          this.logResult(request_name)
+        }
       })
-        .then(() => {
-          if (offload_caught_exception) {
-            this.captureException(offload_caught_exception)
-          } else {
-            this.logResult(request_name)
-          }
-        })
-        .catch(e => {
-          this.captureException(e)
-        }),
-    )
+      .catch(e => {
+        this.captureException(e)
+      })
+
+    const result = Promise.race([timeout_promise, callback_promise]).finally(() => {
+      clearTimeout(timeout)
+    })
+
+    this.execution_context.waitUntil(result)
   }
 
   addBreadcrumb(breadcrumb: Breadcrumb, hint?: BreadcrumbHint): void {

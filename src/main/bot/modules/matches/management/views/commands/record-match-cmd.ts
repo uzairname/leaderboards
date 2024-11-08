@@ -1,33 +1,27 @@
 import * as D from 'discord-api-types/v10'
 import {
-  _,
-  AppCommand,
   ChatInteractionResponse,
+  CommandView,
   ComponentContext,
   DeferContext,
-  field,
+  getOptions,
   StateContext,
 } from '../../../../../../../discord-framework'
+import { checkGuildMessageComponentInteraction } from '../../../../../../../discord-framework/interactions/utils/interaction-checks'
 import { assert, nonNullable, snowflakeToDate } from '../../../../../../../utils/utils'
 import { App } from '../../../../../../app/App'
 import { GuildCommand } from '../../../../../../app/ViewModule'
 import { UserError } from '../../../../../errors/UserError'
 import { Colors } from '../../../../../ui-helpers/constants'
-import {
-  checkGuildComponentInteraction,
-  checkGuildInteraction,
-  hasAdminPerms,
-} from '../../../../../ui-helpers/perms'
-import {
-  guildRankingsOption,
-  withSelectedRanking,
-} from '../../../../../ui-helpers/ranking-command-option'
+import { hasAdminPerms } from '../../../../../ui-helpers/perms'
+import { guildRankingsOption, withSelectedRanking } from '../../../../../ui-helpers/ranking-option'
 import { escapeMd, messageLink, relativeTimestamp } from '../../../../../ui-helpers/strings'
 import { getRegisterPlayer } from '../../../../players/manage-players'
 import { matchSummaryEmbed } from '../../../logging/match-summary-message'
 import { recordAndScoreMatch } from '../../match-creation'
+import { field } from '../../../../../../../utils/StringData'
 
-export const record_match_cmd_signature = new AppCommand({
+export const record_match_cmd_signature = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
   name: 'record-match',
   description: 'record a match',
@@ -36,12 +30,12 @@ export const record_match_cmd_signature = new AppCommand({
     // whether the user can record a match on their own
     admin: field.Boolean(),
     clicked_component: field.Enum({
-      'select team': _,
-      'confirm teams': _,
-      'select winner': _,
-      'confirm outcome': _,
-      'match user confirm': _, // someone in the match has confirmed the pending match
-      'match user cancel': _, // someone in the match has cancelled the pending match
+      'select team': null,
+      'confirm teams': null,
+      'select winner': null,
+      'confirm outcome': null,
+      'match user confirm': null, // someone in the match has confirmed the pending match
+      'match user cancel': null, // someone in the match has cancelled the pending match
     }),
     teams_per_match: field.Int(),
     players_per_team: field.Int(),
@@ -96,7 +90,7 @@ export default new GuildCommand(
       },
     ]
 
-    return new AppCommand({
+    return new CommandView({
       ...record_match_cmd_signature.config,
       options: (
         await guildRankingsOption(
@@ -118,110 +112,115 @@ export default new GuildCommand(
        * If the user is admin, skip the confirmation step
        */
       .onCommand(async ctx =>
-        withSelectedRanking(app, ctx, optionnames.ranking, {}, async p_ranking =>
-          ctx.defer(
-            {
-              type: D.InteractionResponseType.DeferredChannelMessageWithSource,
-              data: { flags: D.MessageFlags.Ephemeral },
-            },
-            async ctx => {
-              const interaction = checkGuildInteraction(ctx.interaction)
-              const selected_time_finished = (
-                interaction.data.options?.find(o => o.name === optionnames.time_finished) as
-                  | D.APIApplicationCommandInteractionDataStringOption
-                  | undefined
-              )?.value
-
-              if (selected_time_finished && !isNaN(parseInt(selected_time_finished))) {
-                if (selected_time_finished.length < 13) {
-                  // assume it's a unix timestamp
-                  ctx.state.save.selected_time_finished(
-                    new Date(parseInt(selected_time_finished) * 1000),
-                  )
-                } else {
-                  // assume it's a snowflake
-                  ctx.state.save.selected_time_finished(
-                    snowflakeToDate(BigInt(selected_time_finished)),
-                  )
-                }
-              }
-
-              if (await hasAdminPerms(app, ctx)) {
-                ctx.state.save.admin(true)
-              }
-
-              const ranking = await p_ranking?.fetch()
-              ctx.state.save.ranking_id(ranking.data.id)
-              ctx.state.save.players_per_team(ranking.data.players_per_team)
-              ctx.state.save.teams_per_match(ranking.data.teams_per_match)
-
-              if (ctx.state.is.players_per_team(1) && ctx.state.is.teams_per_match(2)) {
-                // If this is a 1v1 ranking, check if the winner and loser were specified
-
-                const winner_id = (
-                  interaction.data.options?.find(o => o.name === optionnames.winner) as
-                    | D.APIApplicationCommandInteractionDataUserOption
-                    | undefined
-                )?.value
-                const loser_id = (
-                  interaction.data.options?.find(o => o.name === optionnames.loser) as
-                    | D.APIApplicationCommandInteractionDataUserOption
+        withSelectedRanking(
+          app,
+          ctx,
+          getOptions(ctx.interaction, { ranking: { type: D.ApplicationCommandOptionType.Integer } })
+            .ranking,
+          {},
+          async p_ranking =>
+            ctx.defer(
+              {
+                type: D.InteractionResponseType.DeferredChannelMessageWithSource,
+                data: { flags: D.MessageFlags.Ephemeral },
+              },
+              async ctx => {
+                const selected_time_finished = (
+                  ctx.interaction.data.options?.find(o => o.name === optionnames.time_finished) as
+                    | D.APIApplicationCommandInteractionDataStringOption
                     | undefined
                 )?.value
 
-                if (winner_id && loser_id) {
-                  if (ctx.state.is.admin()) {
-                    // record the match
-                    const winner = await getRegisterPlayer(app, winner_id, ranking)
-                    const loser = await getRegisterPlayer(app, loser_id, ranking)
-
-                    const match = await recordAndScoreMatch(
-                      app,
-                      ranking,
-                      [[winner], [loser]].map(team =>
-                        team.map(p => ({
-                          player: p,
-                          ...p.data,
-                        })),
-                      ),
-                      [1, 0],
-                      undefined,
-                      ctx.state.data.selected_time_finished,
+                if (selected_time_finished && !isNaN(parseInt(selected_time_finished))) {
+                  if (selected_time_finished.length < 13) {
+                    // assume it's a unix timestamp
+                    ctx.state.save.selected_time_finished(
+                      new Date(parseInt(selected_time_finished) * 1000),
                     )
-
-                    const match_summary_message = await match.getSummaryMessage(
-                      interaction.guild_id,
-                    )
-
-                    return void ctx.edit({
-                      content:
-                        `Match #${match.data.number} in ${ranking.data.name} recorded.` +
-                        (match_summary_message
-                          ? ` ${messageLink(
-                              match_summary_message.guild_id,
-                              match_summary_message.channel_id,
-                              match_summary_message.message_id,
-                            )}`
-                          : ``),
-                      flags: D.MessageFlags.Ephemeral,
-                    })
                   } else {
-                    // store the selected users to state
-                    ctx.state.save.players([[{ user_id: winner_id }], [{ user_id: loser_id }]])
-                    ctx.state.save.selected_winning_team_index(0)
-                    // prompt all users involved to confirm the match
-                    await ctx.edit({
-                      content: `All players involved in this match must agree to the results`,
-                    })
-                    return void sendPlayersConfirmingMatchPage(app, ctx)
+                    // assume it's a snowflake
+                    ctx.state.save.selected_time_finished(
+                      snowflakeToDate(BigInt(selected_time_finished)),
+                    )
                   }
                 }
-              }
 
-              // Otherwise, select teams
-              return void ctx.edit(await selectTeamPage(app, ctx))
-            },
-          ),
+                if (await hasAdminPerms(app, ctx)) {
+                  ctx.state.save.admin(true)
+                }
+
+                const ranking = await p_ranking?.fetch()
+                ctx.state.save.ranking_id(ranking.data.id)
+                ctx.state.save.players_per_team(ranking.data.players_per_team)
+                ctx.state.save.teams_per_match(ranking.data.teams_per_match)
+
+                if (ctx.state.is.players_per_team(1) && ctx.state.is.teams_per_match(2)) {
+                  // If this is a 1v1 ranking, check if the winner and loser were specified
+
+                  const winner_id = (
+                    ctx.interaction.data.options?.find(o => o.name === optionnames.winner) as
+                      | D.APIApplicationCommandInteractionDataUserOption
+                      | undefined
+                  )?.value
+                  const loser_id = (
+                    ctx.interaction.data.options?.find(o => o.name === optionnames.loser) as
+                      | D.APIApplicationCommandInteractionDataUserOption
+                      | undefined
+                  )?.value
+
+                  if (winner_id && loser_id) {
+                    if (ctx.state.is.admin()) {
+                      // record the match
+                      const winner = await getRegisterPlayer(app, winner_id, ranking)
+                      const loser = await getRegisterPlayer(app, loser_id, ranking)
+
+                      const match = await recordAndScoreMatch(
+                        app,
+                        ranking,
+                        [[winner], [loser]].map(team =>
+                          team.map(p => ({
+                            player: p,
+                            ...p.data,
+                          })),
+                        ),
+                        [1, 0],
+                        undefined,
+                        ctx.state.data.selected_time_finished,
+                      )
+
+                      const match_summary_message = await match.getSummaryMessage(
+                        ctx.interaction.guild_id,
+                      )
+
+                      return void ctx.edit({
+                        content:
+                          `Match #${match.data.number} in ${ranking.data.name} recorded.` +
+                          (match_summary_message
+                            ? ` ${messageLink(
+                                match_summary_message.guild_id,
+                                match_summary_message.channel_id,
+                                match_summary_message.message_id,
+                              )}`
+                            : ``),
+                        flags: D.MessageFlags.Ephemeral,
+                      })
+                    } else {
+                      // store the selected users to state
+                      ctx.state.save.players([[{ user_id: winner_id }], [{ user_id: loser_id }]])
+                      ctx.state.save.selected_winning_team_index(0)
+                      // prompt all users involved to confirm the match
+                      await ctx.edit({
+                        content: `All players involved in this match must agree to the results`,
+                      })
+                      return void sendPlayersConfirmingMatchPage(app, ctx)
+                    }
+                  }
+                }
+
+                // Otherwise, select teams
+                return void ctx.edit(await selectTeamPage(app, ctx))
+              },
+            ),
         ),
       )
 
@@ -377,16 +376,12 @@ async function selectAndConfirmOutcomePage(
   const players_per_team = ctx.state.get.players_per_team()
   const teams_per_match = ctx.state.get.teams_per_match()
   const players = ctx.state.get.players()
-  const interaction = checkGuildInteraction(ctx.interaction)
+  const ranking = app.db.rankings.get(ctx.state.get.ranking_id())
 
   // find the name of the users in the match
   const all_player_names = await Promise.all(
     players.flat().map(async p => {
-      const member = await app.discord.getGuildMember(
-        interaction.guild_id,
-        nonNullable(p.user_id, 'user_id'),
-      )
-      return member.nick || member.user!.username // "The field user won't be included in the member object attached to MESSAGE_CREATE and MESSAGE_UPDATE gateway events."
+      return (await getRegisterPlayer(app, nonNullable(p.user_id, 'user_id'), ranking)).data.name // "The field user won't be included in the member object attached to MESSAGE_CREATE and MESSAGE_UPDATE gateway events."
     }),
   )
 
@@ -467,8 +462,7 @@ async function sendPlayersConfirmingMatchPage(
   app: App,
   ctx: DeferContext<typeof record_match_cmd_signature>,
 ): Promise<void> {
-  const interaction = checkGuildInteraction(ctx.interaction)
-  ctx.state.save.requesting_player_id(interaction.member.user.id)
+  ctx.state.save.requesting_player_id(ctx.interaction.member.user.id)
   ctx.state.save.match_requested_at(new Date())
   return void ctx.followup(await playersConfirmingMatchPage(app, ctx))
 }
@@ -548,13 +542,13 @@ async function onPlayerConfirmOrCancelBtn(
   app: App,
   ctx: ComponentContext<typeof record_match_cmd_signature>,
 ): Promise<ChatInteractionResponse> {
-  const interaction = checkGuildComponentInteraction(ctx.interaction)
+  const { channel, message } = checkGuildMessageComponentInteraction(ctx.interaction)
 
   const time_since_match_requested =
     new Date().getTime() - ctx.state.get.match_requested_at().getTime()
 
   if (time_since_match_requested > match_confirm_timeout_ms) {
-    await app.discord.deleteMessageIfExists(interaction.channel.id, interaction.message.id)
+    await app.discord.deleteMessageIfExists(channel.id, message.id)
     return {
       type: D.InteractionResponseType.ChannelMessageWithSource,
       data: {
@@ -564,7 +558,7 @@ async function onPlayerConfirmOrCancelBtn(
     }
   }
 
-  const user_id = interaction.member.user.id
+  const user_id = ctx.interaction.member.user.id
 
   // find which user is confirming/cancelling
   const players = ctx.state.get.players()

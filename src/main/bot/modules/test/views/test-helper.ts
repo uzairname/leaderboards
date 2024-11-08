@@ -1,8 +1,9 @@
 import * as D from 'discord-api-types/v10'
-import { MessageView, _, field } from '../../../../../../discord-framework'
-import { ViewStateFactory } from '../../../../../../discord-framework/interactions/view-state'
-import { AppView } from '../../../../../app/ViewModule'
-import all_views from '../../../all-views'
+import { MessageView} from '../../../../../discord-framework'
+import { ViewStateFactory } from '../../../../../discord-framework/interactions/view-state'
+import { AppView } from '../../../../app/ViewModule'
+import all_views from '../../all-views'
+import { field } from '../../../../../utils/StringData'
 
 export const helper_page_config = new MessageView({
   name: 'test helper',
@@ -14,8 +15,8 @@ export const helper_page_config = new MessageView({
 
     counter: field.Int(),
     clicked_component: field.Enum({
-      halve: _,
-      submit: _,
+      halve: null,
+      submit: null,
     }),
   },
 })

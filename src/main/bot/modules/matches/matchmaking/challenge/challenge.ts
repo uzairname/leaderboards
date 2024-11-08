@@ -2,20 +2,20 @@ import * as D from 'discord-api-types/v10'
 import {
   ChatInteractionResponse,
   ComponentContext,
-  field,
   MessageData,
   MessageView,
-  StateContext,
-} from '../../../../../../../discord-framework'
-import { App } from '../../../../../../app/App'
-import { AppView } from '../../../../../../app/ViewModule'
-import { Colors } from '../../../../../ui-helpers/constants'
-import { checkGuildInteraction } from '../../../../../ui-helpers/perms'
-import { relativeTimestamp } from '../../../../../ui-helpers/strings'
-import { getRegisterPlayer } from '../../../../players/manage-players'
-import { start1v1SeriesThread } from '../../../ongoing-math-thread/manage-ongoing-match'
-import { sequential } from '../../../../../../../utils/utils'
-import { default_best_of } from '../../../../rankings/manage-rankings'
+} from '../../../../../../discord-framework'
+import { checkGuildInteraction } from '../../../../../../discord-framework/interactions/utils/interaction-checks'
+import { ViewState } from '../../../../../../discord-framework/interactions/view-state'
+import { sequential } from '../../../../../../utils/utils'
+import { App } from '../../../../../app/App'
+import { AppView } from '../../../../../app/ViewModule'
+import { Colors } from '../../../../ui-helpers/constants'
+import { relativeTimestamp } from '../../../../ui-helpers/strings'
+import { getRegisterPlayer } from '../../../players/manage-players'
+import { default_best_of } from '../../../rankings/manage-rankings'
+import { start1v1SeriesThread } from '../../ongoing-math-thread/manage-ongoing-match'
+import { field } from '../../../../../../utils/StringData'
 
 export const challenge_message_signature = new MessageView({
   name: 'Challenge Message',
@@ -43,15 +43,18 @@ export default new AppView(challenge_message_signature, app =>
 
 export async function challengeMessage(
   app: App,
-  ctx: StateContext<typeof challenge_message_signature>,
+  data: ViewState<typeof challenge_message_signature.state_schema>['data'],
 ): Promise<MessageData> {
-  const initiator_id = ctx.state.get.initiator_id()
-  const opponent_id = ctx.state.get.opponent_id()
+  const state = challenge_message_signature.newState(data)
 
-  const expires_at = new Date(ctx.state.get.time_sent().getTime() + app.config.ChallengeTimeoutMs)
-  
-  const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
-  const best_of = ctx.state.get.best_of() ?? ranking.data.matchmaking_settings.default_best_of ?? default_best_of
+  const initiator_id = state.get.initiator_id()
+  const opponent_id = state.get.opponent_id()
+
+  const expires_at = new Date(state.get.time_sent().getTime() + app.config.ChallengeTimeoutMs)
+
+  const ranking = await app.db.rankings.fetch(state.get.ranking_id())
+  const best_of =
+    state.get.best_of() ?? ranking.data.matchmaking_settings.default_best_of ?? default_best_of
 
   const content = `### <@${initiator_id}> challenges <@${opponent_id}> to a 1v1`
 
@@ -61,8 +64,8 @@ export async function challengeMessage(
       description: ``
         + `Ranking: **${ranking.data.name}**`
         + `\nBest of **${best_of}**`
-        + `\n` + ((ctx.state.is.opponent_accepted() && ctx.state.data.ongoing_match_channel_id)
-          ? `Challenge accepted. New match started in <#${ctx.state.data.ongoing_match_channel_id}>`
+        + `\n` + ((state.is.opponent_accepted() && state.data.ongoing_match_channel_id)
+          ? `Challenge accepted. New match started in <#${state.data.ongoing_match_channel_id}>`
           : `*Awaiting response*`)
         + `\n\n-# Expires ${relativeTimestamp(expires_at)}`
         + ``, // prettier-ignore
@@ -71,7 +74,7 @@ export async function challengeMessage(
   ]
 
   const components: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] =
-    !ctx.state.is.opponent_accepted()
+    !state.is.opponent_accepted()
       ? [
           {
             type: D.ComponentType.ActionRow,
@@ -79,7 +82,7 @@ export async function challengeMessage(
               {
                 type: D.ComponentType.Button,
                 style: D.ButtonStyle.Primary,
-                custom_id: ctx.state.set.callback(accept).cId(),
+                custom_id: state.set.callback(accept).cId(),
                 label: 'Accept',
               },
             ],
@@ -149,7 +152,9 @@ async function accept(
 
       // Register them as players in the ranking
       const players = await sequential(
-        user_ids.map(team => () => sequential(team.map((i) => () => getRegisterPlayer(app, i, ranking)))),
+        user_ids.map(
+          team => () => sequential(team.map(i => () => getRegisterPlayer(app, i, ranking))),
+        ),
       )
 
       // Start the match
@@ -162,7 +167,7 @@ async function accept(
 
       // Update the challenge message
       ctx.state.save.ongoing_match_channel_id(thread.id)
-      await ctx.edit((await challengeMessage(app, ctx)).as_response)
+      await ctx.edit((await challengeMessage(app, ctx.state.data)).as_response)
     },
   )
 }

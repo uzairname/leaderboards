@@ -8,12 +8,10 @@ import { PartialGuild } from './guilds'
 import { PartialRanking } from './rankings'
 
 export class PartialGuildRanking {
-
   constructor(
     public data: { guild_id: string; ranking_id: number },
-    public db: DbClient
-  ) {
-  }
+    public db: DbClient,
+  ) {}
 
   toString() {
     return `[GuildRanking ${this.data.guild_id}, ${this.data.ranking_id}]`
@@ -63,7 +61,6 @@ export class GuildRanking extends PartialGuildRanking {
 }
 
 export class GuildRankingsManager extends DbObjectManager {
-
   // when creating, pass in guild and ranking objects instead of ids
   async create(
     guild: Guild,

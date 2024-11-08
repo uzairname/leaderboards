@@ -1,7 +1,7 @@
 import * as D from 'discord-api-types/v10'
-import type { MessageData } from '../rest/objects'
 import type { ViewState } from './view-state'
-import { AppCommand, BaseView, MessageView } from './views'
+import { BaseView, CommandView, MessageView } from './views'
+import { MessageData } from '../rest/objects'
 
 export type AppCommandInteraction<CommandType extends D.ApplicationCommandType> =
   CommandType extends D.ApplicationCommandType.ChatInput
@@ -35,20 +35,20 @@ type InteractionResponse<InteractionType extends ChatInteraction> =
       ? ChatInteractionResponse
       : never
 
-export type AnyView = BaseView<any>
+export type AnyView = BaseView<any, any>
 
-export type AnyAppCommand = AppCommand<any, D.ApplicationCommandType>
+export type AnyCommandView = CommandView<any, D.ApplicationCommandType, any>
 
-export type AnyChatInputAppCommand = AppCommand<any, D.ApplicationCommandType.ChatInput>
+export type AnyChatInputCommand = CommandView<any, D.ApplicationCommandType.ChatInput, any>
 
-export type AnyMessageView = MessageView<any>
+export type AnyMessageView = MessageView<any, any>
 
-export function viewIsAppCommand(view: AnyView): view is AnyAppCommand {
-  return view instanceof AppCommand
+export function viewIsCommand(view: AnyView): view is AnyCommandView {
+  return view instanceof CommandView
 }
 
-export function viewIsChatInputAppCommand(view: AnyView): view is AnyChatInputAppCommand {
-  return viewIsAppCommand(view) && view.config.type === D.ApplicationCommandType.ChatInput
+export function viewIsChatInputCommand(view: AnyView): view is AnyChatInputCommand {
+  return viewIsCommand(view) && view.config.type === D.ApplicationCommandType.ChatInput
 }
 
 export type FindViewCallback = (
@@ -75,19 +75,19 @@ export interface AutocompleteContext {
 
 // Any context that can have a custom id
 export interface StateContext<View extends AnyView> {
+  // TODO: fix
   state: ViewState<View['state_schema']>
 }
-
-// Message
-export type MessageCreateContext<View extends AnyMessageView, Params> = StateContext<View> & Params
 
 // Any interaction except ping and autocomplete
 export interface InteractionContext<
   View extends AnyView,
   InteractionT extends ChatInteraction = ChatInteraction,
 > extends StateContext<View> {
-  interaction: InteractionT
-  send: (data: D.RESTPostAPIChannelMessageJSONBody) => Promise<D.RESTPostAPIChannelMessageResult>
+  interaction: View['guild_only'] extends true
+    ? D.APIGuildInteractionWrapper<InteractionT>
+    : InteractionT
+  send: (data: D.RESTPostAPIChannelMessageJSONBody | MessageData) => Promise<D.RESTPostAPIChannelMessageResult>
 }
 
 // Defer
@@ -114,22 +114,33 @@ export interface InitialInteractionContext<
 }
 
 // Command
-export interface CommandContext<
-  View extends AnyView,
-  Type extends D.ApplicationCommandType = View extends AnyAppCommand
-    ? View['config']['type']
-    : D.ApplicationCommandType,
-> extends InitialInteractionContext<View, AppCommandInteraction<Type>> {}
+export interface CommandContext<View extends AnyCommandView>
+  extends InitialInteractionContext<View, AppCommandInteraction<View['config']['type']>> {}
 
 // Component
 export interface ComponentContext<View extends AnyView>
   extends InitialInteractionContext<View, ComponentInteraction> {}
 
+// Any context
+
+export type AnyStateContext = StateContext<AnyView>
+
+export type AnyInteractionContext = InteractionContext<AnyView>
+
+export type AnyGuildInteractionContext = InteractionContext<BaseView<any, true>>
+
+export type AnyComponentContext = ComponentContext<AnyView>
+
+export type AnyCommandContext = CommandContext<AnyCommandView>
+
+export type AnyDeferContext = DeferContext<AnyView>
+
 export type AnyContext =
-  | CommandContext<AnyView, D.ApplicationCommandType>
-  | ComponentContext<AnyView>
-  | MessageCreateContext<AnyMessageView, any>
-  | DeferContext<AnyView>
+  | AnyStateContext
+  | AnyInteractionContext
+  | AnyComponentContext
+  | AnyCommandContext
+  | AnyDeferContext
 
 /**
  * CALLBACKS
@@ -145,8 +156,8 @@ export type ViewAutocompleteCallback<Type extends D.ApplicationCommandType> = (
 >
 
 // Command
-export type CommandCallback<View extends AnyAppCommand> = (
-  ctx: CommandContext<View, View['config']['type']>,
+export type CommandCallback<View extends CommandView<any, D.ApplicationCommandType, any>> = (
+  ctx: CommandContext<View>, // , View['config']['type']
 ) => Promise<CommandInteractionResponse>
 
 // Component
@@ -158,13 +169,6 @@ export type ComponentCallback<View extends AnyView> = (
 export type DeferCallback<View extends AnyView, InteractionType extends ChatInteraction> = (
   ctx: DeferContext<View, InteractionType>,
 ) => Promise<void>
-
-// Message
-export type SendMessageCallback<View extends AnyMessageView, Params> = (
-  ctx: MessageCreateContext<View, Params>,
-) => Promise<MessageData>
-
-export const _ = null
 
 export function $type<T>(): T {
   throw void 0

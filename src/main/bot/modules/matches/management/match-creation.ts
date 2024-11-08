@@ -9,10 +9,9 @@ import { PartialPlayer, PlayerFlags } from '../../../../../database/models/playe
 import { PartialRanking } from '../../../../../database/models/rankings'
 import { sentry } from '../../../../../logging/sentry'
 import { App } from '../../../../app/App'
-import { UserError, UserErrors } from '../../../errors/UserError'
+import { UserErrors } from '../../../errors/UserError'
 import { default_best_of } from '../../rankings/manage-rankings'
-import { validateMatchData } from './score-matches'
-import { rescoreMatches } from './score-matches'
+import { rescoreMatches, validateMatchData } from './manage-matches'
 
 /**
  * Starts a new match, using the players' current ratings
@@ -37,13 +36,11 @@ export async function startNewMatch(
   await ensureNoActiveMatches(
     app,
     match_players.flat().map(p => p.player),
-    ranking,
   )
 
   await ensurePlayersEnabled(
     app,
     match_players.flat().map(p => p.player),
-    ranking,
   )
 
   // shuffle teams
@@ -55,8 +52,8 @@ export async function startNewMatch(
     team_votes: match_players.map(_ => Vote.Undecided),
     status: MatchStatus.Ongoing,
     metadata: {
-      best_of: best_of ?? ranking.data.matchmaking_settings.default_best_of ?? default_best_of
-    }
+      best_of: best_of ?? ranking.data.matchmaking_settings.default_best_of ?? default_best_of,
+    },
   })
 
   return match
@@ -88,7 +85,6 @@ export async function recordAndScoreMatch(
   await ensurePlayersEnabled(
     app,
     players.flat().map(p => p.player),
-    ranking,
   )
 
   const match = await app.db.matches.create({
@@ -106,16 +102,12 @@ export async function recordAndScoreMatch(
   return app.db.matches.fetch(match.data.id)
 }
 
-export async function ensureNoActiveMatches(
-  app: App,
-  players: PartialPlayer[],
-  ranking: PartialRanking,
-): Promise<void> {
-  sentry.debug(`ensureNoActiveMatches: players ${players} in ranking ${ranking}`)
+// Ensures that the players are not in an active match in their ranking
+export async function ensureNoActiveMatches(app: App, players: PartialPlayer[]): Promise<void> {
+  sentry.debug(`ensureNoActiveMatches: players ${players}`)
   // check if players are already in an active match
   const active_matches = await app.db.matches.getMany({
-    players: players,
-    rankings: [ranking],
+    player_ids: players.map(p => p.data.id),
     status: MatchStatus.Ongoing,
   })
 
@@ -139,18 +131,11 @@ export async function ensureNoActiveMatches(
   }
 }
 
-export async function ensurePlayersEnabled(
-  app: App,
-  players: Player[],
-  p_ranking: PartialRanking,
-): Promise<void> {
-  const ranking = await p_ranking.fetch()
-  sentry.debug(`ensurePlayersEnabled: players ${players} in ranking ${ranking}`)
+export async function ensurePlayersEnabled(app: App, p_players: PartialPlayer[]): Promise<void> {
+  sentry.debug(`ensurePlayersEnabled: players ${p_players}`)
+  const players = await Promise.all(p_players.map(p => p.fetch()))
   const disabled_players = players.filter(p => p.data.flags & PlayerFlags.Disabled)
   if (disabled_players.length > 0) {
-    throw new UserError(
-      disabled_players.map(p => `<@${p.data.user_id}>`).join(', ') +
-        ` cannot participate in ${ranking.data.name}`,
-    )
+    throw new UserErrors.PlayersDisabled(disabled_players)
   }
 }

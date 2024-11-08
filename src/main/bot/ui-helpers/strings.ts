@@ -1,5 +1,5 @@
 import * as D from 'discord-api-types/v10'
-import type { AnyChatInputAppCommand } from '../../../discord-framework'
+import type { AnyChatInputCommand } from '../../../discord-framework'
 import type { App } from '../../app/App'
 import { AnyGuildCommand, AppView } from '../../app/ViewModule'
 
@@ -19,16 +19,18 @@ export function inviteUrl(app: App): string {
   return app.discord.botInviteURL(app.config.RequiredBotPermissions).toString()
 }
 
-export async function commandMention<T extends AppView<AnyChatInputAppCommand>>(
+export async function commandMention<T extends AppView<AnyChatInputCommand>>(
   app: App,
   command: T,
   guild_id?: T extends AnyGuildCommand ? string : undefined,
+  subcommand_name?: string,
 ) {
   const name = command.base_signature.config.name
+  const subcmd_str = subcommand_name ? ` ${subcommand_name}` : ''
   const type = command.base_signature.config.type
   const commands = await app.discord.getAppCommands(guild_id)
   const discord_command = commands.find(command => command.name === name && command.type === type)
-  return `</${name}:${discord_command?.id || '0'}>`
+  return `</${name}${subcmd_str}:${discord_command?.id || '0'}>`
 }
 
 export function relativeTimestamp(time: Date): string {
@@ -53,7 +55,6 @@ export function escapeMd(str: string | undefined | null): string {
     .replace(/</g, '\\<')
     .replace(/:/g, '\\:')
     .replace(/#/g, '\\#')
-    
 }
 
 export const space = `⠀` // U+2800: Braille Pattern Blank

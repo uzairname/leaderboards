@@ -1,4 +1,4 @@
-import { Guild, GuildRanking, Ranking } from '../../../../database/models'
+import { GuildRanking, Ranking } from '../../../../database/models'
 import { GuildRankingDisplaySettings } from '../../../../database/models/guildrankings'
 import {
   MatchmakingSettings,
@@ -7,14 +7,15 @@ import {
   RankingUpdate,
   Rating,
 } from '../../../../database/models/rankings'
-import { DeferContext } from '../../../../discord-framework'
 import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../app/App'
 import { UserError, UserErrors } from '../../errors/UserError'
+import { getOrAddGuild } from '../guilds/guilds'
 import {
   syncGuildRankingLbMessage,
   syncRankingLbMessages,
 } from '../leaderboard/leaderboard-message'
+import { syncMatchesChannel } from '../matches/logging/matches-channel'
 
 export const default_teams_per_match = 2
 export const default_players_per_team = 1
@@ -39,27 +40,33 @@ export const max_teams_per_match = 4
 export const max_players_per_team = 12
 
 /**
- *
+ * Creates a new ranking and adds it to the guild
+ * Registers the guild and syncs its matches channel.
+ * Syncs the guild's commands.
  * @param app
- * @param guild The guild creating the ranking
- * @param lb_options The new ranking's options
+ * @param guild_id The guild creating the ranking
+ * @param options The new ranking's options
  * @returns
  */
 export async function createNewRankingInGuild(
   app: App,
-  guild: Guild,
+  guild_id: string,
   options: {
+    // Ranking options
     name: string
     teams_per_match?: number
     players_per_team?: number
     initial_rating?: Rating
-    display_settings?: GuildRankingDisplaySettings
+    // Guild ranking options
     matchmaking_settings?: MatchmakingSettings
+    display_settings?: GuildRankingDisplaySettings
   },
 ): Promise<{
-  new_guild_ranking: GuildRanking
-  new_ranking: Ranking
+  guild_ranking: GuildRanking
+  ranking: Ranking
 }> {
+  const guild = await getOrAddGuild(app, guild_id)
+  await syncMatchesChannel(app, guild)
   validateRankingOptions(options)
 
   // make sure a ranking from this guild with the same name doesn't already exist
@@ -85,21 +92,19 @@ export async function createNewRankingInGuild(
 
   app.syncDiscordCommands(guild)
 
-  return { new_guild_ranking, new_ranking }
+  return { guild_ranking: new_guild_ranking, ranking: new_ranking }
 }
 
 export async function updateRanking(
   app: App,
   ranking: PartialRanking,
   options: RankingUpdate,
-  ctx?: DeferContext<any>,
 ): Promise<void> {
   validateRankingOptions(options)
   await ranking.update(options)
   const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
 
   for (const item of guild_rankings) {
-    sentry.debug('item.guildranking', item.guild_ranking)
     if (options.name || options.matchmaking_settings) {
       await app.syncDiscordCommands(item.guild)
     }
@@ -107,19 +112,6 @@ export async function updateRanking(
     sentry.debug(item.guild_ranking)
     await syncGuildRankingLbMessage(app, item.guild_ranking)
   }
-
-  // const result = await Promise.all(
-  //   guild_rankings.map(item =>
-  //     Promise.all([
-  //       (async () => {
-  //         if (options.name || options.matchmaking_settings) {
-  //           await app.syncDiscordCommands(item.guild)
-  //         }
-  //       })(),
-  //       syncGuildRankingLbMessage(app, item.guild_ranking),
-  //     ]),
-  //   ),
-  // )
 }
 
 export async function deleteRanking(app: App, ranking: Ranking): Promise<void> {
@@ -141,6 +133,10 @@ export async function deleteRanking(app: App, ranking: Ranking): Promise<void> {
   )
 }
 
+/**
+ * Validates ranking options for update or creation
+ * @param o Validates whichever ranking options are not undefined in o
+ */
 export function validateRankingOptions(o: Partial<RankingInsert>): void {
   if (o.name !== undefined) {
     if (o.name.length > max_ranking_name_length)
@@ -169,12 +165,13 @@ export function validateRankingOptions(o: Partial<RankingInsert>): void {
 
   if (o.matchmaking_settings !== undefined) {
     if (o.matchmaking_settings.default_best_of !== undefined) {
-      if (!o.matchmaking_settings.default_best_of ||
-          isNaN(o.matchmaking_settings.default_best_of) ||
-          o.matchmaking_settings.default_best_of < 1 ||
-          o.matchmaking_settings.default_best_of % 2 == 0)
+      if (
+        !o.matchmaking_settings.default_best_of ||
+        isNaN(o.matchmaking_settings.default_best_of) ||
+        o.matchmaking_settings.default_best_of < 1 ||
+        o.matchmaking_settings.default_best_of % 2 == 0
+      )
         throw new UserErrors.ValidationError(`Best of must be a positive odd number`)
     }
-
   }
 }

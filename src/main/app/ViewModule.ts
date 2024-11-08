@@ -1,14 +1,14 @@
 import { PartialGuild } from '../../database/models/guilds'
 import {
-  AnyChatInputAppCommand,
+  AnyChatInputCommand,
   FindViewCallback,
-  StringDataSchema,
-  viewIsAppCommand,
-  type AnyAppCommand,
+  viewIsCommand,
+  type AnyCommandView,
   type AnyView,
 } from '../../discord-framework'
 import { ViewState, ViewStateFactory } from '../../discord-framework/interactions/view-state'
 import { sentry } from '../../logging/sentry'
+import { StringDataSchema } from '../../utils/StringData'
 import { sequential } from '../../utils/utils'
 import type { App } from './App'
 
@@ -28,7 +28,7 @@ export class AppView<TView extends AnyView> {
   }
 }
 
-export class GuildCommand<TView extends AnyChatInputAppCommand> extends AppView<TView> {
+export class GuildCommand<TView extends AnyChatInputCommand> extends AppView<TView> {
   constructor(
     base_signature: TView,
     public resolveGuildSignature: (app: App, guild: PartialGuild) => Promise<TView | null>,
@@ -39,7 +39,7 @@ export class GuildCommand<TView extends AnyChatInputAppCommand> extends AppView<
 }
 
 export type AnyAppView = AppView<AnyView>
-export type AnyGuildCommand = GuildCommand<AnyChatInputAppCommand>
+export type AnyGuildCommand = GuildCommand<AnyChatInputCommand>
 
 export class ViewModule {
   public all_views: AnyAppView[]
@@ -74,7 +74,7 @@ export class ViewModule {
       .state
   }
 
-  async getAllCommandSignatures(app: App, guild?: PartialGuild): Promise<AnyAppCommand[]> {
+  async getAllCommandSignatures(app: App, guild?: PartialGuild): Promise<AnyCommandView[]> {
     const cmds = await sequential(
       this.all_views.map(v => async () => {
         if (v.is_dev && !app.config.features.ExperimentalCommands) {
@@ -89,14 +89,14 @@ export class ViewModule {
           if (!(v instanceof GuildCommand)) {
             // if we're not looking for guild commands and it's not a guild command, get its global signature
             const resolved = v.resolveHandlers(app)
-            return viewIsAppCommand(resolved) ? resolved : null
+            return viewIsCommand(resolved) ? resolved : null
           }
         }
         return null
       }),
     )
 
-    return cmds.filter((v): v is AnyAppCommand => v !== null)
+    return cmds.filter((v): v is AnyCommandView => v !== null)
   }
 
   /**
@@ -110,7 +110,7 @@ export class ViewModule {
         return custom_id_prefix
           ? _v.config.custom_id_prefix === custom_id_prefix
           : command
-            ? viewIsAppCommand(_v) &&
+            ? viewIsCommand(_v) &&
               command.name === _v.config.name &&
               command.type === _v.config.type
             : false

@@ -1,6 +1,6 @@
 import * as D from 'discord-api-types/v10'
-import { Player, Ranking } from '../../../../database/models'
-import { PartialPlayer, PlayerFlags, PlayerUpdate } from '../../../../database/models/players'
+import { Player } from '../../../../database/models'
+import { PartialPlayer, PlayerFlags } from '../../../../database/models/players'
 import { PartialRanking, Rating } from '../../../../database/models/rankings'
 import { sentry } from '../../../../logging/sentry'
 import { getUserAccessToken } from '../../../api/oauth-router'
@@ -18,7 +18,7 @@ export async function getRegisterPlayer(
   p_ranking: PartialRanking,
 ): Promise<Player> {
   const discord_user_id =
-  typeof partial_discord_user === 'string' ? partial_discord_user : partial_discord_user.id
+    typeof partial_discord_user === 'string' ? partial_discord_user : partial_discord_user.id
   sentry.debug(`getRegisterPlayer: ${discord_user_id} in ${p_ranking}`)
 
   let player = await app.db.players.fetchByUserRanking(discord_user_id, p_ranking)
@@ -29,7 +29,7 @@ export async function getRegisterPlayer(
 
     const discord_user =
       typeof partial_discord_user === 'string'
-        ? await app.discord.fetchUser(partial_discord_user)
+        ? await app.discord.getUser(partial_discord_user)
         : partial_discord_user
 
     const app_user = await app.db.users.getOrCreate({
@@ -38,7 +38,7 @@ export async function getRegisterPlayer(
     })
 
     player = await app.db.players.create(app_user, ranking, {
-      name: discord_user.global_name ?? discord_user.username,
+      name: app_user.data.name,
       rating: {
         mu: ranking.data.initial_rating.mu,
         rd: ranking.data.initial_rating.rd,
@@ -66,32 +66,28 @@ export async function updatePlayerRatings(
     Promise.all(
       update.map(async ({ player: p_player, rating }) => {
         // For each player to update, update role connections and leaderboard if rating or name changed
-          const player = await p_player.fetch()
-          const ranking = await player.ranking()
+        const player = await p_player.fetch()
+        const ranking = await player.ranking()
 
-          // store affected rankings for later leaderboard update
-          ranking_ids_affected.add(ranking.data.id)
+        // store affected rankings for later leaderboard update
+        ranking_ids_affected.add(ranking.data.id)
 
-          if (app.config.features.RatingRoleConnections) {
+        if (app.config.features.RatingRoleConnections) {
+          // calculate display rating using updated rating or current rating
+          const display_rating = calcDisplayRating(app, ranking.data.initial_rating)(rating)
 
-            // calculate display rating using updated rating or current rating
-            const display_rating = calcDisplayRating(
+          const access_token = await getUserAccessToken(app, player.data.user_id, [
+            D.OAuth2Scopes.RoleConnectionsWrite,
+          ])
+          if (access_token) {
+            await updateUserRoleConnectionData(
               app,
-              ranking.data.initial_rating,
-            )(rating)
-
-            const access_token = await getUserAccessToken(app, player.data.user_id, [
-              D.OAuth2Scopes.RoleConnectionsWrite,
-            ])
-            if (access_token) {
-              await updateUserRoleConnectionData(
-                app,
-                access_token,
-                display_rating.rating,
-                ranking.data.name,
-              )
-            }
+              access_token,
+              display_rating.rating,
+              ranking.data.name,
+            )
           }
+        }
       }),
     ),
   ])
@@ -99,12 +95,16 @@ export async function updatePlayerRatings(
   // update ranking leaderboards
   sentry.debug(`updatePlayers, updating ${ranking_ids_affected.size} leaderboards`)
   await Promise.all(
-    Array.from(ranking_ids_affected).map(ranking => syncRankingLbMessages(app, app.db.rankings.get(ranking))),
+    Array.from(ranking_ids_affected).map(ranking =>
+      syncRankingLbMessages(app, app.db.rankings.get(ranking)),
+    ),
   )
 }
 
 export async function setPlayerDisabled(app: App, player: Player, disabled: boolean) {
-  sentry.debug(`setPlayerDisabled ${disabled} ${player.data.flags}, ${player.data.flags | PlayerFlags.Disabled}, ${player.data.flags & ~PlayerFlags.Disabled}`)
+  sentry.debug(
+    `setPlayerDisabled ${disabled} ${player.data.flags}, ${player.data.flags | PlayerFlags.Disabled}, ${player.data.flags & ~PlayerFlags.Disabled}`,
+  )
   await player.update({
     flags: disabled
       ? player.data.flags | PlayerFlags.Disabled

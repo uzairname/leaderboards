@@ -39,8 +39,8 @@ export function cloneSimpleObj<T>(obj: T): T {
  * @template T - The type of elements in the array.
  * @param arr - The one-dimensional array to unflatten.
  * @param dim_2_size - The size of the inner arrays (second dimension).
- * @param full_rows - If true, ensures all inner arrays are of equal length.
- *                    If false, the last inner array may be shorter.
+ * @param full_rows - If true, drops the last row if it would not be full.
+ *                    If false, the last row may be shorter than dim_2_size.
  * @returns {T[][]} A two-dimensional array.
  */
 export function unflatten<T>(arr: T[], dim_2_size: number, full_rows: boolean = true): T[][] {
@@ -82,4 +82,13 @@ export function snowflakeToDate(snowflake: bigint): Date {
 
 export function isInt(value: unknown): value is number {
   return typeof value === 'number' && isFinite(value) && Math.floor(value) === value
+}
+
+export function strOrUndefined(value?: string): string | undefined {
+  return value?.trim() || undefined
+}
+
+export function intOrUndefined(value?: string): number | undefined {
+  const int = parseInt(value ?? '')
+  return isNaN(int) ? undefined : int
 }

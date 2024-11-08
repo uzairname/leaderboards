@@ -1,22 +1,22 @@
 import * as D from 'discord-api-types/v10'
-import { AppCommand } from '../../../../../../discord-framework'
-import { GuildCommand } from '../../../../../app/ViewModule'
-import { checkGuildInteraction } from '../../../../ui-helpers/perms'
+import { CommandView, getOptions } from '../../../../../discord-framework'
+import { GuildCommand } from '../../../../app/ViewModule'
 import {
   guildRankingsOption,
   withOptionalSelectedRanking,
-} from '../../../../ui-helpers/ranking-command-option'
-import { profile_page_config, profileOverviewPage } from '../pages/profile'
+} from '../../../ui-helpers/ranking-option'
+import { profileOverviewPage, profile_page_config } from './profile-page'
 
 const optionnames = {
   user: 'user',
   ranking: 'in-ranking',
 }
 
-export const profile_cmd_signature = new AppCommand({
+export const profile_cmd_signature = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
   name: 'profile',
   description: `View a player's stats`,
+  guild_only: true,
 })
 
 export default new GuildCommand(
@@ -30,7 +30,7 @@ export default new GuildCommand(
       },
     ]
 
-    return new AppCommand({
+    return new CommandView({
       ...profile_cmd_signature.config,
       options: options.concat(
         await guildRankingsOption(app, guild, optionnames.ranking, {
@@ -40,13 +40,14 @@ export default new GuildCommand(
     })
   },
   app =>
-    profile_cmd_signature.onCommand(async ctx =>
-      withOptionalSelectedRanking(app, ctx, optionnames.ranking, {}, async ranking => {
-        const user_option_value = (
-          ctx.interaction.data.options?.find(o => o.name === optionnames.user) as
-            | D.APIApplicationCommandInteractionDataStringOption
-            | undefined
-        )?.value
+    profile_cmd_signature.onCommand(async ctx => {
+      const input = getOptions(ctx.interaction, {
+        user: { type: D.ApplicationCommandOptionType.User },
+        ranking: { type: D.ApplicationCommandOptionType.Number },
+      })
+
+      return withOptionalSelectedRanking(app, ctx, input.ranking, {}, async ranking => {
+        const target_user = input.user
 
         return ctx.defer(
           {
@@ -57,14 +58,13 @@ export default new GuildCommand(
               await profileOverviewPage(app, {
                 ...ctx,
                 state: profile_page_config.newState({
-                  user_id:
-                    user_option_value ?? checkGuildInteraction(ctx.interaction).member.user.id,
+                  user_id: target_user?.id ?? ctx.interaction.member.user.id,
                   selected_ranking_id: ranking?.data.id,
                 }),
               }),
             )
           },
         )
-      }),
-    ),
+      })
+    }),
 )

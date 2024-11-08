@@ -1,5 +1,5 @@
 import { RESTPostOAuth2AccessTokenResult } from 'discord-api-types/v10'
-import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, uniqueIndex } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, uniqueIndex, bit } from 'drizzle-orm/pg-core'
 import { MatchStatus } from './models/matches'
 import { Vote } from './models/matches'
 import { MatchMetadata } from './models/matches'
@@ -8,6 +8,7 @@ import { Versions } from './models/settings'
 import { Rating, MatchmakingSettings } from './models/rankings'
 import { GuildRankingDisplaySettings } from './models/guildrankings'
 import { unique } from 'drizzle-orm/mysql-core'
+import queue from '../main/bot/modules/matches/matchmaking/queue/views/queue-page'
 
 export const Settings = pgTable('Settings', {
   id: integer('id').primaryKey().default(1),
@@ -52,8 +53,8 @@ export const Rankings = pgTable('Rankings', {
   time_created: timestamp('time_created').notNull().defaultNow(),
   players_per_team: integer('players_per_team').notNull(),
   teams_per_match: integer('teams_per_match').notNull(),
-  initial_rating: jsonb('initial_rating').notNull().$type<Rating>(), // make not null
-  matchmaking_settings: jsonb('matchmaking_settings').notNull().$type<MatchmakingSettings>(),
+  initial_rating: jsonb('initial_rating').notNull().$type<Rating>(),
+  matchmaking_settings: jsonb('matchmaking_settings').notNull().$type<MatchmakingSettings>(), // move to GuildRankings
 })
 
 
@@ -65,6 +66,7 @@ export const GuildRankings = pgTable('GuildRankings', {
   leaderboard_channel_id: text('leaderboard_channel_id'),
   leaderboard_message_id: text('leaderboard_message_id'),
   display_settings: jsonb('display_settings').$type<GuildRankingDisplaySettings>(),
+  // matchmaking_setings: jsonb('matchmaking_settings').$type<MatchmakingSettings>(),
 },(table) => { return {
   cpk: primaryKey({ columns: [table.guild_id, table.ranking_id] }),
 }})
@@ -78,9 +80,11 @@ export const Players = pgTable('Players', {
   name: text('name').notNull(),
   rating: jsonb('rating').notNull().$type<Rating>(),
   flags: integer('flags').notNull().$type<PlayerFlags>().default(0),
+  time_joined_queue: timestamp('time_joined_queue'),
   stats: jsonb('stats').$type<PlayerStats>(),
 }, (table) => { return {
   unique: uniqueIndex('player_user_id_ranking_id_unique').on(table.user_id, table.ranking_id),
+  time_joined_queue_idx: index('player_time_joined_queue_index').on(table.time_joined_queue),
 }})
 
 

@@ -1,12 +1,11 @@
 import * as D from 'discord-api-types/v10'
-import { DbErrors } from '../../../../../../database/errors'
-import { _, AppCommand, field, StateContext } from '../../../../../../discord-framework'
-import { AppView } from '../../../../../app/ViewModule'
-import { UserErrors } from '../../../../errors/UserError'
-import { rescoreMatches } from '../../../matches/management/score-matches'
+import { CommandView, StateContext } from '../../../../../discord-framework'
+import { AppView } from '../../../../app/ViewModule'
+import { UserErrors } from '../../../errors/UserError'
 import { helper_page_config } from './test-helper'
+import { field } from '../../../../../utils/StringData'
 
-const test_cmd_signature = new AppCommand({
+const test_cmd_signature = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
   name: 'test',
   description: 'Test command',
@@ -19,11 +18,12 @@ const test_cmd_signature = new AppCommand({
   ],
   custom_id_prefix: 'test',
   state_schema: {
-    clicked_btn: field.Enum({ wait: _, increment: _, one: _, input: _ }),
+    clicked_btn: field.Enum({ wait: null, increment: null, one: null, input: null }),
     counter: field.Int(),
     original_user: field.String(),
     input_date: field.Date(),
   },
+  guild_only: true,
 })
 
 function testMessageData(
@@ -69,25 +69,20 @@ function testMessageData(
 const test_command = new AppView(test_cmd_signature, app =>
   test_cmd_signature
     .onCommand(async ctx => {
-      throw new DbErrors.MissingMatchPlayers()
-      const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
+      const user_id = ctx.interaction.member.user.id
       ctx.state.save.original_user(user_id)
       ctx.state.save.counter(0)
 
-      const ranking = app.db.rankings.get(13)
-
-      console.log(ranking.toString())
-      const guild = app.db.guilds.get('1003698664767762575')
-
-      const first_match = await app.db.matches.getMany({
-        rankings: [ranking],
-        earliest_first: true,
-        limit: 1,
-      })
-
-      console.log(first_match[0].match)
-
-      await rescoreMatches(app, ranking)
+      return ctx.defer(
+        {
+          type: D.InteractionResponseType.DeferredChannelMessageWithSource,
+          data: { flags: D.MessageFlags.Ephemeral },
+        },
+        async ctx => {
+          await new Promise(r => setTimeout(r, 11000))
+          return void (await ctx.edit(testMessageData(ctx, true)))
+        },
+      )
 
       // const ephemeral = true
       return {
@@ -96,7 +91,7 @@ const test_command = new AppView(test_cmd_signature, app =>
       }
     })
     .onComponent(async ctx => {
-      const user_id = ctx.interaction.member?.user.id ?? ctx.interaction.user?.id
+      const user_id = ctx.interaction.member.user.id
 
       if (ctx.state.data.original_user !== user_id) {
         throw new UserErrors.NotComponentOwner(ctx.state.data.original_user)
@@ -137,7 +132,7 @@ const test_command = new AppView(test_cmd_signature, app =>
     }),
 )
 
-export default test_command.dev()
+export default test_command
 
 const schema = {
   originalUserId: field.String(),

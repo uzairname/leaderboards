@@ -1,56 +1,60 @@
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging/sentry'
-import { checkGuildComponentInteraction } from '../../main/bot/ui-helpers/perms'
 import type { StringDataSchema } from '../../utils/StringData'
 import { DiscordAPIClient } from '../rest/client'
-import { ViewErrors } from './errors'
+import { InteractionErrors } from './errors'
 import type {
-  AnyContext,
   AppCommandInteraction,
   ChatInteraction,
   ChatInteractionResponse,
   CommandCallback,
-  CommandContext,
   CommandInteractionResponse,
   ComponentCallback,
-  ComponentContext,
   ComponentInteraction,
   DeferCallback,
-  DeferContext,
-  InitialInteractionContext,
-  InteractionContext,
   InteractionErrorCallback,
-  StateContext,
   ViewAutocompleteCallback,
 } from './types'
+import {
+  checkGuildInteraction,
+  checkGuildMessageComponentInteraction,
+} from './utils/interaction-checks'
 import { ViewState, ViewStateFactory } from './view-state'
+import { MessageData } from '../rest/objects'
 
-export abstract class BaseView<TSchema extends StringDataSchema = {}> {
+export abstract class BaseView<
+  TSchema extends StringDataSchema = {},
+  Guild extends boolean = true,
+> {
   name: string
   state_schema: TSchema
+  guild_only: Guild
+
   protected constructor(
     public config: {
       custom_id_prefix?: string
       name?: string
       state_schema?: TSchema
+      guild_only?: Guild
     },
   ) {
     this.state_schema = config.state_schema ?? ({} as TSchema)
-    this.name = this.config.name ?? this.config.custom_id_prefix ?? 'Unnamed View'
+    this.name = config.name ?? this.config.custom_id_prefix ?? 'Unnamed View'
+    this.guild_only = config.guild_only ?? (true as Guild)
     if (config.custom_id_prefix?.includes('.')) {
-      throw new ViewErrors.InvalidCustomId(
+      throw new InteractionErrors.InvalidCustomId(
         `Custom id prefix contains delimiter: ${config.custom_id_prefix}`,
       )
     }
   }
 
-  onComponent(callback: ComponentCallback<this>) {
+  onComponent(callback: ComponentCallback<BaseView<TSchema, Guild>>) {
     this.componentCallback = callback
     return this
   }
 
-  private componentCallback: ComponentCallback<this> = async () => {
-    throw new ViewErrors.CallbackNotImplemented(`${this.name} has no component callback`)
+  private componentCallback: ComponentCallback<BaseView<TSchema, Guild>> = async () => {
+    throw new InteractionErrors.CallbackNotImplemented(`${this.name} has no component callback`)
   }
 
   async respondToComponent(
@@ -61,16 +65,25 @@ export abstract class BaseView<TSchema extends StringDataSchema = {}> {
   ): Promise<ChatInteractionResponse> {
     sentry.request_name = `${this.name} Component`
 
+    let valid_interaction
+    if (this.config.guild_only) {
+      valid_interaction = checkGuildInteraction(interaction)
+    } else {
+      valid_interaction = interaction
+    }
+
     return this.componentCallback({
-      interaction,
+      interaction: valid_interaction as Guild extends true
+        ? D.APIGuildInteractionWrapper<ComponentInteraction>
+        : ComponentInteraction,
       state,
       defer: (initial_response, callback) => {
         this.deferResponse(callback, interaction, state, discord, onError)
         return initial_response
       },
       send: async data => {
-        const _interaction = checkGuildComponentInteraction(interaction)
-        return await discord.createMessage(_interaction.channel.id, data)
+        const _interaction = checkGuildMessageComponentInteraction(interaction)
+        return await discord.createMessage(_interaction.channel.id, data instanceof MessageData ? data.as_post : data)
       },
     })
   }
@@ -102,7 +115,7 @@ export abstract class BaseView<TSchema extends StringDataSchema = {}> {
             await discord.deleteInteractionResponse(interaction.token, message_id)
           },
           send: async data => {
-            return await discord.createMessage(interaction.channel!.id, data)
+            return await discord.createMessage(interaction.channel!.id, data instanceof MessageData ? data.as_post : data)
           },
         }).catch(async e => {
           await discord.createFollowupMessage(interaction.token, onError(e, ctx.setException).data)
@@ -110,55 +123,21 @@ export abstract class BaseView<TSchema extends StringDataSchema = {}> {
       async timeout_error => {
         await discord.createFollowupMessage(interaction.token, onError(timeout_error).data)
       },
-      `Deferred`,
+      `deferred`,
     )
   }
 
   // newState(data: { [K in keyof TSchema]?: TSchema[K]['write'] | null } = {}): ViewState<TSchema> {
-  newState(data: { [K in keyof TSchema]?: TSchema[K]['read'] | null } = {}): ViewState<TSchema> {
+  newState(data: { [K in keyof TSchema]?: TSchema[K]['type'] | null } = {}): ViewState<TSchema> {
     return ViewStateFactory.fromView(this).setAll(data)
-  }
-
-  isStateCtx(ctx: StateContext<this>): ctx is StateContext<this> {
-    try {
-      return JSON.stringify(this.newState(ctx.state.data).data) === JSON.stringify(ctx.state.data)
-    } catch {
-      return false
-    }
-  }
-
-  isInteractionCtx(ctx: AnyContext): ctx is InteractionContext<this> {
-    return this.isStateCtx(ctx) && ctx.hasOwnProperty('interaction')
-  }
-
-  isDeferredCtx(ctx: StateContext<this>): ctx is DeferContext<this> {
-    return this.isInteractionCtx(ctx) && !ctx.hasOwnProperty('defer')
-  }
-
-  isInitialInteractionCtx(ctx: AnyContext): ctx is InitialInteractionContext<this> {
-    return this.isInteractionCtx(ctx) && ctx.hasOwnProperty('defer')
-  }
-
-  isComponentCtx(ctx: StateContext<this>): ctx is ComponentContext<this> {
-    return (
-      this.isInitialInteractionCtx(ctx) &&
-      (ctx.interaction.type === D.InteractionType.MessageComponent ||
-        ctx.interaction.type === D.InteractionType.ModalSubmit)
-    )
-  }
-
-  isCommandCtx(ctx: StateContext<this>): ctx is CommandContext<this> {
-    return (
-      this.isInitialInteractionCtx(ctx) &&
-      ctx.interaction.type === D.InteractionType.ApplicationCommand
-    )
   }
 }
 
-export class AppCommand<
+export class CommandView<
   TSchema extends StringDataSchema,
   CommandType extends D.ApplicationCommandType,
-> extends BaseView<TSchema> {
+  Guild extends boolean = true,
+> extends BaseView<TSchema, Guild> {
   constructor(
     public config: (CommandType extends D.ApplicationCommandType.ChatInput
       ? D.RESTPostAPIChatInputApplicationCommandsJSONBody
@@ -166,6 +145,7 @@ export class AppCommand<
       type: CommandType
       state_schema?: TSchema
       custom_id_prefix?: string
+      guild_only?: Guild
     },
   ) {
     super(config)
@@ -177,7 +157,7 @@ export class AppCommand<
   }
 
   private commandCallback: CommandCallback<this> = () => {
-    throw new ViewErrors.CallbackNotImplemented(`${this.name} has no command callback`)
+    throw new InteractionErrors.CallbackNotImplemented(`${this.name} has no command callback`)
   }
 
   async respondToCommand(
@@ -185,18 +165,25 @@ export class AppCommand<
     discord: DiscordAPIClient,
     onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource,
   ): Promise<CommandInteractionResponse> {
-    sentry.request_name = `${this.name} Command`
+    sentry.request_name = `${this.name} command`
 
     const state = this.newState()
 
+    let valid_interaction
+    if (this.config.guild_only) {
+      valid_interaction = checkGuildInteraction(interaction)
+    } else {
+      valid_interaction = interaction
+    }
+
     return this.commandCallback({
-      interaction,
+      interaction: valid_interaction as any,
       state,
       defer: (response, callback) => {
         this.deferResponse(callback, interaction, state, discord, onError)
         return response
       },
-      send: async data => discord.createMessage(interaction.channel.id, data),
+      send: async data => discord.createMessage(interaction.channel.id, data instanceof MessageData ? data.as_post : data),
     })
   }
 
@@ -206,7 +193,7 @@ export class AppCommand<
   }
 
   private autocompleteCallback: ViewAutocompleteCallback<CommandType> = () => {
-    throw new ViewErrors.CallbackNotImplemented(`${this.name} has no autocomplete callback`)
+    throw new InteractionErrors.CallbackNotImplemented(`${this.name} has no autocomplete callback`)
   }
 
   async respondToAutocomplete(
@@ -217,14 +204,18 @@ export class AppCommand<
   }
 }
 
-export type MessageViewConfig<TSchema extends StringDataSchema> = {
+export type MessageViewConfig<TSchema extends StringDataSchema, Guild extends boolean> = {
   name?: string
   state_schema?: TSchema
   custom_id_prefix?: string
+  guild_only?: Guild
 }
 
-export class MessageView<TSchema extends StringDataSchema> extends BaseView<TSchema> {
-  constructor(public readonly config: MessageViewConfig<TSchema>) {
+export class MessageView<
+  TSchema extends StringDataSchema,
+  Guild extends boolean = true,
+> extends BaseView<TSchema, Guild> {
+  constructor(public readonly config: MessageViewConfig<TSchema, Guild>) {
     super(config)
   }
 }

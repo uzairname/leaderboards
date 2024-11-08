@@ -1,10 +1,12 @@
 import * as D from 'discord-api-types/v10'
 import { json, Router } from 'itty-router'
 import { appCommandToJSONBody } from '../../discord-framework'
+import { nonNullable } from '../../utils/utils'
 import { App } from '../app/App'
 import { GuildCommand } from '../app/ViewModule'
 import views from '../bot/modules/all-views'
 import { leaderboardMessage } from '../bot/modules/leaderboard/leaderboard-message'
+import { rescoreMatches } from '../bot/modules/matches/management/manage-matches'
 import { inviteUrl } from '../bot/ui-helpers/strings'
 
 export default (app: App) =>
@@ -59,6 +61,7 @@ export default (app: App) =>
       return json(result)
     })
     .get('/invite-url', async () => new Response(inviteUrl(app)))
+
     .get('/leaderboard-message/:ranking_id', async request => {
       const ranking = await app.db.rankings.fetch(parseInt(request.params.ranking_id))
 
@@ -66,4 +69,13 @@ export default (app: App) =>
 
       return new Response(str)
     })
+
+    .get('/rescore/:ranking_id', async request => {
+      const ranking_id = nonNullable(parseInt(request.params.ranking_id), 'ranking_id')
+      const result = await rescoreMatches(app, app.db.rankings.get(ranking_id), {
+        reset_rating_to_initial: true,
+      })
+      return json(result.map(m => ({ player: m.player.data.id, rating: m.rating })))
+    })
+
     .all('*', () => new Response('Not found', { status: 404 }))

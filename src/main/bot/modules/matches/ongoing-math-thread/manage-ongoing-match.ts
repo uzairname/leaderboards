@@ -1,16 +1,19 @@
 import { APIChannel, ThreadAutoArchiveDuration } from 'discord-api-types/v10'
 import { Match, Player } from '../../../../../database/models'
 import { PartialGuildRanking } from '../../../../../database/models/guildrankings'
-import { MatchStatus, Vote } from '../../../../../database/models/matches'
+import { Vote } from '../../../../../database/models/matches'
 import { sentry } from '../../../../../logging/sentry'
 import { App } from '../../../../app/App'
 import { UserError } from '../../../errors/UserError'
 import { syncMatchSummaryMessage } from '../logging/match-summary-message'
-import { cancelMatch } from '../management/score-matches'
+import { cancelMatch, updateMatchOutcome } from '../management/manage-matches'
 import { startNewMatch } from '../management/match-creation'
-import { updateMatchOutcome } from '../management/score-matches'
 import { ongoingMatchPage, ongoing_series_page_config } from './views/pages/ongoing-match'
 
+/**
+ * Starts a new match. Syncs the match's summary message in the guild
+ * and creates the thread to manage the ongoing match.
+ */
 export async function start1v1SeriesThread(
   app: App,
   guild_ranking: PartialGuildRanking,
@@ -95,5 +98,4 @@ export async function castPlayerVote(
     const outcome = team_votes.map(v => (v === Vote.Win ? 1 : 0))
     await updateMatchOutcome(app, match, outcome)
   }
-  
 }

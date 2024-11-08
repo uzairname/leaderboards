@@ -38,10 +38,10 @@ export namespace field {
   }
 }
 
-abstract class Field<ReadT> {
-  read = null as ReadT
-  abstract compress(value: ReadT): string
-  abstract decompress(compressed: string): ReadT
+abstract class Field<Type> {
+  type = null as Type
+  abstract compress(value: Type): string
+  abstract decompress(compressed: string): Type
 }
 
 class EnumField<T extends { [key: string]: null }> extends Field<keyof T> {
@@ -157,21 +157,21 @@ class StringDataField<TSchema extends StringDataSchema> extends Field<StringData
 }
 
 export class StringData<TSchema extends StringDataSchema> {
-  readonly data = {} as { [K in keyof TSchema]?: TSchema[K]['read'] }
+  readonly data = {} as { [K in keyof TSchema]?: TSchema[K]['type'] }
 
   get = {} as {
-    [K in keyof TSchema]: () => NonNullable<TSchema[K]['read']>
+    [K in keyof TSchema]: () => NonNullable<TSchema[K]['type']>
   }
 
   is = {} as {
-    [K in keyof TSchema]: (value?: TSchema[K]['read'] | null) => boolean
+    [K in keyof TSchema]: (value?: TSchema[K]['type'] | null) => boolean
   }
 
   save = {} as {
-    [K in keyof TSchema]: (value: TSchema[K]['read'] | null | undefined) => this
+    [K in keyof TSchema]: (value: TSchema[K]['type'] | null | undefined) => this
   }
 
-  saveAll(data: { [K in keyof TSchema]?: TSchema[K]['read'] | null }): this {
+  saveAll(data: { [K in keyof TSchema]?: TSchema[K]['type'] | null }): this {
     Object.entries(data).forEach(([key, value]) => {
       if (!this.save[key]) return
       value !== undefined && this.save[key](value)
@@ -180,10 +180,10 @@ export class StringData<TSchema extends StringDataSchema> {
   }
 
   set = {} as {
-    [K in keyof TSchema]: (value: TSchema[K]['read'] | null | undefined) => StringData<TSchema>
+    [K in keyof TSchema]: (value: TSchema[K]['type'] | null | undefined) => StringData<TSchema>
   }
 
-  setAll(data: { [K in keyof TSchema]?: TSchema[K]['read'] | null }): StringData<TSchema> {
+  setAll(data: { [K in keyof TSchema]?: TSchema[K]['type'] | null }): StringData<TSchema> {
     return this.copy().saveAll(data)
   }
 
@@ -259,7 +259,7 @@ export class StringData<TSchema extends StringDataSchema> {
       this.get[key] = () => {
         if (this.data[key] === null || this.data[key] === undefined)
           throw new Error(`Field ${key.toString()} is null or undefined`)
-        return this.data[key] as NonNullable<TSchema[typeof key]['read']>
+        return this.data[key] as NonNullable<TSchema[typeof key]['type']>
       }
 
       this.is[key] = compare =>
@@ -271,7 +271,7 @@ export class StringData<TSchema extends StringDataSchema> {
     }
   }
 
-  private validateKeyValue(key: keyof TSchema, value: TSchema[typeof key]['read']): typeof value {
+  private validateKeyValue(key: keyof TSchema, value: TSchema[typeof key]['type']): typeof value {
     if (!this.fields.hasOwnProperty(key))
       throw new Error(`Field ${key.toString()} does not exist in this StringData`)
     if (

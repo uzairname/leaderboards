@@ -1,16 +1,16 @@
 import { sentry } from '../../logging/sentry'
 import { LZString } from '../../utils/lzstring'
 import { StringData, StringDataSchema } from '../../utils/StringData'
-import { ViewErrors } from './errors'
+import { InteractionErrors } from './errors'
 import { AnyView } from './types'
 import { BaseView } from './views'
 
 export class ViewState<T extends StringDataSchema> extends StringData<T> {
   set = {} as {
-    [K in keyof T]: (value: T[K]['read'] | null | undefined) => ViewState<T>
+    [K in keyof T]: (value: T[K]['type'] | null | undefined) => ViewState<T>
   }
 
-  setAll(data: { [K in keyof T]?: T[K]['read'] | null }): ViewState<T> {
+  setAll(data: { [K in keyof T]?: T[K]['type'] | null }): ViewState<T> {
     return this.copy().saveAll(data)
   }
 
@@ -20,7 +20,7 @@ export class ViewState<T extends StringDataSchema> extends StringData<T> {
 
   cId(): string {
     const encoded = LZString.compressToUTF16(`${this.view_id}.${super.encode()}`)
-    if (encoded.length > 100) throw new ViewErrors.CustomIdTooLong(encoded)
+    if (encoded.length > 100) throw new InteractionErrors.CustomIdTooLong(encoded)
     return encoded
   }
 
@@ -36,14 +36,14 @@ export class ViewState<T extends StringDataSchema> extends StringData<T> {
 }
 
 export abstract class ViewStateFactory<T extends StringDataSchema> extends ViewState<T> {
-  static fromView<T extends StringDataSchema>(view: BaseView<T>): ViewState<T> {
+  static fromView<T extends StringDataSchema>(view: BaseView<T, any>): ViewState<T> {
     return new ViewState(view.state_schema, view.config.custom_id_prefix)
   }
 
   private static splitCustomId(custom_id: string): [string, string] {
     const decompressed_custom_id = LZString.decompressFromUTF16(custom_id)
 
-    if (!decompressed_custom_id) throw new ViewErrors.InvalidEncodedCustomId(custom_id)
+    if (!decompressed_custom_id) throw new InteractionErrors.InvalidEncodedCustomId(custom_id)
 
     const [prefix, ...rest] = decompressed_custom_id.split('.')
     const encoded_data = rest.join('.')

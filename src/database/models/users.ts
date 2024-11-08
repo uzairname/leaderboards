@@ -32,7 +32,16 @@ export class PartialUser {
     return data.map(data => new Player(data, this.db))
   }
 
-  async removeFromQueues(): Promise<number> {
+  async removePlayersFromQueue(): Promise<number> {
+    const result = await this.db.drizzle
+      .update(Players)
+      .set({ time_joined_queue: null })
+      .where(eq(Players.user_id, this.data.id))
+      .returning()
+    return result.length
+  }
+
+  private async removeFromTeamQueues(): Promise<number> {
     const result = await this.db.drizzle
       .delete(QueueTeams)
       .where(

@@ -1,3 +1,4 @@
+import { Player } from '../../../database/models'
 import { DiscordErrors } from '../../../discord-framework'
 import { App } from '../../app/App'
 import { inviteUrl, permsToString } from '../ui-helpers/strings'
@@ -38,4 +39,13 @@ export namespace UserErrors {
   export class ValidationError extends UserError {}
 
   export class OngoingMatchEror extends UserError {}
+
+  export class PlayersDisabled extends UserError {
+    constructor(disabled_players: Player[]) {
+      super(
+        disabled_players.map(p => `<@${p.data.user_id}>`).join(', ') +
+          ` cannot participate in this ranking`,
+      )
+    }
+  }
 }

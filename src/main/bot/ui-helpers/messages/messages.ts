@@ -1,6 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { APIEmbed } from 'discord-api-types/v10'
-import { Guild, GuildRanking, Match } from '../../../../database/models'
+import { Guild, GuildRanking, Match, Ranking } from '../../../../database/models'
 import { PartialGuildRanking } from '../../../../database/models/guildrankings'
 import { MatchPlayer, MatchStatus, Vote } from '../../../../database/models/matches'
 import { sentry } from '../../../../logging/sentry'
@@ -9,18 +9,19 @@ import { App } from '../../../app/App'
 import settings from '../../modules/admin/views/commands/settings'
 import { syncGuildRankingLbMessage } from '../../modules/leaderboard/leaderboard-message'
 import { syncMatchesChannel } from '../../modules/matches/logging/matches-channel'
-import matches from '../../modules/matches/logging/views/commands/matches'
-import record_match from '../../modules/matches/management/views/commands/record-match'
-import settle_match from '../../modules/matches/management/views/commands/settle-match'
+import matches from '../../modules/matches/logging/views/matches-cmd'
+import record_match from '../../modules/matches/management/views/commands/record-match-cmd'
+import settle_match from '../../modules/matches/management/views/commands/settle-match-cmd'
 import start_match from '../../modules/matches/management/views/commands/start-match'
-import challenge from '../../modules/matches/matchmaking/views/commands/challenge'
-import { joinQueueCmd } from '../../modules/matches/matchmaking/views/commands/queue'
-import { rematch_timeout_ms } from '../../modules/matches/ongoing-math-thread/views/pages/ongoing-match'
-import create_ranking from '../../modules/rankings/views/commands/create-ranking'
-import rankings from '../../modules/rankings/views/commands/rankings'
-import { Colors } from '../constants'
-import { commandMention, dateTimestamp, escapeMd, messageLink } from '../strings'
+import challenge from '../../modules/matches/matchmaking/challenge/challenge-cmd'
+import joinqCmd from '../../modules/matches/matchmaking/queue/views/join-cmd'
 import { default_best_of } from '../../modules/rankings/manage-rankings'
+import create_ranking from '../../modules/rankings/views/commands/create-ranking'
+import rankings from '../../modules/rankings/views/commands/rankings-cmd'
+import { Colors } from '../constants'
+import { commandMention, dateTimestamp, escapeMd, messageLink, relativeTimestamp } from '../strings'
+import { MessageData } from '../../../../discord-framework'
+import joinCmd from '../../modules/matches/matchmaking/queue/views/join-cmd'
 
 export const concise_description =
   'Tracks skill ratings and matches for any game. Additional utilities for moderation, display, and statistics.'
@@ -158,10 +159,12 @@ export async function guildRankingDescription(
     text +=
       (time_created ? `\n- Created on ${dateTimestamp(time_created)}` : ``) +
       (match_logs_channel_id ? `\n- Matches are logged in <#${match_logs_channel_id}>` : ``) +
-      `\n- Matchmaking queue (${await commandMention(app, joinQueueCmd, guild_ranking.data.guild_id)}): ` +
+      `\n- Matchmaking queue (${await commandMention(app, joinqCmd, guild_ranking.data.guild_id)}): ` +
       (ranking.data.matchmaking_settings.queue_enabled ? `**Enabled**` : `**Disabled**`) +
       `\n- Direct challenges (${await commandMention(app, challenge, guild_ranking.data.guild_id)}): ` +
-      (ranking.data.matchmaking_settings.direct_challenge_enabled ? `**Enabled**` : `**Disabled**`) + 
+      (ranking.data.matchmaking_settings.direct_challenge_enabled
+        ? `**Enabled**`
+        : `**Disabled**`) +
       `\n- By default, new matches are a best of **${ranking.data.matchmaking_settings.default_best_of ?? default_best_of}**`
   }
 
@@ -170,6 +173,7 @@ export async function guildRankingDescription(
 
 // Matches
 export function ongoingMatch1v1Message(
+  app: App,
   match: Match,
   team_players: MatchPlayer[][],
 ): { content: string; embeds: D.APIEmbed[] } {
@@ -213,7 +217,7 @@ export function ongoingMatch1v1Message(
 
   if (match.data.status === MatchStatus.Finished || match.data.status === MatchStatus.Canceled) {
     embeds.push({
-      description: `Match concluded. Click Rematch in the next ${Math.round(rematch_timeout_ms / (1000 * 60))} minutes to start another best of ${best_of}`,
+      description: `Match concluded. Click Rematch in the next ${Math.round(app.config.RematchTimeoutMs / (1000 * 60))} minutes to start another best of ${best_of}`,
       color: Colors.Primary,
     })
   } else if (votes_str) {
@@ -231,4 +235,24 @@ export function ongoingMatch1v1Message(
     content: players_ping_text,
     embeds,
   }
+}
+
+
+export const queue_join = ({match, already_in, ranking, expires_at}: {
+  match?: Match,
+  already_in: boolean,
+  ranking: Ranking,
+  expires_at: Date,
+}) => {
+  return match
+                ? `A match has been found!`
+                : (already_in ? `You rejoined the queue` : 'You joined the queue') +
+                ` for ${escapeMd(ranking.data.name)}.` +
+                ` You'll be removed ${relativeTimestamp(expires_at)} if a match isn't found.`
+} 
+
+export const someone_joined_queue = async (app: App, ranking: Ranking, guild_id: string): Promise<MessageData> => { 
+  return new MessageData({
+    content: `${await commandMention(app, joinCmd, guild_id)} - Someone has joined the queue for ${escapeMd(ranking.data.name)}`,
+  })
 }

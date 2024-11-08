@@ -1,8 +1,22 @@
 import { neon } from '@neondatabase/serverless'
 import { Logger } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/neon-http'
+import { drizzle as drizzle_ws } from 'drizzle-orm/neon-serverless'
 import { withReplicas } from 'drizzle-orm/pg-core'
 import { Logger as RequestLogger } from '../logging/Logger'
+
+export function getNeonDrizzleWsClient(
+  postgres_url: string,
+  postgres_read_url?: string,
+  logger?: RequestLogger,
+) {
+  const db = drizzle_ws(postgres_url, { logger: new DrizzleLogger(logger) })
+  if (postgres_read_url) {
+    const read_db = drizzle_ws(postgres_read_url, { logger: new DrizzleLogger(logger, 'readonly') })
+    return withReplicas(db, [read_db])
+  }
+  return db
+}
 
 export function getNeonDrizzleClient(
   postgres_url: string,
@@ -26,7 +40,7 @@ export function getNeonDrizzleClient(
   return db
 }
 
-export type DrizzleClient = ReturnType<typeof getNeonDrizzleClient>
+// export type DrizzleClient = ReturnType<typeof drizzle>
 
 class DrizzleLogger implements Logger {
   queries_key: string

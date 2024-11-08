@@ -1,12 +1,12 @@
 import * as D from 'discord-api-types/v10'
-import { field, InteractionContext, MessageView } from '../../../../../../discord-framework'
-import { App } from '../../../../../app/App'
-import { AppView } from '../../../../../app/ViewModule'
-import { Colors } from '../../../../ui-helpers/constants'
-import { checkGuildInteraction } from '../../../../ui-helpers/perms'
-import { escapeMd, memberAvatarUrl } from '../../../../ui-helpers/strings'
-import { matches_page_config } from '../../../matches/logging/views/pages/matches'
-import { calcDisplayRating } from '../../display'
+import { InteractionContext, MessageView } from '../../../../../discord-framework'
+import { App } from '../../../../app/App'
+import { AppView } from '../../../../app/ViewModule'
+import { Colors } from '../../../ui-helpers/constants'
+import { escapeMd, userAvatarUrl } from '../../../ui-helpers/strings'
+import { matches_page_config } from '../../matches/logging/views/matches-page'
+import { calcDisplayRating } from '../display'
+import { field } from '../../../../../utils/StringData'
 
 export const profile_page_config = new MessageView({
   name: 'Profile page',
@@ -33,37 +33,35 @@ export async function profileOverviewPage(
   app: App,
   ctx: InteractionContext<typeof profile_page_config>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  const interaction = checkGuildInteraction(ctx.interaction)
-
   const target_user_id = ctx.state.get.user_id()
-  const target_member = await app.discord.getGuildMember(interaction.guild_id, target_user_id)
-  const username =
-    target_member.nick ?? target_member.user.global_name ?? target_member.user.username
-  const avatar_url = memberAvatarUrl(interaction.guild_id, target_member)
 
-  const is_requesting_user = interaction.member.user.id === target_user_id
+  const target_disc_user = await app.discord.getUser(target_user_id)
+  const target_app_user = app.db.users.get(target_user_id)
+
+  const target_user_name = target_disc_user.global_name ?? target_disc_user.username
+  const avatar_url = userAvatarUrl(target_disc_user)
+
+  const is_requesting_user = ctx.interaction.member.user.id === target_user_id
 
   // find all of the user's players that are in a ranking that the guild has
-  const guild_rankings = await app.db.guild_rankings.fetch({
-    guild_id: checkGuildInteraction(ctx.interaction).guild_id,
-  })
-  const user = app.db.users.get(target_user_id)
-  const players = (await user.players()).filter(p =>
-    guild_rankings.some(r => r.ranking.data.id === p.data.ranking_id),
-  )
+  const guild_id = ctx.interaction.guild_id
+  const guild_rankings = await app.db.guild_rankings.fetch({ guild_id })
+  const players = (await target_app_user.players())
+    .filter(p => guild_rankings.some(r => r.ranking.data.id === p.data.ranking_id))
+    .sort((a, b) => a.data.rating.rd - b.data.rating.rd)
 
   const embed: D.APIEmbed = {
-    title: `${username}'s Stats`,
+    title: `${target_user_name}'s Stats`,
     description:
       players.length === 0
-        ? `*${is_requesting_user ? `You have` : `<@${target_member.user.id}> has`} not participated in any ranked matches*`
+        ? `*${is_requesting_user ? `You have` : `<@${target_disc_user.id}> has`} not participated in any rankings*`
         : ``,
     fields:
       (await Promise.all(
         players.map(async p => {
           const ranking = await p.ranking()
           const display_rating = calcDisplayRating(app, ranking.data.initial_rating)(p.data.rating)
-          const rating_text = display_rating.is_provisional 
+          const rating_text = display_rating.is_provisional
             ? `${display_rating.rating}? (Unranked)`
             : `${display_rating.rating}`
 

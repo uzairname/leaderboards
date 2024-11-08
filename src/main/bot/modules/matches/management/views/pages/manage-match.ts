@@ -1,22 +1,22 @@
 import * as D from 'discord-api-types/v10'
 import { Match } from '../../../../../../../database/models'
 import {
+  AnyGuildInteractionContext,
   ChatInteractionResponse,
   ComponentContext,
   InteractionContext,
   MessageView,
-  field,
   getModalSubmitEntries,
 } from '../../../../../../../discord-framework'
-import { nonNullable } from '../../../../../../../utils/utils'
+import { intOrUndefined, nonNullable } from '../../../../../../../utils/utils'
 import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
 import { UserError } from '../../../../../errors/UserError'
 import { Colors } from '../../../../../ui-helpers/constants'
 import { hasAdminPerms } from '../../../../../ui-helpers/perms'
 import { matchSummaryEmbed } from '../../../logging/match-summary-message'
-import { revertMatch } from '../../score-matches'
-import { updateMatchOutcome } from '../../score-matches'
+import { cancelMatch, updateMatchOutcome } from '../../manage-matches'
+import { field } from '../../../../../../../utils/StringData'
 
 export const manage_match_page_config = new MessageView({
   custom_id_prefix: 'm',
@@ -75,7 +75,7 @@ const setting_select_menu_options: Record<
 
 export async function manageMatchPage(
   app: App,
-  ctx: InteractionContext<any>,
+  ctx: AnyGuildInteractionContext,
   match_id: number,
 ): Promise<D.APIInteractionResponseCallbackData> {
   return manageMatchPageData(app, {
@@ -181,15 +181,15 @@ async function onMatchOutcomeModalSubmit(
 
       for (const [k, v] of Object.entries(modal_inputs)) {
         const team_num = parseInt(k)
-        const score = parseFloat(v?.value ?? '')
-        if (isNaN(score)) {
+        const score = intOrUndefined(v?.value)
+        if (score === undefined) {
           throw new UserError(`Enter a number for each team's relative score`)
         }
         new_outcome[team_num] = score
       }
 
       // update the match
-      await updateMatchOutcome(app, match, new_outcome, { check_rescore: true })
+      await updateMatchOutcome(app, match, new_outcome)
 
       return void ctx.edit(await manageMatchPageData(app, ctx))
     },
@@ -206,7 +206,7 @@ async function onRevert(
       embeds: [
         {
           title: 'Revert Match?',
-          description: 'This will delete the match and revert its effects on rankings.',
+          description: `This will undo the match's effects on rankings.`,
           color: Colors.EmbedBackground,
         },
       ],
@@ -243,12 +243,12 @@ async function onRevertConfirm(
       type: D.InteractionResponseType.DeferredMessageUpdate,
     },
     async ctx => {
-      await revertMatch(app, match)
+      await cancelMatch(app, match)
       return void ctx.edit({
         embeds: [
           {
             title: 'Match Reverted',
-            description: 'The match has been deleted',
+            description: 'The match has been reverted',
             color: Colors.EmbedBackground,
           },
         ],

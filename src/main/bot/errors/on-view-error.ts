@@ -1,4 +1,4 @@
-import { RateLimitError } from '@discordjs/rest'
+import { DiscordAPIError, RateLimitError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { DiscordErrors } from '../../../discord-framework'
 import { sentry } from '../../../logging/sentry'
@@ -16,7 +16,14 @@ export function onViewError(app: App) {
     let title: string = 'Error'
     if (e instanceof UserError) {
       description = e.message
-    } else if (e instanceof DiscordErrors.BotPermissions) {
+    } else if (e instanceof DiscordAPIError) {
+      if (e.code === D.RESTJSONErrorCodes.MissingAccess) {
+        description = 'Missing access to the channel, server, or resource'
+      } else {
+        description = e.message
+      }
+    }
+    else if (e instanceof DiscordErrors.BotPermissions) {
       return onViewError(app)(new UserErrors.BotPermissions(app, e))
     } else if (e instanceof RateLimitError) {
       title = 'Being Rate limited'

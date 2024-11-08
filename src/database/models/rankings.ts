@@ -1,12 +1,10 @@
-import { and, eq, inArray, InferInsertModel, InferSelectModel, sql } from 'drizzle-orm'
+import { eq, inArray, InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { Player } from '.'
 import { sentry } from '../../logging/sentry'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
 import { DbObjectManager } from '../managers'
 import { Players, QueueTeams, Rankings, TeamPlayers, Teams } from '../schema'
-import { MatchMetadata } from './matches'
-import { PlayerFlags } from './players'
 
 export type RankingSelect = InferSelectModel<typeof Rankings>
 export type RankingInsert = Omit<InferInsertModel<typeof Rankings>, 'id'>
@@ -22,7 +20,6 @@ export type MatchmakingSettings = {
   queue_enabled?: boolean
   default_best_of?: number
   direct_challenge_enabled?: boolean
-  default_metadata?: MatchMetadata
 }
 
 export class PartialRanking {
@@ -37,26 +34,6 @@ export class PartialRanking {
 
   async fetch(): Promise<Ranking> {
     return this.db.rankings.fetch(this.data.id)
-  }
-
-  /**
-   * @returns All enabled players in this ranking.
-   */
-  async players(): Promise<Player[]> {
-    sentry.debug(`players: ${this}`)
-    const players = await this.db.drizzle
-      .select()
-      .from(Players)
-      .where(
-        and(
-          eq(Players.ranking_id, this.data.id),
-          sql`(${Players.flags} & ${PlayerFlags.Disabled}) = 0`,
-        ),
-      )
-
-    return players.map(item => {
-      return new Player(item, this.db)
-    })
   }
 
   async queueTeams(): Promise<{ id: number; rating?: number; players: Player[] }[]> {

@@ -1,12 +1,13 @@
-import { and, eq, InferInsertModel, InferSelectModel, sql } from 'drizzle-orm'
+import { and, eq, inArray, InferInsertModel, InferSelectModel, SQL, sql } from 'drizzle-orm'
+import { PgDialect } from 'drizzle-orm/pg-core'
 import { Ranking, Team } from '.'
+import { sentry } from '../../logging/sentry'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
 import { DbObjectManager } from '../managers'
 import { Players, QueueTeams, TeamPlayers, Teams } from '../schema'
 import { PartialRanking, Rating } from './rankings'
 import { PartialUser } from './users'
-import { PgDialect } from 'drizzle-orm/pg-core'
 
 export type PlayerSelect = InferSelectModel<typeof Players>
 export type PlayerInsert = Omit<InferInsertModel<typeof Players>, 'id'>
@@ -23,7 +24,7 @@ export class PartialPlayer {
   constructor(
     public data: { id: number },
     public db: DbClient,
-  ) { }
+  ) {}
 
   async fetch(): Promise<Player> {
     return this.db.players.fetch(this.data.id)
@@ -131,7 +132,39 @@ export class PlayersManager extends DbObjectManager {
     return new Player(data, this.db)
   }
 
+  async fetchMany({
+    allow_disabled = false,
+    ranking_id,
+  }: {
+    allow_disabled?: boolean
+    in_queue?: boolean
+    ranking_id?: number
+  } = {}): Promise<Player[]> {
+    sentry.debug(`players: ${this}`)
+
+    const where_chunks: SQL[] = []
+
+    if (ranking_id) where_chunks.push(eq(Players.ranking_id, ranking_id))
+    if (!allow_disabled) where_chunks.push(sql`(${Players.flags} & ${PlayerFlags.Disabled}) = 0`)
+
+    const players = await this.db.drizzle
+      .select()
+      .from(Players)
+      .where(and(...where_chunks))
+
+    return players.map(item => {
+      return new Player(item, this.db)
+    })
+  }
+
+  async updateMany(ids: number[], data: PlayerUpdate) {
+    await this.db.drizzle.update(Players).set(data).where(inArray(Players.id, ids))
+  }
+
   async updateRatings(data: { player: PartialPlayer; rating: Rating }[]) {
+    this.db.cache.match_players.clear()
+    this.db.cache.players.clear()
+    this.db.cache.players_by_ranking_user.clear()
 
     if (data.length === 0) return
 
@@ -156,8 +189,7 @@ export class PlayersManager extends DbObjectManager {
       where ${Players.id} = values.a
       `).sql
 
+
     await this.db.drizzle.execute(query)
-
-
   }
 }
