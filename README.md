@@ -57,7 +57,6 @@ In the workflow file for each environment in `.github/workflows`, set the `INIT_
 ```bash
 npm install
 npm install -g wrangler
-npx tsc
 ```
 
 ### 2. Migrate
@@ -69,26 +68,14 @@ npx drizzle-kit generate:pg
 ```
 
 Set `POSTGRES_URL` and optionally `POSTGRES_URL_TEST` in `.env`
-Migrate database
-
-```bash
-tsx scripts/migrate.ts
-```
 
 ### 3. Deploy worker
 
 Set all of the environment variables in the Cloudflare worker with `wrangler secret put <secret>` for each of `DISCORD_TOKEN`, `APPLICATION_ID`, `PUBLIC_KEY`, `CLIENT_SECRET`, `POSTGRES_URL`, `SENTRY_DSN`, and `APP_KEY`
 
 ```bash
-wrangler deploy
-```
-
-### Initialize app
-
-Initialize the app's slash commands and role connections metadata:
-
-```bash
-curl.exe -X POST https://<subdomain>.workers.dev/init -H "Authorization:<APP_KEY>"
+chmod +x ./deploy.sh
+./deploy.sh
 ```
 
 ## Testing
@@ -102,6 +89,6 @@ curl.exe -X POST <localhost url>/test -H "Authorization:<app key>"
 
 <!--
 
-current total gzip size: 339.32 KiB
+current total gzip size: 351.94 KiB
 
 -->

@@ -26,8 +26,6 @@ export class SettingsManager extends DbObjectManager {
     var data: SettingSelect
 
     if (update) {
-      const current_setting = await this.getOrUpdate()
-
       data = (
         await this.db.drizzle.update(Settings).set(update).where(eq(Settings.id, id)).returning()
       )[0]

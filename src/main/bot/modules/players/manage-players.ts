@@ -60,9 +60,10 @@ export async function updatePlayerRatings(
   sentry.debug(`updatePlayerRatings, ${update.map(u => u.player.data.id)}`)
   const ranking_ids_affected = new Set<number>()
 
-  const result = await Promise.all([
+  await Promise.all([
     // Update player ratings
     app.db.players.updateRatings(update),
+    // Update leaderboard and role connections
     Promise.all(
       update.map(async ({ player: p_player, rating }) => {
         // For each player to update, update role connections and leaderboard if rating or name changed

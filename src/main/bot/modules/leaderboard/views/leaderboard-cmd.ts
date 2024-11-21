@@ -8,7 +8,7 @@ import { field } from '../../../../../utils/StringData'
 const leaderboard_cmd_signature = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
   custom_id_prefix: 'lb',
-  name: 'leaderboard',
+  name: 'lb',
   description: 'View the leaderboard for a ranking',
 
   state_schema: {

@@ -24,7 +24,6 @@ export async function respondToInteraction(
     sentry.addBreadcrumb({
       message: 'Invalid signature',
       category: 'discord',
-      level: 'info',
     })
     return new Response('Invalid signature', { status: 401 })
   }
@@ -35,18 +34,16 @@ export async function respondToInteraction(
     .then(res => res)
     .catch(e => onError(e))
 
+  sentry.addBreadcrumb({
+    category: 'Responding with',
+    data: { response: JSON.stringify(response), direct_response, },
+  })
+
   if (direct_response) {
-    sentry.debug(`responding`)
     return json(response)
   }
 
-  sentry.addBreadcrumb({
-    category: 'Sending interaction response',
-    data: { response: JSON.stringify(response) },
-  })
-
   await bot.createInteractionResponse(interaction.id, interaction.token, response)
-
   return new Response('OK', { status: 200 })
 }
 
