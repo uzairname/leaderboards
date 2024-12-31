@@ -1,7 +1,7 @@
 import * as D from 'discord-api-types/v10'
+import { MessageData } from '../rest/objects'
 import type { ViewState } from './view-state'
 import { BaseView, CommandView, MessageView } from './views'
-import { MessageData } from '../rest/objects'
 
 export type AppCommandInteraction<CommandType extends D.ApplicationCommandType> =
   CommandType extends D.ApplicationCommandType.ChatInput
@@ -87,7 +87,9 @@ export interface InteractionContext<
   interaction: View['guild_only'] extends true
     ? D.APIGuildInteractionWrapper<InteractionT>
     : InteractionT
-  send: (data: D.RESTPostAPIChannelMessageJSONBody | MessageData) => Promise<D.RESTPostAPIChannelMessageResult>
+  send: (
+    data: D.RESTPostAPIChannelMessageJSONBody | MessageData,
+  ) => Promise<D.RESTPostAPIChannelMessageResult>
 }
 
 // Defer

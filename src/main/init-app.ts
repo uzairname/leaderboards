@@ -1,5 +1,5 @@
 import { DbClient } from '../database/client'
-import { getNeonDrizzleClient, getNeonDrizzleWsClient } from '../database/drizzle-client'
+import { getNeonDrizzleWsClient } from '../database/drizzle-client'
 import { Env } from '../Env'
 import { sentry } from '../logging/sentry'
 import { App } from './app/App'

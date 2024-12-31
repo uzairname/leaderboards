@@ -1,5 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { CommandView, getOptions } from '../../../../../../discord-framework'
+import { field } from '../../../../../../utils/StringData'
 import { GuildCommand } from '../../../../../app/ViewModule'
 import {
   guildRankingsOption,
@@ -7,7 +8,6 @@ import {
 } from '../../../../ui-helpers/ranking-option'
 import { allRankingsPage } from '../pages/all-rankings-page'
 import { rankingSettingsPage } from '../pages/ranking-settings-page'
-import { field } from '../../../../../../utils/StringData'
 
 export const rankings_cmd_signature = new CommandView({
   type: D.ApplicationCommandType.ChatInput,

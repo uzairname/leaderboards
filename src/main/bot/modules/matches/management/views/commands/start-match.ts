@@ -1,12 +1,12 @@
 import * as D from 'discord-api-types/v10'
 import { CommandView, getOptions } from '../../../../../../../discord-framework'
+import { field } from '../../../../../../../utils/StringData'
 import { GuildCommand } from '../../../../../../app/ViewModule'
 import { UserError } from '../../../../../errors/UserError'
 import { ensureAdminPerms } from '../../../../../ui-helpers/perms'
 import { guildRankingsOption, withSelectedRanking } from '../../../../../ui-helpers/ranking-option'
 import { getRegisterPlayer } from '../../../../players/manage-players'
 import { start1v1SeriesThread } from '../../../ongoing-math-thread/manage-ongoing-match'
-import { field } from '../../../../../../../utils/StringData'
 
 export const start_match_cmd_signature = new CommandView({
   type: D.ApplicationCommandType.ChatInput,

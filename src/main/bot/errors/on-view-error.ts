@@ -22,8 +22,7 @@ export function onViewError(app: App) {
       } else {
         description = e.message
       }
-    }
-    else if (e instanceof DiscordErrors.BotPermissions) {
+    } else if (e instanceof DiscordErrors.BotPermissions) {
       return onViewError(app)(new UserErrors.BotPermissions(app, e))
     } else if (e instanceof RateLimitError) {
       title = 'Being Rate limited'

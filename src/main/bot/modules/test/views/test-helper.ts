@@ -1,9 +1,9 @@
 import * as D from 'discord-api-types/v10'
-import { MessageView} from '../../../../../discord-framework'
+import { MessageView } from '../../../../../discord-framework'
 import { ViewStateFactory } from '../../../../../discord-framework/interactions/view-state'
+import { field } from '../../../../../utils/StringData'
 import { AppView } from '../../../../app/ViewModule'
 import all_views from '../../all-views'
-import { field } from '../../../../../utils/StringData'
 
 export const helper_page_config = new MessageView({
   name: 'test helper',

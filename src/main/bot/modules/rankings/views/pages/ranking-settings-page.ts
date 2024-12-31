@@ -4,6 +4,7 @@ import {
   MessageView,
   StateContext,
 } from '../../../../../../discord-framework'
+import { field } from '../../../../../../utils/StringData'
 import { App } from '../../../../../app/App'
 import { AppView } from '../../../../../app/ViewModule'
 import { UserErrors } from '../../../../errors/UserError'
@@ -11,7 +12,6 @@ import { Colors } from '../../../../ui-helpers/constants'
 import { Messages } from '../../../../ui-helpers/messages'
 import { escapeMd } from '../../../../ui-helpers/strings'
 import * as handlers from './ranking-settings-handlers'
-import { field } from '../../../../../../utils/StringData'
 
 export const ranking_settings_page_config = new MessageView({
   name: 'ranking settings',

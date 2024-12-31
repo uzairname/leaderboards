@@ -34,7 +34,6 @@ type OptionValueType<T extends D.ApplicationCommandOptionType> =
               ? D.APIRole
               : never
 
-
 export function getOptions<
   T extends {
     [name: string]: { type: D.ApplicationCommandOptionType; required?: boolean; name?: string }

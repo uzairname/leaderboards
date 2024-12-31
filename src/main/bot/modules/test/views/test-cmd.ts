@@ -1,9 +1,9 @@
 import * as D from 'discord-api-types/v10'
 import { CommandView, StateContext } from '../../../../../discord-framework'
+import { field } from '../../../../../utils/StringData'
 import { AppView } from '../../../../app/ViewModule'
 import { UserErrors } from '../../../errors/UserError'
 import { helper_page_config } from './test-helper'
-import { field } from '../../../../../utils/StringData'
 
 const test_cmd_signature = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
@@ -25,7 +25,6 @@ const test_cmd_signature = new CommandView({
   },
   guild_only: true,
 })
-
 
 export default new AppView(test_cmd_signature, app =>
   test_cmd_signature
@@ -91,8 +90,6 @@ export default new AppView(test_cmd_signature, app =>
       }
     }),
 )
-
-
 
 function testMessageData(
   ctx: StateContext<typeof test_cmd_signature>,

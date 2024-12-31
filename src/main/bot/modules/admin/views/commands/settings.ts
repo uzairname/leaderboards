@@ -1,12 +1,12 @@
 import * as D from 'discord-api-types/v10'
-import { CommandView,  InteractionContext } from '../../../../../../discord-framework'
+import { CommandView, InteractionContext } from '../../../../../../discord-framework'
+import { field } from '../../../../../../utils/StringData'
 import { App } from '../../../../../app/App'
 import { AppView } from '../../../../../app/ViewModule'
 import { Colors } from '../../../../ui-helpers/constants'
 import { ensureAdminPerms } from '../../../../ui-helpers/perms'
 import { getOrAddGuild, syncGuildAdminRole } from '../../../guilds/guilds'
 import { rankings_cmd_signature } from '../../../rankings/views/commands/rankings-cmd'
-import { field } from '../../../../../../utils/StringData'
 
 export const settings_cmd_signature = new CommandView({
   type: D.ApplicationCommandType.ChatInput,

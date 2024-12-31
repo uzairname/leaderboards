@@ -36,7 +36,7 @@ export async function respondToInteraction(
 
   sentry.addBreadcrumb({
     category: 'Responding with',
-    data: { response: JSON.stringify(response), direct_response, },
+    data: { response: JSON.stringify(response), direct_response },
   })
 
   if (direct_response) {

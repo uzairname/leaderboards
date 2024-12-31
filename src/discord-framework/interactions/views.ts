@@ -2,6 +2,7 @@ import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging/sentry'
 import type { StringDataSchema } from '../../utils/StringData'
 import { DiscordAPIClient } from '../rest/client'
+import { MessageData } from '../rest/objects'
 import { InteractionErrors } from './errors'
 import type {
   AppCommandInteraction,
@@ -20,7 +21,6 @@ import {
   checkGuildMessageComponentInteraction,
 } from './utils/interaction-checks'
 import { ViewState, ViewStateFactory } from './view-state'
-import { MessageData } from '../rest/objects'
 
 export abstract class BaseView<
   TSchema extends StringDataSchema = {},
@@ -83,7 +83,10 @@ export abstract class BaseView<
       },
       send: async data => {
         const _interaction = checkGuildMessageComponentInteraction(interaction)
-        return await discord.createMessage(_interaction.channel.id, data instanceof MessageData ? data.as_post : data)
+        return await discord.createMessage(
+          _interaction.channel.id,
+          data instanceof MessageData ? data.as_post : data,
+        )
       },
     })
   }
@@ -115,7 +118,10 @@ export abstract class BaseView<
             await discord.deleteInteractionResponse(interaction.token, message_id)
           },
           send: async data => {
-            return await discord.createMessage(interaction.channel!.id, data instanceof MessageData ? data.as_post : data)
+            return await discord.createMessage(
+              interaction.channel!.id,
+              data instanceof MessageData ? data.as_post : data,
+            )
           },
         }).catch(async e => {
           await discord.createFollowupMessage(interaction.token, onError(e, ctx.setException).data)
@@ -183,7 +189,11 @@ export class CommandView<
         this.deferResponse(callback, interaction, state, discord, onError)
         return response
       },
-      send: async data => discord.createMessage(interaction.channel.id, data instanceof MessageData ? data.as_post : data),
+      send: async data =>
+        discord.createMessage(
+          interaction.channel.id,
+          data instanceof MessageData ? data.as_post : data,
+        ),
     })
   }
 

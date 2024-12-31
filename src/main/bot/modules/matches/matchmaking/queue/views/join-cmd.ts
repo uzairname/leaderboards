@@ -1,11 +1,9 @@
 import * as D from 'discord-api-types/v10'
 import { CommandView, getOptions } from '../../../../../../../discord-framework'
 import { GuildCommand } from '../../../../../../app/ViewModule'
-import { guildRankingsOption, withSelectedRanking } from '../../../../../ui-helpers/ranking-option'
-import { commandMention, escapeMd, relativeTimestamp } from '../../../../../ui-helpers/strings'
-import { userJoinQueue } from '../1v1-queue'
-import joinCmd from './join-cmd'
 import { Messages } from '../../../../../ui-helpers/messages'
+import { guildRankingsOption, withSelectedRanking } from '../../../../../ui-helpers/ranking-option'
+import { userJoinQueue } from '../1v1-queue'
 
 export const join_cmd_config = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
@@ -43,13 +41,15 @@ export default new GuildCommand(
             const { match, already_in, expires_at } = await userJoinQueue(app, ctx, p_ranking)
 
             await ctx.edit({
-              content: Messages.queue_join({match, already_in, ranking, expires_at}),
+              content: Messages.queue_join({ match, already_in, ranking, expires_at }),
               flags: D.MessageFlags.Ephemeral,
             })
 
             // Send a message to the channel where others can join the queue
             if (!already_in && !match) {
-              await ctx.send(await Messages.someone_joined_queue(app, ranking, ctx.interaction.guild_id))
+              await ctx.send(
+                await Messages.someone_joined_queue(app, ranking, ctx.interaction.guild_id),
+              )
             }
           })
         },

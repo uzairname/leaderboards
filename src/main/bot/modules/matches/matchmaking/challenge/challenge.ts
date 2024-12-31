@@ -7,6 +7,7 @@ import {
 } from '../../../../../../discord-framework'
 import { checkGuildInteraction } from '../../../../../../discord-framework/interactions/utils/interaction-checks'
 import { ViewState } from '../../../../../../discord-framework/interactions/view-state'
+import { field } from '../../../../../../utils/StringData'
 import { sequential } from '../../../../../../utils/utils'
 import { App } from '../../../../../app/App'
 import { AppView } from '../../../../../app/ViewModule'
@@ -15,7 +16,6 @@ import { relativeTimestamp } from '../../../../ui-helpers/strings'
 import { getRegisterPlayer } from '../../../players/manage-players'
 import { default_best_of } from '../../../rankings/manage-rankings'
 import { start1v1SeriesThread } from '../../ongoing-math-thread/manage-ongoing-match'
-import { field } from '../../../../../../utils/StringData'
 
 export const challenge_message_signature = new MessageView({
   name: 'Challenge Message',

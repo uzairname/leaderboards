@@ -8,6 +8,7 @@ import {
   StateContext,
 } from '../../../../../../../discord-framework'
 import { checkGuildMessageComponentInteraction } from '../../../../../../../discord-framework/interactions/utils/interaction-checks'
+import { field } from '../../../../../../../utils/StringData'
 import { assert, nonNullable, snowflakeToDate } from '../../../../../../../utils/utils'
 import { App } from '../../../../../../app/App'
 import { GuildCommand } from '../../../../../../app/ViewModule'
@@ -19,7 +20,6 @@ import { escapeMd, messageLink, relativeTimestamp } from '../../../../../ui-help
 import { getRegisterPlayer } from '../../../../players/manage-players'
 import { matchSummaryEmbed } from '../../../logging/match-summary-message'
 import { recordAndScoreMatch } from '../../match-creation'
-import { field } from '../../../../../../../utils/StringData'
 
 export const record_match_cmd_signature = new CommandView({
   type: D.ApplicationCommandType.ChatInput,

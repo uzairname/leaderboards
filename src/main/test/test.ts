@@ -7,7 +7,6 @@ export async function runTests(app: App): Promise<Response> {
 
   await app.db.settings.getOrUpdate()
 
-
   return new Response(`Successfully tested Leaderboards app`, { status: 200 })
 }
 

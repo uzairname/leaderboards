@@ -8,6 +8,7 @@ import {
   MessageView,
   getModalSubmitEntries,
 } from '../../../../../../../discord-framework'
+import { field } from '../../../../../../../utils/StringData'
 import { intOrUndefined, nonNullable } from '../../../../../../../utils/utils'
 import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
@@ -16,7 +17,6 @@ import { Colors } from '../../../../../ui-helpers/constants'
 import { hasAdminPerms } from '../../../../../ui-helpers/perms'
 import { matchSummaryEmbed } from '../../../logging/match-summary-message'
 import { cancelMatch, updateMatchOutcome } from '../../manage-matches'
-import { field } from '../../../../../../../utils/StringData'
 
 export const manage_match_page_config = new MessageView({
   custom_id_prefix: 'm',

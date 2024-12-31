@@ -22,9 +22,10 @@ export default new AppView(queue_cmd_config, app =>
           content: n_players_left ? 'You left the queue' : `You're not in the queue`,
         })
 
-        n_players_left && await ctx.send({
-          content: `Someone has left the queue`,
-        })
+        n_players_left &&
+          (await ctx.send({
+            content: `Someone has left the queue`,
+          }))
       },
     )
   }),

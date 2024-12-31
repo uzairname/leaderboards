@@ -189,7 +189,6 @@ export class PlayersManager extends DbObjectManager {
       where ${Players.id} = values.a
       `).sql
 
-
     await this.db.drizzle.execute(query)
   }
 }

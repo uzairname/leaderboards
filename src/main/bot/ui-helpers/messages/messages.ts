@@ -3,6 +3,7 @@ import { APIEmbed } from 'discord-api-types/v10'
 import { Guild, GuildRanking, Match, Ranking } from '../../../../database/models'
 import { PartialGuildRanking } from '../../../../database/models/guildrankings'
 import { MatchPlayer, MatchStatus, Vote } from '../../../../database/models/matches'
+import { MessageData } from '../../../../discord-framework'
 import { sentry } from '../../../../logging/sentry'
 import { nonNullable } from '../../../../utils/utils'
 import { App } from '../../../app/App'
@@ -14,14 +15,15 @@ import record_match from '../../modules/matches/management/views/commands/record
 import settle_match from '../../modules/matches/management/views/commands/settle-match-cmd'
 import start_match from '../../modules/matches/management/views/commands/start-match'
 import challenge from '../../modules/matches/matchmaking/challenge/challenge-cmd'
-import joinqCmd from '../../modules/matches/matchmaking/queue/views/join-cmd'
+import {
+  default as joinCmd,
+  default as joinqCmd,
+} from '../../modules/matches/matchmaking/queue/views/join-cmd'
 import { default_best_of } from '../../modules/rankings/manage-rankings'
 import create_ranking from '../../modules/rankings/views/commands/create-ranking'
 import rankings from '../../modules/rankings/views/commands/rankings-cmd'
 import { Colors } from '../constants'
 import { commandMention, dateTimestamp, escapeMd, messageLink, relativeTimestamp } from '../strings'
-import { MessageData } from '../../../../discord-framework'
-import joinCmd from '../../modules/matches/matchmaking/queue/views/join-cmd'
 
 export const concise_description =
   'Tracks skill ratings and matches for any game. Additional utilities for moderation, display, and statistics.'
@@ -237,21 +239,29 @@ export function ongoingMatch1v1Message(
   }
 }
 
-
-export const queue_join = ({match, already_in, ranking, expires_at}: {
-  match?: Match,
-  already_in: boolean,
-  ranking: Ranking,
-  expires_at: Date,
+export const queue_join = ({
+  match,
+  already_in,
+  ranking,
+  expires_at,
+}: {
+  match?: Match
+  already_in: boolean
+  ranking: Ranking
+  expires_at: Date
 }) => {
   return match
-                ? `A match has been found!`
-                : (already_in ? `You rejoined the queue` : 'You joined the queue') +
-                ` for ${escapeMd(ranking.data.name)}.` +
-                ` You'll be removed ${relativeTimestamp(expires_at)} if a match isn't found.`
-} 
+    ? `A match has been found!`
+    : (already_in ? `You rejoined the queue` : 'You joined the queue') +
+        ` for ${escapeMd(ranking.data.name)}.` +
+        ` You'll be removed ${relativeTimestamp(expires_at)} if a match isn't found.`
+}
 
-export const someone_joined_queue = async (app: App, ranking: Ranking, guild_id: string): Promise<MessageData> => { 
+export const someone_joined_queue = async (
+  app: App,
+  ranking: Ranking,
+  guild_id: string,
+): Promise<MessageData> => {
   return new MessageData({
     content: `${await commandMention(app, joinCmd, guild_id)} - Someone has joined the queue for ${escapeMd(ranking.data.name)}`,
   })

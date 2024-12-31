@@ -10,10 +10,10 @@ import {
   ViewState,
   ViewStateFactory,
 } from '../../../../../../discord-framework/interactions/view-state'
+import { field } from '../../../../../../utils/StringData'
 import { App } from '../../../../../app/App'
 import { AppView } from '../../../../../app/ViewModule'
 import views from '../../../all-views'
-import { field } from '../../../../../../utils/StringData'
 
 export const select_channel_page_config = new MessageView({
   name: 'select channel',

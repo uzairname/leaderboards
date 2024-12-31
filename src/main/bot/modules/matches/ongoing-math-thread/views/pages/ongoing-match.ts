@@ -1,19 +1,15 @@
 import * as D from 'discord-api-types/v10'
 import { MatchStatus, Vote } from '../../../../../../../database/models/matches'
-import {
-  DeferContext,
-  MessageData,
-  MessageView,
-} from '../../../../../../../discord-framework'
+import { DeferContext, MessageData, MessageView } from '../../../../../../../discord-framework'
 import { ViewState } from '../../../../../../../discord-framework/interactions/view-state'
 import { sentry } from '../../../../../../../logging/sentry'
+import { field } from '../../../../../../../utils/StringData'
 import { maxIndex, nonNullable } from '../../../../../../../utils/utils'
 import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
 import { UserError } from '../../../../../errors/UserError'
 import { Messages } from '../../../../../ui-helpers/messages'
 import { castPlayerVote, start1v1SeriesThread } from '../../manage-ongoing-match'
-import { field } from '../../../../../../../utils/StringData'
 
 export const ongoing_series_page_config = new MessageView({
   name: 'Ongoing series message',

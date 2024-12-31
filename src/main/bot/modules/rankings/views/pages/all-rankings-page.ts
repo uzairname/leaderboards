@@ -8,6 +8,7 @@ import {
   StateContext,
 } from '../../../../../../discord-framework'
 import { sentry } from '../../../../../../logging/sentry'
+import { field } from '../../../../../../utils/StringData'
 import {
   intOrUndefined,
   nonNullable,
@@ -29,7 +30,6 @@ import {
   max_ranking_name_length,
 } from '../../manage-rankings'
 import { ranking_settings_page_config, rankingSettingsPage } from './ranking-settings-page'
-import { field } from '../../../../../../utils/StringData'
 
 export const rankings_page_config = new MessageView({
   custom_id_prefix: 'ar',

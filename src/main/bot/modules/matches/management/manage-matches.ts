@@ -54,7 +54,6 @@ export async function cancelMatch(app: App, match: Match): Promise<void> {
   await syncMatchSummaryMessages(app, match)
 }
 
-
 export async function setMatchWinner(app: App, match: Match, user_id: string) {
   const team_players = await match.players()
 
@@ -99,8 +98,6 @@ export async function updateMatchOutcome(
   await rescoreMatches(app, match.ranking, { finished_on_or_after: match.data.time_finished })
   await syncMatchSummaryMessages(app, match)
 }
-
-
 
 /**
  * Recalculate ratings in the ranking based on all matches after the specified date.

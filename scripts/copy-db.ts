@@ -1,7 +1,6 @@
 import dotenv from 'dotenv'
 import { getNeonDrizzleClient } from '../src/database/drizzle-client'
 import { nonNullable } from '../src/utils/utils'
-import postgres from 'postgres';
 import { GuildRankings, Guilds, Matches, MatchPlayers, Players, Rankings, Users } from '../src/database/schema';
 import { eq, and } from 'drizzle-orm';
 

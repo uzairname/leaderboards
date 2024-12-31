@@ -1,14 +1,12 @@
 import { RESTPostOAuth2AccessTokenResult } from 'discord-api-types/v10'
-import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, uniqueIndex, bit } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, uniqueIndex } from 'drizzle-orm/pg-core'
 import { MatchStatus } from './models/matches'
 import { Vote } from './models/matches'
 import { MatchMetadata } from './models/matches'
-import { Player, PlayerFlags, PlayerStats } from './models/players'
+import { PlayerFlags, PlayerStats } from './models/players'
 import { Versions } from './models/settings'
 import { Rating, MatchmakingSettings } from './models/rankings'
 import { GuildRankingDisplaySettings } from './models/guildrankings'
-import { unique } from 'drizzle-orm/mysql-core'
-import queue from '../main/bot/modules/matches/matchmaking/queue/views/queue-page'
 
 export const Settings = pgTable('Settings', {
   id: integer('id').primaryKey().default(1),

@@ -1,10 +1,10 @@
 import * as D from 'discord-api-types/v10'
-import { MessageView, } from '../../../../../../discord-framework'
+import { MessageView } from '../../../../../../discord-framework'
+import { field } from '../../../../../../utils/StringData'
 import { App } from '../../../../../app/App'
 import { AppView } from '../../../../../app/ViewModule'
 import { Colors } from '../../../../ui-helpers/constants'
 import { matchSummaryEmbed } from '../match-summary-message'
-import { field } from '../../../../../../utils/StringData'
 
 export const matches_page_config = new MessageView({
   custom_id_prefix: 'mh',

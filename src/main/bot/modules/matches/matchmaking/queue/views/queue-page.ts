@@ -1,17 +1,13 @@
 import * as D from 'discord-api-types/v10'
-import {
-  DeferContext,
-  MessageData,
-  MessageView,
-} from '../../../../../../../discord-framework'
+import { DeferContext, MessageData, MessageView } from '../../../../../../../discord-framework'
 import { checkMessageComponentInteraction } from '../../../../../../../discord-framework/interactions/utils/interaction-checks'
 import { ViewState } from '../../../../../../../discord-framework/interactions/view-state'
+import { field } from '../../../../../../../utils/StringData'
 import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
 import { Colors } from '../../../../../ui-helpers/constants'
 import { escapeMd, relativeTimestamp } from '../../../../../ui-helpers/strings'
 import { userJoinQueue } from '../1v1-queue'
-import { field } from '../../../../../../../utils/StringData'
 
 export const queue_page_config = new MessageView({
   name: 'Queue Message',

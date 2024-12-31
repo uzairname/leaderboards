@@ -7,7 +7,7 @@ import { sentry } from '../../../../logging/sentry'
 import { nonNullable } from '../../../../utils/utils'
 import { type App } from '../../../app/App'
 import { Colors } from '../../ui-helpers/constants'
-import { commandMention, escapeMd, relativeTimestamp, space } from '../../ui-helpers/strings'
+import { commandMention, escapeMd, relativeTimestamp, space, spaces } from '../../ui-helpers/strings'
 import { syncRankedCategory } from '../guilds/guilds'
 import { getOrderedLeaderboardPlayers } from '../players/display'
 import leaderboardCmd from './views/leaderboard-cmd'
@@ -38,13 +38,16 @@ export async function syncGuildRankingLbMessage(
 
   if (!guild_ranking.data.display_settings?.leaderboard_message && !enable_if_disabled) return
 
+  const message_data = new MessageData({
+    embeds: (await leaderboardMessage(app, ranking, {
+      guild_id: guild.data.id,
+    })).embeds
+  })
+
   const result = await app.discord.utils.syncChannelMessage({
     target_channel_id: guild_ranking.data.leaderboard_channel_id,
     target_message_id: guild_ranking.data.leaderboard_message_id,
-    messageData: () =>
-      leaderboardMessage(app, ranking, {
-        guild_id: guild.data.id,
-      }),
+    messageData: async () => message_data,
     getChannel: () => sendLbChannel(app, guild, ranking),
     no_edit,
   })
@@ -102,82 +105,82 @@ export async function leaderboardMessage(
   options?: {
     guild_id?: string
     full?: boolean
+    page?: number
   },
-): Promise<MessageData> {
+): Promise<{ embeds: D.APIEmbed[], max_page: number }> {
   const players = await getOrderedLeaderboardPlayers(app, ranking)
 
   let place = 0
   const max_rating_len = players[0]?.rating.toFixed(0).length ?? 0
 
-  const players_text =
-    players.length > 0
-      ? players
-          .map(p => {
-            const rating_text = `\`${p.rating.toFixed(0)}\``.padStart(
-              max_rating_len + 2 - `${place}`.length,
-            )
-            if (p.is_provisional) {
-              return null
-            } else {
-              place++
-              return (
-                `### ${(place => {
-                  if (place == 1) return `🥇`
-                  else if (place == 2) return `🥈`
-                  else if (place == 3) return `🥉`
-                  else return `${place}.${space}`
-                })(place)}` +
-                `${space}${rating_text}` +
-                `${space}<@${p.user_id}> `
-              )
-            }
-          })
-          .filter(Boolean)
-          .join('\n')
-      : 'No players yet'
-  const embeds: D.APIEmbed[] = []
+  const players_lines = players
+    .map(p => {
+      const rating_text = `\`${p.rating.toFixed(0)}\``.padStart(
+        max_rating_len + 2 - `${place}`.length,
+      )
+      if (p.is_provisional) {
+        return null
+      } else {
+        place++
+        return (
+          `### ${(place => {
+            if (place == 1) return `🥇`
+            else if (place == 2) return `🥈`
+            else if (place == 3) return `🥉`
+            else return `${place}.${space}`
+          })(place)}` +
+          `${space}${rating_text}` +
+          `${space}<@${p.user_id}> `
+        )
+      }
+    })
+    .filter(Boolean) as string[]
 
-  embeds.push({
-    title: `${escapeMd(ranking.data.name)} Leaderboard`,
-    description:
-      players_text +
-      `\n-# Last updated ${relativeTimestamp(new Date(Date.now()))}. ` +
-      (options?.full
-        ? ``
-        : `Use ${await commandMention(app, leaderboardCmd, options?.guild_id)} to see the full leaderboard.`),
-    color: Colors.Primary,
-  })
-
-  const players_provisional_text = options?.full
+  const provisional_players_lines = options?.full
     ? players
-        .map(p => {
-          const rating_text = `\`${p.rating.toFixed(0)}?\``
-          if (p.is_provisional) {
-            return `-# ${rating_text}${space}<@${p.user_id}>`
-          } else {
-            return ''
-          }
-        })
-        .filter(Boolean)
-        .join('\n')
-    : ``
+      .map(p => {
+        // const rating_text = `\`${p.rating.toFixed(0)}?\``
+        if (p.is_provisional) {
+          return `### -# ?.${space + space}\`???\`${space}<@${p.user_id}>`
+        } else {
+          return null
+        }
+      }).filter(Boolean) as string[]
+    : undefined
 
-  const explanation_text =
-    `\n-# Unranked players are given a provisional rating and` +
-    ` are hidden from the main leaderboard until they play more games.`
+  const lines_per_page = 25
+  const page = options?.page ?? 1
 
-  if (players_provisional_text) {
-    embeds[0].fields = [
-      {
-        name: 'Unranked',
-        value: players_provisional_text + explanation_text,
-      },
-    ]
+  let all_lines = players_lines
+  if (options?.full) {
+    all_lines = all_lines.concat(provisional_players_lines ?? [])
   }
 
-  return new MessageData({
+  const current_page_lines = all_lines.slice((page - 1) * lines_per_page, page * lines_per_page)
+
+  const bottom_text = `-# Last updated ${relativeTimestamp(new Date(Date.now()))}. `
+    + `\n-# Unranked players are given a provisional rating and` +
+    ` are hidden from the main leaderboard until they play more games.`
+    + (options?.full
+      ? ``
+      : `\nUse ${await commandMention(app, leaderboardCmd, options?.guild_id)} \`${escapeMd(ranking.data.name)}\` to see the full leaderboard.`)
+
+  const embed: D.APIEmbed = {
+    title: `${escapeMd(ranking.data.name)} Leaderboard`,
+    description: current_page_lines.join('\n') + '\n' + bottom_text,
+    color: Colors.Primary,
+  }
+
+  const embeds = [embed]
+
+  const max_page = Math.ceil(all_lines.length / lines_per_page)
+
+
+  return {
     embeds,
-  })
+    max_page,
+  }
+
 }
 
 export function leaderboardChannelPermissionOverwrites(

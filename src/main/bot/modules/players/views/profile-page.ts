@@ -1,12 +1,12 @@
 import * as D from 'discord-api-types/v10'
 import { InteractionContext, MessageView } from '../../../../../discord-framework'
+import { field } from '../../../../../utils/StringData'
 import { App } from '../../../../app/App'
 import { AppView } from '../../../../app/ViewModule'
 import { Colors } from '../../../ui-helpers/constants'
 import { escapeMd, userAvatarUrl } from '../../../ui-helpers/strings'
 import { matches_page_config } from '../../matches/logging/views/matches-page'
 import { calcDisplayRating } from '../display'
-import { field } from '../../../../../utils/StringData'
 
 export const profile_page_config = new MessageView({
   name: 'Profile page',

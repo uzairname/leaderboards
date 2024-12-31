@@ -111,14 +111,15 @@ export default new GuildCommand(
                 })
               }
 
-
-              await ctx.send(await challengeMessage(app, {
-                time_sent: new Date(),
-                initiator_id: initiator.data.user_id,
-                opponent_id,
-                best_of,
-                ranking_id: ranking.data.id,
-              }))
+              await ctx.send(
+                await challengeMessage(app, {
+                  time_sent: new Date(),
+                  initiator_id: initiator.data.user_id,
+                  opponent_id,
+                  best_of,
+                  ranking_id: ranking.data.id,
+                }),
+              )
 
               return void ctx.edit({
                 content: `Challenge sent`,

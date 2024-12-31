@@ -1,12 +1,12 @@
 import * as D from 'discord-api-types/v10'
 import { CommandView, InteractionContext, StateContext } from '../../../../discord-framework'
+import { field } from '../../../../utils/StringData'
 import { App } from '../../../app/App'
 import { AppView } from '../../../app/ViewModule'
 import { Colors } from '../../ui-helpers/constants'
 import { Messages } from '../../ui-helpers/messages'
 import { dateTimestamp, github_url, inviteUrl } from '../../ui-helpers/strings'
 import { getOrAddGuild } from '../guilds/guilds'
-import { field } from '../../../../utils/StringData'
 
 export const help_cmd_signature = new CommandView({
   type: D.ApplicationCommandType.ChatInput,

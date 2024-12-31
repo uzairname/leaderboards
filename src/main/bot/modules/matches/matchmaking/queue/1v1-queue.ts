@@ -23,7 +23,7 @@ export async function userJoinQueue(
   app: App,
   ctx: AnyDeferContext,
   ranking_: PartialRanking,
-): Promise<{ already_in: boolean; match?: Match, expires_at: Date }> {
+): Promise<{ already_in: boolean; match?: Match; expires_at: Date }> {
   const { guild_ranking, ranking } = await app.db.guild_rankings.fetch({
     ranking_id: ranking_.data.id,
     guild_id: checkGuildInteraction(ctx.interaction).guild_id,
@@ -80,7 +80,7 @@ export async function findMatchFromQueue(
 
   // Start the match
   const team_players = unflatten(players_for_match, ranking.data.players_per_team, true)
-  const {match} = await start1v1SeriesThread(app, guild_ranking, team_players)
+  const { match } = await start1v1SeriesThread(app, guild_ranking, team_players)
 
   return match
 }
@@ -109,7 +109,10 @@ export async function isInQueue(app: App, p: PartialPlayer): Promise<boolean> {
  */
 export async function addPlayerToQueue(app: App, p: PartialPlayer): Promise<Date> {
   const player = await p.update({ time_joined_queue: new Date(Date.now()) })
-  return new Date(nonNullable(player.data.time_joined_queue, 'time_joined_queue').getTime() + app.config.QueueJoinTimeoutMs)
+  return new Date(
+    nonNullable(player.data.time_joined_queue, 'time_joined_queue').getTime() +
+      app.config.QueueJoinTimeoutMs,
+  )
 }
 
 export async function removePlayersFromQueue(app: App, players: PartialPlayer[]): Promise<void> {
