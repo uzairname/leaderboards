@@ -34,7 +34,7 @@ export default new GuildCommand(
         [
           {
             type: D.ApplicationCommandOptionType.User,
-            name: 'opponent',
+            name: optionnames.opponent,
             description: 'Who to challenge',
             required: true,
           },

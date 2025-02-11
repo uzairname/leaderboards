@@ -7,7 +7,7 @@ import { sentry } from '../../../../logging/sentry'
 import { nonNullable } from '../../../../utils/utils'
 import { type App } from '../../../app/App'
 import { Colors } from '../../ui-helpers/constants'
-import { commandMention, escapeMd, relativeTimestamp, space, spaces } from '../../ui-helpers/strings'
+import { commandMention, escapeMd, relativeTimestamp, space } from '../../ui-helpers/strings'
 import { syncRankedCategory } from '../guilds/guilds'
 import { getOrderedLeaderboardPlayers } from '../players/display'
 import leaderboardCmd from './views/leaderboard-cmd'
@@ -39,9 +39,11 @@ export async function syncGuildRankingLbMessage(
   if (!guild_ranking.data.display_settings?.leaderboard_message && !enable_if_disabled) return
 
   const message_data = new MessageData({
-    embeds: (await leaderboardMessage(app, ranking, {
-      guild_id: guild.data.id,
-    })).embeds
+    embeds: (
+      await leaderboardMessage(app, ranking, {
+        guild_id: guild.data.id,
+      })
+    ).embeds,
   })
 
   const result = await app.discord.utils.syncChannelMessage({
@@ -107,7 +109,7 @@ export async function leaderboardMessage(
     full?: boolean
     page?: number
   },
-): Promise<{ embeds: D.APIEmbed[], max_page: number }> {
+): Promise<{ embeds: D.APIEmbed[]; max_page: number }> {
   const players = await getOrderedLeaderboardPlayers(app, ranking)
 
   let place = 0
@@ -137,15 +139,16 @@ export async function leaderboardMessage(
     .filter(Boolean) as string[]
 
   const provisional_players_lines = options?.full
-    ? players
-      .map(p => {
-        // const rating_text = `\`${p.rating.toFixed(0)}?\``
-        if (p.is_provisional) {
-          return `### -# ?.${space + space}\`???\`${space}<@${p.user_id}>`
-        } else {
-          return null
-        }
-      }).filter(Boolean) as string[]
+    ? (players
+        .map(p => {
+          // const rating_text = `\`${p.rating.toFixed(0)}?\``
+          if (p.is_provisional) {
+            return `### -# ?.${space + space}\`???\`${space}<@${p.user_id}>`
+          } else {
+            return null
+          }
+        })
+        .filter(Boolean) as string[])
     : undefined
 
   const lines_per_page = 25
@@ -158,10 +161,11 @@ export async function leaderboardMessage(
 
   const current_page_lines = all_lines.slice((page - 1) * lines_per_page, page * lines_per_page)
 
-  const bottom_text = `-# Last updated ${relativeTimestamp(new Date(Date.now()))}. `
-    + `\n-# Unranked players are given a provisional rating and` +
-    ` are hidden from the main leaderboard until they play more games.`
-    + (options?.full
+  const bottom_text =
+    `-# Last updated ${relativeTimestamp(new Date(Date.now()))}. ` +
+    `\n-# Unranked players are given a provisional rating and` +
+    ` are hidden from the main leaderboard until they play more games.` +
+    (options?.full
       ? ``
       : `\nUse ${await commandMention(app, leaderboardCmd, options?.guild_id)} \`${escapeMd(ranking.data.name)}\` to see the full leaderboard.`)
 
@@ -175,12 +179,10 @@ export async function leaderboardMessage(
 
   const max_page = Math.ceil(all_lines.length / lines_per_page)
 
-
   return {
     embeds,
     max_page,
   }
-
 }
 
 export function leaderboardChannelPermissionOverwrites(
