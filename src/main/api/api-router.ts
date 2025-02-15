@@ -65,7 +65,7 @@ export default (app: App) =>
     .get('/leaderboard-message/:ranking_id', async request => {
       const ranking = await app.db.rankings.fetch(parseInt(request.params.ranking_id))
 
-      const str = (await leaderboardMessage(app, ranking)).msg.as_post.embeds![0].description
+      const str = (await leaderboardMessage(app, ranking)).embeds![0].description
 
       return new Response(str)
     })
