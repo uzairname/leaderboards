@@ -1,12 +1,15 @@
 #!/bin/bash
 
-# Usage: ./deploy.sh [.env]
+# Usage: ./deploy.sh <path_to_env_file>
 
 # Set environment path. Default to .env
 env_path="${1:-.env}"
 
 # Load environment variables
 source $env_path
+if [ $? -ne 0 ]; then
+  exit $?
+fi
 
 # Run TypeScript compiler
 npx tsc
@@ -26,7 +29,6 @@ if [ "$ENVIRONMENT" = "development" ]; then
 else
   wrangler deploy --env $ENVIRONMENT
 fi
-
 if [ $? -ne 0 ]; then
   exit $?
 fi

@@ -110,20 +110,20 @@ export async function withSelectedRanking<
 }
 
 /**
- * Calls the callback with the selected ranking as an argument. 
+ * Calls the callback with the selected ranking as an argument.
  * If no ranking is selected, does one of the following:
  *  - if ranking is optional, passes undefined to the callback.
  *  - if there is one ranking in the guild, uses that.
  *  - if there are none, redirects to the all rankings page
  *  - if there are multiple, throws an error
- * 
- * @param app 
+ *
+ * @param app
  * @param ctx interaction context for command or component
- * @param selected_ranking_id 
+ * @param selected_ranking_id
  * @param options specify to limit the available rankings
  * @param callback the interaction callback
  * @param optional if false, throws an error if no ranking can be selected
- * @returns 
+ * @returns
  */
 async function _withSelectedRanking<
   T extends InteractionContext<
