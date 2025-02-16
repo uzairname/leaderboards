@@ -78,13 +78,14 @@ export default new GuildCommand(
             },
             async ctx => {
               const input = getOptions(ctx.interaction, {
-                opponent: { type: D.ApplicationCommandOptionType.User },
+                opponent: { type: D.ApplicationCommandOptionType.User, required: true },
                 best_of: { type: D.ApplicationCommandOptionType.Integer },
                 ranking: { type: D.ApplicationCommandOptionType.Integer },
               })
               input.ranking
               const interaction = ctx.interaction
               const initiator = await getRegisterPlayer(app, interaction.member.user.id, ranking)
+              input.opponent
 
               const opponent_id = nonNullable(
                 ctx.interaction.data.options?.find(
