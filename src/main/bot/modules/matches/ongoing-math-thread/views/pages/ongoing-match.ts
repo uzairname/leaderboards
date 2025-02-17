@@ -175,7 +175,7 @@ async function rematch(
 
     // Check if the rematch hasn't timed out
     const expires_at = new Date(
-      (old_match.data.time_finished?.getTime() ?? Date.now()) + app.config.RematchTimeoutMs,
+      (old_match.data.time_finished?.getTime() ?? Date.now()) + app.config.RematchTimeoutMinutes * 60 * 1000,
     )
     if (new Date() > expires_at) {
       throw new UserError(`Rematch window has expired`)

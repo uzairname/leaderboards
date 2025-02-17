@@ -5,9 +5,10 @@ import { nonNullable } from '../../utils/utils'
 import { App } from '../app/App'
 import { GuildCommand } from '../app/ViewModule'
 import views from '../bot/modules/all-views'
-import { leaderboardMessage } from '../bot/modules/leaderboard/leaderboard-message'
+import { leaderboardMessage, syncRankingLbMessages } from '../bot/modules/leaderboard/leaderboard-message'
 import { rescoreMatches } from '../bot/modules/matches/management/manage-matches'
 import { inviteUrl } from '../bot/ui-helpers/strings'
+import authorize from './authorize'
 
 export default (app: App) =>
   Router({ base: '/api' })
@@ -68,6 +69,27 @@ export default (app: App) =>
       const str = (await leaderboardMessage(app, ranking)).embeds![0].description
 
       return new Response(str)
+    })
+
+    .post('/refresh-lb/', authorize(app.env), async request => {
+      const body = await request.json()
+
+      function getRankingId(body: unknown): number | undefined {
+        if (body instanceof Object && body.hasOwnProperty('ranking_id')) {
+          return parseInt((body as any).ranking_id)
+        }
+      }
+
+      const ranking_id = getRankingId(body)
+      if (!ranking_id) {
+        return new Response('Invalid ranking_id', { status: 400 })
+      }
+
+      const ranking = await app.db.rankings.fetch(ranking_id)
+
+      await syncRankingLbMessages(app, ranking)
+
+      return new Response(`Updated ${ranking.data.name} leaderboards`)
     })
 
     .get('/rescore/:ranking_id', async request => {

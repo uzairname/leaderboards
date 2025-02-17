@@ -161,6 +161,12 @@ export async function leaderboardMessage(
 
   const current_page_lines = all_lines.slice((page - 1) * lines_per_page, page * lines_per_page)
 
+  if (current_page_lines.length == 0) {
+    current_page_lines.push(
+      `No players to show.`
+    )
+  }
+
   const bottom_text =
     `-# Last updated ${relativeTimestamp(new Date(Date.now()))}. ` +
     `\n-# Unranked players are given a provisional rating and` +

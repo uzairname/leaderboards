@@ -48,7 +48,7 @@ export class Config {
 
     readonly defaultScorer = rateTrueskill,
 
-    readonly RematchTimeoutMs = 1000 * 60 * 30,
+    readonly RematchTimeoutMinutes = 30,
 
     readonly ChallengeTimeoutMs = 1000 * 60 * 10,
 

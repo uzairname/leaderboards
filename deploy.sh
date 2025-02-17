@@ -24,6 +24,11 @@ if [ $? -ne 0 ]; then
 fi
 
 # Deploy to Cloudflare Workers
+# Check if ENVIRONMENT variable is set
+if [ -z "$ENVIRONMENT" ]; then
+  echo "ENVIRONMENT variable is not set. Defaulting to 'development'."
+  ENVIRONMENT="development"
+fi
 if [ "$ENVIRONMENT" = "development" ]; then
   wrangler deploy
 else
