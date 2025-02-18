@@ -1,11 +1,12 @@
 import { Router } from 'itty-router'
-import { sentry } from '../../logging/sentry'
-import { App } from '../app/App'
-import { getOrAddGuild, updateGuild } from '../bot/modules/guilds/guilds'
-import { getAppRoleConnectionsMetadata } from '../bot/modules/linked-roles/role-connections'
+import { sentry } from '../../../logging/sentry'
+import { App } from '../../app/App'
+import { getOrAddGuild, updateGuild } from '../../bot/modules/guilds/guilds'
+import { getAppRoleConnectionsMetadata } from '../../bot/modules/linked-roles/role-connections'
 
 export default (app: App) =>
   Router({ base: '/update' })
+    
     .post('/', async () => {
       await app.db.settings.getOrUpdate({
         last_updated: new Date(),
@@ -33,6 +34,7 @@ export default (app: App) =>
         status: 200,
       })
     })
+    
     .post('/guilds/:guild_id', async request => {
       if (!request.params.guild_id) {
         throw new Error('Guild ID not provided')

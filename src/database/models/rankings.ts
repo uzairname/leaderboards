@@ -1,4 +1,5 @@
 import { eq, inArray, InferInsertModel, InferSelectModel } from 'drizzle-orm'
+import { z } from 'zod'
 import { Player } from '.'
 import { sentry } from '../../logging/sentry'
 import { DbClient } from '../client'
@@ -21,6 +22,16 @@ export type MatchmakingSettings = {
   default_best_of?: number
   direct_challenge_enabled?: boolean
 }
+
+export const MatchConfigSchema = z.object({
+  custom_desc: z
+    .object({
+      random_items_each_team_choices: z.record(z.array(z.string())).optional(),
+    })
+    .optional(),
+})
+
+export type MatchConfig = z.infer<typeof MatchConfigSchema>
 
 export class PartialRanking {
   constructor(

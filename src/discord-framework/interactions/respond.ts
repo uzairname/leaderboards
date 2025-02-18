@@ -64,7 +64,7 @@ async function respond(
     const view = findView(findViewCallback, interaction)
 
     if (interaction.type === D.InteractionType.ApplicationCommand) {
-      if (viewIsCommand(view)) return view.respondToCommand(interaction, bot, onError)
+      if (viewIsCommand(view)) return view.respondToCommand(interaction as any, bot, onError) // TODO: fix type
       throw new InteractionErrors.InvalidViewType()
     }
 

@@ -1,10 +1,10 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
 import { Router } from 'itty-router'
-import type { AccessToken } from '../../database/models/accesstokens'
-import type { DiscordAPIClient } from '../../discord-framework'
-import { nonNullable } from '../../utils/utils'
-import type { App } from '../app/App'
+import type { AccessToken } from '../../../database/models/accesstokens'
+import type { DiscordAPIClient } from '../../../discord-framework'
+import { nonNullable } from '../../../utils/utils'
+import type { App } from '../../app/App'
 
 export default (app: App) =>
   Router({ base: `/oauth` })

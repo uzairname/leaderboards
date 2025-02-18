@@ -5,7 +5,7 @@ import { Vote } from './models/matches'
 import { MatchMetadata } from './models/matches'
 import { PlayerFlags, PlayerStats } from './models/players'
 import { Versions } from './models/settings'
-import { Rating, MatchmakingSettings } from './models/rankings'
+import { Rating, MatchmakingSettings, MatchConfig } from './models/rankings'
 import { GuildRankingDisplaySettings } from './models/guildrankings'
 
 export const Settings = pgTable('Settings', {
@@ -53,6 +53,7 @@ export const Rankings = pgTable('Rankings', {
   teams_per_match: integer('teams_per_match').notNull(),
   initial_rating: jsonb('initial_rating').notNull().$type<Rating>(),
   matchmaking_settings: jsonb('matchmaking_settings').notNull().$type<MatchmakingSettings>(), // move to GuildRankings
+  match_config: jsonb('match_config').$type<MatchConfig>(),
 })
 
 

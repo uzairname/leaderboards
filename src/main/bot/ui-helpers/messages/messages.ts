@@ -19,12 +19,12 @@ import {
   default as joinCmd,
   default as joinqCmd,
 } from '../../modules/matches/matchmaking/queue/views/join-cmd'
+import leaveCmd from '../../modules/matches/matchmaking/queue/views/leave-cmd'
 import { default_best_of } from '../../modules/rankings/manage-rankings'
 import create_ranking from '../../modules/rankings/views/commands/create-ranking'
 import rankings from '../../modules/rankings/views/commands/rankings-cmd'
 import { Colors } from '../constants'
 import { commandMention, dateTimestamp, escapeMd, messageLink, relativeTimestamp } from '../strings'
-import leaveCmd from '../../modules/matches/matchmaking/queue/views/leave-cmd'
 
 export const concise_description =
   'Tracks skill ratings and matches for any game. Additional utilities for moderation, display, and statistics.'
@@ -55,7 +55,7 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
             : `\n- ${await commandMention(app, record_match, guild_id)}: Admins can directly record the result of a match that has already been played.`) +
           `\n- ${await commandMention(app, joinqCmd, guild_id)}: If the queue is enabled, you can join the queue for a ranking. Once enough players join the queue, matches are automatically created based on estimated skill. Enter ${await commandMention(app, leaveCmd)} to leave all queues you are in.` +
           `Once a match is initiated, the bot creates a channel where players can record the match's result, and rematch if they want.` +
-            // `\n> -# The \`when\` parameter of the record-match command is a Discord snowflake.` +
+          // `\n> -# The \`when\` parameter of the record-match command is a Discord snowflake.` +
           // ` This means you can copy and paste the id of any message on Discord, and the bot will record the time that message was sent as the time that match was played.`
           ``,
       },
@@ -96,15 +96,15 @@ export async function allGuildRankingsText(
   const title_and_desc =
     guild_rankings.length === 0
       ? {
-        title: `Welcome`,
-        description:
-          `${escapeMd(guild.data.name)} has no rankings set up.` +
-          `\nCreate a ranking in order to track ratings and host ranked matches for your server.`,
-      }
+          title: `Welcome`,
+          description:
+            `${escapeMd(guild.data.name)} has no rankings set up.` +
+            `\nCreate a ranking in order to track ratings and host ranked matches for your server.`,
+        }
       : {
-        title: `All Rankings`,
-        description: `${escapeMd(guild.data.name)} has **${guild_rankings.length}** ranking${guild_rankings.length === 1 ? `` : `s`}, listed below.`,
-      }
+          title: `All Rankings`,
+          description: `${escapeMd(guild.data.name)} has **${guild_rankings.length}** ranking${guild_rankings.length === 1 ? `` : `s`}, listed below.`,
+        }
 
   const embeds: D.APIEmbed[] = [
     {
@@ -255,8 +255,8 @@ export const queue_join = ({
   return match
     ? `A match has been found!`
     : (already_in ? `You rejoined the queue` : 'You joined the queue') +
-    ` for ${escapeMd(ranking.data.name)}.` +
-    ` You'll be removed ${relativeTimestamp(expires_at)} if a match isn't found.`
+        ` for ${escapeMd(ranking.data.name)}.` +
+        ` You'll be removed ${relativeTimestamp(expires_at)} if a match isn't found.`
 }
 
 export const someone_joined_queue = async (

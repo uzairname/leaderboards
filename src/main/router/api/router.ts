@@ -1,20 +1,19 @@
 import * as D from 'discord-api-types/v10'
 import { json, Router } from 'itty-router'
-import { appCommandToJSONBody } from '../../discord-framework'
-import { nonNullable } from '../../utils/utils'
-import { App } from '../app/App'
-import { GuildCommand } from '../app/ViewModule'
-import views from '../bot/modules/all-views'
-import { leaderboardMessage, syncRankingLbMessages } from '../bot/modules/leaderboard/leaderboard-message'
-import { rescoreMatches } from '../bot/modules/matches/management/manage-matches'
-import { inviteUrl } from '../bot/ui-helpers/strings'
-import authorize from './authorize'
+import { appCommandToJSONBody } from '../../../discord-framework'
+import { App } from '../../app/App'
+import { GuildCommand } from '../../app/ViewModule'
+import views from '../../bot/modules/all-views'
+import { inviteUrl } from '../../bot/ui-helpers/strings'
+import rankings_router from './rankings/router'
+import { authorize } from '../router'
 
 export default (app: App) =>
   Router({ base: '/api' })
     .get('/', async () => {
       return new Response('API')
     })
+
     .get('/commands', async () => {
       const result = {
         'defined commands': views.all_views
@@ -38,6 +37,7 @@ export default (app: App) =>
       // format json
       return json(result)
     })
+
     .get('/commands/:guild_id', async request => {
       app.db.cache.clear()
       const guild_id = request.params.guild_id
@@ -50,9 +50,10 @@ export default (app: App) =>
         route: D.Routes.applicationGuildCommands(app.discord.application_id, guild_id),
         body: commands_data,
       }
-      // format json
+
       return json(query)
     })
+
     .get('/endpoints', async request => {
       const result = {
         interactions: app.config.env.BASE_URL + '/interactions',
@@ -61,43 +62,19 @@ export default (app: App) =>
       }
       return json(result)
     })
+
     .get('/invite-url', async () => new Response(inviteUrl(app)))
 
-    .get('/leaderboard-message/:ranking_id', async request => {
-      const ranking = await app.db.rankings.fetch(parseInt(request.params.ranking_id))
-
-      const str = (await leaderboardMessage(app, ranking)).embeds![0].description
-
-      return new Response(str)
-    })
-
-    .post('/refresh-lb/', authorize(app.env), async request => {
-      const body = await request.json()
-
-      function getRankingId(body: unknown): number | undefined {
-        if (body instanceof Object && body.hasOwnProperty('ranking_id')) {
-          return parseInt((body as any).ranking_id)
-        }
-      }
-
-      const ranking_id = getRankingId(body)
-      if (!ranking_id) {
+    .all('/rankings/:ranking_id/*', async request => {
+      const ranking_id = parseInt(request.params.ranking_id)
+      if (isNaN(ranking_id)) {
         return new Response('Invalid ranking_id', { status: 400 })
       }
-
       const ranking = await app.db.rankings.fetch(ranking_id)
-
-      await syncRankingLbMessages(app, ranking)
-
-      return new Response(`Updated ${ranking.data.name} leaderboards`)
-    })
-
-    .get('/rescore/:ranking_id', async request => {
-      const ranking_id = nonNullable(parseInt(request.params.ranking_id), 'ranking_id')
-      const result = await rescoreMatches(app, app.db.rankings.get(ranking_id), {
-        reset_rating_to_initial: true,
-      })
-      return json(result.map(m => ({ player: m.player.data.id, rating: m.rating })))
+      if (!ranking) {
+        return new Response('Unknown ranking', { status: 404 })
+      }
+      return rankings_router(app, ranking).handle(request)
     })
 
     .all('*', () => new Response('Not found', { status: 404 }))

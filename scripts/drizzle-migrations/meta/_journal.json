@@ -15,6 +15,13 @@
       "when": 1730861334365,
       "tag": "0001_absurd_microchip",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1739846853339,
+      "tag": "0002_empty_firebird",
+      "breakpoints": true
     }
   ]
 }
