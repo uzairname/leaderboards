@@ -1,13 +1,9 @@
 import postgres from 'postgres'
-import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js'
+import { drizzle } from 'drizzle-orm/postgres-js'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import * as dotenv from 'dotenv'
-import { cosineDistance, eq, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { nonNullable } from '../src/utils/utils'
-import { MatchPlayers, Players, Rankings, Settings } from '../src/database/schema'
-import { PgDialect } from 'drizzle-orm/pg-core'
-import { default_initial_rating } from '../src/main/bot/modules/rankings/manage-rankings'
-import { Rating } from '../src/database/models/rankings'
 
 const args = process.argv.slice(2)
 

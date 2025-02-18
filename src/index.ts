@@ -1,7 +1,7 @@
+import initApp from './bot/init-app'
+import router from './bot/routers/base'
 import { Env } from './Env'
 import { initSentry, sentry } from './logging/sentry'
-import initApp from './main/init-app'
-import router from './main/router/router'
 
 export default {
   fetch(request: Request, env: Env, execution_context: ExecutionContext) {

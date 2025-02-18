@@ -1,7 +1,7 @@
 import { DiscordAPIError, InternalRequest, REST, RequestData, RequestMethod } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
+import { truncateString } from '../../bot/ui-helpers/strings'
 import { sentry } from '../../logging/sentry'
-import { truncateString } from '../../main/bot/ui-helpers/strings'
 import { cache } from '../../utils/cache'
 import { DiscordCache } from './cache'
 import { DiscordAPIUtils } from './client-helpers'
