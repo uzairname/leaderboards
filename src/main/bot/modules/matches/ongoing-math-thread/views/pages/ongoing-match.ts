@@ -8,8 +8,8 @@ import { maxIndex, nonNullable } from '../../../../../../../utils/utils'
 import { App } from '../../../../../../app/App'
 import { AppView } from '../../../../../../app/ViewModule'
 import { UserError } from '../../../../../errors/UserError'
-import { Messages } from '../../../../../ui-helpers/messages'
 import { castPlayerVote, start1v1SeriesThread } from '../../manage-ongoing-match'
+import { ongoingMatch1v1Message } from '../../ongoing-1v1-match-message'
 
 export const ongoing_series_page_config = new MessageView({
   name: 'Ongoing series message',
@@ -53,7 +53,7 @@ export async function ongoingMatchPage(
     throw new Error(`Invalid match team dimensions ${team_players}`)
   }
 
-  const message = Messages.ongoingMatch1v1Message(app, match, team_players)
+  const message = await ongoingMatch1v1Message(app, match, team_players.flat())
 
   let components: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = []
 

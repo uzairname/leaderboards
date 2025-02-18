@@ -8,6 +8,7 @@ export class Config {
     LinkedRoles: '/linkedroles',
     BotAndRoleConnections: '/auth',
     Bot: '/invite',
+    Identify: '/login',
   }
 
   readonly DevGuildId = '1041458052055978024'
@@ -25,6 +26,8 @@ export class Config {
 
     readonly OauthRedirectURI = env.BASE_URL + `/oauth` + this.OauthRoutes.Redirect,
 
+    readonly WebDashboardURL = env.BASE_URL + `/dashboard`,
+
     readonly IsDev = env.ENVIRONMENT === 'development',
 
     readonly DirectResponse = IsDev ? true : true,
@@ -39,6 +42,7 @@ export class Config {
       DisableLogMatchesOption: false,
       AllowNon1v1: false,
       RatingRoleConnections: false,
+      WebDashboardEnabled: IsDev,
     },
 
     readonly ProvisionalRdThreshold = IsDev ? 0.85 : 0.85,

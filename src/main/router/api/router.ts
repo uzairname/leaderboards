@@ -5,8 +5,7 @@ import { App } from '../../app/App'
 import { GuildCommand } from '../../app/ViewModule'
 import views from '../../bot/modules/all-views'
 import { inviteUrl } from '../../bot/ui-helpers/strings'
-import rankings_router from './rankings/router'
-import { authorize } from '../router'
+import rankingsRouter from './rankings/router'
 
 export default (app: App) =>
   Router({ base: '/api' })
@@ -74,7 +73,7 @@ export default (app: App) =>
       if (!ranking) {
         return new Response('Unknown ranking', { status: 404 })
       }
-      return rankings_router(app, ranking).handle(request)
+      return rankingsRouter(app, ranking).handle(request)
     })
 
     .all('*', () => new Response('Not found', { status: 404 }))

@@ -59,6 +59,7 @@ class DrizzleLogger implements Logger {
         data: {
           query: query,
           params: params,
+          frame: new Error().stack,
         },
         category: `drizzle` + (this.label ? `-${this.label}` : ''),
         type: 'query',

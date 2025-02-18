@@ -98,7 +98,6 @@ export default new GuildCommand(
                       return Promise.all(team.map(id => getRegisterPlayer(app, id, ranking)))
                     }),
                   )
-
                   const { thread } = await start1v1SeriesThread(
                     app,
                     app.db.guild_rankings.get(ctx.interaction.guild_id, ranking.data.id),

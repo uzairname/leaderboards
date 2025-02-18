@@ -5,9 +5,11 @@ import { Vote } from '../../../../../database/models/matches'
 import { sentry } from '../../../../../logging/sentry'
 import { App } from '../../../../app/App'
 import { UserError } from '../../../errors/UserError'
+import { Colors } from '../../../ui-helpers/constants'
 import { syncMatchSummaryMessage } from '../logging/match-summary-message'
 import { cancelMatch, updateMatchOutcome } from '../management/manage-matches'
 import { startNewMatch } from '../management/match-creation'
+import { generateCustomMatchDesc } from './ongoing-1v1-match-message'
 import { ongoingMatchPage, ongoing_series_page_config } from './views/pages/ongoing-match'
 
 /**
@@ -54,6 +56,19 @@ export async function start1v1SeriesThread(
         app.discord.pinMessage(thread.id, message.id)
       }),
   ])
+
+  // One-time message at the start of a match in the thread
+  const custom_match_desc = await generateCustomMatchDesc(match, (await match.players()).flat())
+  if (custom_match_desc) {
+    await app.discord.createMessage(thread.id, {
+      embeds: [
+        {
+          description: custom_match_desc,
+          color: Colors.EmbedBackground,
+        },
+      ],
+    })
+  }
 
   return { match, thread }
 }

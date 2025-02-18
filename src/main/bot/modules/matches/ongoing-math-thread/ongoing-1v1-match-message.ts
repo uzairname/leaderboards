@@ -8,10 +8,15 @@ import { Colors } from '../../../ui-helpers/constants'
 /**
  * Determine the custom description to display at the top of the match thread,
  * based on the configuration in its ranking.
+ *
+ * If custom_desc_config is not set, returns undefined
+ * If any key of custom_desc_config is set, returns a string satisfying that key's rule.
+ *
+ * Assumes match is ffa (1v1v1v...), and players is the flattened array of teams.
  */
 export async function generateCustomMatchDesc(
   match: Match,
-  team_players: MatchPlayer[][],
+  players: MatchPlayer[],
 ): Promise<string | undefined> {
   const ranking = await match.ranking.fetch()
 
@@ -23,20 +28,18 @@ export async function generateCustomMatchDesc(
 
     const match_item = match_item_options[Math.floor(Math.random() * match_item_options.length)]
 
-    const team_items_choices = custom_desc_config.random_items_each_team_choices[match_item]
+    const player_items_choices = custom_desc_config.random_items_each_team_choices[match_item]
 
     // choose a random item for each team
-    const team_items = team_items_choices.map(team => {
-      return team[Math.floor(Math.random() * team.length)]
+    const player_items = players.map(p => {
+      return player_items_choices[Math.floor(Math.random() * player_items_choices.length)]
     })
 
     return (
       `**${match_item}**` +
-      `\n${team_items.map((item, i) => `${team_players[i][0]}: ${item}`).join('\n')}`
+      `\n${player_items.map((item, i) => `<@${players[i].player.data.user_id}>: **${item}**`).join('\n')}`
     )
   }
-
-  return ``
 }
 
 // Matches
@@ -44,12 +47,9 @@ export async function generateCustomMatchDesc(
 export async function ongoingMatch1v1Message(
   app: App,
   match: Match,
-  team_players: MatchPlayer[][],
+  players: MatchPlayer[],
 ): Promise<{ content: string; embeds: D.APIEmbed[] }> {
-  const players = team_players.map(team => team.map(p => p.player)).flat()
   const team_votes = nonNullable(match.data.team_votes, 'match.team_votes')
-
-  const custom_text = await generateCustomMatchDesc(match, team_players)
 
   function voteToString(user_id: string, vote: Vote) {
     if (vote === Vote.Undecided) {
@@ -68,7 +68,7 @@ export async function ongoingMatch1v1Message(
   }
 
   const votes_str = players
-    .map((p, i) => voteToString(p.data.user_id, team_votes[i]))
+    .map((p, i) => voteToString(p.player.data.user_id, team_votes[i]))
     .filter(Boolean)
     .join(`\n`)
 
@@ -76,6 +76,7 @@ export async function ongoingMatch1v1Message(
 
   const embeds: D.APIEmbed[] = []
 
+  // Best of and overview
   embeds.push({
     description: `This match is a **best of ${best_of}**.` +
       (best_of > 1
@@ -85,6 +86,7 @@ export async function ongoingMatch1v1Message(
     color: Colors.EmbedBackground,
   })
 
+  // Votes and match concluded text
   if (match.data.status === MatchStatus.Finished || match.data.status === MatchStatus.Canceled) {
     embeds.push({
       description: `Match concluded. To start another best of ${best_of}, both players must agree to rematch within ${Math.round(app.config.RematchTimeoutMinutes)} minutes.`,
@@ -97,9 +99,7 @@ export async function ongoingMatch1v1Message(
     })
   }
 
-  const players_ping_text = team_players
-    .map(team => team.map(player => `<@${player.player.data.user_id}>`).join(', '))
-    .join(' vs ')
+  const players_ping_text = players.map(player => `<@${player.player.data.user_id}>`).join(' vs ')
 
   return {
     content: players_ping_text,

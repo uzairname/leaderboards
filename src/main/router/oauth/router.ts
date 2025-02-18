@@ -24,10 +24,20 @@ export default (app: App) =>
 
     .get(`*`, () => new Response('Unknown oauth route', { status: 404 }))
 
-function oauthRedirect(app: App, scopes: D.OAuth2Scopes[], bot_permissions?: bigint): Response {
+function oauthRedirect(
+  app: App,
+  scopes: D.OAuth2Scopes[],
+  bot_permissions?: bigint,
+  redirect_uri?: string,
+): Response {
   const state = crypto.randomUUID()
 
-  const url = app.discord.oauthURL(app.config.OauthRedirectURI, scopes, state, bot_permissions)
+  const url = app.discord.oauthURL(
+    redirect_uri ?? app.config.OauthRedirectURI,
+    scopes,
+    state,
+    bot_permissions,
+  )
 
   return new Response(null, {
     status: 302,

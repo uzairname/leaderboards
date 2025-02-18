@@ -83,7 +83,7 @@ export async function _rankingSettingsPage(
     color: Colors.Primary,
   }
 
-  const buttons1: D.APIActionRowComponent<D.APIButtonComponent> = {
+  let buttons1: D.APIActionRowComponent<D.APIButtonComponent> = {
     type: D.ComponentType.ActionRow,
     components: [
       {
@@ -115,6 +115,16 @@ export async function _rankingSettingsPage(
         custom_id: ctx.state.set.handler(handlers.deleteBtn).cId(),
       },
     ],
+  }
+
+  const web_settings_url = `${app.config.WebDashboardURL}/ranking/${ctx.state.get.ranking_id()}`
+  if (app.config.features.WebDashboardEnabled) {
+    buttons1.components.push({
+      type: D.ComponentType.Button,
+      label: `Web Settings`,
+      style: D.ButtonStyle.Link,
+      url: web_settings_url,
+    })
   }
 
   const buttons2: D.APIActionRowComponent<D.APIButtonComponent> = {

@@ -2,10 +2,8 @@ import * as D from 'discord-api-types/v10'
 import { APIEmbed } from 'discord-api-types/v10'
 import { Guild, GuildRanking, Match, Ranking } from '../../../../database/models'
 import { PartialGuildRanking } from '../../../../database/models/guildrankings'
-import { MatchPlayer, MatchStatus, Vote } from '../../../../database/models/matches'
 import { MessageData } from '../../../../discord-framework'
 import { sentry } from '../../../../logging/sentry'
-import { nonNullable } from '../../../../utils/utils'
 import { App } from '../../../app/App'
 import settings from '../../modules/admin/views/commands/settings'
 import { syncGuildRankingLbMessage } from '../../modules/leaderboard/leaderboard-message'
@@ -173,72 +171,6 @@ export async function guildRankingDescription(
   }
 
   return text
-}
-
-// Matches
-export function ongoingMatch1v1Message(
-  app: App,
-  match: Match,
-  team_players: MatchPlayer[][],
-): { content: string; embeds: D.APIEmbed[] } {
-  const players = team_players.map(team => team.map(p => p.player)).flat()
-  const team_votes = nonNullable(match.data.team_votes, 'match.team_votes')
-
-  function voteToString(user_id: string, vote: Vote) {
-    if (vote === Vote.Undecided) {
-      return ``
-    }
-
-    return (
-      `**<@${user_id}> ` +
-      {
-        [Vote.Win]: 'claims win**',
-        [Vote.Loss]: 'claims loss**',
-        [Vote.Draw]: 'claims draw**',
-        [Vote.Cancel]: 'wants to cancel**',
-      }[vote]
-    )
-  }
-
-  const votes_str = players
-    .map((p, i) => voteToString(p.data.user_id, team_votes[i]))
-    .filter(Boolean)
-    .join(`\n`)
-
-  const best_of = match.data.metadata?.best_of ?? 1
-
-  const embeds: D.APIEmbed[] = []
-
-  embeds.push({
-    description:
-      `This match is a **best of ${best_of}**.` +
-      (best_of > 1
-        ? ` Play all games, then report the results below. `
-        : ` Play the game, then report the results below`) +
-      `\nAn admin can resolve any disputes`, // prettier-ignore
-    color: Colors.EmbedBackground,
-  })
-
-  if (match.data.status === MatchStatus.Finished || match.data.status === MatchStatus.Canceled) {
-    embeds.push({
-      description: `Match concluded. To start another best of ${best_of}, both players must agree to rematch within ${Math.round(app.config.RematchTimeoutMinutes)} minutes.`,
-      color: Colors.Primary,
-    })
-  } else if (votes_str) {
-    embeds.push({
-      description: votes_str + ``,
-      color: Colors.EmbedBackground,
-    })
-  }
-
-  const players_ping_text = team_players
-    .map(team => team.map(player => `<@${player.player.data.user_id}>`).join(', '))
-    .join(' vs ')
-
-  return {
-    content: players_ping_text,
-    embeds,
-  }
 }
 
 export const queue_join = ({
