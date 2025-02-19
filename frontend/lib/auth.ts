@@ -4,5 +4,5 @@ import Discord from "next-auth/providers/discord"
 export const { handlers, auth, signIn, signOut } = NextAuth({providers: [
     Discord,
   ],
-  basePath: "/auth",
+  // basePath: "/auth",
 })
