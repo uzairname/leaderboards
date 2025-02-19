@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth';
 import { fetchLbApi } from '@/lib/fetch';
 import { DiscordAPIClient } from 'discord-framework';
+import { SSG_FALLBACK_EXPORT_ERROR } from 'next/dist/lib/constants';
 import { nonNullable } from 'utils';
 
 export default async function Page({
@@ -31,10 +32,10 @@ export default async function Page({
     const access_token = await fetchLbApi('GET', `/api/access-tokens/${session?.user?.id}`).then(res => res.json())
     console.log(`bearer token`, access_token)
 
-    if (!access_token) {
+    if (!access_token || !session) {
       return (
         <div className="flex flex-col items-center justify-start min-h-screen p-24">
-          <h6 className="text-2xl font-light">Please sign in to view this page</h6>
+          <h6 className="text-2xl font-light">Please sign in again to view this page</h6>
         </div>
       )
     }

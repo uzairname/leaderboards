@@ -1,4 +1,4 @@
-import { DiscordAPIClient } from "discord-framework";
+import { DiscordAPIClient } from "discord-framework"
 import NextAuth from "next-auth";
 import Discord from "next-auth/providers/discord";
 import { nonNullable } from "utils";
@@ -36,5 +36,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       console.log(user, account, profile)
       return true
     }
-  }
+  },
+  trustHost: true
 });
