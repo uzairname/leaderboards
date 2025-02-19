@@ -1,0 +1,32 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "format": "prettier --write 'src/**/*.{ts,js,css,json,md}'",
+    "migrate": "npx tsx scripts/migrate.ts"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241011.0",
+    "@trivago/prettier-plugin-sort-imports": "^4.3.0",
+    "drizzle-kit": "^0.26.2",
+    "postgres": "^3.4.5",
+    "prettier": "^3.3.3",
+    "prettier-plugin-organize-imports": "^4.1.0",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "@discordjs/rest": "^2.4.3",
+    "@neondatabase/serverless": "^0.10.1",
+    "database": "file:../database",
+    "discord-api-types": "^0.37.102",
+    "discord-framework": "file:../discord-framework",
+    "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.35.3",
+    "glicko2-lite": "^4.0.0",
+    "itty-router": "^4.2.2",
+    "toucan-js": "^3.4.0",
+    "ts-trueskill": "^5.0.1",
+    "utils": "file:../utils",
+    "zod": "^3.24.2"
+  }
+}
