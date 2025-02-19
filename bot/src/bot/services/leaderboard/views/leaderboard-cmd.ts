@@ -1,5 +1,5 @@
-import * as D from 'discord-api-types/v10'
 import { PartialRanking } from 'database/models/rankings'
+import * as D from 'discord-api-types/v10'
 import { CommandView, DeferContext, getOptions } from 'discord-framework'
 import { field } from '../../../../../../utils/StringData'
 import { App } from '../../../setup/app'

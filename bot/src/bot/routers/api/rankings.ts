@@ -1,12 +1,12 @@
-import { json, Router } from 'itty-router'
 import { Ranking } from 'database/models'
 import { MatchConfigSchema } from 'database/models/rankings'
-import { App } from '../../setup/app'
+import { json, Router } from 'itty-router'
 import {
   leaderboardMessage,
   syncRankingLbMessages,
 } from '../../services/leaderboard/leaderboard-message'
 import { rescoreMatches } from '../../services/matches/management/manage-matches'
+import { App } from '../../setup/app'
 
 export default (app: App, ranking: Ranking) =>
   Router({ base: `/api/rankings/${ranking.data.id}` })

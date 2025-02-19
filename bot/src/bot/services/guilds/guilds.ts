@@ -1,5 +1,5 @@
-import * as D from 'discord-api-types/v10'
 import { Guild } from 'database/models'
+import * as D from 'discord-api-types/v10'
 import { GuildChannelData, RoleData } from 'discord-framework'
 import { App } from '../../setup/app'
 import { Colors } from '../../ui-helpers/constants'

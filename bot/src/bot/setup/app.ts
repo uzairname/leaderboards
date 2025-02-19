@@ -1,4 +1,3 @@
-import { Env } from '../../Env'
 import { DbClient } from 'database/client'
 import { getNeonDrizzleClient } from 'database/drizzle-client'
 import { Guild } from 'database/models'
@@ -7,13 +6,13 @@ import {
   overwriteDiscordCommandsWithViews,
   respondToInteraction,
 } from 'discord-framework'
+import { Env } from '../../Env'
 import { sentry } from '../../logging/sentry'
 import { onViewError } from '../errors/on-view-error'
 import { ViewModule } from '../services/ViewModule'
 import { Config } from './config'
 import { AppEvents, getAppEvents } from './events'
 import { DbLogger } from './middleware'
-
 
 export class App {
   public config: Config
@@ -70,17 +69,16 @@ export class App {
   }
 
   syncDiscordCommands(guild?: Guild) {
-    sentry.offload(async () => {
-      overwriteDiscordCommandsWithViews(
-        this.discord,
-        await this.views.getAllCommandSignatures(this, guild),
-        guild?.data.id,
-      )
-    }, 
-    undefined, 
-    `Put ${guild ? 'guild' : 'global'} commands`)
+    sentry.offload(
+      async () => {
+        overwriteDiscordCommandsWithViews(
+          this.discord,
+          await this.views.getAllCommandSignatures(this, guild),
+          guild?.data.id,
+        )
+      },
+      undefined,
+      `Put ${guild ? 'guild' : 'global'} commands`,
+    )
   }
 }
-
-
-

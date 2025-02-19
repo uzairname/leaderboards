@@ -1,7 +1,6 @@
 import { Router } from 'itty-router'
 import { Env } from '../../Env'
 import { App } from '../setup/app'
-import { runTests } from '../test/test'
 import apiRouter from './api'
 import oauthRouter from './oauth'
 import updateRouter from './update'
@@ -15,8 +14,6 @@ export default (app: App) =>
     .all('/api/*', authorize(app.env), request => apiRouter(app).handle(request))
 
     .post('/update/*', authorize(app.env), request => updateRouter(app).handle(request))
-
-    .all('/test/*', () => runTests(app))
 
     .get('*', () => new Response(`👀`))
 

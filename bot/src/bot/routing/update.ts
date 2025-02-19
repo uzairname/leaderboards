@@ -1,8 +1,8 @@
 import { Router } from 'itty-router'
 import { sentry } from '../../logging/sentry'
-import { App } from '../setup/app'
 import { getOrAddGuild, updateGuild } from '../services/guilds/guilds'
 import { getAppRoleConnectionsMetadata } from '../services/linked-roles/role-connections'
+import { App } from '../setup/app'
 
 export default (app: App) =>
   Router({ base: '/update' })

@@ -8,10 +8,10 @@ import {
   StateContext,
 } from 'discord-framework'
 import { checkGuildMessageComponentInteraction } from 'discord-framework/interactions/utils/interaction-checks'
-import { field } from '../../../../../../../../utils/StringData'
 import { assert, nonNullable, snowflakeToDate } from 'utils'
-import { App } from '../../../../../setup/app'
+import { field } from '../../../../../../../../utils/StringData'
 import { UserError } from '../../../../../errors/UserError'
+import { App } from '../../../../../setup/app'
 import { Colors } from '../../../../../ui-helpers/constants'
 import { hasAdminPerms } from '../../../../../ui-helpers/perms'
 import { guildRankingsOption, withSelectedRanking } from '../../../../../ui-helpers/ranking-option'

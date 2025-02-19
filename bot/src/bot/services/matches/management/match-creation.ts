@@ -3,8 +3,8 @@ import { MatchMetadata, MatchPlayer, MatchStatus, Vote } from 'database/models/m
 import { PartialPlayer, PlayerFlags } from 'database/models/players'
 import { PartialRanking } from 'database/models/rankings'
 import { sentry } from '../../../../logging/sentry'
-import { App } from '../../../setup/app'
 import { UserErrors } from '../../../errors/UserError'
+import { App } from '../../../setup/app'
 import { default_best_of } from '../../rankings/manage-rankings'
 import { rescoreMatches, validateMatchData } from './manage-matches'
 

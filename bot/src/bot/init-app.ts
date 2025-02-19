@@ -1,11 +1,11 @@
 import { DbClient } from 'database/client'
-import { CustomLogger, getNeonDrizzleWsClient } from 'database/drizzle-client'
+import { getNeonDrizzleWsClient } from 'database/drizzle-client'
 import { Env } from '../Env'
 import { sentry } from '../logging/sentry'
-import { App } from './setup/app'
-import { DbLogger } from './setup/middleware'
 import all_event_listeners from './services/all-event-listeners'
 import all_views from './services/all-views'
+import { App } from './setup/app'
+import { DbLogger } from './setup/middleware'
 
 export default (env: Env): App => {
   const logger = new DbLogger(sentry)

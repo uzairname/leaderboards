@@ -7,4 +7,3 @@ export function initSentry(request: Request, env: Env, execution_context: Execut
   sentry = new Logger(request, env, execution_context)
   return sentry
 }
-

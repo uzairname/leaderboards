@@ -1,1 +1,0 @@
-ALTER TABLE "Rankings" ADD COLUMN "match_config" jsonb;

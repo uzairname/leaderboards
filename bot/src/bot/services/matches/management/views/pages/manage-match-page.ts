@@ -1,5 +1,5 @@
-import * as D from 'discord-api-types/v10'
 import { Match } from 'database/models'
+import * as D from 'discord-api-types/v10'
 import {
   AnyGuildInteractionContext,
   ChatInteractionResponse,
@@ -8,10 +8,10 @@ import {
   MessageView,
   getModalSubmitEntries,
 } from 'discord-framework'
-import { field } from '../../../../../../../../utils/StringData'
 import { intOrUndefined, nonNullable } from 'utils'
-import { App } from '../../../../../setup/app'
+import { field } from '../../../../../../../../utils/StringData'
 import { UserError } from '../../../../../errors/UserError'
+import { App } from '../../../../../setup/app'
 import { Colors } from '../../../../../ui-helpers/constants'
 import { hasAdminPerms } from '../../../../../ui-helpers/perms'
 import { AppView } from '../../../../ViewModule'

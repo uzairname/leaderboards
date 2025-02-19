@@ -1,7 +1,7 @@
-import * as D from 'discord-api-types/v10'
 import { GuildRanking } from 'database/models'
 import { PartialGuild } from 'database/models/guilds'
 import { PartialRanking, Ranking } from 'database/models/rankings'
+import * as D from 'discord-api-types/v10'
 import type {
   AnyCommandView,
   CommandInteractionResponse,
@@ -13,9 +13,9 @@ import {
   isInitialInteractionCtx,
 } from 'discord-framework/interactions/utils/context-checks'
 import { sentry } from '../../logging/sentry'
-import type { App } from '../setup/app'
 import { UserError } from '../errors/UserError'
 import { allRankingsPage } from '../services/rankings/views/pages/all-rankings-page'
+import type { App } from '../setup/app'
 
 export const create_ranking_choice_value = 'create'
 

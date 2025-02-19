@@ -7,11 +7,11 @@ import {
   MessageView,
   StateContext,
 } from 'discord-framework'
-import { sentry } from '../../../../../logging/sentry'
-import { field } from '../../../../../../../utils/StringData'
 import { intOrUndefined, nonNullable, strOrUndefined, unflatten } from 'utils'
-import { App } from '../../../../setup/app'
+import { field } from '../../../../../../../utils/StringData'
+import { sentry } from '../../../../../logging/sentry'
 import { UserErrors } from '../../../../errors/UserError'
+import { App } from '../../../../setup/app'
 import { Messages } from '../../../../ui-helpers/messages'
 import { ensureAdminPerms } from '../../../../ui-helpers/perms'
 import { getOrAddGuild } from '../../../guilds/guilds'

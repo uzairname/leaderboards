@@ -1,6 +1,6 @@
-import { TrueSkill, Rating as TrueskillRating } from 'ts-trueskill'
 import { MatchPlayer } from 'database/models/matches'
 import { Rating } from 'database/models/rankings'
+import { TrueSkill, Rating as TrueskillRating } from 'ts-trueskill'
 
 function getAdjustedBeta(baseBeta: number, best_of: number): number {
   // Higher beta = more assumed volatility and slower convergence

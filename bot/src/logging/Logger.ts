@@ -1,8 +1,8 @@
 import { Breadcrumb, BreadcrumbHint, EventHint } from '@sentry/types'
 import { Toucan } from 'toucan-js'
-import { Env } from '../Env'
-import { cache } from '../../../utils/cache'
 import { isInt } from 'utils'
+import { cache } from '../../../utils/cache'
+import { Env } from '../Env'
 import { RequestTimeoutError } from './errors'
 
 export class Logger extends Toucan {

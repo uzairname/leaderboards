@@ -1,7 +1,7 @@
 import * as D from 'discord-api-types/v10'
 import type { AnyChatInputCommand } from 'discord-framework'
-import type { App } from '../setup/app'
 import { AnyGuildCommand, AppView } from '../services/ViewModule'
+import type { App } from '../setup/app'
 
 export const github_url = 'https://github.com/uzairname/leaderboards'
 

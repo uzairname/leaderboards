@@ -1,9 +1,9 @@
 import * as D from 'discord-api-types/v10'
-import { json, Router } from 'itty-router'
 import { appCommandToJSONBody } from 'discord-framework'
-import { App } from '../setup/app'
+import { json, Router } from 'itty-router'
 import { GuildCommand } from '../services/ViewModule'
 import views from '../services/all-views'
+import { App } from '../setup/app'
 import { inviteUrl } from '../ui-helpers/strings'
 import rankingsRouter from './api/rankings'
 

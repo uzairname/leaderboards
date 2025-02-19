@@ -1,11 +1,7 @@
 import * as D from 'discord-api-types/v10'
-import {
-  ChatInteractionResponse,
-  ComponentContext,
-  getModalSubmitEntries,
-} from 'discord-framework'
-import { sentry } from '../../../../../logging/sentry'
+import { ChatInteractionResponse, ComponentContext, getModalSubmitEntries } from 'discord-framework'
 import { intOrUndefined, strOrUndefined } from 'utils'
+import { sentry } from '../../../../../logging/sentry'
 import { App } from '../../../../setup/app'
 import { Colors } from '../../../../ui-helpers/constants'
 import { ensureAdminPerms } from '../../../../ui-helpers/perms'

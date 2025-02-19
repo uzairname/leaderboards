@@ -1,16 +1,11 @@
 import { Match } from 'database/models'
-import {
-  MatchInsert,
-  MatchMetadata,
-  MatchPlayer,
-  MatchStatus,
-} from 'database/models/matches'
+import { MatchInsert, MatchMetadata, MatchPlayer, MatchStatus } from 'database/models/matches'
 import { PartialPlayer } from 'database/models/players'
 import { PartialRanking, Rating } from 'database/models/rankings'
 import { AnyDeferContext } from 'discord-framework'
 import { sentry } from '../../../../logging/sentry'
-import { App } from '../../../setup/app'
 import { UserError } from '../../../errors/UserError'
+import { App } from '../../../setup/app'
 import { updatePlayerRatings } from '../../players/manage-players'
 import { syncMatchSummaryMessages } from '../logging/match-summary-message'
 import { Scorer } from './rating-calculation'

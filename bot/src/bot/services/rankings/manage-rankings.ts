@@ -8,8 +8,8 @@ import {
   Rating,
 } from 'database/models/rankings'
 import { sentry } from '../../../logging/sentry'
-import { App } from '../../setup/app'
 import { UserError, UserErrors } from '../../errors/UserError'
+import { App } from '../../setup/app'
 import { getOrAddGuild } from '../guilds/guilds'
 import {
   syncGuildRankingLbMessage,

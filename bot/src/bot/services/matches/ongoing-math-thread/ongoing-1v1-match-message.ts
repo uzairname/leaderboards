@@ -1,6 +1,6 @@
-import * as D from 'discord-api-types/v10'
 import { Match } from 'database/models'
 import { MatchPlayer, MatchStatus, Vote } from 'database/models/matches'
+import * as D from 'discord-api-types/v10'
 import { nonNullable } from 'utils'
 import { App } from '../../../setup/app'
 import { Colors } from '../../../ui-helpers/constants'

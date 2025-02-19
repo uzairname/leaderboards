@@ -1,13 +1,13 @@
 import * as D from 'discord-api-types/v10'
-import { json, Router } from 'itty-router'
 import { appCommandToJSONBody } from 'discord-framework'
-import { App } from '../setup/app'
+import { json, Router } from 'itty-router'
+import { sentry } from '../../logging/sentry'
 import { GuildCommand } from '../services/ViewModule'
 import views from '../services/all-views'
+import { App } from '../setup/app'
 import { inviteUrl } from '../ui-helpers/strings'
 import rankingsRouter from './api/rankings'
 import { saveUserAccessToken } from './oauth'
-import { sentry } from '../../logging/sentry'
 
 export default (app: App) =>
   Router({ base: '/api' })
@@ -82,14 +82,13 @@ export default (app: App) =>
       // save a user's access token to the database
       const body = await request.json()
       sentry.debug('access token body', body)
-      if (!(body)) {
+      if (!body) {
         return new Response('Invalid body', { status: 400 })
       }
 
       await saveUserAccessToken(app, body as D.RESTPostOAuth2AccessTokenResult)
 
       return new Response('OK', { status: 200 })
-
     })
 
     .get('/access-tokens/:user_id', async request => {
@@ -108,7 +107,6 @@ export default (app: App) =>
       } else {
         return json(bearer_token, { status: 200 })
       }
-
     })
 
     .all('*', () => new Response('Not found', { status: 404 }))

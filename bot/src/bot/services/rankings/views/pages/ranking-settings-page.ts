@@ -1,12 +1,8 @@
 import * as D from 'discord-api-types/v10'
-import {
-  AnyGuildInteractionContext,
-  MessageView,
-  StateContext,
-} from 'discord-framework'
+import { AnyGuildInteractionContext, MessageView, StateContext } from 'discord-framework'
 import { field } from '../../../../../../../utils/StringData'
-import { App } from '../../../../setup/app'
 import { UserErrors } from '../../../../errors/UserError'
+import { App } from '../../../../setup/app'
 import { Colors } from '../../../../ui-helpers/constants'
 import { Messages } from '../../../../ui-helpers/messages'
 import { escapeMd } from '../../../../ui-helpers/strings'

@@ -7,9 +7,9 @@ import {
   type AnyView,
 } from 'discord-framework'
 import { ViewState, ViewStateFactory } from 'discord-framework/interactions/view-state'
-import { sentry } from '../../logging/sentry'
-import { StringDataSchema } from '../../../../utils/StringData'
 import { sequential } from 'utils'
+import { StringDataSchema } from '../../../../utils/StringData'
+import { sentry } from '../../logging/sentry'
 import type { App } from '../setup/app'
 
 export class AppView<TView extends AnyView> {

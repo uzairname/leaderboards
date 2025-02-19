@@ -1,6 +1,6 @@
-import * as D from 'discord-api-types/v10'
 import type { Guild } from 'database/models'
 import { PartialGuild } from 'database/models/guilds'
+import * as D from 'discord-api-types/v10'
 import { GuildChannelData, MessageData } from 'discord-framework'
 import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../setup/app'

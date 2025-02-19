@@ -1,9 +1,9 @@
 import * as D from 'discord-api-types/v10'
 import { AnyView, InteractionContext } from 'discord-framework'
 import { checkGuildInteraction } from 'discord-framework/interactions/utils/interaction-checks'
-import { App } from '../setup/app'
 import { UserError } from '../errors/UserError'
 import { getOrAddGuild } from '../services/guilds/guilds'
+import { App } from '../setup/app'
 
 export async function hasAdminPerms(app: App, ctx: InteractionContext<any>) {
   const { has_perms } = await determineAdminPerms(app, ctx)
