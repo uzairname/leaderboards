@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { auth, signOut } from '@/lib/auth';
+import { auth, signIn, signOut } from '@/lib/auth';
 import Image from 'next/image';
 import {
   DropdownMenu,
@@ -55,7 +55,18 @@ export async function User() {
           </DropdownMenuItem>
         ) : (
           <DropdownMenuItem>
-            <Link href="/login">Sign In</Link>
+    
+              <form
+                action={async () => {
+                  'use server';
+                  await signIn('discord', {
+                    redirectTo: '/'
+                  });
+                }}
+                className="w-full"
+              >
+                <Button className="w-full">Sign in with Discord</Button>
+              </form>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

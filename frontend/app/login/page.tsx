@@ -12,13 +12,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex justify-center items-start md:items-center p-8">
       <Card className="w-full max-w-sm">
-        <CardHeader>
+        {/* <CardHeader>
           <CardTitle className="text-2xl">Login</CardTitle>
-          <CardDescription>
-            This demo uses Discord for authentication.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
+        </CardHeader> */}
+        <CardDescription>
           <form
             action={async () => {
               'use server';
@@ -30,7 +27,7 @@ export default function LoginPage() {
           >
             <Button className="w-full">Sign in with Discord</Button>
           </form>
-        </CardFooter>
+        </CardDescription>
       </Card>
     </div>
   );
