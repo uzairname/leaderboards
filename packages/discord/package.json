@@ -1,0 +1,17 @@
+{
+  "name": "@repo/discord",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./checks": "./src/interactions/checks/index.ts",
+    "./converters": "./src/interactions/converters/index.ts"
+  },
+  "scripts": {},
+  "dependencies": {
+    "@discordjs/rest": "^2.4.3",
+    "@repo/typescript-config": "*",
+    "discord-api-types": "^0.37.119",
+    "itty-router": "^5.0.18",
+    "typescript": "^5.7.3"
+  }
+}

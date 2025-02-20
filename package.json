@@ -1,0 +1,17 @@
+{
+  "name": "leaderboards",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "packageManager": "npm@10.0.0",
+  "scripts": {
+    "format": "prettier --write 'apps/**/*.{ts,js,css,json,md}' 'packages/**/*.{ts,js,css,json,md}'"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.1"
+  }
+}

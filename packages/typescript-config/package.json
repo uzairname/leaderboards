@@ -1,0 +1,8 @@
+{
+  "name": "@repo/typescript-config",
+  "private": true,
+  "exports": {
+    "./tsconfig.json": "./tsconfig.json"
+  },
+  "type": "module"
+}

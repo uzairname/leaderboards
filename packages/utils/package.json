@@ -1,0 +1,10 @@
+{
+  "name": "@repo/utils",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./cache": "./src/cache.ts"
+  },
+  "scripts": {},
+  "dependencies": {}
+}
