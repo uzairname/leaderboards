@@ -42,4 +42,12 @@ fi
 sleep 3
 
 # Call update endpoint
-npx tsx scripts/update.ts $env_path
+# check if BASE_URL and APP_KEY variable is set
+if [ -z "$BASE_URL" ] || [ -z "$APP_KEY" ]; then
+  echo "BASE_URL or APP_KEY variable is not set."
+  exit 1
+fi
+curl -X POST $BASE_URL/update -H "Authorization $APP_KEY"
+if [ $? -ne 0 ]; then
+  exit $?
+fi
