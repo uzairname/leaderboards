@@ -3,7 +3,6 @@ import { DbLogger } from '@repo/database'
 import { DiscordLogger, LogLevel } from '@repo/discord'
 import { truncateString } from '@repo/utils'
 import { Logger } from '../../logging/Logger'
-import { sentry } from '../../logging/sentry'
 
 export class DbLoggerWrapper extends DbLogger {
   constructor(private sentry: Logger) {
@@ -29,8 +28,8 @@ export class DbLoggerWrapper extends DbLogger {
   }
 
   logQuery(query: string, params?: unknown[], is_readonly?: boolean): void {
-    ;(sentry.request_data[is_readonly ? 'queries-readonly' : 'queries'] as number)++
-    sentry.addBreadcrumb({
+    ;(this.sentry.request_data[is_readonly ? 'queries-readonly' : 'queries'] as number)++
+    this.sentry.addBreadcrumb({
       data: {
         query: query,
         params: params,
@@ -41,26 +40,24 @@ export class DbLoggerWrapper extends DbLogger {
   }
 
   resetCounter(is_readonly?: boolean): void {
-    ;(sentry.request_data[is_readonly ? 'queries-readonly' : 'queries'] as number) = 0
+    ;(this.sentry.request_data[is_readonly ? 'queries-readonly' : 'queries'] as number) = 0
   }
 }
 
 export class DiscordLoggerWrapper extends DiscordLogger {
   constructor(private sentry: Logger) {
     super()
-    sentry.debug(`InteractionLoggerWrapper initialized`)
-    this.sentry.debug(`this.sentry`)
   }
 
   log(data: { message: string; data?: Record<string, unknown>; level?: LogLevel }) {
-    sentry.addBreadcrumb({
+    this.sentry.addBreadcrumb({
       ...data,
       level: data.level ?? 'info',
     })
   }
 
   debug(...messages: unknown[]): void {
-    sentry.debug(...messages)
+    this.sentry.debug(...messages)
   }
 
   logDiscordRequest({
@@ -78,7 +75,7 @@ export class DiscordLoggerWrapper extends DiscordLogger {
     error?: unknown
     time_ms: number
   }) {
-    sentry.addBreadcrumb({
+    this.sentry.addBreadcrumb({
       type: 'http',
       level: error ? 'error' : 'info',
       message: `Fetched Discord ${method} ${route}`,
@@ -89,16 +86,16 @@ export class DiscordLoggerWrapper extends DiscordLogger {
         time: `${time_ms} ms`,
       },
     })
-    sentry.request_data['discord requests'] =
-      ((sentry.request_data['discord requests'] as number) || 0) + 1
+    this.sentry.request_data['discord requests'] =
+      ((this.sentry.request_data['discord requests'] as number) || 0) + 1
   }
 
   setInteractionType(type: string): void {
-    sentry.request_name = type
+    this.sentry.request_name = type
   }
 
   setUser({ id, username, guild }: { id: string; username: string; guild?: string }): void {
-    sentry.setUser({
+    this.sentry.setUser({
       id: id ?? username,
       user_id: id ?? username,
       username,

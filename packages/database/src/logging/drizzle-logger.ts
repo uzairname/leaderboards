@@ -16,7 +16,7 @@ export class DrizzleLogger implements Logger {
       console.log(
         `[drizzle${
           this.is_readonly ? `-readonly` : ``
-        }] ${query}\n${params ? JSON.stringify(params) : ``}`,
+        }] ${query}${params?.length ? (`\n` + JSON.stringify(params)) : ``}`,
       )
     }
   }

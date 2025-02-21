@@ -20,7 +20,7 @@ export class DbClient {
 
   constructor(
     readonly drizzle: NeonDatabase | NeonHttpDatabase,
-    readonly logger: DbLogger,
+    readonly logger?: DbLogger,
   ) {
     if (cache.db && cache.db instanceof DbCache) {
       this.cache = cache.db
@@ -29,10 +29,12 @@ export class DbClient {
     }
     cache.db = this.cache
 
-    this.debug = this.logger.debug.bind(this.logger)
+    this.logger && (this.debug = this.logger.debug.bind(this.logger))
   }
 
-  debug: (...message: unknown[]) => void
+  debug: (...message: unknown[]) => void = ((...message) => {
+    console.log(message)
+  })
 
   settings = new SettingsManager(this)
   users = new UsersManager(this)

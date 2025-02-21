@@ -1,7 +1,7 @@
 import { Match, MatchStatus, PartialRanking, Rating } from '@repo/database/models'
 import { nonNullable } from '@repo/utils'
 import { App } from '../../setup/app'
-import { Scorer } from '../matches/management/rating-calculation'
+import { Scorer } from '../matches/scoring/scorers'
 
 export const calcDisplayRating = (app: App, initial_rating: Rating) => (rating: Rating) => {
   return {

@@ -16,13 +16,22 @@ export type Rating = {
   vol?: number
 }
 
+export enum ScoringMethod {
+  TrueSkill = 0,
+  WinsMinusLosses = 1
+}
+
+export type RatingSettings = {
+  scoring_method: ScoringMethod
+}
+
 export type MatchmakingSettings = {
   queue_enabled?: boolean
   default_best_of?: number
   direct_challenge_enabled?: boolean
 }
 
-export const MatchConfigSchema = z.object({
+export const MatchSettingsSchema = z.object({
   custom_desc: z
     .object({
       random_items_each_team_choices: z.record(z.array(z.string())).optional(),
@@ -30,7 +39,7 @@ export const MatchConfigSchema = z.object({
     .optional(),
 })
 
-export type MatchConfig = z.infer<typeof MatchConfigSchema>
+export type MatchSettings = z.infer<typeof MatchSettingsSchema>
 
 export class PartialRanking {
   constructor(

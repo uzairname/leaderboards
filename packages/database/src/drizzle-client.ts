@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless'
-import { drizzle } from 'drizzle-orm/neon-http'
+import { drizzle as drizzle_http } from 'drizzle-orm/neon-http'
 import { drizzle as drizzle_ws } from 'drizzle-orm/neon-serverless'
 import { withReplicas } from 'drizzle-orm/pg-core'
 import { DbLogger } from './logging/db-logger'
@@ -27,11 +27,11 @@ export function getNeonDrizzleClient(
   const sql = neon(postgres_url)
 
   const drizzle_logger = new DrizzleLogger(logger)
-  const db = drizzle({ client: sql, logger: drizzle_logger })
+  const db = drizzle_http({ client: sql, logger: drizzle_logger })
 
   if (postgres_read_url) {
     const sql = neon(postgres_read_url)
-    const read_db = drizzle({
+    const read_db = drizzle_http({
       client: sql,
       logger: new DrizzleLogger(logger, true),
     })

@@ -5,13 +5,13 @@ import { Vote } from './models/matches'
 import { MatchMetadata } from './models/matches'
 import { PlayerFlags, PlayerStats } from './models/players'
 import { Versions } from './models/settings'
-import { Rating, MatchmakingSettings, MatchConfig } from './models/rankings'
+import { Rating, MatchmakingSettings, MatchSettings, RatingSettings } from './models/rankings'
 import { GuildRankingDisplaySettings } from './models/guildrankings'
 
 export const Settings = pgTable('Settings', {
   id: integer('id').primaryKey().default(1),
   last_updated: timestamp('last_updated').notNull().defaultNow(),
-  versions: jsonb('versions').notNull().$type<Versions>(),
+  db_version: integer('db_version').notNull().default(0),
   config: jsonb('config'),
 })
 
@@ -30,9 +30,9 @@ export const AccessTokens = pgTable('AccessTokens', {
   data: jsonb('data').notNull().$type<RESTPostOAuth2AccessTokenResult>(),
   expires_at: timestamp('expires_at').notNull(),
   time_created: timestamp('time_created').notNull().defaultNow(),
-}, (table) => ({
-  user_idx: index('access_tokens_user_id_index').on(table.user_id),
-}))
+}, (table) => [
+  index('access_tokens_user_id_index').on(table.user_id),
+])
 
 
 export const Guilds = pgTable('Guilds', {
@@ -51,9 +51,10 @@ export const Rankings = pgTable('Rankings', {
   time_created: timestamp('time_created').notNull().defaultNow(),
   players_per_team: integer('players_per_team').notNull(),
   teams_per_match: integer('teams_per_match').notNull(),
-  initial_rating: jsonb('initial_rating').notNull().$type<Rating>(),
-  matchmaking_settings: jsonb('matchmaking_settings').notNull().$type<MatchmakingSettings>(), // move to GuildRankings
-  match_config: jsonb('match_config').$type<MatchConfig>(),
+  initial_rating: jsonb('initial_rating').notNull().$type<Rating>(), // move into rating_settings
+  rating_settings: jsonb('rating_settings').notNull().$type<RatingSettings>(),
+  matchmaking_settings: jsonb('matchmaking_settings').notNull().$type<MatchmakingSettings>(),
+  match_settings: jsonb('match_settings').$type<MatchSettings>(),
 })
 
 
@@ -66,9 +67,9 @@ export const GuildRankings = pgTable('GuildRankings', {
   leaderboard_message_id: text('leaderboard_message_id'),
   display_settings: jsonb('display_settings').$type<GuildRankingDisplaySettings>(),
   // matchmaking_setings: jsonb('matchmaking_settings').$type<MatchmakingSettings>(),
-},(table) => { return {
-  cpk: primaryKey({ columns: [table.guild_id, table.ranking_id] }),
-}})
+},(table) => [
+  primaryKey({ columns: [table.guild_id, table.ranking_id] })
+])
 
 
 export const Players = pgTable('Players', {
@@ -81,10 +82,10 @@ export const Players = pgTable('Players', {
   flags: integer('flags').notNull().$type<PlayerFlags>().default(0),
   time_joined_queue: timestamp('time_joined_queue'),
   stats: jsonb('stats').$type<PlayerStats>(),
-}, (table) => { return {
-  unique: uniqueIndex('player_user_id_ranking_id_unique').on(table.user_id, table.ranking_id),
-  time_joined_queue_idx: index('player_time_joined_queue_index').on(table.time_joined_queue),
-}})
+}, (table) => [
+  uniqueIndex('player_user_id_ranking_id_unique').on(table.user_id, table.ranking_id),
+  index('player_time_joined_queue_index').on(table.time_joined_queue),
+])
 
 
 export const Teams = pgTable('Teams', {
@@ -100,9 +101,9 @@ export const TeamPlayers = pgTable('TeamPlayers', {
   team_id: integer('team_id').notNull().references(() => Teams.id, {onDelete: 'cascade'}),
   player_id: integer('player_id').notNull().references(() => Players.id, {onDelete: 'cascade'}),
   time_created: timestamp('time_created').notNull().defaultNow(),
-}, (table) => ({
-  cpk: primaryKey({ columns: [table.team_id, table.player_id] }),
-}))
+}, (table) => [
+  primaryKey({ columns: [table.team_id, table.player_id] }),
+])
 
 
 export const QueueTeams = pgTable('QueueTeams', {
@@ -122,11 +123,11 @@ export const Matches = pgTable('Matches', {
   ongoing_match_channel_id: text('ongoing_match_channel_id'),
   outcome: jsonb('outcome').$type<number[]>(),
   metadata: jsonb('metadata').$type<MatchMetadata>(),
-}, (table) => ({
-  ranking_idx: index('match_ranking_id_index').on(table.ranking_id),
-  time_finished_idx: index('match_time_finished_index').on(table.time_finished),
-  time_started_idx: index('match_time_started_index').on(table.time_started),
-}))
+}, (table) => [
+  index('match_ranking_id_index').on(table.ranking_id),
+  index('match_time_finished_index').on(table.time_finished),
+  index('match_time_started_index').on(table.time_started),
+])
 
 
 export const MatchSummaryMessages = pgTable('MatchSummaryMessages', {
@@ -134,9 +135,9 @@ export const MatchSummaryMessages = pgTable('MatchSummaryMessages', {
   guild_id: text('guild_id').notNull().references(() => Guilds.id, {onDelete: 'cascade'}),
   channel_id: text('channel_id').notNull(),
   message_id: text('message_id').notNull(),
-}, (table) => ({
-  cpk: primaryKey({ columns: [table.match_id, table.guild_id] }),
-}))
+}, (table) => [
+  primaryKey({ columns: [table.match_id, table.guild_id] }),
+])
 
 
 export const MatchPlayers = pgTable('MatchPlayers', {
@@ -145,6 +146,6 @@ export const MatchPlayers = pgTable('MatchPlayers', {
   team_num: integer('team_num').notNull(),
   rating: jsonb('rating').notNull().$type<Rating>(),
   flags: integer('flags').notNull().$type<PlayerFlags>().default(0),
-}, (table) => ({
-  cpk: primaryKey({ columns: [table.match_id, table.player_id] }),
-}))
+}, (table) => [
+  primaryKey({ columns: [table.match_id, table.player_id] }),
+])

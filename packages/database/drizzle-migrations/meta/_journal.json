@@ -22,6 +22,20 @@
       "when": 1739846853339,
       "tag": "0002_empty_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1740159416452,
+      "tag": "0003_nappy_mole_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1740163042476,
+      "tag": "0004_petite_swordsman",
+      "breakpoints": true
     }
   ]
 }

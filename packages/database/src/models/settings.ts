@@ -20,6 +20,14 @@ export class Setting implements DbObject<SettingSelect> {
 }
 
 export class SettingsManager extends DbObjectManager {
+
+  async get(): Promise<Setting> {
+    return this.getOrUpdate()
+  }
+
+
+  
+
   async getOrUpdate(update?: SettingUpdate): Promise<Setting> {
     const id = 1
 
@@ -35,24 +43,16 @@ export class SettingsManager extends DbObjectManager {
       // No guarantee that the versions field will be of the correct type in the database
       const result = (
         await this.db.drizzle.select().from(Settings).where(eq(Settings.id, id))
-      )[0] as any as ModifyType<SettingSelect, { versions: Record<string, unknown> }>
+      )[0]
 
-      if (!result) {
-        data = (
-          await this.db.drizzle
-            .insert(Settings)
-            .values({ id, versions: { db: 1 } })
-            .returning()
-        )[0]
-      } else {
-        data = {
-          ...result,
-          versions: {
-            db: isInt(result.versions.guilds) ? result.versions.guilds : 1,
-          },
-        }
-      }
+      data = result ?? (
+        await this.db.drizzle
+          .insert(Settings)
+          .values({})
+          .returning()
+      )[0]
     }
+    
     return new Setting(data, this.db)
   }
 }

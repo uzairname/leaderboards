@@ -10,7 +10,7 @@ import { castPlayerVote, start1v1SeriesThread } from '../../manage-ongoing-match
 import { ongoingMatch1v1Message } from '../../ongoing-1v1-match-message'
 
 export const ongoing_series_page_config = new MessageView({
-  name: 'Ongoing series message',
+  name: 'Ongoing Series Message',
   custom_id_prefix: 'om',
   state_schema: {
     match_id: field.Int(),

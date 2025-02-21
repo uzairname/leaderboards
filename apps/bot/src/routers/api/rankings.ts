@@ -1,4 +1,4 @@
-import { MatchConfigSchema, Ranking } from '@repo/database/models'
+import { MatchSettingsSchema, Ranking } from '@repo/database/models'
 import { json, Router } from 'itty-router'
 import {
   leaderboardMessage,
@@ -30,11 +30,11 @@ export default (app: App, ranking: Ranking) =>
       const body = await request.json()
       if (!(body instanceof Object && body.hasOwnProperty('match_config')))
         return new Response(`match_config not in body`, { status: 400 })
-      const match_config = MatchConfigSchema.safeParse((body as any).match_config)
-      if (!match_config.success) {
+      const match_settings = MatchSettingsSchema.safeParse((body as any).match_config)
+      if (!match_settings.success) {
         return new Response('Invalid match_config', { status: 400 })
       }
-      await ranking.update({ match_config: match_config.data })
+      await ranking.update({ match_settings: match_settings.data })
 
       return new Response(`Updated match config for ${ranking.data.name} leaderboard`)
     })

@@ -14,7 +14,7 @@ import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { updatePlayerRatings } from '../../players/manage-players'
 import { syncMatchSummaryMessages } from '../logging/match-summary-message'
-import { Scorer } from './rating-calculation'
+import { Scorer } from '../scoring/scorers'
 
 // The match management service. Responsible for updating match outcomes, canceling matches, and reverting matches.
 

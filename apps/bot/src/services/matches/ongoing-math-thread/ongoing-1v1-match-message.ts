@@ -20,7 +20,7 @@ export async function generateCustomMatchDesc(
 ): Promise<string | undefined> {
   const ranking = await match.ranking.fetch()
 
-  const custom_desc_config = ranking.data.match_config?.custom_desc
+  const custom_desc_config = ranking.data.match_settings?.custom_desc
 
   if (custom_desc_config?.random_items_each_team_choices) {
     // Choose a random item for the match, then choose a random item depending on the first item, one for each team.

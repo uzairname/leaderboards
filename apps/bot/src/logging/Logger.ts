@@ -16,7 +16,7 @@ export class Logger extends Toucan {
     private request: Request,
     env: Env,
     private execution_context: ExecutionContext,
-    public timeout_ms: number = 1000,
+    public timeout_ms: number = 20000,
   ) {
     super({
       dsn: env.SENTRY_DSN,

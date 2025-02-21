@@ -80,8 +80,8 @@ export function snowflakeToDate(snowflake: bigint): Date {
   return new Date(dateBits + DISCORD_EPOCH)
 }
 
-export function isInt(value: unknown): value is number {
-  return typeof value === 'number' && isFinite(value) && Math.floor(value) === value
+export function isInt(value: unknown, nonnegative?: boolean): value is number {
+  return typeof value === 'number' && isFinite(value) && Math.floor(value) === value && !(nonnegative && value < 0)
 }
 
 export function strOrUndefined(value?: string): string | undefined {

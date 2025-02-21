@@ -7,6 +7,8 @@ import {
   RankingInsert,
   RankingUpdate,
   Rating,
+  RatingSettings,
+  ScoringMethod,
 } from '@repo/database/models'
 import { UserError, UserErrors } from '../../errors/UserError'
 import { sentry } from '../../logging/sentry'
@@ -25,6 +27,10 @@ export const default_best_of = 1
 export const default_initial_rating: Rating = {
   mu: 50,
   rd: 50 / 3,
+}
+
+export const default_rating_settings: RatingSettings = {
+  scoring_method: ScoringMethod.TrueSkill
 }
 
 export const default_display_settings: GuildRankingDisplaySettings = {
@@ -61,6 +67,7 @@ export async function createNewRankingInGuild(
     // Guild ranking options
     matchmaking_settings?: MatchmakingSettings
     display_settings?: GuildRankingDisplaySettings
+    rating_settings?: RatingSettings
   },
 ): Promise<{
   guild_ranking: GuildRanking
@@ -82,6 +89,7 @@ export async function createNewRankingInGuild(
     teams_per_match: options.teams_per_match || default_teams_per_match,
     initial_rating: options.initial_rating || default_initial_rating,
     matchmaking_settings: options.matchmaking_settings || default_matchmaking_settings,
+    rating_settings: options.rating_settings || default_rating_settings,
   })
 
   const new_guild_ranking = await app.db.guild_rankings.create(guild, new_ranking, {
