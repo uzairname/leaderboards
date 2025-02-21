@@ -1,6 +1,7 @@
 {
   "name": "@repo/discord",
   "private": true,
+  "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./checks": "./src/interactions/checks/index.ts",

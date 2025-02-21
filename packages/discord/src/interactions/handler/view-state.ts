@@ -1,7 +1,7 @@
-// import { sentry } from '../../logging/sentry'
 import { LZString, StringData, StringDataSchema } from '@repo/utils'
+import { DiscordLogger } from '../../logging/discord-logger'
 import { InteractionErrors } from '../errors'
-import { AnyView } from './types'
+import { AnyView } from '../types'
 import { BaseView } from './view'
 
 export class ViewState<T extends StringDataSchema> extends StringData<T> {
@@ -39,6 +39,29 @@ export abstract class ViewStateFactory<T extends StringDataSchema> extends ViewS
     return new ViewState(view.state_schema, view.config.custom_id_prefix)
   }
 
+  static fromCustomId(
+    custom_id: string,
+    customIdPrefixToViewHandlers: (custom_id_prefix: string) => AnyView,
+    logger?: DiscordLogger,
+  ): { view: AnyView; state: ViewState<StringDataSchema> } {
+    const [prefix, encoded_data] = this.splitCustomId(custom_id)
+    const view = customIdPrefixToViewHandlers(prefix)
+    const blank_state = this.fromView(view)
+    const state = encoded_data ? blank_state.decode(encoded_data) : blank_state
+
+    logger?.log({
+      message: 'ViewStateFactory.fromCustomId',
+      data: {
+        view_name: view.name,
+        encoded_data,
+        prefix,
+        data: state.data,
+      },
+    })
+
+    return { view, state }
+  }
+
   private static splitCustomId(custom_id: string): [string, string] {
     const decompressed_custom_id = LZString.decompressFromUTF16(custom_id)
 
@@ -48,28 +71,5 @@ export abstract class ViewStateFactory<T extends StringDataSchema> extends ViewS
     const encoded_data = rest.join('.')
 
     return [prefix, encoded_data]
-  }
-
-  static fromCustomId(
-    custom_id: string,
-    customIdPrefixToViewHandlers: (custom_id_prefix: string) => AnyView,
-  ): { view: AnyView; state: ViewState<StringDataSchema> } {
-    const [prefix, encoded_data] = ViewStateFactory.splitCustomId(custom_id)
-    const view = customIdPrefixToViewHandlers(prefix)
-    const blank_state = ViewStateFactory.fromView(view)
-    const state = encoded_data ? blank_state.decode(encoded_data) : blank_state
-
-    // sentry.addBreadcrumb({
-    //   category: 'decoded custom_id',
-    //   level: 'info',
-    //   data: {
-    //     view_name: view.name,
-    //     encoded_data,
-    //     prefix,
-    //     data: state.data,
-    //   },
-    // })
-
-    return { view, state }
   }
 }

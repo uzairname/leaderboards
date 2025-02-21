@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "ESNext", // switch to nodenext
-    "moduleResolution": "bundler", // switch to nodenext
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "noEmit": true,
     "strict": true,
     "experimentalDecorators": true,
@@ -10,6 +10,6 @@
     "allowJs": true,
     "checkJs": false,
     "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
+    "allowSyntheticDefaultImports": true
   }
 }

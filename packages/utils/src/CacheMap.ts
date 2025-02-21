@@ -2,7 +2,7 @@
  * Map with optional secondary key
  */
 export class CacheMap<K, V, K2 extends string | number | undefined = undefined> extends Map<K, V> {
-  constructor(public name?: string) {
+  constructor(public name?: string, private log: (msg: string) => void = () => {}) {
     super()
   }
 
@@ -16,18 +16,18 @@ export class CacheMap<K, V, K2 extends string | number | undefined = undefined> 
         if (!(value instanceof CacheMap)) return
         const value2 = value.get(key2)
         if (value2) {
-          // this.name && sentry.debug(`Cache hit for ${this.name} ${key} ${key2}`)
+          this.name && this.log && this.log(`Cache hit for ${this.name} ${key} ${key2}`)
           return value2
         } else {
-          // this.name && sentry.debug(`Cache miss for ${this.name} ${key} ${key2}`)
+          this.name && this.log && this.log(`Cache miss for ${this.name} ${key} ${key2}`)
           return
         }
       } else {
-        // this.name && sentry.debug(`Cache hit for ${this.name} ${key}`)
+        this.name && this.log && this.log(`Cache hit for ${this.name} ${key}`)
         return value
       }
     } else {
-      // this.name && sentry.debug(`Cache miss for ${this.name} ${key}`)
+      this.name && this.log && this.log(`Cache miss for ${this.name} ${key}`)
     }
   }
 

@@ -1,6 +1,6 @@
 import * as D from 'discord-api-types/v10'
 import { InteractionErrors } from '../errors'
-import { AnyView, FindViewCallback } from './types'
+import { AnyView, FindViewCallback } from '../types'
 
 /**
  * Runs findViewCallback, and throws an error if no view is found.

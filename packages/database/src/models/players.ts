@@ -139,8 +139,6 @@ export class PlayersManager extends DbObjectManager {
     in_queue?: boolean
     ranking_id?: number
   } = {}): Promise<Player[]> {
-    // sentry.debug(`players: ${this}`)
-
     const where_chunks: SQL[] = []
 
     if (ranking_id) where_chunks.push(eq(Players.ranking_id, ranking_id))

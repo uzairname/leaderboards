@@ -1,11 +1,10 @@
 import { DiscordAPIError, InternalRequest, REST, RequestData, RequestMethod } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
-// import { sentry } from '../../logging/sentry'
 import { cache } from '@repo/utils/cache'
-import { DiscordCache } from './cache'
+import { DiscordLogger } from '../logging'
 import { DiscordAPIUtils } from './client-helpers'
 import { DiscordErrors } from './errors'
-import { RESTPostAPIGuildForumThreadsResult } from './types'
+import { DiscordCache, RESTPostAPIGuildForumThreadsResult } from './types'
 
 export class DiscordAPIClient extends REST {
   readonly token: string
@@ -16,12 +15,14 @@ export class DiscordAPIClient extends REST {
 
   readonly utils: DiscordAPIUtils
   readonly cache: DiscordCache
+  logger?: DiscordLogger
 
   constructor(params: {
     token: string
     application_id: string
     client_secret: string
     public_key: string
+    logger?: DiscordLogger
   }) {
     super({ version: '10' })
     this.setToken(params.token)
@@ -30,6 +31,8 @@ export class DiscordAPIClient extends REST {
     this.client_id = this.application_id
     this.client_secret = params.client_secret
     this.public_key = params.public_key
+
+    this.logger = params.logger
 
     this.utils = new DiscordAPIUtils(this)
 
@@ -323,10 +326,10 @@ export class DiscordAPIClient extends REST {
     interaction_token: string,
     body: D.RESTPostAPIInteractionCallbackJSONBody,
   ) {
-    // sentry.addBreadcrumb({
-    //   category: 'interaction',
-    //   message: 'Creating initial interaction response',
-    // })
+    this.logger?.log({
+      category: 'interaction',
+      message: 'Creating initial interaction response (indirect)',
+    })
     return this.fetch(
       RequestMethod.Post,
       D.Routes.interactionCallback(interaction_id, interaction_token),
@@ -466,7 +469,7 @@ export class DiscordAPIClient extends REST {
   }
 
   async fetch(
-    method: 'POST' | 'GET' | 'PATCH' | 'PUT' | 'DELETE',
+    method: RequestMethod,
     route: `/${string}`,
     options: RequestData = {},
     bearer_token?: string,
@@ -477,7 +480,7 @@ export class DiscordAPIClient extends REST {
         {
           ...options,
           fullRoute: route,
-          method: method as RequestMethod,
+          method: method,
         },
         bearer_token,
       )
@@ -486,20 +489,14 @@ export class DiscordAPIClient extends REST {
       var error = e
       throw e
     } finally {
-      // sentry.request_data['discord requests'] =
-      //   ((sentry.request_data['discord requests'] as number) || 0) + 1
-      // sentry.addBreadcrumb({
-      //   category: `Fetched Discord ${method?.toString() ?? ``} ${route}`,
-      //   type: 'http',
-      //   level: error ? 'error' : 'info',
-      //   data: {
-      //     route: `Route: ${method?.toString()} ${route}`,
-      //     'time taken': `${Date.now() - start_time}ms`,
-      //     options: JSON.stringify(options),
-      //     response: truncateString(JSON.stringify(response) ?? '', 500),
-      //     error: JSON.stringify(error),
-      //   },
-      // })
+      this.logger?.logDiscordRequest({
+        method,
+        route,
+        options,
+        response,
+        error,
+        time_ms: Date.now() - start_time,
+      })
     }
   }
 

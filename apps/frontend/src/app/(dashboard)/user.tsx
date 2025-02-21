@@ -9,7 +9,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from 'src/components/ui/dropdown-menu';
-import Link from 'next/link';
 
 export async function User() {
   let session = await auth();

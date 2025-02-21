@@ -1,16 +1,16 @@
 import * as D from 'discord-api-types/v10'
 import { json } from 'itty-router'
-// import { sentry } from '../../logging/sentry'
 import { DiscordAPIClient } from '../..'
+import { DiscordLogger } from '../../logging/discord-logger'
 import { InteractionErrors } from '../errors'
-import { findView } from './find-view'
 import {
   FindViewCallback,
   InteractionErrorCallback,
   OffloadCallback,
   viewIsChatInputCommand,
   viewIsCommand,
-} from './types'
+} from '../types'
+import { findView } from './find-view'
 import { verify } from './verify'
 import { ViewStateFactory } from './view-state'
 
@@ -21,25 +21,23 @@ export async function respondToInteraction(
   onError: InteractionErrorCallback,
   offload: OffloadCallback,
   direct_response = true,
+  logger?: DiscordLogger,
 ): Promise<Response> {
   if (!(await verify(request, bot.public_key))) {
-    // sentry.addBreadcrumb({
-    //   message: 'Invalid signature',
-    //   category: 'discord',
-    // })
+    logger?.log({ message: 'Invalid signature' })
     return new Response('Invalid signature', { status: 401 })
   }
 
   const interaction = (await request.json()) as D.APIInteraction
 
-  const response = await respond(interaction, bot, findViewCallback, onError, offload)
+  const response = await respond(interaction, bot, findViewCallback, onError, offload, logger)
     .then(res => res)
     .catch(e => onError(e))
 
-  // sentry.addBreadcrumb({
-  //   category: 'Responding with',
-  //   data: { response: JSON.stringify(response), direct_response },
-  // })
+  logger?.log({
+    message: 'Responding with',
+    data: { response: JSON.stringify(response), direct_response },
+  })
 
   if (direct_response) {
     return json(response)
@@ -55,6 +53,7 @@ async function respond(
   findViewCallback: FindViewCallback,
   onError: InteractionErrorCallback,
   offload: OffloadCallback,
+  logger?: DiscordLogger,
 ): Promise<D.APIInteractionResponse> {
   if (interaction.type === D.InteractionType.Ping) return { type: D.InteractionResponseType.Pong }
 
@@ -68,12 +67,18 @@ async function respond(
 
     if (interaction.type === D.InteractionType.ApplicationCommand) {
       if (viewIsCommand(view))
-        return view.respondToCommand(interaction as any, bot, onError, offload) // TODO: fix type
+        return view.respondToCommand(
+          interaction as any /** TODO: fix type */,
+          bot,
+          onError,
+          offload,
+          logger,
+        )
       throw new InteractionErrors.InvalidViewType()
     }
 
     if (interaction.type === D.InteractionType.ApplicationCommandAutocomplete) {
-      if (viewIsChatInputCommand(view)) return view.respondToAutocomplete(interaction)
+      if (viewIsChatInputCommand(view)) return view.respondToAutocomplete(interaction, logger)
       throw new InteractionErrors.InvalidViewType()
     }
   }
@@ -83,18 +88,18 @@ async function respond(
     (custom_id_prefix: string) => {
       return findView(findViewCallback, undefined, custom_id_prefix)
     },
+    logger,
   )
 
-  return view.respondToComponent(interaction, state, bot, onError, offload)
+  return view.respondToComponent(interaction, state, bot, onError, offload, logger)
 }
 
-function logInteraction(interaction: D.APIInteraction) {
-  // sentry.setUser({
-  //   id: interaction.user?.username ?? interaction.member?.user.username,
-  //   user_id: interaction.user?.id ?? interaction.member?.user.id,
-  //   username: interaction.user?.username ?? interaction.member?.user.username,
-  //   guild: interaction.guild_id,
-  // })
+function logInteraction(interaction: D.APIInteraction, logger?: DiscordLogger) {
+  logger?.setUser({
+    id: interaction.user?.id ?? interaction.member?.user.id,
+    username: interaction.user?.username ?? interaction.member?.user.username,
+    guild: interaction.guild_id,
+  })
 
   const data: Record<string, unknown> = {}
 
@@ -117,10 +122,8 @@ function logInteraction(interaction: D.APIInteraction) {
     data['custom_id_length'] = interaction.data.custom_id.length
   }
 
-  // sentry.addBreadcrumb({
-  //   message: 'Received Interaction',
-  //   category: 'discord',
-  //   level: 'info',
-  //   data,
-  // })
+  logger?.log({
+    message: 'Received Interaction',
+    data,
+  })
 }

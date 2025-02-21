@@ -1,6 +1,5 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import * as D from 'discord-api-types/v10'
-// import { sentry } from '../../logging/sentry'
 import { DiscordAPIClient } from './client'
 import { GuildChannelData, MessageData, RoleData } from './objects'
 import { RESTPostAPIGuildForumThreadsResult } from './types'
@@ -71,7 +70,7 @@ export class DiscordAPIUtils {
     channel: D.APIChannel
     is_new_channel: boolean
   }> {
-    // sentry.debug(`syncGuildChannel ${params.target_channel_id}`)
+    this.discord.logger?.debug(`syncGuildChannel ${params.target_channel_id}`)
     try {
       if (params.target_channel_id) {
         // try to edit the channel
@@ -93,7 +92,6 @@ export class DiscordAPIUtils {
         (e.code === D.RESTJSONErrorCodes.UnknownChannel ||
           e.code === D.RESTJSONErrorCodes.MissingAccess)
       ) {
-        // sentry.debug(`Channel unavailable`)
         // we need to create the channel
       } else {
         throw e
@@ -140,7 +138,7 @@ export class DiscordAPIUtils {
     channel_id: string
     new_channel?: D.APIChannel
   }> {
-    // sentry.debug(`syncChannelMessage ${params.target_channel_id} ${params.target_message_id}`)
+    this.discord.logger?.debug(`syncChannelMessage ${params.target_channel_id} ${params.target_message_id}`)
     let new_channel: D.APIChannel | undefined = undefined
     try {
       let existing_message: D.APIMessage

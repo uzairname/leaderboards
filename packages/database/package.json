@@ -1,18 +1,21 @@
 {
   "name": "@repo/database",
   "private": true,
+  "type": "module",
   "exports": {
     "./models": "./src/models/index.ts",
-    "./migrations": "./src/migrations/index.ts",
-    ".": "./src/index.ts",
-    "./schema": "./src/schema/index.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {},
   "dependencies": {
-    "@repo/typescript-config": "*",
     "@neondatabase/serverless": "^0.10.4",
+    "@repo/typescript-config": "*",
+    "@repo/utils": "*",
     "discord-api-types": "^0.37.119",
-    "drizzle-orm": "^0.39.3",
+    "drizzle-orm": "0.39.3",
     "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.28.1"
   }
 }

@@ -1,7 +1,6 @@
 import * as D from 'discord-api-types/v10'
-// import { sentry } from '../../logging/sentry'
 import type { DiscordAPIClient } from '../rest/client'
-import { AnyCommandView, viewIsChatInputCommand } from './handler/types'
+import { AnyCommandView, viewIsChatInputCommand } from './types'
 
 export async function overwriteDiscordCommandsWithViews(
   bot: DiscordAPIClient,

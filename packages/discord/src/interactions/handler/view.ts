@@ -1,6 +1,6 @@
-import * as D from 'discord-api-types/v10'
-// import { sentry } from '../../logging/sentry'
 import type { StringDataSchema } from '@repo/utils'
+import * as D from 'discord-api-types/v10'
+import type { DiscordLogger } from '../../logging/discord-logger'
 import { DiscordAPIClient } from '../../rest/client'
 import { MessageData } from '../../rest/objects'
 import { checkGuildInteraction, checkGuildMessageComponentInteraction } from '../checks/interaction'
@@ -17,7 +17,7 @@ import type {
   InteractionErrorCallback,
   OffloadCallback,
   ViewAutocompleteCallback,
-} from './types'
+} from '../types'
 import { ViewState, ViewStateFactory } from './view-state'
 
 export abstract class BaseView<
@@ -61,8 +61,9 @@ export abstract class BaseView<
     discord: DiscordAPIClient,
     onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource,
     offload: OffloadCallback,
+    logger?: DiscordLogger,
   ): Promise<ChatInteractionResponse> {
-    // sentry.request_name = `${this.name} Component`
+    logger?.setInteractionType(`${this.name} Component`)
 
     let valid_interaction
     if (this.config.guild_only) {
@@ -171,8 +172,9 @@ export class CommandView<
     discord: DiscordAPIClient,
     onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource,
     offload: OffloadCallback,
+    logger?: DiscordLogger,
   ): Promise<CommandInteractionResponse> {
-    // sentry.request_name = `${this.name} command`
+    logger?.setInteractionType(`${this.name} Command`)
 
     const state = this.newState()
 
@@ -209,8 +211,9 @@ export class CommandView<
 
   async respondToAutocomplete(
     interaction: D.APIApplicationCommandAutocompleteInteraction,
+    logger?: DiscordLogger,
   ): Promise<D.APIApplicationCommandAutocompleteResponse> {
-    // sentry.request_name = `${interaction.data.name} Autocomplete`
+    logger?.setInteractionType(`${this.name} Autocomplete`)
     return this.autocompleteCallback({ interaction })
   }
 }

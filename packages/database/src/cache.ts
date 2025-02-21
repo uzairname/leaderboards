@@ -1,33 +1,37 @@
 import { CacheMap } from '../../utils/src/CacheMap'
+import { DbLogger } from './logging'
 import { Guild, GuildRanking, Match, Player, Ranking, Setting, Team, User } from './models'
 import { MatchPlayer } from './models/matches'
 
 // prettier-ignore
 export default class DbCache {
+
+  private maps: CacheMap<any, any, any>[] = []
+  constructor(private logger?: DbLogger) {}
+
   setting: Setting | undefined = undefined
-  users = new CacheMap<string, User>('user')
-  guilds = new CacheMap<string, Guild>('guild')
-  rankings = new CacheMap<number, Ranking>('ranking')
-  guild_rankings = new CacheMap<string, GuildRanking, number>('guild ranking')
-  guild_rankings_by_guild = new CacheMap<string, { guild_ranking: GuildRanking; ranking: Ranking }[]>('guild rankings in guild')
-  guild_rankings_by_ranking = new CacheMap<number, { guild_ranking: GuildRanking; guild: Guild }[]>('guild rankings for ranking')
-  players = new CacheMap<number, Player>('player')
-  players_by_ranking_user = new CacheMap<number, Player, string>('player')
-  match_players = new CacheMap<number, MatchPlayer[][]>('players for match')
-  matches = new CacheMap<number, Match>('match')
-  teams = new CacheMap<number, Team>('team')
+  users = this.newMap<string, User>('user')
+  guilds = this.newMap<string, Guild>('guild')
+  rankings = this.newMap<number, Ranking>('ranking')
+  guild_rankings = this.newMap<string, GuildRanking, number>('guild ranking')
+  guild_rankings_by_guild = this.newMap<string, { guild_ranking: GuildRanking; ranking: Ranking }[]>('guild rankings in guild')
+  guild_rankings_by_ranking = this.newMap<number, { guild_ranking: GuildRanking; guild: Guild }[]>('guild rankings for ranking')
+  players = this.newMap<number, Player>('player')
+  players_by_ranking_user = this.newMap<number, Player, string>('player')
+  match_players = this.newMap<number, MatchPlayer[][]>('players for match')
+  matches = this.newMap<number, Match>('match')
+  teams = this.newMap<number, Team>('team')
 
   clear() {
     this.setting = undefined
-    this.users.clear()
-    this.guilds.clear()
-    this.rankings.clear()
-    this.guild_rankings.clear()
-    this.guild_rankings_by_guild.clear()
-    this.players.clear()
-    this.players_by_ranking_user.clear()
-    this.match_players.clear()
-    this.matches.clear()
-    this.teams.clear()
+    this.maps.forEach((map) => map.clear())
+  }
+
+  private newMap<K, V, K2 extends string | number | undefined = undefined>(name?: string): CacheMap<K, V, K2> {
+    const map = new CacheMap<K, V, K2>(name, (msg) => {
+      this.logger?.debug(msg)
+    })
+    this.maps.push(map)
+    return map
   }
 }

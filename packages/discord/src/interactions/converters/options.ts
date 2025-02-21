@@ -1,6 +1,5 @@
-import * as D from 'discord-api-types/v10'
-// import { sentry } from '../../../logging/sentry'
 import { nonNullable } from '@repo/utils'
+import * as D from 'discord-api-types/v10'
 import { isSubCommandOption } from '../checks/options'
 import { InteractionError, InteractionErrors } from '../errors'
 

@@ -2,7 +2,7 @@ import { cache } from '@repo/utils/cache'
 import { NeonHttpDatabase } from 'drizzle-orm/neon-http'
 import { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import DbCache from './cache'
-import { CustomLogger } from './drizzle-client'
+import { DbLogger } from './logging/db-logger'
 import {
   AccessTokensManager,
   GuildRankingsManager,
@@ -20,7 +20,7 @@ export class DbClient {
 
   constructor(
     readonly drizzle: NeonDatabase | NeonHttpDatabase,
-    readonly logger: CustomLogger,
+    readonly logger: DbLogger,
   ) {
     if (cache.db && cache.db instanceof DbCache) {
       this.cache = cache.db

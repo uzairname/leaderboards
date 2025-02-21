@@ -8,7 +8,7 @@ import {
   DeferContext,
   InitialInteractionContext,
   StateContext,
-} from '../handler/types'
+} from '../types'
 
 export function isInteractionCtx(ctx: AnyContext): ctx is AnyInteractionContext {
   return ctx.hasOwnProperty('interaction')

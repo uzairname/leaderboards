@@ -16,7 +16,7 @@ export class Logger extends Toucan {
     private request: Request,
     env: Env,
     private execution_context: ExecutionContext,
-    private timeout_ms: number = 30000,
+    public timeout_ms: number = 1000,
   ) {
     super({
       dsn: env.SENTRY_DSN,
@@ -133,11 +133,11 @@ export class Logger extends Toucan {
     })
   }
 
-  private logResult(request_name: string = this.request_name) {
+  private logResult(request_name?: string) {
     super.setExtra('time taken', `${Date.now() - this.time_received} ms`)
     super.setExtra('data', this.request_data)
     super.captureEvent({
-      message: request_name,
+      message: request_name ?? this.request_name,
       level: 'info',
     })
   }

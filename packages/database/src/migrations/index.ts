@@ -1,1 +1,0 @@
-export { migrate_database } from './migrate'
