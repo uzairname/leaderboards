@@ -5,11 +5,10 @@ import {
   PartialRanking,
   Player,
 } from '@repo/database/models'
-import { AnyDeferContext } from '@repo/discord'
-import { checkGuildInteraction } from '@repo/discord/checks'
+import { AnyDeferContext, checkGuildInteraction } from '@repo/discord'
 import { nonNullable, unflatten } from '@repo/utils'
-import { sentry } from '../../../../logging/sentry'
 import { UserError } from '../../../../errors/UserError'
+import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
 import { getRegisterPlayer } from '../../../players/manage-players'
 import { ensureNoActiveMatches, ensurePlayersEnabled } from '../../management/match-creation'

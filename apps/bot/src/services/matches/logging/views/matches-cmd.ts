@@ -1,5 +1,4 @@
-import { CommandView } from '@repo/discord'
-import { getOptions } from '@repo/discord/converters'
+import { CommandView, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { GuildCommand } from '../../../../classes/ViewModule'
 import {

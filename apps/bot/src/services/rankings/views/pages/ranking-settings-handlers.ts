@@ -1,5 +1,4 @@
-import { ChatInteractionResponse, ComponentContext } from '@repo/discord'
-import { getModalSubmitEntries } from '@repo/discord/converters'
+import { ChatInteractionResponse, ComponentContext, getModalSubmitEntries } from '@repo/discord'
 import { intOrUndefined, strOrUndefined } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../../../logging/sentry'

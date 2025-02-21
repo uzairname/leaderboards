@@ -138,7 +138,9 @@ export class DiscordAPIUtils {
     channel_id: string
     new_channel?: D.APIChannel
   }> {
-    this.discord.logger?.debug(`syncChannelMessage ${params.target_channel_id} ${params.target_message_id}`)
+    this.discord.logger?.debug(
+      `syncChannelMessage ${params.target_channel_id} ${params.target_message_id}`,
+    )
     let new_channel: D.APIChannel | undefined = undefined
     try {
       let existing_message: D.APIMessage

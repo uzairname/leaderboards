@@ -1,11 +1,11 @@
 import {
   ChatInteractionResponse,
+  checkGuildInteraction,
   ComponentContext,
   MessageData,
   MessageView,
   ViewState,
 } from '@repo/discord'
-import { checkGuildInteraction } from '@repo/discord/checks'
 import { field, sequential } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { AppView } from '../../../../classes/ViewModule'

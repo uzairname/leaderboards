@@ -3,7 +3,6 @@ import { Env } from '../Env'
 import { rateTrueskill } from '../services/matches/management/rating-calculation'
 
 export class Config {
-
   readonly OauthRoutes = {
     Redirect: '/redirect',
     LinkedRoles: '/linkedroles',

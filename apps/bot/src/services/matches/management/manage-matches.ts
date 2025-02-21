@@ -9,8 +9,8 @@ import {
   Rating,
 } from '@repo/database/models'
 import { AnyDeferContext } from '@repo/discord'
-import { sentry } from '../../../logging/sentry'
 import { UserError } from '../../../errors/UserError'
+import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { updatePlayerRatings } from '../../players/manage-players'
 import { syncMatchSummaryMessages } from '../logging/match-summary-message'

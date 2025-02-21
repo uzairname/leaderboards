@@ -2,7 +2,10 @@
  * Map with optional secondary key
  */
 export class CacheMap<K, V, K2 extends string | number | undefined = undefined> extends Map<K, V> {
-  constructor(public name?: string, private log: (msg: string) => void = () => {}) {
+  constructor(
+    public name?: string,
+    private log: (msg: string) => void = () => {},
+  ) {
     super()
   }
 

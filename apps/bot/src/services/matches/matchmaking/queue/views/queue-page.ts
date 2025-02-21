@@ -1,5 +1,10 @@
-import { DeferContext, MessageData, MessageView, ViewState } from '@repo/discord'
-import { checkMessageComponentInteraction } from '@repo/discord/checks'
+import {
+  checkMessageComponentInteraction,
+  DeferContext,
+  MessageData,
+  MessageView,
+  ViewState,
+} from '@repo/discord'
 import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { AppView } from '../../../../../classes/ViewModule'

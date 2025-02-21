@@ -1,5 +1,4 @@
-import { AnyView, InteractionContext } from '@repo/discord'
-import { checkGuildInteraction } from '@repo/discord/checks'
+import { AnyView, checkGuildInteraction, InteractionContext } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../errors/UserError'
 import { getOrAddGuild } from '../services/guilds/guilds'

@@ -9,8 +9,8 @@ import {
   PlayerFlags,
   Vote,
 } from '@repo/database/models'
-import { sentry } from '../../../logging/sentry'
 import { UserErrors } from '../../../errors/UserError'
+import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { default_best_of } from '../../rankings/manage-rankings'
 import { rescoreMatches, validateMatchData } from './manage-matches'

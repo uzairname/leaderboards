@@ -1,7 +1,7 @@
 import { Match, PartialGuildRanking, Player, Vote } from '@repo/database/models'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../../logging/sentry'
 import { UserError } from '../../../errors/UserError'
+import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { Colors } from '../../../ui-helpers/constants'
 import { syncMatchSummaryMessage } from '../logging/match-summary-message'

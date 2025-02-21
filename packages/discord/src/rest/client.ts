@@ -1,6 +1,6 @@
 import { DiscordAPIError, InternalRequest, REST, RequestData, RequestMethod } from '@discordjs/rest'
-import * as D from 'discord-api-types/v10'
 import { cache } from '@repo/utils/cache'
+import * as D from 'discord-api-types/v10'
 import { DiscordLogger } from '../logging'
 import { DiscordAPIUtils } from './client-helpers'
 import { DiscordErrors } from './errors'

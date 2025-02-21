@@ -1,6 +1,5 @@
 import { PartialRanking } from '@repo/database/models'
-import { CommandView, DeferContext } from '@repo/discord'
-import { getOptions } from '@repo/discord/converters'
+import { CommandView, DeferContext, getOptions } from '@repo/discord'
 import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { GuildCommand } from '../../../classes/ViewModule'

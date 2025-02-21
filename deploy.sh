@@ -71,7 +71,7 @@ if [ -z "$BASE_URL" ] || [ -z "$APP_KEY" ]; then
   exit 1
 fi
 
-status_code=$(curl -s -w "%{http_code}" -X POST $BASE_URL/update -H "Authorization: $APP_KEY")
+status_code=$(curl -s -w -o /dev/null "%{http_code}" -X POST $BASE_URL/update -H "Authorization: $APP_KEY" )
 if [ $? -ne 0 ]; then
   exit 1
 fi

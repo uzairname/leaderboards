@@ -2,15 +2,15 @@ import {
   AnyGuildInteractionContext,
   ChatInteractionResponse,
   ComponentContext,
+  getModalSubmitEntries,
   MessageView,
   StateContext,
 } from '@repo/discord'
-import { getModalSubmitEntries } from '@repo/discord/converters'
 import { field, intOrUndefined, nonNullable, strOrUndefined, unflatten } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../../../logging/sentry'
 import { AppView } from '../../../../classes/ViewModule'
 import { UserErrors } from '../../../../errors/UserError'
+import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
 import { Messages } from '../../../../ui-helpers/messages'
 import { ensureAdminPerms } from '../../../../ui-helpers/perms'

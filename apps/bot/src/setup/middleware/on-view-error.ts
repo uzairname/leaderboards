@@ -1,8 +1,8 @@
 import { DiscordAPIError, RateLimitError } from '@discordjs/rest'
 import { DiscordErrors } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../logging/sentry'
 import { UserError, UserErrors } from '../../errors/UserError'
+import { sentry } from '../../logging/sentry'
 import { Colors } from '../../ui-helpers/constants'
 import { App } from '../app'
 

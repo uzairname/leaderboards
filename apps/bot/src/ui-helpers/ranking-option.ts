@@ -5,10 +5,10 @@ import type {
   InitialInteractionContext,
   InteractionContext,
 } from '@repo/discord'
-import { isDeferredCtx, isInitialInteractionCtx } from '@repo/discord/checks'
+import { isDeferredCtx, isInitialInteractionCtx } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../logging/sentry'
 import { UserError } from '../errors/UserError'
+import { sentry } from '../logging/sentry'
 import { allRankingsPage } from '../services/rankings/views/pages/all-rankings-page'
 import type { App } from '../setup/app'
 

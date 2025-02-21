@@ -6,9 +6,9 @@ import {
   respondToInteraction,
   ViewStateFactory,
 } from '@repo/discord'
+import { ViewModule } from '../classes/ViewModule'
 import { Env } from '../Env'
 import { sentry } from '../logging/sentry'
-import { ViewModule } from '../classes/ViewModule'
 import { Config } from './config'
 import { AppEvents, getAppEvents } from './events'
 import { DbLoggerWrapper, DiscordLoggerWrapper } from './middleware/loggers'

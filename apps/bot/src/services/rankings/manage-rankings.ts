@@ -8,8 +8,8 @@ import {
   RankingUpdate,
   Rating,
 } from '@repo/database/models'
-import { sentry } from '../../logging/sentry'
 import { UserError, UserErrors } from '../../errors/UserError'
+import { sentry } from '../../logging/sentry'
 import { App } from '../../setup/app'
 import { getOrAddGuild } from '../guilds/guilds'
 import {

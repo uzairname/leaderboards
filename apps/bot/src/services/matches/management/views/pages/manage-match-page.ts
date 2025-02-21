@@ -3,10 +3,10 @@ import {
   AnyGuildInteractionContext,
   ChatInteractionResponse,
   ComponentContext,
+  getModalSubmitEntries,
   InteractionContext,
   MessageView,
 } from '@repo/discord'
-import { getModalSubmitEntries } from '@repo/discord/converters'
 import { field, intOrUndefined, nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { AppView } from '../../../../../classes/ViewModule'
