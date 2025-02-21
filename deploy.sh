@@ -71,12 +71,10 @@ if [ -z "$BASE_URL" ] || [ -z "$APP_KEY" ]; then
   exit 1
 fi
 
-status_code=$(curl -s -w "%{http_code}" -X POST $BASE_URL/update -H "Authorization: $APP_KEY" -o response.txt)
+status_code=$(curl -s -w "%{http_code}" -X POST $BASE_URL/update -H "Authorization: $APP_KEY")
 if [ $? -ne 0 ]; then
   exit 1
 fi
-
-cat response.txt
 if [ $status_code -ne 200 ]; then
   echo -e "\033[31mUpdate failed with status code: $status_code\033[0m"
   exit 1
