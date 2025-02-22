@@ -29,4 +29,6 @@ export namespace DiscordErrors {
       super('Unable to create forum channel. Community is disabled for this server')
     }
   }
+
+  export class GeneralPermissions extends DiscordError {}
 }

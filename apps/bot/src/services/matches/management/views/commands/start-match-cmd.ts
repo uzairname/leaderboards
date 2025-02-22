@@ -3,8 +3,11 @@ import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { GuildCommand } from '../../../../../classes/ViewModule'
 import { UserError } from '../../../../../errors/UserError'
-import { ensureAdminPerms } from '../../../../../ui-helpers/perms'
-import { guildRankingsOption, withSelectedRanking } from '../../../../../ui-helpers/ranking-option'
+import { ensureAdminPerms } from '../../../../../utils/perms'
+import {
+  guildRankingsOption,
+  withSelectedRanking,
+} from '../../../../../utils/view-helpers/ranking-option'
 import { getRegisterPlayer } from '../../../../players/manage-players'
 import { start1v1SeriesThread } from '../../../ongoing-math-thread/manage-ongoing-match'
 
@@ -27,6 +30,10 @@ const optionnames = {
 export default new GuildCommand(
   start_match_cmd_signature,
   async (app, guild) => {
+
+    const guild_rankings = await app.db.guild_rankings.getBy({ guild_id: guild.data.id })
+    if (guild_rankings.length == 0) return null
+
     const options: D.APIApplicationCommandBasicOption[] = [
       {
         name: optionnames.player1,

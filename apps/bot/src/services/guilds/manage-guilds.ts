@@ -2,7 +2,7 @@ import { Guild } from '@repo/database/models'
 import { GuildChannelData, RoleData } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../setup/app'
-import { Colors } from '../../ui-helpers/constants'
+import { Colors } from '../../utils/ui/strings'
 
 export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> {
   let app_guild = await app.db.guilds.fetch(guild_id)
@@ -63,23 +63,26 @@ export async function syncRankedCategory(
   return result
 }
 
+/**
+ * Ensures that the guild has an admin role.
+ * @param role_id overwrite the current admin role with this one, if it exists.
+ */
 export async function syncGuildAdminRole(
   app: App,
   guild: Guild,
+  role_id?: string,
 ): Promise<{
   role: D.APIRole
-  is_new_role: boolean
 }> {
   const result = await app.discord.utils.syncRole({
     guild_id: guild.data.id,
-    target_role_id: guild.data.admin_role_id,
+    target_role_id: role_id ?? guild.data.admin_role_id,
     roleData: async () => {
       return new RoleData({ name: 'Leaderboards Admin', color: Colors.Primary, permissions: '0' })
     },
+    no_edit: true,
   })
 
-  if (result.is_new_role) {
-    await guild.update({ admin_role_id: result.role.id })
-  }
+  await guild.update({ admin_role_id: result.role.id })
   return result
 }

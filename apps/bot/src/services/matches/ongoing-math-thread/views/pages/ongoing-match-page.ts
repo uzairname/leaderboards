@@ -185,7 +185,7 @@ async function rematch(
       (await app.discord.editChannel(old_match.data.ongoing_match_channel_id, { archived: true }))
 
     // start the new match
-    const { guild_ranking } = await app.db.guild_rankings.fetch({
+    const { guild_ranking } = await app.db.guild_rankings.getBy({
       guild_id: ctx.interaction.guild_id,
       ranking_id: old_match.data.ranking_id,
     })

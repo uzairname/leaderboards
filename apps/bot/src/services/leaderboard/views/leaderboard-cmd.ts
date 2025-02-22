@@ -4,7 +4,10 @@ import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { GuildCommand } from '../../../classes/ViewModule'
 import { App } from '../../../setup/app'
-import { guildRankingsOption, withSelectedRanking } from '../../../ui-helpers/ranking-option'
+import {
+  guildRankingsOption,
+  withSelectedRanking,
+} from '../../../utils/view-helpers/ranking-option'
 import { leaderboardMessage } from '../leaderboard-message'
 
 const leaderboard_cmd_signature = new CommandView({

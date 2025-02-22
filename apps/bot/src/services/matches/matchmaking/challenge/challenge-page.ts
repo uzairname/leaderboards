@@ -7,11 +7,11 @@ import {
   ViewState,
 } from '@repo/discord'
 import { field, sequential } from '@repo/utils'
+import { Colors } from 'apps/bot/src/utils/ui/strings'
 import * as D from 'discord-api-types/v10'
 import { AppView } from '../../../../classes/ViewModule'
 import { App } from '../../../../setup/app'
-import { Colors } from '../../../../ui-helpers/constants'
-import { relativeTimestamp } from '../../../../ui-helpers/strings'
+import { relativeTimestamp } from '../../../../utils/ui/strings'
 import { getRegisterPlayer } from '../../../players/manage-players'
 import { default_best_of } from '../../../rankings/manage-rankings'
 import { start1v1SeriesThread } from '../../ongoing-math-thread/manage-ongoing-match'

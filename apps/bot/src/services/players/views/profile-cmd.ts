@@ -4,7 +4,7 @@ import { GuildCommand } from '../../../classes/ViewModule'
 import {
   guildRankingsOption,
   withOptionalSelectedRanking,
-} from '../../../ui-helpers/ranking-option'
+} from '../../../utils/view-helpers/ranking-option'
 import { profileOverviewPage, profile_page_config } from './profile-page'
 
 const optionnames = {

@@ -10,15 +10,14 @@ import { nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging/sentry'
 import { type App } from '../../setup/app'
-import { Colors } from '../../ui-helpers/constants'
-import { commandMention, escapeMd, relativeTimestamp, space } from '../../ui-helpers/strings'
-import { syncRankedCategory } from '../guilds/guilds'
+import { Colors, commandMention, escapeMd, relativeTimestamp, space } from '../../utils/ui/strings'
+import { syncRankedCategory } from '../guilds/manage-guilds'
 import { getOrderedLeaderboardPlayers } from '../players/display'
 import leaderboardCmd from './views/leaderboard-cmd'
 
 export async function syncRankingLbMessages(app: App, ranking: PartialRanking): Promise<void> {
   sentry.debug(`syncRankingLbMessages ranking: ${ranking.data.id}`)
-  const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
+  const guild_rankings = await app.db.guild_rankings.getBy({ ranking_id: ranking.data.id })
   await Promise.all(
     guild_rankings.map(async guild_ranking => {
       await syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)

@@ -1,6 +1,6 @@
 import { Router } from 'itty-router'
 import { sentry } from '../logging/sentry'
-import { getOrAddGuild, updateGuild } from '../services/guilds/guilds'
+import { getOrAddGuild, updateGuild } from '../services/guilds/manage-guilds'
 import { getAppRoleConnectionsMetadata } from '../services/linked-roles/role-connections'
 import { App } from '../setup/app'
 

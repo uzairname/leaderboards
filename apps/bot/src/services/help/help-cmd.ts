@@ -3,10 +3,9 @@ import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { AppView } from '../../classes/ViewModule'
 import { App } from '../../setup/app'
-import { Colors } from '../../ui-helpers/constants'
-import { Messages } from '../../ui-helpers/messages'
-import { dateTimestamp, github_url, inviteUrl } from '../../ui-helpers/strings'
-import { getOrAddGuild } from '../guilds/guilds'
+import { Messages } from '../../utils'
+import { Colors, dateTimestamp, inviteUrl } from '../../utils/ui/strings'
+import { getOrAddGuild } from '../guilds/manage-guilds'
 
 export const help_cmd_signature = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
@@ -51,11 +50,11 @@ async function overviewPage(
 
   const embed: D.APIEmbed = {
     title: '🏅 Leaderboards',
-    description: Messages.concise_description,
+    description: await Messages.concise_description(app),
     fields: [
       {
         name: `Source Code`,
-        value: `This bot is open source! [Source Code](${github_url})`,
+        value: `This bot is open source! [Source Code](${app.config.GithubUrl})`,
         inline: true,
       },
       {

@@ -1,11 +1,11 @@
 import { ChatInteractionResponse, ComponentContext, getModalSubmitEntries } from '@repo/discord'
 import { intOrUndefined, strOrUndefined } from '@repo/utils'
+import { Colors } from 'apps/bot/src/utils/ui/strings'
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
-import { Colors } from '../../../../ui-helpers/constants'
-import { ensureAdminPerms } from '../../../../ui-helpers/perms'
-import { escapeMd } from '../../../../ui-helpers/strings'
+import { ensureAdminPerms } from '../../../../utils/perms'
+import { escapeMd } from '../../../../utils/ui/strings'
 import {
   disableGuildRankingLbMessage,
   syncGuildRankingLbMessage,

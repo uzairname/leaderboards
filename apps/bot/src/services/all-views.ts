@@ -1,9 +1,10 @@
 import { ViewModule } from '../classes/ViewModule'
-import settings from './admin/views/commands/settings-cmd'
+import selectChannel from '../utils/views/select-channel-page'
+import settings from './admin/views/commands/setup-cmd'
 import helpCmd from './help/help-cmd'
 import leaderboardCmd from './leaderboard/views/leaderboard-cmd'
 import matchesCmd from './matches/logging/views/matches-cmd'
-import matchesPage from './matches/logging/views/matches-page'
+import matchesPage from './matches/logging/views/matches.page'
 import recordMatchCmd from './matches/management/views/commands/record-match-cmd'
 import settleMatchCmd from './matches/management/views/commands/settle-match-cmd'
 import startMatchCmd from './matches/management/views/commands/start-match-cmd'
@@ -15,7 +16,7 @@ import leaveqCmd from './matches/matchmaking/queue/views/leave-cmd'
 import queuePage from './matches/matchmaking/queue/views/queue-page'
 import ongoingMatchPage from './matches/ongoing-math-thread/views/pages/ongoing-match-page'
 import coinflipCmd from './misc-commands/coinflip-cmd'
-import banCmd from './players/views/ban'
+import banCmd from './players/views/ban-cmd'
 import profileCmd from './players/views/profile-cmd'
 import profilePage from './players/views/profile-page'
 import createRankingCmd from './rankings/views/commands/create-ranking-cmd'
@@ -25,7 +26,6 @@ import rankingSettingsPage from './rankings/views/pages/ranking-settings-page'
 import devCmd from './test/views/dev-cmd'
 import testCmd from './test/views/test-cmd'
 import testHelperPage from './test/views/test-helper-page'
-import selectChannel from './utils/views/select-channel-page'
 
 export default new ViewModule([
   // help
@@ -35,7 +35,7 @@ export default new ViewModule([
   // ranking settings
   new ViewModule([rankingsCmd, allRankingsPage, createRankingCmd, rankingSettingsPage]),
   // match management
-  new ViewModule([recordMatchCmd.dev(), startMatchCmd, manageMatchPage, settleMatchCmd]),
+  new ViewModule([recordMatchCmd, startMatchCmd, manageMatchPage, settleMatchCmd]),
   // player management
   new ViewModule([banCmd]),
   // leaderboard, matches, and stats
@@ -43,9 +43,9 @@ export default new ViewModule([
   // ongoing matches
   new ViewModule([ongoingMatchPage]),
   // matchmaking
-  new ViewModule([queuePage.dev(), challengeCmd, challengePage, joinqCmd, leaveqCmd]),
+  new ViewModule([queuePage, challengeCmd, challengePage, joinqCmd, leaveqCmd]),
   // experimental
-  new ViewModule([devCmd.dev(), testCmd.dev(), testHelperPage.dev()]),
+  new ViewModule([devCmd, testCmd, testHelperPage]),
   // misc
   coinflipCmd,
   // utility

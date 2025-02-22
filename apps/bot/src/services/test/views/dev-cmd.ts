@@ -1,7 +1,10 @@
 import { CommandView, getOptions, getSubcommandOption } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { GuildCommand } from '../../../classes/ViewModule'
-import { guildRankingsOption, withSelectedRanking } from '../../../ui-helpers/ranking-option'
+import {
+  guildRankingsOption,
+  withSelectedRanking,
+} from '../../../utils/view-helpers/ranking-option'
 import { rescoreMatches } from '../../matches/management/manage-matches'
 
 export const dev_cmd_signature = new CommandView({
@@ -81,4 +84,4 @@ export default new GuildCommand(
 
       throw new Error('Unknown subcommand')
     }),
-)
+).dev()

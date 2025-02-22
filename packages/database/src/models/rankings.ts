@@ -18,7 +18,7 @@ export type Rating = {
 
 export enum ScoringMethod {
   TrueSkill = 0,
-  WinsMinusLosses = 1
+  WinsMinusLosses = 1,
 }
 
 export type RatingSettings = {

@@ -90,7 +90,7 @@ export default new AppView(test_cmd_signature, app =>
         data: testMessageData(ctx),
       }
     }),
-)
+).dev()
 
 function testMessageData(
   ctx: StateContext<typeof test_cmd_signature>,

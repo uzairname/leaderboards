@@ -2,8 +2,8 @@ import * as D from 'discord-api-types/v10'
 
 import { Match, MatchPlayer, MatchStatus, Vote } from '@repo/database/models'
 import { nonNullable } from '@repo/utils'
+import { Colors } from 'apps/bot/src/utils/ui/strings'
 import { App } from '../../../setup/app'
-import { Colors } from '../../../ui-helpers/constants'
 
 /**
  * Determine the custom description to display at the top of the match thread,

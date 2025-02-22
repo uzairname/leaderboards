@@ -1,9 +1,9 @@
 import { MessageView } from '@repo/discord'
 import { field } from '@repo/utils'
+import { Colors } from 'apps/bot/src/utils/ui/strings'
 import * as D from 'discord-api-types/v10'
 import { AppView } from '../../../../classes/ViewModule'
 import { App } from '../../../../setup/app'
-import { Colors } from '../../../../ui-helpers/constants'
 import { matchSummaryEmbed } from '../match-summary-message'
 
 export const matches_page_config = new MessageView({

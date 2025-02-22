@@ -289,6 +289,13 @@ export class DiscordAPIClient extends REST {
     )) as D.RESTGetAPIGuildRolesResult
   }
 
+  async getRole(guild_id: string, role_id: string) {
+    return (await this.fetch(
+      RequestMethod.Get,
+      D.Routes.guildRole(guild_id, role_id),
+    )) as D.RESTGetAPIGuildRoleResult
+  }
+
   @requiresBotPerms(D.PermissionFlagsBits.ManageRoles)
   async editRole(guild_id: string, role_id: string, body: D.RESTPatchAPIGuildRoleJSONBody) {
     return (await this.fetch(RequestMethod.Patch, D.Routes.guildRole(guild_id, role_id), {
@@ -308,7 +315,17 @@ export class DiscordAPIClient extends REST {
 
   @requiresBotPerms(D.PermissionFlagsBits.ManageRoles)
   async addRoleToMember(guild_id: string, user_id: string, role_id: string): Promise<void> {
-    await this.fetch(RequestMethod.Put, D.Routes.guildMemberRole(guild_id, user_id, role_id))
+    try {
+      await this.fetch(RequestMethod.Put, D.Routes.guildMemberRole(guild_id, user_id, role_id))
+    } catch (e) {
+      if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.MissingPermissions)
+        // There are cases where this error is thrown other than the Manage Roles permission
+        throw new DiscordErrors.GeneralPermissions(
+          `Either the app doesn't have the **Manage Roles** permission, ` + 
+          `or the the specified role is reserved or higher than the bot's highest role.`,
+        )
+      throw e
+    }
   }
 
   @requiresBotPerms(D.PermissionFlagsBits.ManageRoles)

@@ -5,14 +5,14 @@ import { GuildCommand } from '../../../../classes/ViewModule'
 import {
   guildRankingsOption,
   withOptionalSelectedRanking,
-} from '../../../../ui-helpers/ranking-option'
+} from '../../../../utils/view-helpers/ranking-option'
 import { allRankingsPage } from '../pages/all-rankings-page'
 import { rankingSettingsPage } from '../pages/ranking-settings-page'
 
 export const rankings_cmd_signature = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
-  custom_id_prefix: 'r',
-  name: 'rankings',
+  // custom_id_prefix: 'r',
+  name: 'settings',
   state_schema: {
     on_page: field.Enum({
       all_rankings: null,

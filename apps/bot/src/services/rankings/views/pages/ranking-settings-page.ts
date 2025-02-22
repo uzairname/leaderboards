@@ -1,12 +1,12 @@
 import { AnyGuildInteractionContext, MessageView, StateContext } from '@repo/discord'
 import { field } from '@repo/utils'
+import { Colors } from 'apps/bot/src/utils/ui/strings'
 import * as D from 'discord-api-types/v10'
 import { AppView } from '../../../../classes/ViewModule'
 import { UserErrors } from '../../../../errors/UserError'
 import { App } from '../../../../setup/app'
-import { Colors } from '../../../../ui-helpers/constants'
-import { Messages } from '../../../../ui-helpers/messages'
-import { escapeMd } from '../../../../ui-helpers/strings'
+import { Messages } from '../../../../utils/ui'
+import { escapeMd } from '../../../../utils/ui/strings'
 import * as handlers from './ranking-settings-handlers'
 
 export const ranking_settings_page_config = new MessageView({
@@ -113,14 +113,15 @@ export async function _rankingSettingsPage(
     ],
   }
 
-  const web_settings_url = `${app.config.WebDashboardURL}/ranking/${ctx.state.get.ranking_id()}`
   if (app.config.features.WebDashboardEnabled) {
-    buttons1.components.push({
-      type: D.ComponentType.Button,
-      label: `Web Settings`,
-      style: D.ButtonStyle.Link,
-      url: web_settings_url,
-    })
+    throw new Error('Not implemented')
+    // const web_settings_url = `${app.config.WebDashboardURL}/ranking/${ctx.state.get.ranking_id()}`
+    // buttons1.components.push({
+    //   type: D.ComponentType.Button,
+    //   label: `Web Settings`,
+    //   style: D.ButtonStyle.Link,
+    //   url: web_settings_url,
+    // })
   }
 
   const buttons2: D.APIActionRowComponent<D.APIButtonComponent> = {
@@ -128,7 +129,7 @@ export async function _rankingSettingsPage(
     components: [
       {
         type: D.ComponentType.Button,
-        label: `All Rankings`,
+        label: `Back`,
         style: D.ButtonStyle.Secondary,
         custom_id: ctx.state.set.handler(handlers.allRankings).cId(),
         emoji: {

@@ -6,7 +6,7 @@ export class DrizzleLogger implements Logger {
     private logger?: DbLogger,
     private is_readonly?: boolean,
   ) {
-    logger?.resetCounter()
+    logger?.resetCounter(is_readonly)
   }
 
   logQuery(query: string, params?: unknown[]): void {
@@ -16,7 +16,7 @@ export class DrizzleLogger implements Logger {
       console.log(
         `[drizzle${
           this.is_readonly ? `-readonly` : ``
-        }] ${query}${params?.length ? (`\n` + JSON.stringify(params)) : ``}`,
+        }] ${query}${params?.length ? `\n` + JSON.stringify(params) : ``}`,
       )
     }
   }

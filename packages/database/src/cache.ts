@@ -21,6 +21,7 @@ export default class DbCache {
   match_players = this.newMap<number, MatchPlayer[][]>('players for match')
   matches = this.newMap<number, Match>('match')
   teams = this.newMap<number, Team>('team')
+  others = this.newMap<string, any>('other')
 
   clear() {
     this.setting = undefined

@@ -26,7 +26,7 @@ export async function userJoinQueue(
   ctx: AnyDeferContext,
   ranking_: PartialRanking,
 ): Promise<{ already_in: boolean; match?: Match; expires_at: Date }> {
-  const { guild_ranking, ranking } = await app.db.guild_rankings.fetch({
+  const { guild_ranking, ranking } = await app.db.guild_rankings.getBy({
     ranking_id: ranking_.data.id,
     guild_id: checkGuildInteraction(ctx.interaction).guild_id,
   })

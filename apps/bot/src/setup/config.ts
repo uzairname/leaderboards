@@ -1,7 +1,7 @@
+import { ScoringMethod } from '@repo/database/models'
 import * as D from 'discord-api-types/v10'
 import { Env } from '../Env'
 import { getScorerFn } from '../services/matches/scoring/scorers'
-import { ScoringMethod } from '@repo/database/models'
 
 export class Config {
   readonly OauthRoutes = {
@@ -16,6 +16,10 @@ export class Config {
 
   readonly OwnerIds = ['991398096565182467', '375438205253713933']
 
+  readonly SupportServerInvite = `https://dsc.gg/leaderboard`
+
+  readonly GithubUrl = `https://github.com/uzairname/leaderboards`
+
   readonly RequiredBotPermissions =
     D.PermissionFlagsBits.ManageChannels |
     D.PermissionFlagsBits.ManageMessages |
@@ -24,7 +28,7 @@ export class Config {
 
   /**
    * Configuration class for the bot application.
-   * @param DirectResponse - 
+   * @param DirectResponse -
    *  - true: Return a value directly.
    *  - false: Rall respond endpoint. Requests will get canceled. Will log interaction response errors in sentry.
    * @param ProvisionalRdThreshold - Players with a rating deviatino below this will be hidden.
@@ -36,7 +40,7 @@ export class Config {
   constructor(
     readonly env: Env,
     readonly OauthRedirectURI = env.BASE_URL + `/oauth` + this.OauthRoutes.Redirect,
-    readonly WebDashboardURL = env.BASE_URL + `/dashboard`,
+    // readonly WebDashboardURL = env.BASE_URL + `/dashboard`,
     readonly IsDev = env.ENVIRONMENT === 'development',
     readonly DirectResponse = IsDev ? true : true,
     readonly features = {
@@ -47,7 +51,7 @@ export class Config {
       DisableLogMatchesOption: false,
       AllowNon1v1: false,
       RatingRoleConnections: false,
-      WebDashboardEnabled: IsDev,
+      WebDashboardEnabled: false,
     },
     readonly ProvisionalRdThreshold = IsDev ? 0.85 : 0.85,
     readonly DisplayMeanRating = IsDev ? 1000 : 1000,

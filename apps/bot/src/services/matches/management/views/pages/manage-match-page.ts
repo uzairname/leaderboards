@@ -8,12 +8,12 @@ import {
   MessageView,
 } from '@repo/discord'
 import { field, intOrUndefined, nonNullable } from '@repo/utils'
+import { Colors } from 'apps/bot/src/utils/ui/strings'
 import * as D from 'discord-api-types/v10'
 import { AppView } from '../../../../../classes/ViewModule'
 import { UserError } from '../../../../../errors/UserError'
 import { App } from '../../../../../setup/app'
-import { Colors } from '../../../../../ui-helpers/constants'
-import { hasAdminPerms } from '../../../../../ui-helpers/perms'
+import { hasAdminPerms } from '../../../../../utils/perms'
 import { matchSummaryEmbed } from '../../../logging/match-summary-message'
 import { cancelMatch, updateMatchOutcome } from '../../manage-matches'
 

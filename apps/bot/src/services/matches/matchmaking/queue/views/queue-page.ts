@@ -6,11 +6,11 @@ import {
   ViewState,
 } from '@repo/discord'
 import { field } from '@repo/utils'
+import { Colors } from 'apps/bot/src/utils/ui/strings'
 import * as D from 'discord-api-types/v10'
 import { AppView } from '../../../../../classes/ViewModule'
 import { App } from '../../../../../setup/app'
-import { Colors } from '../../../../../ui-helpers/constants'
-import { escapeMd, relativeTimestamp } from '../../../../../ui-helpers/strings'
+import { escapeMd, relativeTimestamp } from '../../../../../utils/ui/strings'
 import { userJoinQueue } from '../1v1-queue'
 
 export const queue_page_config = new MessageView({
@@ -47,7 +47,7 @@ export default new AppView(queue_page_config, app =>
       },
     )
   }),
-)
+).dev()
 
 export async function queueMessage(
   app: App,

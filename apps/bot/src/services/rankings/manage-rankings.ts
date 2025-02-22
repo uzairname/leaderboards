@@ -13,7 +13,7 @@ import {
 import { UserError, UserErrors } from '../../errors/UserError'
 import { sentry } from '../../logging/sentry'
 import { App } from '../../setup/app'
-import { getOrAddGuild } from '../guilds/guilds'
+import { getOrAddGuild } from '../guilds/manage-guilds'
 import {
   syncGuildRankingLbMessage,
   syncRankingLbMessages,
@@ -30,7 +30,7 @@ export const default_initial_rating: Rating = {
 }
 
 export const default_rating_settings: RatingSettings = {
-  scoring_method: ScoringMethod.TrueSkill
+  scoring_method: ScoringMethod.TrueSkill,
 }
 
 export const default_display_settings: GuildRankingDisplaySettings = {
@@ -111,7 +111,7 @@ export async function updateRanking(
 ): Promise<void> {
   validateRankingOptions(options)
   await ranking.update(options)
-  const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
+  const guild_rankings = await app.db.guild_rankings.getBy({ ranking_id: ranking.data.id })
 
   for (const item of guild_rankings) {
     if (options.name || options.matchmaking_settings) {
@@ -124,7 +124,7 @@ export async function updateRanking(
 }
 
 export async function deleteRanking(app: App, ranking: Ranking): Promise<void> {
-  const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
+  const guild_rankings = await app.db.guild_rankings.getBy({ ranking_id: ranking.data.id })
   await Promise.all(
     guild_rankings.map(async item => {
       await app.discord.deleteMessageIfExists(

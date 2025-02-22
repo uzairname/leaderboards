@@ -2,8 +2,9 @@ import { Guild, GuildRanking, Match, PartialGuildRanking, Ranking } from '@repo/
 import { MessageData } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { APIEmbed } from 'discord-api-types/v10'
+import { Colors } from '.'
 import { sentry } from '../../logging/sentry'
-import settings from '../../services/admin/views/commands/settings-cmd'
+import settings from '../../services/admin/views/commands/setup-cmd'
 import { syncGuildRankingLbMessage } from '../../services/leaderboard/leaderboard-message'
 import { syncMatchesChannel } from '../../services/matches/logging/matches-channel'
 import matches from '../../services/matches/logging/views/matches-cmd'
@@ -20,11 +21,17 @@ import { default_best_of } from '../../services/rankings/manage-rankings'
 import create_ranking from '../../services/rankings/views/commands/create-ranking-cmd'
 import rankings from '../../services/rankings/views/commands/rankings-cmd'
 import { App } from '../../setup/app'
-import { Colors } from '../constants'
-import { commandMention, dateTimestamp, escapeMd, messageLink, relativeTimestamp } from '../strings'
+import {
+  commandMention,
+  dateTimestamp,
+  escapeMd,
+  messageLink,
+  relativeTimestamp,
+} from '../ui/strings'
+import setupCmd from '../../services/admin/views/commands/setup-cmd'
 
-export const concise_description =
-  'Tracks skill ratings and matches for any game. Additional utilities for moderation, display, and statistics.'
+export const concise_description = async (app: App) =>
+  `This bot helps you manage your server's competitive scene by recording ranked matches for any game. It tracks skill ratings, stats, and leaderboards. Type ${await commandMention(app, setupCmd)} to get started.`
 
 export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
   const guild_id = guild?.data.id ?? '0'
@@ -32,19 +39,20 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
     title: `Guide`,
     fields: [
       {
-        name: `Rankings`,
+        name: `Overview`,
         value:
           `Every player, match, and rating that this bot tracks belongs to a **ranking**.` +
           ` You might want to have a separate ranking for different games or gamemodes.` +
-          `` +
-          `\n- ${await commandMention(app, create_ranking)}: create one or more rankings.` +
-          `\n- ${await commandMention(app, rankings, guild_id)}: view manage all rankings in this server.`,
+          `` +  
+          `\n - ${await commandMention(app, settings)}: set up the bot in this server.` +
+          `\n- ${await commandMention(app, create_ranking)} \`name\`: create one or more rankings.` +
+          `\n- ${await commandMention(app, rankings, guild_id)} \`ranking\`: manage rankings in this server. Enter a specific ranking to view or manage it.`,
       },
       {
         name: `Recording Matches`,
         value:
           `There are multiple ways to initiate matches.` +
-          `\n- ${await commandMention(app, challenge, guild_id)}: Challenge someone to a 1v1 match.` +
+          `\n- ${await commandMention(app, challenge, guild_id)} \`opponent\`: Challenge someone to a 1v1 match.` +
           ` They will have ${app.config.ChallengeTimeoutMs / (1000 * 60)} minutes to accept.` +
           `\n- ${await commandMention(app, start_match, guild_id)}: Admins can start a match between two players.` +
           (record_match.is_dev
@@ -60,7 +68,7 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
         name: `Managing Matches`,
         value:
           `View or manage matches with the following commands:` +
-          `\n- ${await commandMention(app, matches, guild_id)}: View the match history for this server.` +
+          `\n- ${await commandMention(app, matches, guild_id)} \`player\`: View the match history for this server.` +
           `\n  ${await commandMention(app, settle_match)}: Revert or set the outcome of a specific match. The \`match-id\` parameter is optional, and defaults to the last match that the selected player was in.` +
           ` Reverting a match undoes the effect it had on the players' ratings.` +
           `\n> -# Note: changing the outcome of an old match may have a cascading effect on the ratings of players who were in subsequent matches, because of the way ratings are calculated.`,
@@ -69,9 +77,7 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
         name: `Admin & Settings`,
         value:
           `In order do anything that requires permissions, such as overriding match results, you either need server admin perms or the` +
-          ` ${guild?.data.admin_role_id ? `<@&${guild.data.admin_role_id}> role` : `admin role, which can be configured in settings`}. ` +
-          `\n- ${await commandMention(app, settings)}: configure the bot's settings for this server.` +
-          `\n> -# Note: You can edit and rename any channel, thread, or role that this bot creates as you like.`,
+          ` ${guild?.data.admin_role_id ? `<@&${guild.data.admin_role_id}> role` : `admin role, which can be configured using /setup`}. `
       },
       {
         name: `Skill Ratings`,
@@ -85,27 +91,27 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
   }
 }
 
-export async function allGuildRankingsText(
+export async function allRankingsPageEmbeds(
   app: App,
   guild: Guild,
   guild_rankings: GuildRanking[],
 ): Promise<APIEmbed[]> {
-  const title_and_desc =
+  const rankings_embed_title_and_desc =
     guild_rankings.length === 0
       ? {
-          title: `Welcome`,
+          title: `Create a Ranking`,
           description:
             `${escapeMd(guild.data.name)} has no rankings set up.` +
-            `\nCreate a ranking in order to track ratings and host ranked matches for your server.`,
+            `\nCreate a ranking below.`,
         }
       : {
           title: `All Rankings`,
-          description: `${escapeMd(guild.data.name)} has **${guild_rankings.length}** ranking${guild_rankings.length === 1 ? `` : `s`}, listed below.`,
+          description: `${escapeMd(guild.data.name)} has **${guild_rankings.length}** ranking${guild_rankings.length === 1 ? `` : `s`}. Adjust their settings or create a new one below.`,
         }
 
   const embeds: D.APIEmbed[] = [
     {
-      ...title_and_desc,
+      ...rankings_embed_title_and_desc,
       fields: await Promise.all(
         guild_rankings.map(async gr => {
           return {

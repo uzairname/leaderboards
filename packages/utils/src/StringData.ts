@@ -3,7 +3,7 @@ export type StringDataSchema = {
 }
 
 export namespace field {
-  export function Enum<T extends { [key: string]: null }>(options: T) {
+  export function Enum<T extends { [key: string]: unknown }>(options: T) {
     return new EnumField<T>(options)
   }
   export function Choice<T extends { [key: string]: any }>(options: T) {
@@ -44,7 +44,7 @@ abstract class Field<Type> {
   abstract decompress(compressed: string): Type
 }
 
-class EnumField<T extends { [key: string]: null }> extends Field<keyof T> {
+class EnumField<T extends { [key: string]: unknown }> extends Field<keyof T> {
   private id_keys = {} as { [key: string]: keyof T }
   private key_ids = {} as { [K in keyof T]: string }
   constructor(private keys: T) {

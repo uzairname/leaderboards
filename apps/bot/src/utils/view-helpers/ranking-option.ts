@@ -7,10 +7,10 @@ import type {
 } from '@repo/discord'
 import { isDeferredCtx, isInitialInteractionCtx } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { UserError } from '../errors/UserError'
-import { sentry } from '../logging/sentry'
-import { allRankingsPage } from '../services/rankings/views/pages/all-rankings-page'
-import type { App } from '../setup/app'
+import { UserError } from '../../errors/UserError'
+import { sentry } from '../../logging/sentry'
+import { allRankingsPage } from '../../services/rankings/views/pages/all-rankings-page'
+import type { App } from '../../setup/app'
 
 export const create_ranking_choice_value = 'create'
 
@@ -29,7 +29,7 @@ export async function guildRankingsOption(
 ): Promise<D.APIApplicationCommandBasicOption[]> {
   const rankings_choices =
     options?.available_choices ??
-    (await app.db.guild_rankings.fetch({ guild_id: guild.data.id })).map(i => i.ranking)
+    (await app.db.guild_rankings.getBy({ guild_id: guild.data.id })).map(i => i.ranking)
 
   if (rankings_choices.length == 1 && !options?.optional) {
     return []
@@ -159,7 +159,7 @@ async function _withSelectedRanking<
     const available_guild_rankings =
       options.available_guild_rankings !== undefined
         ? options.available_guild_rankings
-        : await app.db.guild_rankings.fetch({
+        : await app.db.guild_rankings.getBy({
             guild_id,
           })
     if (available_guild_rankings.length == 1) {

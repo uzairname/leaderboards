@@ -36,5 +36,5 @@ export namespace InteractionErrors {
 
   export class InvalidOptionType extends InteractionError {}
 
-  export class ValidationError extends InteractionError {}
+  export class WrongContext extends InteractionError {}
 }

@@ -1,4 +1,3 @@
-import { isInt, ModifyType } from '@repo/utils'
 import { eq, InferSelectModel } from 'drizzle-orm'
 import { DbObject, DbObjectManager } from '../classes'
 import { Settings } from '../schema'
@@ -20,13 +19,9 @@ export class Setting implements DbObject<SettingSelect> {
 }
 
 export class SettingsManager extends DbObjectManager {
-
   async get(): Promise<Setting> {
     return this.getOrUpdate()
   }
-
-
-  
 
   async getOrUpdate(update?: SettingUpdate): Promise<Setting> {
     const id = 1
@@ -41,18 +36,11 @@ export class SettingsManager extends DbObjectManager {
       if (this.db.cache.setting) return this.db.cache.setting
 
       // No guarantee that the versions field will be of the correct type in the database
-      const result = (
-        await this.db.drizzle.select().from(Settings).where(eq(Settings.id, id))
-      )[0]
+      const result = (await this.db.drizzle.select().from(Settings).where(eq(Settings.id, id)))[0]
 
-      data = result ?? (
-        await this.db.drizzle
-          .insert(Settings)
-          .values({})
-          .returning()
-      )[0]
+      data = result ?? (await this.db.drizzle.insert(Settings).values({}).returning())[0]
     }
-    
+
     return new Setting(data, this.db)
   }
 }

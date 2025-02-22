@@ -2,8 +2,11 @@ import { CommandView, getOptions } from '@repo/discord'
 import { nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { GuildCommand } from '../../../../classes/ViewModule'
-import { guildRankingsOption, withSelectedRanking } from '../../../../ui-helpers/ranking-option'
-import { getOrAddGuild } from '../../../guilds/guilds'
+import {
+  guildRankingsOption,
+  withSelectedRanking,
+} from '../../../../utils/view-helpers/ranking-option'
+import { getOrAddGuild } from '../../../guilds/manage-guilds'
 import { getRegisterPlayer } from '../../../players/manage-players'
 import { ensurePlayersEnabled } from '../../management/match-creation'
 import { getChallengeEnabledRankings } from '../main'

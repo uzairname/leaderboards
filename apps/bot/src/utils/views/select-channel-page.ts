@@ -8,8 +8,8 @@ import {
 } from '@repo/discord'
 import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { AppView } from '../../../classes/ViewModule'
-import { App } from '../../../setup/app'
+import { AppView } from '../../classes/ViewModule'
+import { App } from '../../setup/app'
 
 export const select_channel_page_config = new MessageView({
   name: 'select channel',

@@ -1,7 +1,9 @@
+import { DiscordAPIError } from '@discordjs/rest'
 import { Player } from '@repo/database/models'
 import { DiscordErrors } from '@repo/discord'
+import * as D from 'discord-api-types/v10'
 import { App } from '../setup/app'
-import { inviteUrl, listToString, permsToString } from '../ui-helpers/strings'
+import { inviteUrl, listToString, permsToString } from '../utils/ui/strings'
 
 export class UserError extends Error {
   constructor(message?: string) {
@@ -29,10 +31,31 @@ export namespace UserErrors {
       const missing_perms = e.missingPermissionsNames
 
       if (missing_perms.length > 0) {
-        msg = `I'm missing the following permissions: ${permsToString(missing_perms)}`
+        msg = `Make sure the bot has the following permission(s): ${permsToString(missing_perms)}`
       }
-      msg = msg + `\n[Click here to re-invite me with the required perms](${inviteUrl(app)})`
+      msg =
+        msg +
+        `\n[Click here to re-invite me with the required perms](${inviteUrl(app)})
+If this doesn't work, then this action is not allowed.`
       super(msg)
+    }
+  }
+
+  export class RateLimitError extends UserError {
+    constructor(public timeToReset: number) {
+      super(`Being rate limited. Try again in ${timeToReset / 1000} seconds`)
+    }
+  }
+
+  export class DiscordError extends UserError {
+    constructor(e: DiscordAPIError) {
+      let description: string
+      if (e.code === D.RESTJSONErrorCodes.MissingAccess) {
+        description = 'Missing access to the channel, server, or resource'
+      } else {
+        description = e.message
+      }
+      super(description)
     }
   }
 

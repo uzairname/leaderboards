@@ -18,7 +18,7 @@ export class PartialGuildRanking {
   }
 
   async fetch(): Promise<{ guild: Guild; guild_ranking: GuildRanking; ranking: Ranking }> {
-    return this.db.guild_rankings.fetch(this.data)
+    return this.db.guild_rankings.getBy(this.data)
   }
 
   get guild(): PartialGuild {
@@ -97,7 +97,7 @@ export class GuildRankingsManager extends DbObjectManager {
     return new PartialGuildRanking({ guild_id, ranking_id }, this.db)
   }
 
-  async fetch<By extends { guild_id?: string; ranking_id?: number }>(
+  async getBy<By extends { guild_id?: string; ranking_id?: number }>(
     by: By,
   ): Promise<
     By extends { guild_id: string }

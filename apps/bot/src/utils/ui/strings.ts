@@ -1,14 +1,20 @@
 import type { AnyChatInputCommand } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { AnyGuildCommand, AppView } from '../classes/ViewModule'
-import type { App } from '../setup/app'
-
-export const github_url = 'https://github.com/uzairname/leaderboards'
+import { AnyGuildCommand, AppView } from '../../classes/ViewModule'
+import type { App } from '../../setup/app'
 
 export const emojis = {
   green_triangle: `<:green_triangle:1198069662353735740>`,
   light_circle: `<:light_circle:1198070971513438269>`,
   red_triangle: `<:red_triangle:1198069664153079878>`,
+}
+
+export class Colors {
+  static Primary = 0xa1ffda
+  static Success = 0x5fde70
+  static Pending = 0xdee887
+  static DiscordBackground = 0x313338
+  static EmbedBackground = 0x2b2d31
 }
 
 export function inviteAndRoleConnectionsUrl(app: App): string {
@@ -28,7 +34,12 @@ export async function commandMention<T extends AppView<AnyChatInputCommand>>(
   const name = command.base_signature.config.name
   const subcmd_str = subcommand_name ? ` ${subcommand_name}` : ''
   const type = command.base_signature.config.type
-  const commands = await app.discord.getAppCommands(guild_id)
+
+  const commands = await app.db.withCache(
+    async (arg: {guild_id?: string}) => app.discord.getAppCommands(arg.guild_id),
+    { guild_id }, `commands`,
+  )
+
   const discord_command = commands.find(command => command.name === name && command.type === type)
   return `</${name}${subcmd_str}:${discord_command?.id || '0'}>`
 }

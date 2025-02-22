@@ -1,9 +1,9 @@
 import { CommandView } from '@repo/discord'
 import { nonNullable } from '@repo/utils'
+import { Colors } from 'apps/bot/src/utils/ui/strings'
 import * as D from 'discord-api-types/v10'
 import { AppView } from '../../../../classes/ViewModule'
-import { Colors } from '../../../../ui-helpers/constants'
-import { ensureAdminPerms } from '../../../../ui-helpers/perms'
+import { ensureAdminPerms } from '../../../../utils/perms'
 import {
   createNewRankingInGuild,
   default_players_per_team,

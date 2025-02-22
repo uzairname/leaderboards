@@ -32,9 +32,20 @@ export class DbClient {
     this.logger && (this.debug = this.logger.debug.bind(this.logger))
   }
 
-  debug: (...message: unknown[]) => void = ((...message) => {
+  debug: (...message: unknown[]) => void = (...message) => {
     console.log(message)
-  })
+  }
+
+  async withCache<K extends object, T>(fn: (arg: K) => T, arg: K, key: string) {
+    const fullkey = `${key}:${arg}`
+    const cached_item = this.cache.others.get(fullkey) as T
+    if (cached_item) {
+        return cached_item
+    }
+    const item = fn(arg)
+    this.cache.others.set(fullkey, item)
+    return item
+}
 
   settings = new SettingsManager(this)
   users = new UsersManager(this)

@@ -4,7 +4,7 @@ import { json, Router } from 'itty-router'
 import { GuildCommand } from '../classes/ViewModule'
 import views from '../services/all-views'
 import { App } from '../setup/app'
-import { inviteUrl } from '../ui-helpers/strings'
+import { inviteUrl } from '../utils/'
 import rankingsRouter from './api/rankings'
 import { getUserAccessToken, saveUserAccessToken } from './oauth'
 

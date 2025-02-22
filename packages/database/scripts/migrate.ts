@@ -1,14 +1,13 @@
 import { isInt, nonNullable } from '@repo/utils'
 import { config } from 'dotenv'
+import { sql } from 'drizzle-orm'
+import { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import postgres from 'postgres'
+import { DbClient, getNeonDrizzleWsClient } from '../src'
 import { matches_trigger_query } from '../src/migration-utils/queries'
-import { DbClient, getNeonDrizzleClient, getNeonDrizzleWsClient } from '../src'
-import { NeonHttpDatabase } from 'drizzle-orm/neon-http'
-import { NeonDatabase } from 'drizzle-orm/neon-serverless'
-import { RatingSettings, ScoringMethod, Versions } from '../src/models'
-import { sql} from 'drizzle-orm'
+import { RatingSettings, ScoringMethod } from '../src/models'
 
 // Run this script from the directory database/
 
@@ -20,7 +19,7 @@ async function migrate_database(postgres_url: string): Promise<void> {
   await customMigrations(postgres_url)
 
   await migrate(db, { migrationsFolder: 'drizzle-migrations' })
-  
+
   await db.execute(matches_trigger_query)
 
   console.log('done migrating')
@@ -66,13 +65,14 @@ async function migratev0(tx: NeonDatabase) {
   await tx.execute(
     `ALTER TABLE "Rankings" RENAME COLUMN "match_config" TO "match_settings";--> statement-breakpoint
       ALTER TABLE "Rankings" ADD COLUMN "rating_settings" jsonb;
-  `)
+  `,
+  )
 
   // Add in default values
   const rankings = await tx.execute(`SELECT * FROM "Rankings"`)
   for (const ranking of rankings.rows) {
     const rating_settings: RatingSettings = {
-      scoring_method: ScoringMethod.TrueSkill
+      scoring_method: ScoringMethod.TrueSkill,
     }
     await db.rankings.get(ranking.id as number).update({ rating_settings })
     // await tx.execute(sql`UPDATE "Rankings" SET "rating_settings" = ${rating_settings} WHERE id = ${ranking.id}`)
@@ -82,10 +82,8 @@ async function migratev0(tx: NeonDatabase) {
   await tx.execute(`
     ALTER TABLE "Rankings" ALTER COLUMN "rating_settings" SET NOT NULL;--> statement-breakpoint
     ALTER TABLE "Settings" ADD COLUMN "db_version" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
-    ALTER TABLE "Settings" DROP COLUMN IF EXISTS "versions";`
-  )
-  
+    ALTER TABLE "Settings" DROP COLUMN IF EXISTS "versions";`)
+
   const rankings_ = await tx.execute(`SELECT * FROM "Rankings"`)
   console.log(rankings_.rows)
-
 }

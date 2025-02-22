@@ -11,24 +11,34 @@ export class DiscordAPIUtils {
     this.discord = bot
   }
 
+  /**
+   * Ensures that a role exists. If it doesn't exist, creates it with roleData.
+   * Doesn't overwrite existing roles
+   */
   async syncRole(params: {
     guild_id: string
     target_role_id?: string | null
     roleData: () => Promise<RoleData>
+    no_edit?: boolean
   }): Promise<{
     role: D.APIRole
-    is_new_role: boolean
+    is_new_role?: boolean
   }> {
     try {
       if (params.target_role_id) {
-        const edited_role = await this.discord.editRole(
-          params.guild_id,
-          params.target_role_id,
-          (await params.roleData()).patchdata,
-        )
+        let existing_role: D.APIRole
+        if (params.no_edit) {
+          existing_role = await this.discord.getRole(params.guild_id, params.target_role_id)
+        } else {
+          existing_role = await this.discord.editRole(
+            params.guild_id,
+            params.target_role_id,
+            (await params.roleData()).patchdata,
+          )
+        }
+        // If the above requests succeeded, the role exists.
         return {
-          role: edited_role,
-          is_new_role: false,
+          role: existing_role,
         }
       }
     } catch (e) {

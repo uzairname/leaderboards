@@ -1,9 +1,9 @@
 import { DiscordAPIError, RateLimitError } from '@discordjs/rest'
-import { DiscordErrors } from '@repo/discord'
+import { DiscordErrors, InteractionErrors } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { UserError, UserErrors } from '../../errors/UserError'
 import { sentry } from '../../logging/sentry'
-import { Colors } from '../../ui-helpers/constants'
+import { Colors } from '../../utils/ui/strings'
 import { App } from '../app'
 
 export function onViewError(app: App) {
@@ -17,20 +17,24 @@ export function onViewError(app: App) {
     if (e instanceof UserError) {
       description = e.message
     } else if (e instanceof DiscordAPIError) {
-      if (e.code === D.RESTJSONErrorCodes.MissingAccess) {
-        description = 'Missing access to the channel, server, or resource'
-      } else {
-        description = e.message
-      }
+      return onViewError(app)(new UserErrors.DiscordError(e))
     } else if (e instanceof DiscordErrors.BotPermissions) {
       return onViewError(app)(new UserErrors.BotPermissions(app, e))
-    } else if (e instanceof RateLimitError) {
-      title = 'Being Rate limited'
-      description = `Try again in ${e.timeToReset / 1000} seconds`
-    } else if (e instanceof Error) {
-      description = `${e.name ?? e.constructor.name}: ${e.message ?? e}`
+    } else if (e instanceof DiscordErrors.GeneralPermissions) {
+      return onViewError(app)(new UserError(e.message))
+    }
+    else if (e instanceof RateLimitError) {
+      return onViewError(app)(new UserErrors.RateLimitError(e.timeToReset))
+    } else if (e instanceof InteractionErrors.WrongContext) {
+      description = e.message
     } else {
-      description = 'An unexpected error occured'
+      title = `Unexpected Error`
+      if (e instanceof Error) {
+        description = `${e.name ?? e.constructor.name}: ${e.message ?? e}`
+      } else {
+        description = `${e}`
+      }
+      description += `\n\nIf this is a bug, please report it in the [discord server](${app.config.DevGuildId}!`
     }
 
     // Log the error

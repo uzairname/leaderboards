@@ -1,11 +1,11 @@
 import { Guild, PartialGuild } from '@repo/database/models'
 import { GuildChannelData, MessageData } from '@repo/discord'
+import { Colors } from 'apps/bot/src/utils/ui/strings'
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
-import { Colors } from '../../../ui-helpers/constants'
-import { commandMention } from '../../../ui-helpers/strings'
-import { syncRankedCategory } from '../../guilds/guilds'
+import { commandMention } from '../../../utils/ui/strings'
+import { syncRankedCategory } from '../../guilds/manage-guilds'
 import matches from './views/matches-cmd'
 
 export async function syncMatchesChannel(

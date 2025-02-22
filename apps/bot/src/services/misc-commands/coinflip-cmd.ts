@@ -1,6 +1,6 @@
 import { CommandView } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { AppView } from '../../classes/ViewModule'
+import { AppView, GuildCommand } from '../../classes/ViewModule'
 
 export const coinflip_cmd_config = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
@@ -8,7 +8,12 @@ export const coinflip_cmd_config = new CommandView({
   description: 'Choose left or right',
 })
 
-export default new AppView(coinflip_cmd_config, app =>
+export default new GuildCommand(coinflip_cmd_config, async (app, guild) => {
+
+    if (guild.data.id !== '1264804225804668981') return null
+    return coinflip_cmd_config
+
+  }, app =>
   coinflip_cmd_config.onCommand(async ctx => {
     const result = Math.random() < 0.5 ? 'left' : 'right'
 

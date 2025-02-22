@@ -81,7 +81,12 @@ export function snowflakeToDate(snowflake: bigint): Date {
 }
 
 export function isInt(value: unknown, nonnegative?: boolean): value is number {
-  return typeof value === 'number' && isFinite(value) && Math.floor(value) === value && !(nonnegative && value < 0)
+  return (
+    typeof value === 'number' &&
+    isFinite(value) &&
+    Math.floor(value) === value &&
+    !(nonnegative && value < 0)
+  )
 }
 
 export function strOrUndefined(value?: string): string | undefined {
@@ -94,4 +99,12 @@ export function intOrUndefined(value?: string): number | undefined {
 }
 export function truncateString(str: string, max_length: number): string {
   return str.length > max_length ? str.slice(0, max_length - 2) + '..' : str
+}
+
+async function hash(input: unknown): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(JSON.stringify(input)); // Convert input to a Uint8Array
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data); // Hash the data
+  const hashArray = Array.from(new Uint8Array(hashBuffer)); // Convert buffer to byte array
+  return hashArray.map(byte => byte.toString(16).padStart(2, "0")).join(""); // Convert bytes to hex string
 }

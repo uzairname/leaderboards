@@ -1,12 +1,12 @@
 import { CommandView, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { AppView } from '../../../../../classes/ViewModule'
+import { AppView, GuildCommand } from '../../../../../classes/ViewModule'
 import { UserError } from '../../../../../errors/UserError'
 import { sentry } from '../../../../../logging/sentry'
-import { ensureAdminPerms } from '../../../../../ui-helpers/perms'
-import { commandMention } from '../../../../../ui-helpers/strings'
+import { ensureAdminPerms } from '../../../../../utils/perms'
+import { commandMention } from '../../../../../utils/ui/strings'
 import matchesCmd from '../../../logging/views/matches-cmd'
-import { matchesPage } from '../../../logging/views/matches-page'
+import { matchesPage } from '../../../logging/views/matches.page'
 import { cancelMatch, setMatchWinner } from '../../manage-matches'
 import { manageMatchPage } from '../pages/manage-match-page'
 
@@ -52,8 +52,14 @@ export const settle_match_cmd_signature = new CommandView({
   ],
 })
 
-export default new AppView(settle_match_cmd_signature, app =>
-  settle_match_cmd_signature.onCommand(async ctx => {
+export default new GuildCommand(settle_match_cmd_signature, 
+  async (app, guild) => {
+    const guild_rankings = await app.db.guild_rankings.getBy({ guild_id: guild.data.id })
+    if (guild_rankings.length == 0) return null
+    return settle_match_cmd_signature
+  },
+  app => settle_match_cmd_signature.onCommand(async ctx => {
+
     await ensureAdminPerms(app, ctx)
 
     sentry.debug(`${ctx.interaction.data.options?.map(o => o.name).join(`, `)}`)

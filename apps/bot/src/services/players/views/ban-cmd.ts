@@ -4,7 +4,7 @@ import { GuildCommand } from '../../../classes/ViewModule'
 import {
   guildRankingsOption,
   withOptionalSelectedRanking,
-} from '../../../ui-helpers/ranking-option'
+} from '../../../utils/view-helpers/ranking-option'
 import { getRegisterPlayer, setPlayerDisabled as setIsUserDisabled } from '../manage-players'
 
 export const disable_player_cmd_config = new CommandView({
@@ -16,6 +16,10 @@ export const disable_player_cmd_config = new CommandView({
 export default new GuildCommand(
   disable_player_cmd_config,
   async (app, guild) => {
+
+    const guild_rankings = await app.db.guild_rankings.getBy({ guild_id: guild.data.id })
+    if (guild_rankings.length == 0) return null
+
     return new CommandView({
       ...disable_player_cmd_config.config,
       options: (
@@ -67,7 +71,7 @@ export default new GuildCommand(
               return { players: [player], rankings: [await ranking.fetch()] }
             } else {
               // No ranking was selected. Act on all rankings in the guild.
-              const guild_rankings = await app.db.guild_rankings.fetch({
+              const guild_rankings = await app.db.guild_rankings.getBy({
                 guild_id: ctx.interaction.guild_id,
               })
               return {

@@ -28,7 +28,13 @@ export class DbLoggerWrapper extends DbLogger {
   }
 
   logQuery(query: string, params?: unknown[], is_readonly?: boolean): void {
-    ;(this.sentry.request_data[is_readonly ? 'queries-readonly' : 'queries'] as number)++
+
+    if (is_readonly) {
+      this.sentry.request_data['queries-readonly'] = ((this.sentry.request_data['queries-readonly'] as number) || 0) + 1
+    } else {
+      this.sentry.request_data['queries'] = ((this.sentry.request_data['queries'] as number) || 0) + 1
+    }
+
     this.sentry.addBreadcrumb({
       data: {
         query: query,
@@ -40,7 +46,7 @@ export class DbLoggerWrapper extends DbLogger {
   }
 
   resetCounter(is_readonly?: boolean): void {
-    ;(this.sentry.request_data[is_readonly ? 'queries-readonly' : 'queries'] as number) = 0
+    ;(this.sentry.request_data[is_readonly ? 'queries-readonly' : 'queries']) = 0
   }
 }
 
@@ -86,8 +92,8 @@ export class DiscordLoggerWrapper extends DiscordLogger {
         time: `${time_ms} ms`,
       },
     })
-    this.sentry.request_data['discord requests'] =
-      ((this.sentry.request_data['discord requests'] as number) || 0) + 1
+    this.sentry.request_data['discord_requests'] =
+      ((this.sentry.request_data['discord_requests'] as number) || 0) + 1
   }
 
   setInteractionType(type: string): void {

@@ -1,11 +1,11 @@
 import { InteractionContext, MessageView } from '@repo/discord'
 import { field } from '@repo/utils'
+import { Colors } from 'apps/bot/src/utils/ui/strings'
 import * as D from 'discord-api-types/v10'
 import { AppView } from '../../../classes/ViewModule'
 import { App } from '../../../setup/app'
-import { Colors } from '../../../ui-helpers/constants'
-import { escapeMd, userAvatarUrl } from '../../../ui-helpers/strings'
-import { matches_page_config } from '../../matches/logging/views/matches-page'
+import { escapeMd, userAvatarUrl } from '../../../utils/ui/strings'
+import { matches_page_config } from '../../matches/logging/views/matches.page'
 import { calcDisplayRating } from '../display'
 
 export const profile_page_config = new MessageView({
@@ -45,7 +45,7 @@ export async function profileOverviewPage(
 
   // find all of the user's players that are in a ranking that the guild has
   const guild_id = ctx.interaction.guild_id
-  const guild_rankings = await app.db.guild_rankings.fetch({ guild_id })
+  const guild_rankings = await app.db.guild_rankings.getBy({ guild_id })
   const players = (await target_app_user.players())
     .filter(p => guild_rankings.some(r => r.ranking.data.id === p.data.ranking_id))
     .sort((a, b) => a.data.rating.rd - b.data.rating.rd)

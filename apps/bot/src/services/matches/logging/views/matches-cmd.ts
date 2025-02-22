@@ -4,8 +4,8 @@ import { GuildCommand } from '../../../../classes/ViewModule'
 import {
   guildRankingsOption,
   withOptionalSelectedRanking,
-} from '../../../../ui-helpers/ranking-option'
-import { matchesPage } from './matches-page'
+} from '../../../../utils/view-helpers/ranking-option'
+import { matchesPage } from './matches.page'
 
 export const matches_command_signature = new CommandView({
   type: D.ApplicationCommandType.ChatInput,
@@ -20,7 +20,11 @@ const optionnames = {
 
 export default new GuildCommand(
   matches_command_signature,
-  async (app, guild_id) => {
+  async (app, guild) => {
+
+    const guild_rankings = await app.db.guild_rankings.getBy({ guild_id: guild.data.id } )
+    if (guild_rankings.length == 0) return null
+
     const options: D.APIApplicationCommandOption[] = [
       {
         name: optionnames.user,
@@ -34,7 +38,7 @@ export default new GuildCommand(
       options: options.concat(
         await guildRankingsOption(
           app,
-          guild_id,
+          guild,
           optionnames.ranking,
           { optional: true },
           'filter matches by ranking',

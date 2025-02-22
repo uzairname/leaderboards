@@ -8,14 +8,17 @@ import {
   StateContext,
 } from '@repo/discord'
 import { assert, field, nonNullable, snowflakeToDate } from '@repo/utils'
+import { Colors } from 'apps/bot/src/utils/ui/strings'
 import * as D from 'discord-api-types/v10'
 import { GuildCommand } from '../../../../../classes/ViewModule'
 import { UserError } from '../../../../../errors/UserError'
 import { App } from '../../../../../setup/app'
-import { Colors } from '../../../../../ui-helpers/constants'
-import { hasAdminPerms } from '../../../../../ui-helpers/perms'
-import { guildRankingsOption, withSelectedRanking } from '../../../../../ui-helpers/ranking-option'
-import { escapeMd, messageLink, relativeTimestamp } from '../../../../../ui-helpers/strings'
+import { hasAdminPerms } from '../../../../../utils'
+import { escapeMd, messageLink, relativeTimestamp } from '../../../../../utils/ui/strings'
+import {
+  guildRankingsOption,
+  withSelectedRanking,
+} from '../../../../../utils/view-helpers/ranking-option'
 import { getRegisterPlayer } from '../../../../players/manage-players'
 import { matchSummaryEmbed } from '../../../logging/match-summary-message'
 import { recordAndScoreMatch } from '../../match-creation'
@@ -70,7 +73,11 @@ const optionnames = {
 
 export default new GuildCommand(
   record_match_cmd_signature,
-  async (app, guild_id) => {
+  async (app, guild) => {
+
+    const guild_rankings = await app.db.guild_rankings.getBy({ guild_id: guild.data.id })
+    if (guild_rankings.length == 0) return null
+
     const options: D.APIApplicationCommandBasicOption[] = [
       {
         name: optionnames.winner,
@@ -94,7 +101,7 @@ export default new GuildCommand(
       options: (
         await guildRankingsOption(
           app,
-          guild_id,
+          guild,
           optionnames.ranking,
           {},
           'Which ranking should this match belong to',
@@ -254,7 +261,7 @@ export default new GuildCommand(
           throw new UserError(`Unknown state ${ctx.state.data.clicked_component}`)
         }
       }),
-)
+).dev()
 
 async function selectTeamPage(
   app: App,

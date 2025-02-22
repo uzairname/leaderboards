@@ -12,9 +12,9 @@ import { AppView } from '../../../../classes/ViewModule'
 import { UserErrors } from '../../../../errors/UserError'
 import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
-import { Messages } from '../../../../ui-helpers/messages'
-import { ensureAdminPerms } from '../../../../ui-helpers/perms'
-import { getOrAddGuild } from '../../../guilds/guilds'
+import { Messages } from '../../../../utils'
+import { ensureAdminPerms } from '../../../../utils/perms'
+import { getOrAddGuild } from '../../../guilds/manage-guilds'
 import { guidePage, help_cmd_signature } from '../../../help/help-cmd'
 import {
   createNewRankingInGuild,
@@ -26,8 +26,8 @@ import {
 import { ranking_settings_page_config, rankingSettingsPage } from './ranking-settings-page'
 
 export const rankings_page_config = new MessageView({
-  custom_id_prefix: 'ar',
-  name: 'rankings',
+  custom_id_prefix: 's',
+  name: 'settings page',
   state_schema: {
     owner_id: field.String(),
     callback: field.Choice({
@@ -62,13 +62,11 @@ export async function allRankingsPage(
   const guild = await getOrAddGuild(app, interaction.guild_id)
   const component_owner_id = interaction.member.user.id
 
-  sentry.debug(`rankingsPage(${guild})`)
-
   const state = rankings_page_config.newState({ owner_id: component_owner_id })
 
-  const grs = await app.db.guild_rankings.fetch({ guild_id: guild.data.id })
+  const grs = await app.db.guild_rankings.getBy({ guild_id: guild.data.id })
 
-  const embeds = await Messages.allGuildRankingsText(
+  const embeds = await Messages.allRankingsPageEmbeds(
     app,
     guild,
     grs.map(gr => gr.guild_ranking),
