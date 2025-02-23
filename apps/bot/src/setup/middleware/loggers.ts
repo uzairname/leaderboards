@@ -1,23 +1,15 @@
 import { RequestData } from '@discordjs/rest'
-import { DbLogger } from '@repo/database'
+import { DbLogger } from '@repo/db'
 import { DiscordLogger, LogLevel } from '@repo/discord'
 import { truncateString } from '@repo/utils'
-import { Logger } from '../../logging/Logger'
+import { Logger } from '../../logging/logger'
 
 export class DbLoggerWrapper extends DbLogger {
   constructor(private sentry: Logger) {
     super()
   }
 
-  log({
-    data,
-    category,
-    type,
-  }: {
-    data?: Record<string, unknown>
-    category?: string
-    type?: string
-  }) {
+  log({ data, category, type }: { data?: Record<string, unknown>; category?: string; type?: string }) {
     if (data) {
       this.sentry.addBreadcrumb({ data, category, type })
     }
@@ -28,7 +20,6 @@ export class DbLoggerWrapper extends DbLogger {
   }
 
   logQuery(query: string, params?: unknown[], is_readonly?: boolean): void {
-
     if (is_readonly) {
       this.sentry.request_data['queries-readonly'] = ((this.sentry.request_data['queries-readonly'] as number) || 0) + 1
     } else {
@@ -46,7 +37,7 @@ export class DbLoggerWrapper extends DbLogger {
   }
 
   resetCounter(is_readonly?: boolean): void {
-    ;(this.sentry.request_data[is_readonly ? 'queries-readonly' : 'queries']) = 0
+    this.sentry.request_data[is_readonly ? 'queries-readonly' : 'queries'] = 0
   }
 }
 
@@ -92,8 +83,7 @@ export class DiscordLoggerWrapper extends DiscordLogger {
         time: `${time_ms} ms`,
       },
     })
-    this.sentry.request_data['discord_requests'] =
-      ((this.sentry.request_data['discord_requests'] as number) || 0) + 1
+    this.sentry.request_data['discord_requests'] = ((this.sentry.request_data['discord_requests'] as number) || 0) + 1
   }
 
   setInteractionType(type: string): void {

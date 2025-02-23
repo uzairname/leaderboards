@@ -1,4 +1,4 @@
-import { ScoringMethod } from '@repo/database/models'
+import { ScoringMethod } from '@repo/db/models'
 import * as D from 'discord-api-types/v10'
 import { Env } from '../Env'
 import { getScorerFn } from '../services/matches/scoring/scorers'

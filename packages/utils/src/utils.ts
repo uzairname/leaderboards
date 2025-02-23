@@ -7,8 +7,7 @@ export async function sequential<T>(promises: (() => Promise<T>)[]): Promise<T[]
 }
 
 export function nonNullable<T>(value: T, value_name?: string): NonNullable<T> {
-  if (value === null || value === undefined)
-    throw new Error(`${value_name || 'value'} is null or undefined`)
+  if (value === null || value === undefined) throw new Error(`${value_name || 'value'} is null or undefined`)
   return value
 }
 
@@ -16,10 +15,7 @@ export function assert(condition: boolean, message?: string): asserts condition 
   if (!condition) throw new Error(message ?? 'Assertion failed')
 }
 
-export function getEnumValue<T extends Record<string, string | number>>(
-  enum_: T,
-  value: unknown,
-): T[keyof T] | null {
+export function getEnumValue<T extends Record<string, string | number>>(enum_: T, value: unknown): T[keyof T] | null {
   const keys = Object.keys(enum_) as (keyof T)[]
   for (const key of keys) {
     if (enum_[key] === value) return enum_[key]
@@ -44,9 +40,8 @@ export function cloneSimpleObj<T>(obj: T): T {
  * @returns {T[][]} A two-dimensional array.
  */
 export function unflatten<T>(arr: T[], dim_2_size: number, full_rows: boolean = true): T[][] {
-  return Array.from(
-    { length: full_rows ? arr.length / dim_2_size : Math.ceil(arr.length / dim_2_size) },
-    (_, i) => arr.slice(i * dim_2_size, (i + 1) * dim_2_size),
+  return Array.from({ length: full_rows ? arr.length / dim_2_size : Math.ceil(arr.length / dim_2_size) }, (_, i) =>
+    arr.slice(i * dim_2_size, (i + 1) * dim_2_size),
   )
 }
 
@@ -81,12 +76,7 @@ export function snowflakeToDate(snowflake: bigint): Date {
 }
 
 export function isInt(value: unknown, nonnegative?: boolean): value is number {
-  return (
-    typeof value === 'number' &&
-    isFinite(value) &&
-    Math.floor(value) === value &&
-    !(nonnegative && value < 0)
-  )
+  return typeof value === 'number' && isFinite(value) && Math.floor(value) === value && !(nonnegative && value < 0)
 }
 
 export function strOrUndefined(value?: string): string | undefined {
@@ -97,14 +87,15 @@ export function intOrUndefined(value?: string): number | undefined {
   const int = parseInt(value ?? '')
   return isNaN(int) ? undefined : int
 }
+
 export function truncateString(str: string, max_length: number): string {
   return str.length > max_length ? str.slice(0, max_length - 2) + '..' : str
 }
 
-async function hash(input: unknown): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(JSON.stringify(input)); // Convert input to a Uint8Array
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data); // Hash the data
-  const hashArray = Array.from(new Uint8Array(hashBuffer)); // Convert buffer to byte array
-  return hashArray.map(byte => byte.toString(16).padStart(2, "0")).join(""); // Convert bytes to hex string
+export async function hash(input: unknown): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(JSON.stringify(input)) // Convert input to a Uint8Array
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data) // Hash the data
+  const hashArray = Array.from(new Uint8Array(hashBuffer)) // Convert buffer to byte array
+  return hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('') // Convert bytes to hex string
 }

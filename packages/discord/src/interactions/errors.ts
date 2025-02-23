@@ -12,6 +12,12 @@ export namespace InteractionErrors {
     }
   }
 
+  export class UnknownHandler extends InteractionError {
+    constructor() {
+      super(`This command or component may be outdated`)
+    }
+  }
+
   export class InvalidViewType extends InteractionError {
     constructor() {
       super(`Invalid view type for interaction type`)
@@ -32,7 +38,11 @@ export namespace InteractionErrors {
 
   export class InvalidCustomId extends InteractionError {}
 
-  export class CallbackNotImplemented extends InteractionError {}
+  export class CallbackNotImplemented extends InteractionError {
+    constructor(callback: string) {
+      super(`Callback not implemented: ${callback}`)
+    }
+  }
 
   export class InvalidOptionType extends InteractionError {}
 

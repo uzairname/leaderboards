@@ -1,41 +1,30 @@
-import { CommandView } from '@repo/discord'
+import { CommandSignature } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { AppView, GuildCommand } from '../../../../../classes/ViewModule'
+import { App } from '../../../../../setup/app'
 import { isQueueEnabled } from '../../../../rankings/ranking-properties'
 
-export const queue_cmd_config = new CommandView({
+export const leave_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
   name: 'leave',
   description: `Leave all queues you are in`,
 })
 
-export default new GuildCommand(queue_cmd_config, 
-  async (app, guild) => {
+export const leave_cmd = leave_cmd_sig.set<App>({
+  guildSignature: async (app, guild_id) => {
+    const guild = app.db.guilds.get(guild_id)
     const guild_rankings = await app.db.guild_rankings.getBy({ guild_id: guild.data.id })
     const queue_enabled_rankings = guild_rankings.filter(r => isQueueEnabled(r.guild_ranking))
 
     if (queue_enabled_rankings.length == 0) return null
-    return queue_cmd_config
+    return leave_cmd_sig
   },
-  app =>
-  queue_cmd_config.onCommand(async ctx => {
-    return ctx.defer(
-      {
-        type: D.InteractionResponseType.DeferredChannelMessageWithSource,
-        data: { flags: D.MessageFlags.Ephemeral },
-      },
-      async ctx => {
-        const user = app.db.users.get(ctx.interaction.member.user.id)
-        const n_players_left = await user.removePlayersFromQueue()
+  onCommand: async (ctx, app) => {
+    return ctx.defer(async ctx => {
+        await app.db.users.get(ctx.interaction.member.user.id).removePlayersFromQueue()
         await ctx.edit({
-          content: n_players_left ? 'You left the queue' : `You're not in the queue`,
+          content: 'You left the queue',
         })
-
-        n_players_left &&
-          (await ctx.send({
-            content: `Someone has left the queue`,
-          }))
       },
     )
-  }),
-)
+  },
+})

@@ -1,12 +1,12 @@
-import { Guild, PartialGuild } from '@repo/database/models'
+import { Guild, PartialGuild } from '@repo/db/models'
 import { GuildChannelData, MessageData } from '@repo/discord'
-import { Colors } from 'apps/bot/src/utils/ui/strings'
+import { Colors } from 'apps/bot/src/utils/ui'
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
-import { commandMention } from '../../../utils/ui/strings'
+import { commandMention } from '../../../utils/ui'
 import { syncRankedCategory } from '../../guilds/manage-guilds'
-import matches from './views/matches-cmd'
+import { matches_cmd } from './views/matches-cmd'
 
 export async function syncMatchesChannel(
   app: App,
@@ -35,11 +35,8 @@ export async function syncMatchesChannel(
   return sync_channel_result.channel
 }
 
-async function matchesChannelDescriptionMessageData(
-  app: App,
-  guild: PartialGuild,
-): Promise<MessageData> {
-  const matches_cmd_mention = await commandMention(app, matches, guild.data.id)
+async function matchesChannelDescriptionMessageData(app: App, guild: PartialGuild): Promise<MessageData> {
+  const matches_cmd_mention = await commandMention(app, matches_cmd, guild.data.id)
 
   const msg = new MessageData({
     embeds: [
@@ -77,10 +74,7 @@ async function matchLogsChannelData(
   }
 }
 
-function matchLogsChannelPermissionOverwrites(
-  app: App,
-  guild_id: string,
-): D.RESTAPIChannelPatchOverwrite[] {
+function matchLogsChannelPermissionOverwrites(app: App, guild_id: string): D.RESTAPIChannelPatchOverwrite[] {
   return [
     {
       id: guild_id, //@everyone

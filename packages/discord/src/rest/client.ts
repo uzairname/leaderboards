@@ -55,25 +55,19 @@ export class DiscordAPIClient extends REST {
       )) as D.RESTGetAPIApplicationGuildCommandResult[]
       this.cache.guild_app_commands[guild_id] = result
       return result
-    } else {
-      if (this.cache.app_commands) {
-        return this.cache.app_commands
-      }
-      const result = (await this.fetch(
-        RequestMethod.Get,
-        D.Routes.applicationCommands(this.application_id),
-      )) as D.RESTGetAPIApplicationCommandsResult
-      this.cache.app_commands = result
-      return result
     }
+    const result = (await this.fetch(
+      RequestMethod.Get,
+      D.Routes.applicationCommands(this.application_id),
+    )) as D.RESTGetAPIApplicationCommandsResult
+    this.cache.app_commands = result
+    return result
   }
 
   async replaceGuildCommands(guild_id: string, body: D.RESTPutAPIApplicationGuildCommandsJSONBody) {
-    return (await this.fetch(
-      RequestMethod.Put,
-      D.Routes.applicationGuildCommands(this.application_id, guild_id),
-      { body },
-    )) as D.RESTPutAPIApplicationGuildCommandsResult
+    return (await this.fetch(RequestMethod.Put, D.Routes.applicationGuildCommands(this.application_id, guild_id), {
+      body,
+    })) as D.RESTPutAPIApplicationGuildCommandsResult
   }
 
   async replaceGlobalCommands(body: D.RESTPutAPIApplicationCommandsJSONBody) {
@@ -100,21 +94,14 @@ export class DiscordAPIClient extends REST {
   // CHANNELS
 
   @requiresBotPerms(D.PermissionFlagsBits.ManageChannels)
-  async createGuildChannel(
-    guild_id: string,
-    body: D.RESTPostAPIGuildChannelJSONBody,
-    reason?: string,
-  ) {
+  async createGuildChannel(guild_id: string, body: D.RESTPostAPIGuildChannelJSONBody, reason?: string) {
     try {
       return (await this.fetch(RequestMethod.Post, D.Routes.guildChannels(guild_id), {
         body,
         reason,
       })) as D.RESTPostAPIGuildChannelResult
     } catch (e) {
-      if (
-        e instanceof DiscordAPIError &&
-        e.code === D.RESTJSONErrorCodes.CannotExecuteActionOnThisChannelType
-      ) {
+      if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.CannotExecuteActionOnThisChannelType) {
         throw new DiscordErrors.ForumInNonCommunityServer()
       }
       throw e
@@ -122,18 +109,11 @@ export class DiscordAPIClient extends REST {
   }
 
   async getChannel(channel_id: string): Promise<D.APIChannel> {
-    return (await this.fetch(
-      RequestMethod.Get,
-      D.Routes.channel(channel_id),
-      {},
-    )) as D.RESTGetAPIChannelResult
+    return (await this.fetch(RequestMethod.Get, D.Routes.channel(channel_id), {})) as D.RESTGetAPIChannelResult
   }
 
   async getGuildChannels(guild_id: string) {
-    return (await this.fetch(
-      RequestMethod.Get,
-      D.Routes.guildChannels(guild_id),
-    )) as D.RESTGetAPIGuildChannelsResult
+    return (await this.fetch(RequestMethod.Get, D.Routes.guildChannels(guild_id))) as D.RESTGetAPIGuildChannelsResult
   }
 
   @requiresBotPerms(D.PermissionFlagsBits.ManageChannels)
@@ -145,20 +125,13 @@ export class DiscordAPIClient extends REST {
 
   @requiresBotPerms(D.PermissionFlagsBits.ManageChannels)
   async deleteChannel(channel_id: string) {
-    return (await this.fetch(
-      RequestMethod.Delete,
-      D.Routes.channel(channel_id),
-    )) as D.RESTDeleteAPIChannelResult
+    return (await this.fetch(RequestMethod.Delete, D.Routes.channel(channel_id))) as D.RESTDeleteAPIChannelResult
   }
 
   // THREADS
 
   @requiresBotPerms(D.PermissionFlagsBits.CreatePublicThreads)
-  async createPublicThread(
-    body: D.RESTPostAPIChannelThreadsJSONBody,
-    channel_id: string,
-    message_id?: string,
-  ) {
+  async createPublicThread(body: D.RESTPostAPIChannelThreadsJSONBody, channel_id: string, message_id?: string) {
     return (await this.fetch(RequestMethod.Post, D.Routes.threads(channel_id, message_id), {
       body,
     })) as D.RESTPostAPIChannelMessagesThreadsResult | D.RESTPostAPIChannelThreadsResult
@@ -190,10 +163,7 @@ export class DiscordAPIClient extends REST {
 
   @requiresBotPerms(D.PermissionFlagsBits.ManageThreads)
   async deleteThread(channel_id: string) {
-    return (await this.fetch(
-      RequestMethod.Delete,
-      D.Routes.channel(channel_id),
-    )) as D.RESTDeleteAPIChannelResult
+    return (await this.fetch(RequestMethod.Delete, D.Routes.channel(channel_id))) as D.RESTDeleteAPIChannelResult
   }
 
   // MESSAGES
@@ -213,11 +183,7 @@ export class DiscordAPIClient extends REST {
   }
 
   @requiresBotPerms(D.PermissionFlagsBits.ManageMessages)
-  async editMessage(
-    channel_id: string,
-    message_id: string,
-    body: D.RESTPatchAPIChannelMessageJSONBody,
-  ) {
+  async editMessage(channel_id: string, message_id: string, body: D.RESTPatchAPIChannelMessageJSONBody) {
     return (await this.fetch(RequestMethod.Patch, D.Routes.channelMessage(channel_id, message_id), {
       body,
     })) as D.RESTPatchAPIChannelMessageResult
@@ -244,8 +210,7 @@ export class DiscordAPIClient extends REST {
       if (
         !(
           e instanceof DiscordAPIError &&
-          (e.code === D.RESTJSONErrorCodes.UnknownMessage ||
-            e.code === D.RESTJSONErrorCodes.UnknownChannel)
+          (e.code === D.RESTJSONErrorCodes.UnknownMessage || e.code === D.RESTJSONErrorCodes.UnknownChannel)
         )
       ) {
         throw e
@@ -256,10 +221,7 @@ export class DiscordAPIClient extends REST {
   // GUILD
 
   async getGuild(guild_id: string) {
-    return (await this.fetch(
-      RequestMethod.Get,
-      D.Routes.guild(guild_id),
-    )) as D.RESTGetAPIGuildResult
+    return (await this.fetch(RequestMethod.Get, D.Routes.guild(guild_id))) as D.RESTGetAPIGuildResult
   }
 
   async getGuildMember(guild_id: string, user_id: string): Promise<D.APIGuildMember | undefined> {
@@ -283,17 +245,11 @@ export class DiscordAPIClient extends REST {
   }
 
   async getRoles(guild_id: string) {
-    return (await this.fetch(
-      RequestMethod.Get,
-      D.Routes.guildRoles(guild_id),
-    )) as D.RESTGetAPIGuildRolesResult
+    return (await this.fetch(RequestMethod.Get, D.Routes.guildRoles(guild_id))) as D.RESTGetAPIGuildRolesResult
   }
 
   async getRole(guild_id: string, role_id: string) {
-    return (await this.fetch(
-      RequestMethod.Get,
-      D.Routes.guildRole(guild_id, role_id),
-    )) as D.RESTGetAPIGuildRoleResult
+    return (await this.fetch(RequestMethod.Get, D.Routes.guildRole(guild_id, role_id))) as D.RESTGetAPIGuildRoleResult
   }
 
   @requiresBotPerms(D.PermissionFlagsBits.ManageRoles)
@@ -321,8 +277,8 @@ export class DiscordAPIClient extends REST {
       if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.MissingPermissions)
         // There are cases where this error is thrown other than the Manage Roles permission
         throw new DiscordErrors.GeneralPermissions(
-          `Either the app doesn't have the **Manage Roles** permission, ` + 
-          `or the the specified role is reserved or higher than the bot's highest role.`,
+          `Either the app doesn't have the **Manage Roles** permission, ` +
+            `or the the specified role is reserved or higher than the bot's highest role.`,
         )
       throw e
     }
@@ -347,22 +303,13 @@ export class DiscordAPIClient extends REST {
       category: 'interaction',
       message: 'Creating initial interaction response (indirect)',
     })
-    return this.fetch(
-      RequestMethod.Post,
-      D.Routes.interactionCallback(interaction_id, interaction_token),
-      { body },
-    )
+    return this.fetch(RequestMethod.Post, D.Routes.interactionCallback(interaction_id, interaction_token), { body })
   }
 
-  async createFollowupMessage(
-    interaction_token: string,
-    body: D.RESTPostAPIInteractionFollowupJSONBody,
-  ) {
-    return (await this.fetch(
-      RequestMethod.Post,
-      D.Routes.webhook(this.application_id, interaction_token),
-      { body },
-    )) as D.RESTPostAPIWebhookWithTokenWaitResult
+  async createFollowupMessage(interaction_token: string, body: D.RESTPostAPIInteractionFollowupJSONBody) {
+    return (await this.fetch(RequestMethod.Post, D.Routes.webhook(this.application_id, interaction_token), {
+      body,
+    })) as D.RESTPostAPIWebhookWithTokenWaitResult
   }
 
   async editOriginalInteractionResponse(
@@ -386,18 +333,11 @@ export class DiscordAPIClient extends REST {
   // LINKED ROLES
 
   async updateRoleConnectionsMetadata(body: D.RESTPutAPIApplicationRoleConnectionMetadataJSONBody) {
-    await this.fetch(
-      RequestMethod.Put,
-      D.Routes.applicationRoleConnectionMetadata(this.application_id),
-      {
-        body,
-      },
-    )
+    await this.fetch(RequestMethod.Put, D.Routes.applicationRoleConnectionMetadata(this.application_id), {
+      body,
+    })
   }
-  async updateUserRoleConnection(
-    access_token: string,
-    body: D.RESTPutAPICurrentUserApplicationRoleConnectionJSONBody,
-  ) {
+  async updateUserRoleConnection(access_token: string, body: D.RESTPutAPICurrentUserApplicationRoleConnectionJSONBody) {
     await this.fetch(
       RequestMethod.Put,
       D.Routes.userApplicationRoleConnection(this.application_id),
@@ -421,12 +361,7 @@ export class DiscordAPIClient extends REST {
     return url
   }
 
-  oauthURL(
-    redirect_uri: string,
-    scopes: D.OAuth2Scopes[],
-    state: string,
-    permissions?: bigint,
-  ): URL {
+  oauthURL(redirect_uri: string, scopes: D.OAuth2Scopes[], state: string, permissions?: bigint): URL {
     const params = new URLSearchParams({
       client_id: this.client_id,
       response_type: 'code',

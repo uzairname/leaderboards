@@ -1,9 +1,9 @@
 import { DiscordAPIError, RateLimitError } from '@discordjs/rest'
 import { DiscordErrors, InteractionErrors } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { UserError, UserErrors } from '../../errors/UserError'
+import { UserError, UserErrors } from '../../errors/user-errors'
 import { sentry } from '../../logging/sentry'
-import { Colors } from '../../utils/ui/strings'
+import { Colors } from '../../utils/ui'
 import { App } from '../app'
 
 export function onViewError(app: App) {
@@ -22,8 +22,7 @@ export function onViewError(app: App) {
       return onViewError(app)(new UserErrors.BotPermissions(app, e))
     } else if (e instanceof DiscordErrors.GeneralPermissions) {
       return onViewError(app)(new UserError(e.message))
-    }
-    else if (e instanceof RateLimitError) {
+    } else if (e instanceof RateLimitError) {
       return onViewError(app)(new UserErrors.RateLimitError(e.timeToReset))
     } else if (e instanceof InteractionErrors.WrongContext) {
       description = e.message
@@ -34,7 +33,7 @@ export function onViewError(app: App) {
       } else {
         description = `${e}`
       }
-      description += `\n\nIf this is a bug, please report it in the [discord server](${app.config.DevGuildId}!`
+      description += `\n\nIf this is a bug, please report it in the [support server](${app.config.SupportServerInvite})!`
     }
 
     // Log the error
@@ -77,10 +76,7 @@ export function onViewError(app: App) {
   }
 }
 
-function errorResponse(
-  title: string,
-  description: string,
-): D.APIInteractionResponseChannelMessageWithSource {
+function errorResponse(title: string, description: string): D.APIInteractionResponseChannelMessageWithSource {
   return {
     type: D.InteractionResponseType.ChannelMessageWithSource,
     data: {

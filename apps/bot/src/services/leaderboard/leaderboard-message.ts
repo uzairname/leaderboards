@@ -1,28 +1,19 @@
-import {
-  Guild,
-  GuildRanking,
-  PartialGuildRanking,
-  PartialRanking,
-  Ranking,
-} from '@repo/database/models'
+import { Guild, GuildRanking, PartialGuildRanking, PartialRanking, Ranking } from '@repo/db/models'
 import { MessageData } from '@repo/discord'
 import { nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging/sentry'
 import { type App } from '../../setup/app'
-import { Colors, commandMention, escapeMd, relativeTimestamp, space } from '../../utils/ui/strings'
+import { Colors, commandMention, escapeMd, relativeTimestamp, space } from '../../utils/ui'
 import { syncRankedCategory } from '../guilds/manage-guilds'
+import { numRankings } from '../guilds/properties'
 import { getOrderedLeaderboardPlayers } from '../players/display'
-import leaderboardCmd from './views/leaderboard-cmd'
+import { leaderboard_cmd } from './views/leaderboard-cmd'
 
 export async function syncRankingLbMessages(app: App, ranking: PartialRanking): Promise<void> {
   sentry.debug(`syncRankingLbMessages ranking: ${ranking.data.id}`)
   const guild_rankings = await app.db.guild_rankings.getBy({ ranking_id: ranking.data.id })
-  await Promise.all(
-    guild_rankings.map(async guild_ranking => {
-      await syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)
-    }),
-  )
+  await Promise.all(guild_rankings.map(guild_ranking => syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)))
 }
 
 export async function syncGuildRankingLbMessage(
@@ -68,8 +59,7 @@ export async function syncGuildRankingLbMessage(
   return {
     message: result.message,
     channel_id:
-      result.new_channel?.id ??
-      nonNullable(guild_ranking.data.leaderboard_channel_id, 'existing lb channel id'),
+      result.new_channel?.id ?? nonNullable(guild_ranking.data.leaderboard_channel_id, 'existing lb channel id'),
   }
 }
 
@@ -86,21 +76,14 @@ export async function disableGuildRankingLbMessage(app: App, guild_ranking: Guil
   })
 }
 
-export async function sendLbChannel(
-  app: App,
-  guild: Guild,
-  ranking: Ranking,
-): Promise<D.APIChannel> {
+export async function sendLbChannel(app: App, guild: Guild, ranking: Ranking): Promise<D.APIChannel> {
   const category = (await syncRankedCategory(app, guild)).channel
   return await app.discord.createGuildChannel(guild.data.id, {
     type: D.ChannelType.GuildText,
     parent_id: category.id,
     name: `${escapeMd(ranking.data.name)} Leaderboard`,
     topic: 'This leaderboard is displayed and updated live here',
-    permission_overwrites: leaderboardChannelPermissionOverwrites(
-      guild.data.id,
-      app.discord.application_id,
-    ),
+    permission_overwrites: leaderboardChannelPermissionOverwrites(guild.data.id, app.discord.application_id),
   })
 }
 
@@ -120,9 +103,7 @@ export async function leaderboardMessage(
 
   const players_lines = players
     .map(p => {
-      const rating_text = `\`${p.rating.toFixed(0)}\``.padStart(
-        max_rating_len + 2 - `${place}`.length,
-      )
+      const rating_text = `\`${p.rating.toFixed(0)}\``.padStart(max_rating_len + 2 - `${place}`.length)
       if (p.is_provisional) {
         return null
       } else {
@@ -168,13 +149,15 @@ export async function leaderboardMessage(
     current_page_lines.push(`No players to show.`)
   }
 
+  const guild = options?.guild_id ? await app.db.guilds.get(options?.guild_id) : undefined
+
   const bottom_text =
     `-# Last updated ${relativeTimestamp(new Date(Date.now()))}. ` +
     `\n-# Unranked players are given a provisional rating and` +
     ` are hidden from the main leaderboard until they play more games.` +
     (options?.full
       ? ``
-      : `\nUse ${await commandMention(app, leaderboardCmd, options?.guild_id)} \`${escapeMd(ranking.data.name)}\` to see the full leaderboard.`)
+      : `\nUse ${await commandMention(app, leaderboard_cmd, options?.guild_id)}${guild && (await numRankings(app, guild)) > 1 ? ` \`${escapeMd(ranking.data.name)}\`` : ``} to see the full leaderboard.`)
 
   const embed: D.APIEmbed = {
     title: `${escapeMd(ranking.data.name)} Leaderboard`,

@@ -1,9 +1,7 @@
 import * as D from 'discord-api-types/v10'
 import { App } from '../../setup/app'
 
-export function getAppRoleConnectionsMetadata(
-  app: App,
-): D.RESTPutAPIApplicationRoleConnectionMetadataJSONBody {
+export function getAppRoleConnectionsMetadata(app: App): D.RESTPutAPIApplicationRoleConnectionMetadataJSONBody {
   return [
     {
       type: D.ApplicationRoleConnectionMetadataType.IntegerGreaterThanOrEqual,

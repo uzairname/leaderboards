@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
+    ".": {
+      "import": "./src/index.ts"
+    },
     "./cache": "./src/cache.ts"
   },
   "scripts": {},

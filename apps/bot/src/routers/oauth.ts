@@ -1,5 +1,5 @@
 import { DiscordAPIError } from '@discordjs/rest'
-import { AccessToken } from '@repo/database/models'
+import { AccessToken } from '@repo/db/models'
 import { DiscordAPIClient } from '@repo/discord'
 import { nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
@@ -24,20 +24,10 @@ export default (app: App) =>
 
     .get(`*`, () => new Response('Unknown oauth route', { status: 404 }))
 
-function oauthRedirect(
-  app: App,
-  scopes: D.OAuth2Scopes[],
-  bot_permissions?: bigint,
-  redirect_uri?: string,
-): Response {
+function oauthRedirect(app: App, scopes: D.OAuth2Scopes[], bot_permissions?: bigint, redirect_uri?: string): Response {
   const state = crypto.randomUUID()
 
-  const url = app.discord.oauthURL(
-    redirect_uri ?? app.config.OauthRedirectURI,
-    scopes,
-    state,
-    bot_permissions,
-  )
+  const url = app.discord.oauthURL(redirect_uri ?? app.config.OauthRedirectURI, scopes, state, bot_permissions)
 
   return new Response(null, {
     status: 302,
@@ -60,10 +50,7 @@ async function oauthCallback(app: App, request: Request): Promise<Response> {
   try {
     await saveUserAccessToken(
       app,
-      await app.discord.getOauthToken(
-        nonNullable(url.searchParams.get('code'), 'code'),
-        app.config.OauthRedirectURI,
-      ),
+      await app.discord.getOauthToken(nonNullable(url.searchParams.get('code'), 'code'), app.config.OauthRedirectURI),
     )
   } catch (e) {
     if (e instanceof DiscordAPIError) {
@@ -113,16 +100,11 @@ export async function getUserAccessToken(
   if (scope_tokens.length == 0) return undefined
 
   // get the most recent token
-  const token = scope_tokens.sort(
-    (a, b) => b.data.expires_at.getTime() - a.data.expires_at.getTime(),
-  )[0]
+  const token = scope_tokens.sort((a, b) => b.data.expires_at.getTime() - a.data.expires_at.getTime())[0]
   return refreshAccessTokenIfExpired(app.discord, token.data)
 }
 
-async function refreshAccessTokenIfExpired(
-  bot: DiscordAPIClient,
-  token: AccessToken['data'],
-): Promise<string> {
+async function refreshAccessTokenIfExpired(bot: DiscordAPIClient, token: AccessToken['data']): Promise<string> {
   return token.expires_at.getTime() > Date.now()
     ? token.data.access_token
     : (await bot.refreshOauthToken(token.data.refresh_token)).access_token

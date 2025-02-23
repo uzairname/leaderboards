@@ -343,3 +343,4 @@ dist
 *.env
 .dev.vars
 .wrangler/
+wranglerdeploy.sh

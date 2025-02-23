@@ -1,8 +1,8 @@
 import * as D from 'discord-api-types/v10'
 
-import { Match, MatchPlayer, MatchStatus, Vote } from '@repo/database/models'
+import { Match, MatchPlayer, MatchStatus, Vote } from '@repo/db/models'
 import { nonNullable } from '@repo/utils'
-import { Colors } from 'apps/bot/src/utils/ui/strings'
+import { Colors } from 'apps/bot/src/utils/ui'
 import { App } from '../../../setup/app'
 
 /**
@@ -14,10 +14,7 @@ import { App } from '../../../setup/app'
  *
  * Assumes match is ffa (1v1v1v...), and players is the flattened array of teams.
  */
-export async function generateCustomMatchDesc(
-  match: Match,
-  players: MatchPlayer[],
-): Promise<string | undefined> {
+export async function generateCustomMatchDesc(match: Match, players: MatchPlayer[]): Promise<string | undefined> {
   const ranking = await match.ranking.fetch()
 
   const custom_desc_config = ranking.data.match_settings?.custom_desc

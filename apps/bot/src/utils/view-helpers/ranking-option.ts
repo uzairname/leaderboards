@@ -1,15 +1,15 @@
-import { GuildRanking, PartialGuild, PartialRanking, Ranking } from '@repo/database/models'
+import { GuildRanking, PartialGuild, PartialRanking, Ranking } from '@repo/db/models'
 import type {
-  AnyCommandView,
+  AnyCommandSignature,
   CommandInteractionResponse,
   InitialInteractionContext,
   InteractionContext,
 } from '@repo/discord'
 import { isDeferredCtx, isInitialInteractionCtx } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { UserError } from '../../errors/UserError'
+import { UserError } from '../../errors/user-errors'
 import { sentry } from '../../logging/sentry'
-import { allRankingsPage } from '../../services/rankings/views/pages/all-rankings-page'
+import { rankingsPage } from '../../services/rankings//views/rankings-view'
 import type { App } from '../../setup/app'
 
 export const create_ranking_choice_value = 'create'
@@ -28,8 +28,7 @@ export async function guildRankingsOption(
   description: string = 'Select a ranking',
 ): Promise<D.APIApplicationCommandBasicOption[]> {
   const rankings_choices =
-    options?.available_choices ??
-    (await app.db.guild_rankings.getBy({ guild_id: guild.data.id })).map(i => i.ranking)
+    options?.available_choices ?? (await app.db.guild_rankings.getBy({ guild_id: guild.data.id })).map(i => i.ranking)
 
   if (rankings_choices.length == 1 && !options?.optional) {
     return []
@@ -57,7 +56,7 @@ export async function guildRankingsOption(
 
 export async function withOptionalSelectedRanking<
   T extends InteractionContext<
-    AnyCommandView,
+    AnyCommandSignature,
     D.APIGuildInteractionWrapper<D.APIChatInputApplicationCommandInteraction>
   >,
   U = Promise<T extends InitialInteractionContext<any> ? CommandInteractionResponse : void>,
@@ -78,7 +77,7 @@ export async function withOptionalSelectedRanking<
 
 export async function withSelectedRanking<
   T extends InteractionContext<
-    AnyCommandView,
+    AnyCommandSignature,
     D.APIGuildInteractionWrapper<D.APIChatInputApplicationCommandInteraction>
   >,
   U = Promise<T extends InitialInteractionContext<any> ? CommandInteractionResponse : void>,
@@ -94,14 +93,7 @@ export async function withSelectedRanking<
   },
   callback: (ranking: PartialRanking) => Promise<U>,
 ): Promise<U> {
-  return _withSelectedRanking(
-    app,
-    ctx,
-    ranking_option_value,
-    options,
-    async ranking => callback(ranking!),
-    false,
-  )
+  return _withSelectedRanking(app, ctx, ranking_option_value, options, async ranking => callback(ranking!), false)
 }
 
 /**
@@ -122,7 +114,7 @@ export async function withSelectedRanking<
  */
 async function _withSelectedRanking<
   T extends InteractionContext<
-    AnyCommandView,
+    AnyCommandSignature,
     D.APIGuildInteractionWrapper<D.APIChatInputApplicationCommandInteraction>
   >,
   U = Promise<T extends InitialInteractionContext<any> ? CommandInteractionResponse : void>,
@@ -168,10 +160,10 @@ async function _withSelectedRanking<
       if (isInitialInteractionCtx(ctx)) {
         return {
           type: D.InteractionResponseType.ChannelMessageWithSource,
-          data: await allRankingsPage(app, ctx),
+          data: await rankingsPage(app, ctx),
         } as U
       } else if (isDeferredCtx(ctx)) {
-        return void ctx.followup(await allRankingsPage(app, ctx)) as U
+        return void ctx.followup(await rankingsPage(app, ctx)) as U
       } else {
         throw new Error(`Expected either initial or deferred interaction context`)
       }

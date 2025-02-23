@@ -1,4 +1,4 @@
-import { Guild, Match, Ranking } from '@repo/database/models'
+import { Guild, Match, Ranking } from '@repo/db/models'
 import { Event } from '@repo/utils'
 import { App } from './app'
 

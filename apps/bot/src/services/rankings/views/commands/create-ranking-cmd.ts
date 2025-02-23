@@ -1,91 +1,75 @@
-import { CommandView } from '@repo/discord'
+import { CommandSignature, getOptions } from '@repo/discord'
 import { nonNullable } from '@repo/utils'
-import { Colors } from 'apps/bot/src/utils/ui/strings'
+import { Colors } from 'apps/bot/src/utils/ui'
 import * as D from 'discord-api-types/v10'
-import { AppView } from '../../../../classes/ViewModule'
+import { App } from '../../../../setup/app'
 import { ensureAdminPerms } from '../../../../utils/perms'
-import {
-  createNewRankingInGuild,
-  default_players_per_team,
-  default_teams_per_match,
-} from '../../manage-rankings'
-import { rankingSettingsPage } from '../pages/ranking-settings-page'
+import { createNewRankingInGuild } from '../../manage-rankings'
+import { default_players_per_team, default_teams_per_match } from '../../ranking-properties'
+import { getRankingSettingsPage } from '../ranking-settings-view'
 
-export const create_ranking_cmd_signature = new CommandView({
+export const create_ranking_cmd_sig = new CommandSignature({
   name: 'create-ranking',
   type: D.ApplicationCommandType.ChatInput,
   description: 'Create a new ranking',
   guild_only: true,
+  options: [
+    {
+      name: 'name',
+      description: 'Name of the ranking',
+      type: D.ApplicationCommandOptionType.String,
+      required: true,
+    },
+    {
+      name: 'num-teams',
+      description: `Number of teams per match. Default ${default_teams_per_match}`,
+      type: D.ApplicationCommandOptionType.Integer,
+      required: false,
+    },
+    {
+      name: 'players-per-team',
+      description: `Number of players per team. Default ${default_players_per_team}`,
+      type: D.ApplicationCommandOptionType.Integer,
+      required: false,
+    },
+  ],
 })
 
-export default new AppView(create_ranking_cmd_signature, app =>
-  new CommandView({
-    ...create_ranking_cmd_signature.config,
-    options: (
-      [
-        {
-          name: 'name',
-          description: 'Name of the ranking',
-          type: D.ApplicationCommandOptionType.String,
-          required: true,
-        },
-      ] as D.APIApplicationCommandOption[]
-    ).concat(
-      app.config.features.AllowNon1v1
-        ? [
-            {
-              name: 'num-teams',
-              description: `Number of teams per match. Default ${default_teams_per_match}`,
-              type: D.ApplicationCommandOptionType.Integer,
-              required: false,
-            },
-            {
-              name: 'players-per-team',
-              description: `Number of players per team. Default ${default_players_per_team}`,
-              type: D.ApplicationCommandOptionType.Integer,
-              required: false,
-            },
-          ]
-        : [],
-    ),
-  }).onCommand(async ctx => {
-    await ensureAdminPerms(app, ctx)
+export const create_ranking_cmd = create_ranking_cmd_sig.set<App>({
+  onCommand: async (ctx, app) => {
+    return ctx.defer(async ctx => {
+      await ensureAdminPerms(app, ctx)
 
-    const options: { [key: string]: string | undefined } = Object.fromEntries(
-      (ctx.interaction.data.options as D.APIApplicationCommandInteractionDataStringOption[])?.map(
-        o => [o.name, o.value],
-      ) ?? [],
-    )
+      const options = getOptions(ctx.interaction, {
+        name: { type: D.ApplicationCommandOptionType.String, required: true },
+        'teams-per-match': { type: D.ApplicationCommandOptionType.Integer },
+        'players-per-team': { type: D.ApplicationCommandOptionType.Integer },
+      })
 
-    return ctx.defer(
-      {
-        type: D.InteractionResponseType.DeferredChannelMessageWithSource,
-        data: { flags: D.MessageFlags.Ephemeral },
-      },
-      async ctx => {
-        const { ranking } = await createNewRankingInGuild(app, ctx.interaction.guild_id, {
-          name: nonNullable(options['name'], 'options.name'),
-          teams_per_match: options['num-teams']
-            ? parseInt(options['num-teams'])
-            : default_teams_per_match,
-          players_per_team: options['players-per-team']
-            ? parseInt(options['players-per-team'])
-            : default_players_per_team,
-        })
+      const tpm = options['teams-per-match'] ?? default_teams_per_match
+      const ppt = options['players-per-team'] ?? default_players_per_team
 
-        await ctx.followup({
-          embeds: [
-            {
-              description:
-                `New ranking created: **${ranking.data.name}**` +
-                `\nNext, you can configure additional settings for this ranking below`,
-              color: Colors.Success,
-            },
-          ],
-        })
+      if (!app.config.features.AllowNon1v1 && (tpm > 1 || ppt > 1))
+        throw new Error(`Only 1v1 rankings are supported for now`)
 
-        await ctx.followup(await rankingSettingsPage({ app, ctx, ranking_id: ranking.data.id }))
-      },
-    )
-  }),
-)
+      const { ranking } = await createNewRankingInGuild(app, ctx.interaction.guild_id, {
+        name: nonNullable(options['name'], 'options.name'),
+        teams_per_match: tpm,
+        players_per_team: ppt,
+      })
+
+      await ctx.followup({
+        embeds: [
+          {
+            description:
+              `New ranking created: **${ranking.data.name}**` +
+              `\nNext, you can configure additional settings for this ranking below`,
+            color: Colors.Success,
+          },
+        ],
+      })
+
+      await ctx.followup(await getRankingSettingsPage({ app, ctx, ranking_id: ranking.data.id }))
+    })
+  },
+})

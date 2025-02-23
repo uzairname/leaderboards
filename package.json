@@ -9,7 +9,7 @@
   "type": "module",
   "packageManager": "npm@10.0.0",
   "scripts": {
-    "format": "prettier --write 'apps/**/*.{ts,js,css,json,md}' 'packages/**/*.{ts,js,css,json,md}'"
+    "fmt": "prettier --write 'apps/**/*.{ts,js,css,json,md}' 'packages/**/*.{ts,js,css,json,md}'"
   },
   "devDependencies": {
     "prettier": "^3.5.1",

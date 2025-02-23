@@ -1,15 +1,9 @@
-import { PartialGuild } from '@repo/database/models'
-import {
-  AnyChatInputCommand,
-  AnyCommandView,
-  AnyView,
-  FindViewCallback,
-  viewIsCommand,
-} from '@repo/discord'
+import { PartialGuild } from '@repo/db/models'
+import { AnyChatInputCommandSignature, AnyCommandSignature, AnySignature, FindViewCallback, viewIsCommand } from '@repo/discord'
 import { sequential } from '@repo/utils'
 import type { App } from '../setup/app'
 
-export class AppView<TView extends AnyView> {
+export class AppView<TView extends AnySignature> {
   public is_dev: boolean = false
 
   constructor(
@@ -25,7 +19,7 @@ export class AppView<TView extends AnyView> {
   }
 }
 
-export class GuildCommand<TView extends AnyChatInputCommand> extends AppView<TView> {
+export class GuildCommand<TView extends AnyChatInputCommandSignature> extends AppView<TView> {
   constructor(
     base_signature: TView,
     public resolveGuildSignature: (app: App, guild: PartialGuild) => Promise<TView | null>,
@@ -35,8 +29,8 @@ export class GuildCommand<TView extends AnyChatInputCommand> extends AppView<TVi
   }
 }
 
-export type AnyAppView = AppView<AnyView>
-export type AnyGuildCommand = GuildCommand<AnyChatInputCommand>
+export type AnyAppView = AppView<AnySignature>
+export type AnyGuildCommand = GuildCommand<AnyChatInputCommandSignature>
 
 export class ViewModule {
   public all_views: AnyAppView[]
@@ -46,14 +40,11 @@ export class ViewModule {
 
     // Identify duplicate custom_id_prefixes
     const custom_id_prefixes = this.all_views.map(v => v.base_signature.config.custom_id_prefix)
-    const duplicates = custom_id_prefixes.filter(
-      (v, i) => v !== undefined && custom_id_prefixes.indexOf(v) !== i,
-    )
-    if (duplicates.length > 0)
-      throw new Error(`Duplicate custom_id_prefixes: ${duplicates} ${duplicates.join(', ')}.`)
+    const duplicates = custom_id_prefixes.filter((v, i) => v !== undefined && custom_id_prefixes.indexOf(v) !== i)
+    if (duplicates.length > 0) throw new Error(`Duplicate custom_id_prefixes: ${duplicates} ${duplicates.join(', ')}.`)
   }
 
-  findViewSignatureFromCustomId() {
+  getViewByCustomIdPrefix() {
     const all_views = this.all_views
     return function (custom_id_prefix: string) {
       const matching_views = all_views.filter(
@@ -66,10 +57,11 @@ export class ViewModule {
     }
   }
 
-  async getAllCommandSignatures(app: App, guild?: PartialGuild): Promise<AnyCommandView[]> {
+  async getAllCommandSignatures(app: App, guild?: PartialGuild): Promise<AnyCommandSignature[]> {
     const cmds = await sequential(
       this.all_views.map(v => async () => {
         if (v.is_dev && !app.config.features.ExperimentalCommands) {
+          // Ignore dev and experimental commands
           return null
         }
         if (guild) {
@@ -87,7 +79,7 @@ export class ViewModule {
       }),
     )
 
-    return cmds.filter((v): v is AnyCommandView => v !== null)
+    return cmds.filter((v): v is AnyCommandSignature => v !== null)
   }
 
   /**
@@ -101,9 +93,7 @@ export class ViewModule {
         return custom_id_prefix
           ? _v.config.custom_id_prefix === custom_id_prefix
           : command
-            ? viewIsCommand(_v) &&
-              command.name === _v.config.name &&
-              command.type === _v.config.type
+            ? viewIsCommand(_v) && command.name === _v.config.name && command.type === _v.config.type
             : false
       })
 

@@ -13,20 +13,19 @@ export function getSubcommandOption(
   return o
 }
 
-type OptionValueType<T extends D.ApplicationCommandOptionType> =
-  T extends D.ApplicationCommandOptionType.String
-    ? string
-    : T extends D.ApplicationCommandOptionType.Integer | D.ApplicationCommandOptionType.Number
-      ? number
-      : T extends D.ApplicationCommandOptionType.Boolean
-        ? boolean
-        : T extends D.ApplicationCommandOptionType.User
-          ? D.APIUser
-          : T extends D.ApplicationCommandOptionType.Channel
-            ? D.APIInteractionDataResolvedChannel
-            : T extends D.ApplicationCommandOptionType.Role
-              ? D.APIRole
-              : never
+type OptionValueType<T extends D.ApplicationCommandOptionType> = T extends D.ApplicationCommandOptionType.String
+  ? string
+  : T extends D.ApplicationCommandOptionType.Integer | D.ApplicationCommandOptionType.Number
+    ? number
+    : T extends D.ApplicationCommandOptionType.Boolean
+      ? boolean
+      : T extends D.ApplicationCommandOptionType.User
+        ? D.APIUser
+        : T extends D.ApplicationCommandOptionType.Channel
+          ? D.APIInteractionDataResolvedChannel
+          : T extends D.ApplicationCommandOptionType.Role
+            ? D.APIRole
+            : never
 
 export function getOptions<
   T extends {
@@ -49,10 +48,7 @@ export function getOptions<
   return result
 }
 
-export function getBasicOptionValue<
-  T extends D.ApplicationCommandOptionType,
-  Required extends boolean,
->(
+export function getBasicOptionValue<T extends D.ApplicationCommandOptionType, Required extends boolean>(
   interaction: D.APIChatInputApplicationCommandInteraction,
   options: D.APIApplicationCommandInteractionDataBasicOption[] | undefined,
   option_name: string,
@@ -66,10 +62,7 @@ export function getBasicOptionValue<
   return result as OptionValueType<T>
 }
 
-export function getPossiblyNestedBasicOptionValue<
-  T extends D.ApplicationCommandOptionType,
-  Required extends boolean,
->(
+export function getPossiblyNestedBasicOptionValue<T extends D.ApplicationCommandOptionType, Required extends boolean>(
   interaction: D.APIChatInputApplicationCommandInteraction,
   option_name: string,
   type: T,
@@ -113,9 +106,7 @@ function _getBasicOptionValue<T extends D.ApplicationCommandOptionType>(
   const o = options.find(o => o.name === option_name)
   if (o) {
     if (o.type !== type)
-      throw new InteractionErrors.InvalidOptionType(
-        `Option '${option_name}' is of type ${o.type} (Expected: ${type})`,
-      )
+      throw new InteractionErrors.InvalidOptionType(`Option '${option_name}' is of type ${o.type} (Expected: ${type})`)
     if (
       o.type === D.ApplicationCommandOptionType.Number ||
       o.type === D.ApplicationCommandOptionType.Integer ||
@@ -143,9 +134,7 @@ export function getResolvedOptionValue(
   const data = interaction.data
   if (o) {
     if (o.type !== type)
-      throw new InteractionErrors.InvalidOptionType(
-        `Option '${option_name}' is of type ${o.type} (Expected: ${type})`,
-      )
+      throw new InteractionErrors.InvalidOptionType(`Option '${option_name}' is of type ${o.type} (Expected: ${type})`)
     if (o.type === D.ApplicationCommandOptionType.User) {
       const user = nonNullable(data.resolved?.users?.[o.value], `interaction data resolved user`)
       return user
@@ -153,10 +142,7 @@ export function getResolvedOptionValue(
       const role = nonNullable(data.resolved?.roles?.[o.value], `interaction data resolved role`)
       return role
     } else if (o.type === D.ApplicationCommandOptionType.Channel) {
-      const channel = nonNullable(
-        data.resolved?.channels?.[o.value],
-        `interaction data resolved channel`,
-      )
+      const channel = nonNullable(data.resolved?.channels?.[o.value], `interaction data resolved channel`)
       return channel
     }
   }

@@ -1,4 +1,4 @@
-import { PartialGuild } from '@repo/database/models'
+import { PartialGuild } from '@repo/db/models'
 import { App } from '../../../setup/app'
 
 export const getChallengeEnabledRankings = async (app: App, guild: PartialGuild) => {

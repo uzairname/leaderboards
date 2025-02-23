@@ -1,12 +1,6 @@
-import { DbClient, getNeonDrizzleClient } from '@repo/database'
-import { Guild } from '@repo/database/models'
-import {
-  DiscordAPIClient,
-  overwriteDiscordCommandsWithViews,
-  respondToInteraction,
-  ViewStateFactory,
-} from '@repo/discord'
-import { ViewModule } from '../classes/ViewModule'
+import { DbClient, getNeonDrizzleClient } from '@repo/db'
+import { Guild } from '@repo/db/models'
+import { DiscordAPIClient, putDiscordCommands, ViewManager } from '@repo/discord'
 import { Env } from '../Env'
 import { sentry } from '../logging/sentry'
 import { Config } from './config'
@@ -24,7 +18,7 @@ export class App {
 
   constructor(
     public env: Env,
-    public views: ViewModule,
+    public view_manager: ViewManager<App>,
     public all_event_listeners: ((events: AppEvents) => void)[],
     {
       db,
@@ -40,11 +34,7 @@ export class App {
       this.db = db
     } else {
       const logger = new DbLoggerWrapper(sentry)
-      const drizzle = getNeonDrizzleClient(
-        this.config.env.POSTGRES_URL,
-        this.config.env.POSTGRES_READ_URL,
-        logger,
-      )
+      const drizzle = getNeonDrizzleClient(this.config.env.POSTGRES_URL, this.config.env.POSTGRES_READ_URL, logger)
       this.db = new DbClient(drizzle, logger)
     }
     this.db.cache.clear()
@@ -60,39 +50,36 @@ export class App {
     })
 
     this.events = getAppEvents(this, all_event_listeners)
+
+    this.view_manager.logger = this.discord_logger
   }
 
   handleInteractionRequest(request: Request) {
-    return respondToInteraction(
-      this.discord,
+    return this.view_manager.respond({
+      bot: this.discord,
       request,
-      this.views.getFindViewCallback(this),
-      onViewError(this),
-      sentry.offload.bind(sentry),
-      this.config.DirectResponse,
-      this.discord_logger,
-    )
+      onError: onViewError(this),
+      offload: sentry.offload.bind(sentry),
+      direct_response: this.config.DirectResponse,
+      arg: this,
+    })
   }
 
   syncDiscordCommands(guild?: Guild) {
     sentry.offload(
       async () => {
-        overwriteDiscordCommandsWithViews(
+        await putDiscordCommands(
           this.discord,
-          await this.views.getAllCommandSignatures(this, guild),
+          await this.view_manager.commandSignatures({
+            guild_id: guild?.data.id,
+            include_experimental: this.config.features.ExperimentalCommands,
+            arg: this,
+          }),
           guild?.data.id,
         )
       },
       undefined,
-      `Put ${guild ? 'guild' : 'global'} commands`,
-    )
-  }
-
-  fromCustomId(custom_id: string) {
-    return ViewStateFactory.fromCustomId(
-      custom_id,
-      this.views.findViewSignatureFromCustomId(),
-      this.discord_logger,
+      `Sync ${guild ? 'guild' : 'global'} commands`,
     )
   }
 }

@@ -8,11 +8,11 @@ import {
   Player,
   PlayerFlags,
   Vote,
-} from '@repo/database/models'
-import { UserErrors } from '../../../errors/UserError'
+} from '@repo/db/models'
+import { UserErrors } from '../../../errors/user-errors'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
-import { default_best_of } from '../../rankings/manage-rankings'
+import { rankingProperties } from '../../rankings/ranking-properties'
 import { rescoreMatches, validateMatchData } from './manage-matches'
 
 /**
@@ -54,7 +54,7 @@ export async function startNewMatch(
     team_votes: match_players.map(_ => Vote.Undecided),
     status: MatchStatus.Ongoing,
     metadata: {
-      best_of: best_of ?? ranking.data.matchmaking_settings.default_best_of ?? default_best_of,
+      best_of: best_of ?? rankingProperties(ranking).default_best_of,
     },
   })
 
@@ -122,9 +122,7 @@ export async function ensureNoActiveMatches(app: App, players: PartialPlayer[]):
             active_matches.map(async m => {
               return (
                 `\`${m.match.data.id}\`` +
-                (m.match.data.ongoing_match_channel_id
-                  ? `: <#${m.match.data.ongoing_match_channel_id}>`
-                  : ``)
+                (m.match.data.ongoing_match_channel_id ? `: <#${m.match.data.ongoing_match_channel_id}>` : ``)
               )
             }),
           )

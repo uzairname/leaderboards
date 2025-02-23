@@ -1,5 +1,5 @@
 import { Env } from '../Env'
-import { Logger } from './Logger'
+import { Logger } from './logger'
 
 export let sentry: Logger
 

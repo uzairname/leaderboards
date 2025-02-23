@@ -1,11 +1,11 @@
-import { Match, MatchStatus, PartialGuild } from '@repo/database/models'
+import { Match, MatchStatus, PartialGuild } from '@repo/db/models'
 import { MessageData } from '@repo/discord'
 import { maxIndex } from '@repo/utils'
-import { Colors } from 'apps/bot/src/utils/ui/strings'
+import { Colors } from 'apps/bot/src/utils/ui'
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
-import { emojis, escapeMd, relativeTimestamp, spaces } from '../../../utils/ui/strings'
+import { emojis, escapeMd, relativeTimestamp, spaces } from '../../../utils/ui'
 import { getMatchPlayersDisplayStats } from '../../players/display'
 import { syncMatchesChannel } from './matches-channel'
 
@@ -25,11 +25,7 @@ export async function syncMatchSummaryMessages(app: App, match: Match): Promise<
 /**
  * Updates the match's summary message, according to the guild ranking's settings
  */
-export async function syncMatchSummaryMessage(
-  app: App,
-  match: Match,
-  p_guild: PartialGuild,
-): Promise<D.APIMessage> {
+export async function syncMatchSummaryMessage(app: App, match: Match, p_guild: PartialGuild): Promise<D.APIMessage> {
   sentry.debug(`syncMatchSummaryMessage ${match}, ${p_guild}`)
   // Check whether match logging is enabled for this guild ranking
   const { guild_ranking, guild } = await app.db.guild_rankings.getBy({
@@ -37,10 +33,7 @@ export async function syncMatchSummaryMessage(
     ranking_id: match.data.ranking_id,
   })
 
-  if (
-    app.config.features.DisableLogMatchesOption &&
-    !guild_ranking.data.display_settings?.log_matches
-  ) {
+  if (app.config.features.DisableLogMatchesOption && !guild_ranking.data.display_settings?.log_matches) {
     // don't log the match
     throw new Error(`Not implemented`)
   }
@@ -55,11 +48,7 @@ export async function syncMatchSummaryMessage(
   })
 
   if (sync_message_result.is_new_message) {
-    await match.updateSummaryMessage(
-      guild.data.id,
-      sync_message_result.channel_id,
-      sync_message_result.message.id,
-    )
+    await match.updateSummaryMessage(guild.data.id, sync_message_result.channel_id, sync_message_result.message.id)
   }
 
   return sync_message_result.message
@@ -128,10 +117,7 @@ export async function matchSummaryEmbed(app: App, match: Match, {} = {}): Promis
                 ? ``
                 : `\n-# ${spaces(2)}(${(parseInt(diff.toFixed(0)) > 0 ? '+' : '') + diff.toFixed(0)})`
 
-            return (
-              `<@${p.user_id}>` +
-              `\n${rating_before_text} → ${rating_after_text}${rating_diff_text}`
-            )
+            return `<@${p.user_id}>` + `\n${rating_before_text} → ${rating_after_text}${rating_diff_text}`
           } else {
             const provisional_text = p.before.is_provisional ? `\n-# (unranked)` : ``
             return `<@${p.user_id}>` + `\n${rating_before_text}${provisional_text}`

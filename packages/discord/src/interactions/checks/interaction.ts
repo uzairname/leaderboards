@@ -22,10 +22,7 @@ export function checkGuildInteraction<T extends D.APIBaseInteraction<any, any>>(
 export function checkGuildMessageComponentInteraction<T extends D.APIBaseInteraction<any, any>>(
   interaction: T,
 ): D.APIMessageComponentGuildInteraction {
-  if (
-    !D.Utils.isMessageComponentInteraction(interaction) ||
-    !D.Utils.isMessageComponentGuildInteraction(interaction)
-  ) {
+  if (!D.Utils.isMessageComponentInteraction(interaction) || !D.Utils.isMessageComponentGuildInteraction(interaction)) {
     throw new InteractionErrors.WrongContext(`Use this in a server`)
   }
   return interaction

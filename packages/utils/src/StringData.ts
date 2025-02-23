@@ -103,12 +103,10 @@ class ArrayField<T> extends Field<NonNullable<T>[]> {
   }
   compress = (value: NonNullable<T>[]) => arrayToString(value.map(v => this.field.compress(v)))
   decompress = (compressed: string) =>
-    stringToArray(compressed).map(v =>
-      nonNullable(this.field.decompress(v), 'decompressed list element'),
-    )
+    stringToArray(compressed).map(v => nonNullable(this.field.decompress(v), 'decompressed list element'))
 }
 
-class StringField extends Field<string | undefined> {
+export class StringField extends Field<string | undefined> {
   compress = (value: string) => value
   decompress = (value: string) => value
 }
@@ -137,14 +135,11 @@ class DateField extends Field<Date | undefined> {
   // 1735707600 is the unix timestamp of 1/1/2025.
 }
 
-class StringDataDataField<TSchema extends StringDataSchema> extends Field<
-  StringData<TSchema>['data']
-> {
+class StringDataDataField<TSchema extends StringDataSchema> extends Field<StringData<TSchema>['data']> {
   constructor(private schema: TSchema) {
     super()
   }
-  compress = (value: StringData<TSchema>['data']) =>
-    new StringData(this.schema).saveAll(value).encode()
+  compress = (value: StringData<TSchema>['data']) => new StringData(this.schema).saveAll(value).encode()
   decompress = (value: string) => new StringData(this.schema, value).data
 }
 
@@ -206,12 +201,7 @@ export class StringData<TSchema extends StringDataSchema> {
       (1 << Object.keys(this.fields).length) -
       1 -
       parseInt(
-        defined_fields
-          .toString(2)
-          .padStart(Object.keys(this.fields).length, '0')
-          .split('')
-          .reverse()
-          .join(''),
+        defined_fields.toString(2).padStart(Object.keys(this.fields).length, '0').split('').reverse().join(''),
         2,
       )
     ).toString(36)
@@ -262,8 +252,7 @@ export class StringData<TSchema extends StringDataSchema> {
         return this.data[key] as NonNullable<TSchema[typeof key]['type']>
       }
 
-      this.is[key] = compare =>
-        compare ? this.data[key] === this.validateKeyValue(key, compare) : !!this.data[key]
+      this.is[key] = compare => (compare ? this.data[key] === this.validateKeyValue(key, compare) : !!this.data[key])
     }
 
     if (encoded_str) {
@@ -272,8 +261,7 @@ export class StringData<TSchema extends StringDataSchema> {
   }
 
   private validateKeyValue(key: keyof TSchema, value: TSchema[typeof key]['type']): typeof value {
-    if (!this.fields.hasOwnProperty(key))
-      throw new Error(`Field ${key.toString()} does not exist in this StringData`)
+    if (!this.fields.hasOwnProperty(key)) throw new Error(`Field ${key.toString()} does not exist in this StringData`)
     if (
       this.fields[key].compress(value) !==
       this.fields[key].compress(this.fields[key].decompress(this.fields[key].compress(value)))
@@ -333,7 +321,6 @@ function shiftString(str: string, shift: number): string {
 }
 
 function nonNullable<T>(value: T, value_name?: string): NonNullable<T> {
-  if (value === null || value === undefined)
-    throw new Error(`${value_name || 'value'} is null or undefined`)
+  if (value === null || value === undefined) throw new Error(`${value_name || 'value'} is null or undefined`)
   return value
 }

@@ -2,8 +2,8 @@ import { appCommandToJSONBody } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { json, Router } from 'itty-router'
 import { GuildCommand } from '../classes/ViewModule'
-import views from '../services/all-views'
 import { App } from '../setup/app'
+import { getViewManager } from '../setup/handler-manager'
 import { inviteUrl } from '../utils/'
 import rankingsRouter from './api/rankings'
 import { getUserAccessToken, saveUserAccessToken } from './oauth'
@@ -25,21 +25,17 @@ export default (app: App) =>
 
     .get('/commands', async () => {
       const result = {
-        'defined commands': views.all_views
-          .map(c => {
+        'defined commands': getViewManager()
+          .all_handlers.map(c => {
             return {
-              cid_prefix: `${c.base_signature.config.custom_id_prefix}`,
-              name: `${c.base_signature.config.name}`,
+              cid_prefix: `${c.signature.config.custom_id_prefix}`,
+              name: `${c.signature.config.name}`,
               is_guild_command: c instanceof GuildCommand,
-              experimental: c.is_dev,
+              experimental: c.signature.config.experimental,
             }
           })
           .sort((a, b) => {
-            return (
-              (a.experimental ? 2 : 0) -
-              (b.experimental ? 2 : 0) +
-              a.cid_prefix.localeCompare(b.cid_prefix)
-            )
+            return (a.experimental ? 2 : 0) - (b.experimental ? 2 : 0) + a.cid_prefix.localeCompare(b.cid_prefix)
           }),
         'global discord commands': (await app.discord.getAppCommands()).map(c => c.name),
       }
@@ -50,9 +46,12 @@ export default (app: App) =>
     .get('/commands/:guild_id', async request => {
       app.db.cache.clear()
       const guild_id = request.params.guild_id
-      const guild = await app.db.guilds.get(guild_id)
 
-      const commands = await app.views.getAllCommandSignatures(app, guild)
+      const commands = await app.view_manager.commandSignatures({
+        arg: app,
+        guild_id: guild_id,
+        include_experimental: app.config.features.ExperimentalCommands,
+      })
 
       const commands_data = commands.map(appCommandToJSONBody)
       const query = {

@@ -1,10 +1,10 @@
 import * as D from 'discord-api-types/v10'
 import type { DiscordAPIClient } from '../rest/client'
-import { AnyCommandView, viewIsChatInputCommand } from './types'
+import { AnyCommandSignature, viewIsChatInputCommand } from './types'
 
-export async function overwriteDiscordCommandsWithViews(
+export async function putDiscordCommands(
   bot: DiscordAPIClient,
-  commands: AnyCommandView[],
+  commands: AnyCommandSignature[],
   guild_id?: string,
 ): Promise<void> {
   const commands_data = commands.map(appCommandToJSONBody)
@@ -18,9 +18,7 @@ export async function overwriteDiscordCommandsWithViews(
   }
 }
 
-export function appCommandToJSONBody(
-  view: AnyCommandView,
-): D.RESTPostAPIApplicationGuildCommandsJSONBody {
+export function appCommandToJSONBody(view: AnyCommandSignature): D.RESTPostAPIApplicationGuildCommandsJSONBody {
   if (viewIsChatInputCommand(view) && view.config.description.length > 100) {
     throw new Error(`Description for command ${view.config.custom_id_prefix} > 100 characters`)
   }

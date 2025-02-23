@@ -1,13 +1,13 @@
-import { CommandView, InteractionContext, StateContext } from '@repo/discord'
+import { CommandSignature, InteractionContext, StateContext } from '@repo/discord'
 import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { AppView } from '../../classes/ViewModule'
 import { App } from '../../setup/app'
 import { Messages } from '../../utils'
-import { Colors, dateTimestamp, inviteUrl } from '../../utils/ui/strings'
+import { Colors, commandMention, dateTimestamp, inviteUrl } from '../../utils/ui'
+import { setup_cmd } from '../admin/setup-cmd'
 import { getOrAddGuild } from '../guilds/manage-guilds'
 
-export const help_cmd_signature = new CommandView({
+export const help_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
   custom_id_prefix: 'h',
   name: 'help',
@@ -21,36 +21,35 @@ export const help_cmd_signature = new CommandView({
   },
 })
 
-export default new AppView(help_cmd_signature, app =>
-  help_cmd_signature
-    .onCommand(async ctx => {
-      ctx.state.save.page(overviewPage)
-      return {
-        type: D.InteractionResponseType.ChannelMessageWithSource,
-        data: await overviewPage(app, ctx),
-      }
-    })
-    .onComponent(async ctx => {
-      return {
-        type: ctx.state.is.edit()
-          ? D.InteractionResponseType.UpdateMessage
-          : D.InteractionResponseType.ChannelMessageWithSource,
-        data: await ctx.state.get.page()(app, { ...ctx, state: ctx.state.set.edit(true) }),
-      }
-    }),
-)
+export const help_cmd = help_cmd_sig.set<App>({
+  onCommand: async (ctx, app) => {
+    ctx.state.save.page(overviewPage)
+    return {
+      type: D.InteractionResponseType.ChannelMessageWithSource,
+      data: await overviewPage(app, ctx),
+    }
+  },
+  onComponent: async (ctx, app) => {
+    return {
+      type: ctx.state.is.edit()
+        ? D.InteractionResponseType.UpdateMessage
+        : D.InteractionResponseType.ChannelMessageWithSource,
+      data: await ctx.state.get.page()(app, { ...ctx, state: ctx.state.set.edit(true) }),
+    }
+  },
+})
 
 async function overviewPage(
   app: App,
-  ctx: InteractionContext<typeof help_cmd_signature>,
+  ctx: InteractionContext<typeof help_cmd_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const last_deployed = (await app.db.settings.getOrUpdate()).data.last_updated
 
-  const last_deployed_timestamp = last_deployed ? dateTimestamp(last_deployed) : 'unknown'
+  const lastDeployed = last_deployed ? dateTimestamp(last_deployed) : 'unknown'
 
   const embed: D.APIEmbed = {
     title: '🏅 Leaderboards',
-    description: await Messages.concise_description(app),
+    description: Messages.concise_description + `\n\nType ${await commandMention(app, setup_cmd)} to get started.`,
     fields: [
       {
         name: `Source Code`,
@@ -59,7 +58,7 @@ async function overviewPage(
       },
       {
         name: `Version`,
-        value: `Last updated on ${last_deployed_timestamp}`,
+        value: `Last updated on ${lastDeployed}`,
         inline: true,
       },
     ],
@@ -75,11 +74,9 @@ async function overviewPage(
 
 export async function guidePage(
   app: App,
-  ctx: InteractionContext<typeof help_cmd_signature>,
+  ctx: InteractionContext<typeof help_cmd_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  const guild = ctx.interaction.guild_id
-    ? await getOrAddGuild(app, ctx.interaction.guild_id)
-    : undefined
+  const guild = ctx.interaction.guild_id ? await getOrAddGuild(app, ctx.interaction.guild_id) : undefined
 
   return {
     embeds: [await Messages.guide(app, guild)],
@@ -90,7 +87,7 @@ export async function guidePage(
 
 async function helpComponents(
   app: App,
-  ctx: StateContext<typeof help_cmd_signature>,
+  ctx: StateContext<typeof help_cmd_sig>,
 ): Promise<D.APIActionRowComponent<D.APIMessageActionRowComponent>[]> {
   let components: D.APIButtonComponent[] = []
 

@@ -31,7 +31,5 @@ export function isComponentCtx(ctx: AnyStateContext): ctx is ComponentContext<an
 }
 
 export function isCommandCtx(ctx: StateContext<any>): ctx is CommandContext<any> {
-  return (
-    isInitialInteractionCtx(ctx) && ctx.interaction.type === D.InteractionType.ApplicationCommand
-  )
+  return isInitialInteractionCtx(ctx) && ctx.interaction.type === D.InteractionType.ApplicationCommand
 }

@@ -7,14 +7,14 @@ import {
   PartialPlayer,
   PartialRanking,
   Rating,
-} from '@repo/database/models'
+} from '@repo/db/models'
 import { AnyDeferContext } from '@repo/discord'
-import { UserError } from '../../../errors/UserError'
+import { UserError } from '../../../errors/user-errors'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { updatePlayerRatings } from '../../players/manage-players'
 import { syncMatchSummaryMessages } from '../logging/match-summary-message'
-import { Scorer } from '../scoring/scorers'
+import { getScorerFn } from '../scoring/scorers'
 
 // The match management service. Responsible for updating match outcomes, canceling matches, and reverting matches.
 
@@ -58,9 +58,7 @@ export async function cancelMatch(app: App, match: Match): Promise<void> {
 export async function setMatchWinner(app: App, match: Match, user_id: string) {
   const team_players = await match.players()
 
-  const team_index = team_players.findIndex(team =>
-    team.some(p => p.player.data.user_id === user_id),
-  )
+  const team_index = team_players.findIndex(team => team.some(p => p.player.data.user_id === user_id))
   if (team_index == -1) throw new UserError(`<@${user_id}> isn't participating in this match`)
 
   const outcome = team_players.map((_, i) => (i === team_index ? 1 : 0))
@@ -101,7 +99,7 @@ export async function updateMatchOutcome(
 }
 
 /**
- * Recalculate ratings in the ranking based on all matches after the specified date.
+ * Recalculate ratings in the ranking based on all matches after the specified date, using the ranking's scorer.
  * @param affected_ratings A map of player IDs to their ratings before any of these matches were scored
  *  The running recalculation of player ratings.
  *  This object is updated as matches are processed
@@ -115,13 +113,11 @@ export async function rescoreMatches(
     finished_on_or_after,
     affected_ratings: running_player_ratings = new Map(),
     reset_rating_to_initial,
-    scorer = app.config.defaultScorer,
     ctx,
   }: {
     finished_on_or_after?: Date | null
     affected_ratings?: Readonly<Map<number, Rating>>
     reset_rating_to_initial?: boolean
-    scorer?: Scorer
     ctx?: AnyDeferContext
   } = {},
 ) {
@@ -134,9 +130,7 @@ export async function rescoreMatches(
     finished_at_or_after: finished_on_or_after,
   })
 
-  sentry.debug(
-    `rescoreMatches(${ranking}, on_or_after ${finished_on_or_after}). rescoring ${matches.length} matches`,
-  )
+  sentry.debug(`rescoreMatches(${ranking}, on_or_after ${finished_on_or_after}). rescoring ${matches.length} matches`)
 
   // List of match players that need to be updated. Indicates ratings for each player before each match
   const match_players_update: { match_id: number; update: MatchPlayer }[] = []
@@ -163,13 +157,17 @@ export async function rescoreMatches(
     // Determine whether the match had an effect on any player ratings
     if (match.match.data.status !== MatchStatus.Finished || !match.match.data.outcome) continue
 
+    // Get the scorer for this ranking
+    const scorer = getScorerFn(ranking.data.rating_settings.scoring_method)
+
     // Recalculate the player ratings
-    const new_ratings = scorer(
-      match.match.data.outcome,
+    const new_ratings = scorer({
+      outcome: match.match.data.outcome,
       match_players,
-      ranking.data.initial_rating,
-      match.match.data.metadata?.best_of,
-    )
+      initial_rating: ranking.data.initial_rating,
+      best_of: match.match.data.metadata?.best_of,
+      rating_settings: ranking.data.rating_settings,
+    })
 
     // Update recalculated_player_ratings
     new_ratings.forEach((team, i) =>
@@ -200,8 +198,7 @@ export async function rescoreMatches(
 export function validateMatchData(o: Partial<{ players: MatchPlayer[][] } & MatchInsert>): void {
   if (o.outcome) {
     if (o.players) {
-      if (o.outcome.length !== o.players.length)
-        throw new Error(`Match outcome and players length must match`)
+      if (o.outcome.length !== o.players.length) throw new Error(`Match outcome and players length must match`)
     }
   }
 

@@ -3,7 +3,7 @@ import { cache } from '@repo/utils/cache'
 import { Breadcrumb, BreadcrumbHint, EventHint } from '@sentry/types'
 import { Toucan } from 'toucan-js'
 import { Env } from '../Env'
-import { RequestTimeoutError } from './errors'
+import { RequestTimeoutError } from '../errors/errors'
 
 export class Logger extends Toucan {
   private time_received = Date.now()
@@ -52,10 +52,7 @@ export class Logger extends Toucan {
   }
 
   public offload(
-    callback: (ctx: {
-      setException: (e: unknown) => void
-      setRequestName: (name: string) => void
-    }) => Promise<void>,
+    callback: (ctx: { setException: (e: unknown) => void; setRequestName: (name: string) => void }) => Promise<void>,
     onTimeout?: (e: RequestTimeoutError) => Promise<void>,
     name?: string,
   ): void {
@@ -76,10 +73,7 @@ export class Logger extends Toucan {
     const timeout_promise = new Promise<void>(() => {
       timeout = setTimeout(() => {
         const e = new RequestTimeoutError(request_name, this.timeout_ms)
-        super.captureMessage(
-          `${request_name} taking longer than ${this.timeout_ms / 1000}s`,
-          'warning',
-        )
+        super.captureMessage(`${request_name} taking longer than ${this.timeout_ms / 1000}s`, 'warning')
         onTimeout?.(e)
       }, this.timeout_ms)
     })

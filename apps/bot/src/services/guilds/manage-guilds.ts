@@ -1,8 +1,8 @@
-import { Guild } from '@repo/database/models'
+import { Guild } from '@repo/db/models'
 import { GuildChannelData, RoleData } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../setup/app'
-import { Colors } from '../../utils/ui/strings'
+import { Colors } from '../../utils/ui'
 
 export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> {
   let app_guild = await app.db.guilds.fetch(guild_id)

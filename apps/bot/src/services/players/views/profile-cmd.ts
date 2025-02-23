@@ -1,27 +1,24 @@
-import { CommandView, getOptions } from '@repo/discord'
+import { CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { GuildCommand } from '../../../classes/ViewModule'
-import {
-  guildRankingsOption,
-  withOptionalSelectedRanking,
-} from '../../../utils/view-helpers/ranking-option'
-import { profileOverviewPage, profile_page_config } from './profile-page'
+import { App } from '../../../setup/app'
+import { guildRankingsOption, withOptionalSelectedRanking } from '../../../utils/view-helpers/ranking-option'
+import { profileOverviewPage, profile_view_sig } from './profile-view'
 
 const optionnames = {
   user: 'user',
   ranking: 'in-ranking',
 }
 
-export const profile_cmd_signature = new CommandView({
+export const profile_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
   name: 'profile',
   description: `View a player's stats`,
   guild_only: true,
 })
 
-export default new GuildCommand(
-  profile_cmd_signature,
-  async (app, guild) => {
+export const profile_cmd = profile_cmd_sig.set<App>({
+  guildSignature: async (app, guild_id) => {
+    const guild = app.db.guilds.get(guild_id)
     const options: D.APIApplicationCommandOption[] = [
       {
         name: optionnames.user,
@@ -30,8 +27,8 @@ export default new GuildCommand(
       },
     ]
 
-    return new CommandView({
-      ...profile_cmd_signature.config,
+    return new CommandSignature({
+      ...profile_cmd_sig.config,
       options: options.concat(
         await guildRankingsOption(app, guild, optionnames.ranking, {
           optional: true,
@@ -39,32 +36,27 @@ export default new GuildCommand(
       ),
     })
   },
-  app =>
-    profile_cmd_signature.onCommand(async ctx => {
-      const input = getOptions(ctx.interaction, {
-        user: { type: D.ApplicationCommandOptionType.User },
-        ranking: { type: D.ApplicationCommandOptionType.Number },
-      })
+  onCommand: async (ctx, app) => {
+    const input = getOptions(ctx.interaction, {
+      user: { type: D.ApplicationCommandOptionType.User },
+      ranking: { type: D.ApplicationCommandOptionType.Number },
+    })
 
-      return withOptionalSelectedRanking(app, ctx, input.ranking, {}, async ranking => {
-        const target_user = input.user
+    return withOptionalSelectedRanking(app, ctx, input.ranking, {}, async ranking => {
+      const target_user = input.user
 
-        return ctx.defer(
-          {
-            type: D.InteractionResponseType.DeferredChannelMessageWithSource,
-          },
-          async ctx => {
-            return void ctx.edit(
-              await profileOverviewPage(app, {
-                ...ctx,
-                state: profile_page_config.newState({
-                  user_id: target_user?.id ?? ctx.interaction.member.user.id,
-                  selected_ranking_id: ranking?.data.id,
-                }),
+      return ctx.defer(async ctx => {
+          return void ctx.edit(
+            await profileOverviewPage(app, {
+              ...ctx,
+              state: profile_view_sig.newState({
+                user_id: target_user?.id ?? ctx.interaction.member.user.id,
+                selected_ranking_id: ranking?.data.id,
               }),
-            )
-          },
-        )
-      })
-    }),
-)
+            }),
+          )
+        },
+      )
+    })
+  },
+})

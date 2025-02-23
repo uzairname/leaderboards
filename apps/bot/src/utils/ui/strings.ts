@@ -1,6 +1,5 @@
-import type { AnyChatInputCommand } from '@repo/discord'
+import type { AnyCommandHandler } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { AnyGuildCommand, AppView } from '../../classes/ViewModule'
 import type { App } from '../../setup/app'
 
 export const emojis = {
@@ -17,6 +16,11 @@ export class Colors {
   static EmbedBackground = 0x2b2d31
 }
 
+export function randomColor() {
+  // Returns a random color with value greater than 0.5 and saturation greater than 0.5
+  return Math.floor(Math.random() * 0xffffff)
+}
+
 export function inviteAndRoleConnectionsUrl(app: App): string {
   return app.config.env.BASE_URL + `/oauth` + app.config.OauthRoutes.BotAndRoleConnections
 }
@@ -25,21 +29,17 @@ export function inviteUrl(app: App): string {
   return app.discord.botInviteURL(app.config.RequiredBotPermissions).toString()
 }
 
-export async function commandMention<T extends AppView<AnyChatInputCommand>>(
+export async function commandMention(
   app: App,
-  command: T,
-  guild_id?: T extends AnyGuildCommand ? string : undefined,
+  command: AnyCommandHandler,
+  guild_id?: string,
   subcommand_name?: string,
-) {
-  const name = command.base_signature.config.name
+): Promise<string> {
+  const name = command.signature.name
   const subcmd_str = subcommand_name ? ` ${subcommand_name}` : ''
-  const type = command.base_signature.config.type
-
-  const commands = await app.db.withCache(
-    async (arg: {guild_id?: string}) => app.discord.getAppCommands(arg.guild_id),
-    { guild_id }, `commands`,
-  )
-
+  const type = command.signature.config.type
+  if (guild_id && !command.guildSignature) guild_id = undefined
+  const commands = await app.discord.getAppCommands(guild_id)
   const discord_command = commands.find(command => command.name === name && command.type === type)
   return `</${name}${subcmd_str}:${discord_command?.id || '0'}>`
 }
@@ -81,12 +81,7 @@ export function messageLink(guild_id: string, channel_id: string, message_id: st
 /**
  * Returns a message link if the message exists, otherwise null
  */
-export async function existingMessageLink(
-  app: App,
-  guild_id: string,
-  channel_id: string,
-  message_id: string,
-) {
+export async function existingMessageLink(app: App, guild_id: string, channel_id: string, message_id: string) {
   try {
     const message = await app.discord.getMessage(channel_id, message_id)
     return messageLink(guild_id, message.channel_id, message_id)
@@ -108,10 +103,7 @@ export async function existingChannelMention(app: App, channel_id?: string | nul
 export function memberAvatarUrl(guild_id: string, member: D.APIGuildMember): string {
   if (member.avatar) {
     const format = member.avatar.startsWith('a_') ? D.ImageFormat.GIF : D.ImageFormat.PNG
-    return (
-      D.RouteBases.cdn +
-      D.CDNRoutes.guildMemberAvatar(guild_id, member.user.id, member.avatar, format)
-    )
+    return D.RouteBases.cdn + D.CDNRoutes.guildMemberAvatar(guild_id, member.user.id, member.avatar, format)
   } else {
     return userAvatarUrl(member.user)
   }

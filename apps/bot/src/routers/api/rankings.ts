@@ -1,9 +1,6 @@
-import { MatchSettingsSchema, Ranking } from '@repo/database/models'
+import { MatchSettingsSchema, Ranking } from '@repo/db/models'
 import { json, Router } from 'itty-router'
-import {
-  leaderboardMessage,
-  syncRankingLbMessages,
-} from '../../services/leaderboard/leaderboard-message'
+import { leaderboardMessage, syncRankingLbMessages } from '../../services/leaderboard/leaderboard-message'
 import { rescoreMatches } from '../../services/matches/management/manage-matches'
 import { App } from '../../setup/app'
 

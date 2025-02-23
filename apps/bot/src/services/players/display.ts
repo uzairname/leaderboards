@@ -1,7 +1,7 @@
-import { Match, MatchStatus, PartialRanking, Rating } from '@repo/database/models'
+import { Match, MatchStatus, PartialRanking, Rating } from '@repo/db/models'
 import { nonNullable } from '@repo/utils'
 import { App } from '../../setup/app'
-import { Scorer } from '../matches/scoring/scorers'
+import { getScorerFn } from '../matches/scoring/scorers'
 
 export const calcDisplayRating = (app: App, initial_rating: Rating) => (rating: Rating) => {
   return {
@@ -9,8 +9,7 @@ export const calcDisplayRating = (app: App, initial_rating: Rating) => (rating: 
       0,
       Math.round(
         // rating.mu
-        (rating.mu + app.config.DisplaySdOffset * rating.rd) *
-          (app.config.DisplayMeanRating / initial_rating.mu),
+        (rating.mu + app.config.DisplaySdOffset * rating.rd) * (app.config.DisplayMeanRating / initial_rating.mu),
       ),
     ),
     is_provisional: rating.rd > initial_rating.rd * app.config.ProvisionalRdThreshold,
@@ -46,7 +45,6 @@ export async function getOrderedLeaderboardPlayers(
 export async function getMatchPlayersDisplayStats(
   app: App,
   match: Match,
-  scorer: Scorer = app.config.defaultScorer,
 ): Promise<
   {
     user_id: string
@@ -59,14 +57,17 @@ export async function getMatchPlayersDisplayStats(
   const initial_rating = ranking.data.initial_rating
   const display = calcDisplayRating(app, initial_rating)
 
+  const scorer = getScorerFn(ranking.data.rating_settings.scoring_method)
+
   const new_ratings =
     match.data.status === MatchStatus.Finished
-      ? scorer(
-          nonNullable(match.data.outcome, 'match.outcome'),
-          team_players,
-          ranking.data.initial_rating,
-          match.data.metadata?.best_of,
-        )
+      ? scorer({
+          outcome: nonNullable(match.data.outcome, 'match.outcome'),
+          match_players: team_players,
+          initial_rating: ranking.data.initial_rating,
+          best_of: match.data.metadata?.best_of,
+          rating_settings: ranking.data.rating_settings,
+        })
       : undefined
 
   const result = team_players.map((team, i) =>
