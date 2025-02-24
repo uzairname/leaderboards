@@ -1,4 +1,4 @@
-import { CommandSignature, InteractionContext } from '@repo/discord'
+import { AnyCommandSignature, AnyViewSignature, CommandSignature, InteractionContext } from '@repo/discord'
 import { field } from '@repo/utils'
 import { Colors } from 'apps/bot/src/utils/ui'
 import * as D from 'discord-api-types/v10'
@@ -31,6 +31,8 @@ export const setup_cmd_sig = new CommandSignature({
     admin_role_method: field.Enum(admin_role_method_options),
   },
 })
+
+let x: AnyViewSignature = setup_cmd_sig
 
 export const setup_cmd = setup_cmd_sig.set<App>({
   onCommand: async (ctx, app) => {

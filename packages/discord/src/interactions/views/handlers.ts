@@ -11,7 +11,7 @@ import {
 } from '../..'
 import type {
   AnyCommandSignature,
-  AnySignature,
+  AnyViewSignature,
   AppCommandInteraction,
   AutocompleteContext,
   ChatInteraction,
@@ -27,7 +27,7 @@ import type {
   ViewAutocompleteCallback,
 } from '../types'
 
-export interface Handler<Sig extends AnySignature, Arg extends unknown> {
+export interface Handler<Sig extends AnyViewSignature, Arg extends unknown> {
   signature: Sig
   onComponent?: ComponentCallback<Sig, Arg>
 }
@@ -51,7 +51,7 @@ export interface CommandHandler<Sig extends AnyCommandSignature, Arg extends unk
 /**
  * Ensures that if the signature is guild_only, the interaction is a guild interaction
  */
-export function validateInteraction<Sig extends AnySignature, I extends ChatInteraction>(
+export function validateInteraction<Sig extends AnyViewSignature, I extends ChatInteraction>(
   signature: Sig,
   interaction: I,
 ) {
@@ -71,7 +71,7 @@ export async function respondToComponent<Arg extends unknown>({
   logger,
 }: {
   arg: Arg
-  handler: Handler<AnySignature, Arg>
+  handler: Handler<AnyViewSignature, Arg>
   interaction: ComponentInteraction
   state: ViewState<StringDataSchema>
   discord: DiscordAPIClient

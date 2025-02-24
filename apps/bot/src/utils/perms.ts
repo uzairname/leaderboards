@@ -1,4 +1,4 @@
-import { AnySignature, checkGuildInteraction, InteractionContext } from '@repo/discord'
+import { AnyViewSignature, checkGuildInteraction, InteractionContext } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../errors/user-errors'
 import { getOrAddGuild } from '../services/guilds/manage-guilds'
@@ -17,7 +17,7 @@ export async function ensureAdminPerms(app: App, ctx: InteractionContext<any>): 
   }
 }
 
-async function determineAdminPerms(app: App, ctx: InteractionContext<AnySignature>) {
+async function determineAdminPerms(app: App, ctx: InteractionContext<AnyViewSignature>) {
   const interaction = checkGuildInteraction(ctx.interaction)
 
   const guild = await getOrAddGuild(app, interaction.guild_id)

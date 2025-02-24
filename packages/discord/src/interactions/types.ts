@@ -3,6 +3,7 @@ import { MessageData } from '../rest/objects'
 import { CommandHandler, Handler } from './views'
 import { CommandSignature, ViewSignature } from './views/signature'
 import type { ViewState } from './views/state'
+import { AnyStringDataSchema, StringDataSchema } from '../../../utils/src/StringData'
 
 export type AppCommandInteraction<CommandType extends D.ApplicationCommandType> =
   CommandType extends D.ApplicationCommandType.ChatInput
@@ -36,33 +37,32 @@ export type InteractionResponse<InteractionType extends ChatInteraction> =
       ? ChatInteractionResponse
       : never
 
-export type AnySignature = ViewSignature<any, any> | CommandSignature<any, any, any>
+export type AnyViewSignature = ViewSignature<AnyStringDataSchema, boolean> | AnyCommandSignature
 
 export type AnyAppCommandType = D.ApplicationCommandType.ChatInput | D.ApplicationCommandType.User | D.ApplicationCommandType.Message
 
 export type AnyCommandSignature = CommandSignature<
-  any,
+  AnyStringDataSchema,
   AnyAppCommandType,
-  any
+  boolean
 >
 
+export type AnyChatInputCommandSignature = CommandSignature<AnyStringDataSchema, D.ApplicationCommandType.ChatInput, any>
 
-export type AnyChatInputCommandSignature = CommandSignature<any, D.ApplicationCommandType.ChatInput, any>
-
-export type AnyHandler = Handler<any, any>
+export type AnyHandler = Handler<AnyViewSignature, any>
 
 export type AnyCommandHandler = CommandHandler<AnyCommandSignature, any>
 
-export function viewIsCommand(view: AnySignature): view is AnyCommandSignature {
+export function viewIsCommand(view: AnyViewSignature): view is AnyCommandSignature {
   return view instanceof CommandSignature
 }
 
-export function viewIsChatInputCommand(view: AnySignature): view is AnyChatInputCommandSignature {
+export function viewIsChatInputCommand(view: AnyViewSignature): view is AnyChatInputCommandSignature {
   return viewIsCommand(view) && view.config.type === D.ApplicationCommandType.ChatInput
 }
 
 export function handlerIsCommand<Arg extends unknown>(
-  handler: Handler<AnySignature, Arg>,
+  handler: Handler<AnyViewSignature, Arg>,
 ): handler is CommandHandler<AnyCommandSignature, Arg> {
   // Assume that if the signature's config has a type property, it is a command
   return handler.signature.config.hasOwnProperty('type')
@@ -88,19 +88,19 @@ export interface AutocompleteContext {
 }
 
 // Any context that can have a custom id
-export interface StateContext<S extends AnySignature> {
+export interface StateContext<S extends AnyViewSignature> {
   state: ViewState<S['state_schema']>
 }
 
 // Any interaction except ping and autocomplete
-export interface InteractionContext<S extends AnySignature, I extends ChatInteraction = ChatInteraction>
+export interface InteractionContext<S extends AnyViewSignature, I extends ChatInteraction = ChatInteraction>
   extends StateContext<S> {
   interaction: S['guild_only'] extends true ? D.APIGuildInteractionWrapper<I> : I
   send: (data: D.RESTPostAPIChannelMessageJSONBody | MessageData) => Promise<D.RESTPostAPIChannelMessageResult>
 }
 
 // Defer
-export interface DeferContext<S extends AnySignature, I extends ChatInteraction = ChatInteraction>
+export interface DeferContext<S extends AnyViewSignature, I extends ChatInteraction = ChatInteraction>
   extends InteractionContext<S, I> {
   followup: (data: D.APIInteractionResponseCallbackData) => Promise<D.RESTPostAPIWebhookWithTokenWaitResult>
   edit: (data: D.APIInteractionResponseCallbackData) => Promise<void>
@@ -108,7 +108,7 @@ export interface DeferContext<S extends AnySignature, I extends ChatInteraction 
 }
 
 // Any interaction that hasn't been deferred
-export interface InitialInteractionContext<S extends AnySignature, I extends ChatInteraction = ChatInteraction>
+export interface InitialInteractionContext<S extends AnyViewSignature, I extends ChatInteraction = ChatInteraction>
   extends InteractionContext<S, I> {
   defer: (callback: DeferCallback<S, I>, initial_response?: InteractionResponse<I>) => InteractionResponse<I>
 }
@@ -118,21 +118,21 @@ export interface CommandContext<S extends AnyCommandSignature>
   extends InitialInteractionContext<S, AppCommandInteraction<S['config']['type']>> {}
 
 // Component
-export interface ComponentContext<S extends AnySignature> extends InitialInteractionContext<S, ComponentInteraction> {}
+export interface ComponentContext<S extends AnyViewSignature> extends InitialInteractionContext<S, ComponentInteraction> {}
 
 // Any context
 
-export type AnyStateContext = StateContext<AnySignature>
+export type AnyStateContext = StateContext<AnyViewSignature>
 
-export type AnyInteractionContext = InteractionContext<AnySignature>
+export type AnyInteractionContext = InteractionContext<AnyViewSignature>
 
 export type AnyGuildInteractionContext = InteractionContext<ViewSignature<any, true>>
 
-export type AnyComponentContext = ComponentContext<AnySignature>
+export type AnyComponentContext = ComponentContext<AnyViewSignature>
 
 export type AnyCommandContext = CommandContext<AnyCommandSignature>
 
-export type AnyDeferContext = DeferContext<AnySignature>
+export type AnyDeferContext = DeferContext<AnyViewSignature>
 
 export type AnyContext =
   | AnyStateContext
@@ -162,13 +162,13 @@ export type CommandCallback<View extends CommandSignature<any, AnyAppCommandType
 // > = (arg: Arg, guild_id: string) => Promise<CommandInteractionResponse>
 
 // Component
-export type ComponentCallback<S extends AnySignature, Arg extends unknown> = (
+export type ComponentCallback<S extends AnyViewSignature, Arg extends unknown> = (
   ctx: ComponentContext<S>,
   arg: Arg,
 ) => Promise<ChatInteractionResponse>
 
 // Defer
-export type DeferCallback<S extends AnySignature, I extends ChatInteraction> = (
+export type DeferCallback<S extends AnyViewSignature, I extends ChatInteraction> = (
   ctx: DeferContext<S, I>,
 ) => Promise<void>
 
@@ -189,7 +189,7 @@ export type FindViewCallback = (
     type: D.ApplicationCommandType
   },
   custom_id_prefix?: string,
-) => AnySignature | null
+) => AnyViewSignature | null
 
 export type FindHandlerCallback = (
   command?: {

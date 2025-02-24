@@ -1,7 +1,7 @@
 import { LZString, StringData, StringDataSchema } from '@repo/utils'
 import { DiscordLogger } from '../../logging/discord-logger'
 import { InteractionErrors } from '../errors'
-import { AnySignature } from '../types'
+import { AnyViewSignature } from '../types'
 import { ViewSignature } from './signature'
 
 export class ViewState<T extends StringDataSchema> extends StringData<T> {
@@ -41,9 +41,9 @@ export abstract class ViewStateFactory<T extends StringDataSchema> extends ViewS
 
   static fromCustomId(
     custom_id: string,
-    prefixToView: (custom_id_prefix: string) => AnySignature,
+    prefixToView: (custom_id_prefix: string) => AnyViewSignature,
     logger?: DiscordLogger,
-  ): { view: AnySignature; state: ViewState<StringDataSchema> } {
+  ): { view: AnyViewSignature; state: ViewState<StringDataSchema> } {
     const [prefix, encoded_data] = this.splitCustomId(custom_id)
     const view = prefixToView(prefix)
     const blank_state = this.fromSignature(view)
@@ -52,7 +52,7 @@ export abstract class ViewStateFactory<T extends StringDataSchema> extends ViewS
     return { view, state }
   }
 
-  static getState(custom_id: string, signature: AnySignature, logger?: DiscordLogger): ViewState<StringDataSchema> {
+  static getState(custom_id: string, signature: AnyViewSignature, logger?: DiscordLogger): ViewState<StringDataSchema> {
     const [prefix, encoded_data] = this.splitCustomId(custom_id)
     const blank_state = this.fromSignature(signature)
 

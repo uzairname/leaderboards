@@ -1,9 +1,9 @@
 import { PartialGuild } from '@repo/db/models'
-import { AnyChatInputCommandSignature, AnyCommandSignature, AnySignature, FindViewCallback, viewIsCommand } from '@repo/discord'
+import { AnyChatInputCommandSignature, AnyCommandSignature, AnyViewSignature, FindViewCallback, viewIsCommand } from '@repo/discord'
 import { sequential } from '@repo/utils'
 import type { App } from '../setup/app'
 
-export class AppView<TView extends AnySignature> {
+export class AppView<TView extends AnyViewSignature> {
   public is_dev: boolean = false
 
   constructor(
@@ -29,7 +29,7 @@ export class GuildCommand<TView extends AnyChatInputCommandSignature> extends Ap
   }
 }
 
-export type AnyAppView = AppView<AnySignature>
+export type AnyAppView = AppView<AnyViewSignature>
 export type AnyGuildCommand = GuildCommand<AnyChatInputCommandSignature>
 
 export class ViewModule {

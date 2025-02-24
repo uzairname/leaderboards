@@ -3,7 +3,7 @@ import * as D from 'discord-api-types/v10'
 import { ViewState, ViewStateFactory } from '.'
 import { InteractionErrors } from '../errors'
 import { CommandHandler, Handler } from './handlers'
-import { AnyAppCommandType } from '../types'
+import { AnyAppCommandType, AnyCommandSignature } from '../types'
 
 export class ViewSignature<TSchema extends StringDataSchema = {}, Guild extends boolean = true> {
   name: string
@@ -39,10 +39,11 @@ export class ViewSignature<TSchema extends StringDataSchema = {}, Guild extends 
   }
 }
 
+
 export type CommandSignatureConfig<
   TSchema extends StringDataSchema,
   CommandType extends AnyAppCommandType,
-  Guild extends boolean = true,
+  Guild extends boolean,
 > = (CommandType extends D.ApplicationCommandType.ChatInput
   ? D.RESTPostAPIChatInputApplicationCommandsJSONBody
   : D.RESTPostAPIContextMenuApplicationCommandsJSONBody) & {
@@ -58,18 +59,6 @@ export class CommandSignature<
   CommandType extends AnyAppCommandType,
   Guild extends boolean = true,
 > extends ViewSignature<TSchema, Guild> {
-  // constructor(
-  //   public config: (CommandType extends D.ApplicationCommandType.ChatInput
-  //     ? D.RESTPostAPIChatInputApplicationCommandsJSONBody
-  //     : D.RESTPostAPIContextMenuApplicationCommandsJSONBody) & {
-  //     type: CommandType
-  //     state_schema?: TSchema
-  //     custom_id_prefix?: string
-  //     guild_only?: Guild
-  //     experimental?: boolean
-  //   },
-  // ) {
-
   constructor(public readonly config: CommandSignatureConfig<TSchema, CommandType, Guild>) {
     super(config)
   }
@@ -81,27 +70,4 @@ export class CommandSignature<
     }
   }
 
-}
-
-export type PageConfig<TSchema extends StringDataSchema, Guild extends boolean> = {
-  name?: string
-  state_schema?: TSchema
-  custom_id_prefix?: string
-  guild_only?: Guild
-}
-
-export class PageSignature<TSchema extends StringDataSchema, Guild extends boolean = true> extends ViewSignature<
-  TSchema,
-  Guild
-> {
-  constructor(public readonly config: PageConfig<TSchema, Guild>) {
-    super(config)
-  }
-
-  set<Arg>(handlers: Omit<Handler<this, Arg>, 'signature'>): Handler<this, Arg> {
-    return {
-      ...handlers,
-      signature: this,
-    }
-  }
 }

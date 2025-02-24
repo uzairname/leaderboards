@@ -8,7 +8,7 @@ import { InteractionErrors } from '../errors'
 import {
   AnyCommandSignature,
   type AnyHandler,
-  type AnySignature,
+  type AnyViewSignature,
   handlerIsChatInputCommand,
   handlerIsCommand,
   type InteractionErrorCallback,
@@ -20,7 +20,7 @@ import { ViewState, ViewStateFactory } from './state'
 import { verify } from './verify'
 
 export class ViewManager<Arg extends unknown = undefined> {
-  public all_handlers: Handler<AnySignature, Arg>[]
+  public all_handlers: Handler<AnyViewSignature, Arg>[]
 
   logger?: DiscordLogger
 
@@ -33,7 +33,7 @@ export class ViewManager<Arg extends unknown = undefined> {
     if (duplicates.length > 0) throw new Error(`Duplicate custom_id_prefixes: ${duplicates} ${duplicates.join(', ')}.`)
   }
 
-  findHandler(command?: { name: string; type: number }, custom_id_prefix?: string): Handler<AnySignature, Arg> {
+  findHandler(command?: { name: string; type: number }, custom_id_prefix?: string): Handler<AnyViewSignature, Arg> {
     this.logger?.log({ message: 'Finding handler', data: { command, custom_id_prefix } })
 
     const matching_handlers = this.all_handlers.filter(h => {

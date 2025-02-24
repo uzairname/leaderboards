@@ -1,6 +1,7 @@
-export type StringDataSchema = {
-  [k: string]: Field<unknown>
+export interface StringDataSchema {
+  [k: string]: Field<any>
 }
+export type AnyStringDataSchema = any
 
 export namespace field {
   export function Enum<T extends { [key: string]: unknown }>(options: T) {

@@ -1,6 +1,7 @@
 import type { AnyCommandHandler } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import type { App } from '../../setup/app'
+import { setup_cmd } from '../../setup/views'
 
 export const emojis = {
   green_triangle: `<:green_triangle:1198069662353735740>`,
@@ -28,6 +29,8 @@ export function inviteAndRoleConnectionsUrl(app: App): string {
 export function inviteUrl(app: App): string {
   return app.discord.botInviteURL(app.config.RequiredBotPermissions).toString()
 }
+
+let x: AnyCommandHandler = setup_cmd
 
 export async function commandMention(
   app: App,

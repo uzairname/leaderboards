@@ -1,11 +1,12 @@
 import {
   AnyGuildInteractionContext,
+  AnyViewSignature,
   ChatInteractionResponse,
   ComponentContext,
   getModalSubmitEntries,
   ViewSignature,
 } from '@repo/discord'
-import { field, intOrUndefined, nonNullable, strOrUndefined, unflatten } from '@repo/utils'
+import { field, intOrUndefined, nonNullable, StringDataSchema, strOrUndefined, unflatten } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../setup/app'
 import { Messages } from '../../../utils'
@@ -32,6 +33,29 @@ export const rankings_view_sig = new ViewSignature({
   },
   guild_only: true,
 })
+
+let x: StringDataSchema = {
+  callback: field.Choice({
+    createRankingModal,
+    createRankingModalSubmit: onCreateRankingModalSubmit,
+  }),
+  modal_input: field.Object({
+    name: field.String(),
+    teams_per_match: field.Int(),
+    players_per_team: field.Int(),
+    best_of: field.Int(),
+  }),
+}
+
+export const sig = new ViewSignature({
+  custom_id_prefix: 's',
+  name: 'settings page',
+  guild_only: true,
+  state_schema: {
+    a: field.String()
+  }
+})
+
 
 export const rankings_view = rankings_view_sig.set<App>({
   onComponent: async (ctx, app) => {

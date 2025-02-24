@@ -1,6 +1,6 @@
 import {
   AnyGuildInteractionContext,
-  AnySignature,
+  AnyViewSignature,
   ChatInteractionResponse,
   ComponentContext,
   InteractionContext,
@@ -42,7 +42,7 @@ export async function renderSelectChannelPage(
   app: App,
   ctx: AnyGuildInteractionContext,
   data: ViewState<typeof select_channel_view_sig.state_schema>['data'],
-  back_view: AnySignature,
+  back_view: AnyViewSignature,
   back_state: typeof back_view & { channel_id: StringField },
   message?: string,
 ): Promise<D.APIInteractionResponseCallbackData> {
