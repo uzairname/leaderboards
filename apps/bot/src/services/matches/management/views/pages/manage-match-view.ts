@@ -159,28 +159,27 @@ async function onMatchOutcomeModalSubmit(
   ctx: ComponentContext<typeof manage_match_page_view>,
 ): Promise<ChatInteractionResponse> {
   return ctx.defer(async ctx => {
-      const modal_inputs = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
+    const modal_inputs = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
 
-      // validate and save the selected outcome from the modal submission
-      const match = await app.db.matches.fetch(ctx.state.get.match_id())
-      const ranking = await match.ranking.fetch()
-      const new_outcome = match.data.outcome ?? new Array<number>(ranking.data.teams_per_match).fill(0)
+    // validate and save the selected outcome from the modal submission
+    const match = await app.db.matches.fetch(ctx.state.get.match_id())
+    const ranking = await match.ranking.fetch()
+    const new_outcome = match.data.outcome ?? new Array<number>(ranking.data.teams_per_match).fill(0)
 
-      for (const [k, v] of Object.entries(modal_inputs)) {
-        const team_num = parseInt(k)
-        const score = intOrUndefined(v?.value)
-        if (score === undefined) {
-          throw new UserError(`Enter a number for each team's relative score`)
-        }
-        new_outcome[team_num] = score
+    for (const [k, v] of Object.entries(modal_inputs)) {
+      const team_num = parseInt(k)
+      const score = intOrUndefined(v?.value)
+      if (score === undefined) {
+        throw new UserError(`Enter a number for each team's relative score`)
       }
+      new_outcome[team_num] = score
+    }
 
-      // update the match
-      await updateMatchOutcome(app, match, new_outcome)
+    // update the match
+    await updateMatchOutcome(app, match, new_outcome)
 
-      return void ctx.edit(await manageMatchPageData(app, ctx))
-    },
-  )
+    return void ctx.edit(await manageMatchPageData(app, ctx))
+  })
 }
 
 async function onRevert(
@@ -226,16 +225,15 @@ async function onRevertConfirm(
 ): Promise<ChatInteractionResponse> {
   const match = await app.db.matches.fetch(ctx.state.get.match_id())
   return ctx.defer(async ctx => {
-      await cancelMatch(app, match)
-      return void ctx.edit({
-        embeds: [
-          {
-            title: 'Match Reverted',
-            description: 'The match has been reverted',
-            color: Colors.EmbedBackground,
-          },
-        ],
-      })
-    },
-  )
+    await cancelMatch(app, match)
+    return void ctx.edit({
+      embeds: [
+        {
+          title: 'Match Reverted',
+          description: 'The match has been reverted',
+          color: Colors.EmbedBackground,
+        },
+      ],
+    })
+  })
 }

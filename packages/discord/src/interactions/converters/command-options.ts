@@ -1,6 +1,6 @@
 import { nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { isSubCommandOption } from '../checks/options'
+import { isSubCommandOption } from '../checks/command-options'
 import { InteractionError, InteractionErrors } from '../errors'
 
 export function getSubcommandOption(
@@ -13,27 +13,27 @@ export function getSubcommandOption(
   return o
 }
 
-type OptionValueType<T extends D.ApplicationCommandOptionType> = T extends D.ApplicationCommandOptionType.String
-  ? string
-  : T extends D.ApplicationCommandOptionType.Integer | D.ApplicationCommandOptionType.Number
-    ? number
-    : T extends D.ApplicationCommandOptionType.Boolean
-      ? boolean
-      : T extends D.ApplicationCommandOptionType.User
-        ? D.APIUser
-        : T extends D.ApplicationCommandOptionType.Channel
-          ? D.APIInteractionDataResolvedChannel
-          : T extends D.ApplicationCommandOptionType.Role
-            ? D.APIRole
-            : never
+// prettier-ignore
+type OptionValueType<T extends D.ApplicationCommandOptionType> = 
+    T extends D.ApplicationCommandOptionType.String ? string :
+    T extends D.ApplicationCommandOptionType.Integer | D.ApplicationCommandOptionType.Number ? number :
+    T extends D.ApplicationCommandOptionType.Boolean ? boolean :
+    T extends D.ApplicationCommandOptionType.User ? D.APIUser :
+    T extends D.ApplicationCommandOptionType.Channel ? D.APIInteractionDataResolvedChannel :
+    T extends D.ApplicationCommandOptionType.Role ? D.APIRole :
+    never
 
+/**
+ * Parse options from a command interaction based on a schema of option types.
+ * @returns an object with the same keys as the schema, but with values of the corresponding type.
+ */
 export function getOptions<
   T extends {
     [name: string]: { type: D.ApplicationCommandOptionType; required?: boolean; name?: string }
   },
 >(
   interaction: D.APIChatInputApplicationCommandInteraction,
-  options_config: T,
+  schema: T,
 ): {
   [key in keyof T]: T[key]['required'] extends true
     ? OptionValueType<T[key]['type']>
@@ -41,7 +41,7 @@ export function getOptions<
 } {
   const result = {} as any
 
-  for (const [key, { type, required, name }] of Object.entries(options_config)) {
+  for (const [key, { type, required, name }] of Object.entries(schema)) {
     result[key] = getPossiblyNestedBasicOptionValue(interaction, name ?? key, type, required)
   }
 
@@ -62,7 +62,7 @@ export function getBasicOptionValue<T extends D.ApplicationCommandOptionType, Re
   return result as OptionValueType<T>
 }
 
-export function getPossiblyNestedBasicOptionValue<T extends D.ApplicationCommandOptionType, Required extends boolean>(
+function getPossiblyNestedBasicOptionValue<T extends D.ApplicationCommandOptionType, Required extends boolean>(
   interaction: D.APIChatInputApplicationCommandInteraction,
   option_name: string,
   type: T,

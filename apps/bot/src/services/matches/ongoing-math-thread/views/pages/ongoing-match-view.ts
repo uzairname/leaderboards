@@ -1,5 +1,5 @@
 import { MatchStatus, Vote } from '@repo/db/models'
-import { DeferContext, MessageData, PageSignature, ViewState } from '@repo/discord'
+import { DeferredComponentContext, MessageData, PageSignature, ViewState } from '@repo/discord'
 import { field, maxIndex, nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../../../../errors/user-errors'
@@ -27,8 +27,7 @@ export const ongoing_match_view = ongoing_match_view_sig.set<App>({
   onComponent: async (ctx, app) => {
     const handler = ctx.state.get.handler()
     if (!handler) throw new Error('no callback')
-    return ctx.defer(async ctx => handler(app, ctx),
-    )
+    return ctx.defer(async ctx => handler(app, ctx))
   },
 })
 
@@ -110,7 +109,7 @@ export async function ongoingMatchPageData(
   })
 }
 
-async function vote(app: App, ctx: DeferContext<typeof ongoing_match_view_sig>): Promise<void> {
+async function vote(app: App, ctx: DeferredComponentContext<typeof ongoing_match_view_sig>): Promise<void> {
   const match = await app.db.matches.fetch(ctx.state.get.match_id())
 
   await castPlayerVote(app, match, ctx.interaction.member.user.id, ctx.state.get.claim())
@@ -131,7 +130,7 @@ async function vote(app: App, ctx: DeferContext<typeof ongoing_match_view_sig>):
   await ctx.edit((await ongoingMatchPageData(app, ctx.state)).as_response)
 }
 
-async function rematch(app: App, ctx: DeferContext<typeof ongoing_match_view_sig>): Promise<void> {
+async function rematch(app: App, ctx: DeferredComponentContext<typeof ongoing_match_view_sig>): Promise<void> {
   const old_match = await app.db.matches.fetch(ctx.state.get.match_id())
   const team_players = await old_match.players()
 

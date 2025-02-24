@@ -58,52 +58,51 @@ export const start_match_cmd = start_match_cmd_sig.set<App>({
       {},
       async p_ranking =>
         ctx.defer(async ctx => {
-            await ensureAdminPerms(app, ctx)
+          await ensureAdminPerms(app, ctx)
 
-            const ranking = await p_ranking.fetch()
+          const ranking = await p_ranking.fetch()
 
-            ctx.state.saveAll({
-              ranking_id: ranking.data.id,
-            })
+          ctx.state.saveAll({
+            ranking_id: ranking.data.id,
+          })
 
-            if (ranking.data.players_per_team === 1 && ranking.data.teams_per_match === 2) {
-              // If this is a 1v1 ranking, check if both players were selected
+          if (ranking.data.players_per_team === 1 && ranking.data.teams_per_match === 2) {
+            // If this is a 1v1 ranking, check if both players were selected
 
-              const p1_id = (
-                ctx.interaction.data.options?.find(o => o.name === optionnames.player1) as
-                  | D.APIApplicationCommandInteractionDataUserOption
-                  | undefined
-              )?.value
+            const p1_id = (
+              ctx.interaction.data.options?.find(o => o.name === optionnames.player1) as
+                | D.APIApplicationCommandInteractionDataUserOption
+                | undefined
+            )?.value
 
-              const p2_id = (
-                ctx.interaction.data.options?.find(o => o.name === optionnames.player2) as
-                  | D.APIApplicationCommandInteractionDataUserOption
-                  | undefined
-              )?.value
+            const p2_id = (
+              ctx.interaction.data.options?.find(o => o.name === optionnames.player2) as
+                | D.APIApplicationCommandInteractionDataUserOption
+                | undefined
+            )?.value
 
-              if (p1_id && p2_id) {
-                // start a match
+            if (p1_id && p2_id) {
+              // start a match
 
-                const team_players = await Promise.all(
-                  [[p1_id], [p2_id]].map(async team => {
-                    return Promise.all(team.map(id => getRegisterPlayer(app, id, ranking)))
-                  }),
-                )
-                const { thread } = await start1v1SeriesThread(
-                  app,
-                  app.db.guild_rankings.get(ctx.interaction.guild_id, ranking.data.id),
-                  team_players,
-                )
+              const team_players = await Promise.all(
+                [[p1_id], [p2_id]].map(async team => {
+                  return Promise.all(team.map(id => getRegisterPlayer(app, id, ranking)))
+                }),
+              )
+              const { thread } = await start1v1SeriesThread(
+                app,
+                app.db.guild_rankings.get(ctx.interaction.guild_id, ranking.data.id),
+                team_players,
+              )
 
-                return void (await ctx.edit({
-                  content: `Match started. A thread has been created: <#${thread.id}>`,
-                  flags: D.MessageFlags.Ephemeral,
-                }))
-              }
+              return void (await ctx.edit({
+                content: `Match started. A thread has been created: <#${thread.id}>`,
+                flags: D.MessageFlags.Ephemeral,
+              }))
             }
+          }
 
-            throw new UserError('Select the players for the match')
-          },
-        ),
+          throw new UserError('Select the players for the match')
+        }),
     ),
 })

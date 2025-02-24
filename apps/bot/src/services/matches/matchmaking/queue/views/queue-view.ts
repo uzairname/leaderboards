@@ -1,4 +1,10 @@
-import { checkMessageComponentInteraction, DeferContext, MessageData, ViewSignature, ViewState } from '@repo/discord'
+import {
+  checkMessageComponentInteraction,
+  DeferredComponentContext,
+  MessageData,
+  ViewSignature,
+  ViewState,
+} from '@repo/discord'
 import { field } from '@repo/utils'
 import { Colors } from 'apps/bot/src/utils/ui'
 import * as D from 'discord-api-types/v10'
@@ -26,11 +32,10 @@ export const queue_view = queue_view_sig.set<App>({
     ctx.interaction.guild_id
 
     return ctx.defer(async ctx => {
-        await ctx.state.get.handler()(app, ctx)
-        const { channel, message } = checkMessageComponentInteraction(ctx.interaction)
-        await app.discord.editMessage(channel.id, message.id, (await queueMessage(app, ctx.state.data)).as_patch)
-      },
-    )
+      await ctx.state.get.handler()(app, ctx)
+      const { channel, message } = checkMessageComponentInteraction(ctx.interaction)
+      await app.discord.editMessage(channel.id, message.id, (await queueMessage(app, ctx.state.data)).as_patch)
+    })
   },
 })
 
@@ -75,7 +80,7 @@ export async function queueMessage(
   })
 }
 
-async function join(app: App, ctx: DeferContext<typeof queue_view_sig>) {
+async function join(app: App, ctx: DeferredComponentContext<typeof queue_view_sig>) {
   const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
   const { already_in: rejoined } = await userJoinQueue(app, ctx, ranking)
   ctx.state.set.last_active(new Date())
@@ -85,7 +90,7 @@ async function join(app: App, ctx: DeferContext<typeof queue_view_sig>) {
   })
 }
 
-async function leave(app: App, ctx: DeferContext<typeof queue_view_sig>) {
+async function leave(app: App, ctx: DeferredComponentContext<typeof queue_view_sig>) {
   const user = app.db.users.get(ctx.interaction.member.user.id)
   const n_players_left = await user.removePlayersFromQueue()
   await ctx.edit({

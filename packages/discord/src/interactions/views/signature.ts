@@ -2,23 +2,23 @@ import type { StringDataSchema } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { ViewState, ViewStateFactory } from '.'
 import { InteractionErrors } from '../errors'
-import { CommandHandler, Handler } from './handlers'
-import { AnyAppCommandType, AnyCommandSignature } from '../types'
+import { AnyAppCommandType } from '../types'
+import { CommandHandler, ViewHandler } from './handlers'
+
+export type ViewSignatureConfig<TSchema extends StringDataSchema, Guild extends boolean> = {
+  name?: string
+  state_schema: TSchema
+  custom_id_prefix: string
+  guild_only?: Guild
+  experimental?: boolean
+}
 
 export class ViewSignature<TSchema extends StringDataSchema = {}, Guild extends boolean = true> {
   name: string
   state_schema: TSchema
   guild_only: Guild
 
-  constructor(
-    public config: {
-      name?: string
-      state_schema?: TSchema
-      custom_id_prefix?: string
-      guild_only?: Guild
-      experimental?: boolean
-    },
-  ) {
+  constructor(public config: ViewSignatureConfig<TSchema, Guild>) {
     this.state_schema = config.state_schema ?? ({} as TSchema)
     this.name = config.name ?? this.config.custom_id_prefix ?? 'Unnamed View'
     this.guild_only = config.guild_only ?? (true as Guild)
@@ -31,14 +31,13 @@ export class ViewSignature<TSchema extends StringDataSchema = {}, Guild extends 
     return ViewStateFactory.fromSignature(this).setAll(data)
   }
 
-  set<Arg>(handlers: Omit<Handler<this, Arg>, 'signature'>): Handler<this, Arg> {
+  set<Arg>(handlers: Omit<ViewHandler<this, Arg>, 'signature'>): ViewHandler<this, Arg> {
     return {
       ...handlers,
       signature: this,
     }
   }
 }
-
 
 export type CommandSignatureConfig<
   TSchema extends StringDataSchema,
@@ -48,8 +47,6 @@ export type CommandSignatureConfig<
   ? D.RESTPostAPIChatInputApplicationCommandsJSONBody
   : D.RESTPostAPIContextMenuApplicationCommandsJSONBody) & {
   type: CommandType
-  state_schema?: TSchema
-  custom_id_prefix?: string
   guild_only?: Guild
   experimental?: boolean
 }
@@ -58,9 +55,12 @@ export class CommandSignature<
   TSchema extends StringDataSchema,
   CommandType extends AnyAppCommandType,
   Guild extends boolean = true,
-> extends ViewSignature<TSchema, Guild> {
+> {
+  name: string
+  guild_only: Guild
   constructor(public readonly config: CommandSignatureConfig<TSchema, CommandType, Guild>) {
-    super(config)
+    this.name = config.name
+    this.guild_only = config.guild_only ?? (true as Guild)
   }
 
   set<Arg>(handlers: Omit<CommandHandler<this, Arg>, 'signature'>): CommandHandler<this, Arg> {
@@ -69,5 +69,4 @@ export class CommandSignature<
       signature: this,
     }
   }
-
 }

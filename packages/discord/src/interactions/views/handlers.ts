@@ -10,53 +10,46 @@ import {
   ViewState,
 } from '../..'
 import type {
+  AnyChatInteraction,
   AnyCommandSignature,
+  AnySignature,
   AnyViewSignature,
-  AppCommandInteraction,
-  AutocompleteContext,
-  ChatInteraction,
   ChatInteractionResponse,
   CommandContext,
+  CommandInteraction,
   CommandInteractionResponse,
+  CommandTypeToInteraction,
   ComponentCallback,
   ComponentInteraction,
-  DeferCallback,
+  DeferredCommandContext,
+  DeferredComponentContext,
   InteractionErrorCallback,
   InteractionResponse,
   OffloadCallback,
   ViewAutocompleteCallback,
 } from '../types'
 
-export interface Handler<Sig extends AnyViewSignature, Arg extends unknown> {
+export interface ViewHandler<Sig extends AnyViewSignature, Arg extends unknown> {
   signature: Sig
-  onComponent?: ComponentCallback<Sig, Arg>
+  onComponent: ComponentCallback<Sig, Arg>
 }
 
-export interface CommandHandler<Sig extends AnyCommandSignature, Arg extends unknown> extends Handler<Sig, Arg> {
+export interface CommandHandler<Sig extends AnyCommandSignature, Arg extends unknown> {
   signature: Sig
   guildSignature?(arg: Arg, guild_id: string): Promise<Sig | null> | Sig | null
   onCommand(ctx: CommandContext<Sig>, arg: Arg): Promise<CommandInteractionResponse>
   onAutocomplete?: ViewAutocompleteCallback<Sig['config']['type'], Arg>
-
-//    (
-//     ctx: AutocompleteContext,
-//     arg: Arg,
-//   ): Promise<
-//     Sig['config']['type'] extends D.ApplicationCommandType.ChatInput
-//       ? D.APIApplicationCommandAutocompleteResponse
-//       : never
-//   >
 }
 
 /**
  * Ensures that if the signature is guild_only, the interaction is a guild interaction
  */
-export function validateInteraction<Sig extends AnyViewSignature, I extends ChatInteraction>(
+export function validateInteraction<Sig extends AnySignature, I extends AnyChatInteraction>(
   signature: Sig,
   interaction: I,
 ) {
   return (
-    signature.guild_only ? checkGuildInteraction(interaction) : interaction
+    signature.config.guild_only ? checkGuildInteraction(interaction) : interaction
   ) as Sig['config']['guild_only'] extends true ? D.APIGuildInteractionWrapper<I> : I
 }
 
@@ -71,7 +64,7 @@ export async function respondToComponent<Arg extends unknown>({
   logger,
 }: {
   arg: Arg
-  handler: Handler<AnyViewSignature, Arg>
+  handler: ViewHandler<AnyViewSignature, Arg>
   interaction: ComponentInteraction
   state: ViewState<StringDataSchema>
   discord: DiscordAPIClient
@@ -92,7 +85,7 @@ export async function respondToComponent<Arg extends unknown>({
       interaction: valid_interaction,
       state,
       defer: (callback, response) => {
-        deferResponse(callback, interaction, state, discord, onError, offload)
+        deferComponentResponse(callback, interaction, state, discord, onError, offload)
         return (
           response ?? {
             type: D.InteractionResponseType.DeferredMessageUpdate,
@@ -108,9 +101,9 @@ export async function respondToComponent<Arg extends unknown>({
   )
 }
 
-export function deferResponse(
-  callback: DeferCallback<any, any>,
-  interaction: ChatInteraction,
+export function deferComponentResponse(
+  callback: (ctx: DeferredComponentContext<AnyViewSignature>) => Promise<void>,
+  interaction: ComponentInteraction,
   state: ViewState<StringDataSchema>,
   discord: DiscordAPIClient,
   onError: InteractionErrorCallback,
@@ -148,38 +141,76 @@ export function deferResponse(
   )
 }
 
+export function deferCommandResponse(
+  callback: (ctx: DeferredCommandContext<AnyCommandSignature>) => Promise<void>,
+  interaction: CommandInteraction,
+  discord: DiscordAPIClient,
+  onError: InteractionErrorCallback,
+  offload: OffloadCallback,
+): void {
+  offload(
+    async ctx =>
+      await callback({
+        interaction,
+        edit: async (data: D.RESTPatchAPIWebhookWithTokenMessageJSONBody) => {
+          await discord.editOriginalInteractionResponse(interaction.token, {
+            content: null,
+            embeds: null,
+            components: null,
+            ...data,
+          })
+        },
+        send: async data => {
+          return await discord.createMessage(interaction.channel!.id, data instanceof MessageData ? data.as_post : data)
+        },
+        delete: async (message_id?: string) => {
+          await discord.deleteInteractionResponse(interaction.token, message_id)
+        },
+        followup: async (response_data: D.APIInteractionResponseCallbackData) => {
+          return discord.createFollowupMessage(interaction.token, response_data)
+        },
+      }).catch(async e => {
+        await discord.createFollowupMessage(interaction.token, onError(e, ctx.setException).data)
+      }),
+    async timeout_error => {
+      await discord.createFollowupMessage(interaction.token, onError(timeout_error).data)
+    },
+    `deferred`,
+  )
+}
+
 export async function respondToCommand<Sig extends AnyCommandSignature, Arg extends unknown>({
+  arg,
   handler,
   interaction,
   discord,
   onError,
   offload,
-  arg,
   logger,
 }: {
+  arg: Arg
   handler: CommandHandler<Sig, Arg>
-  interaction: AppCommandInteraction<Sig['config']['type']>
+  interaction: CommandTypeToInteraction<Sig['config']['type']>
   discord: DiscordAPIClient
   onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource
   offload: OffloadCallback
-  arg: Arg
   logger?: DiscordLogger
 }): Promise<CommandInteractionResponse> {
-  logger?.setInteractionType(`${handler.signature.name} Command`)
+  logger?.setInteractionType(`${handler.signature.config.name} Command`)
 
-  const state = handler.signature.newState()
-
-  let valid_interaction = validateInteraction(handler.signature, interaction)
+  let valid_interaction = validateInteraction<Sig, CommandTypeToInteraction<Sig['config']['type']>>(
+    handler.signature,
+    interaction,
+  )
 
   return handler.onCommand(
     {
       interaction: valid_interaction,
-      state,
       defer: (callback, response) => {
-        deferResponse(callback, interaction, state, discord, onError, offload)
+        deferCommandResponse(callback, interaction, discord, onError, offload)
         const default_response = {
           type: D.InteractionResponseType.DeferredChannelMessageWithSource,
-        } as InteractionResponse<AppCommandInteraction<Sig["config"]["type"]>>
+        } as InteractionResponse<CommandTypeToInteraction<Sig['config']['type']>>
         return response ?? default_response
       },
       send: async data =>
@@ -200,10 +231,10 @@ export async function respondToAutocomplete<Arg extends unknown>(
     throw new InteractionErrors.CallbackNotImplemented(`onAutocomplete`)
   }
   const data = await handler.onAutocomplete({ interaction }, arg)
-    return { 
+  return {
     type: D.InteractionResponseType.ApplicationCommandAutocompleteResult,
     data: data ?? {
-      choices: []
-    }
+      choices: [],
+    },
   }
 }

@@ -1,4 +1,5 @@
 import { AnyAppCommandType, CommandHandler, CommandSignature, getOptions } from '@repo/discord'
+import { StringDataSchema } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../../../../errors/user-errors'
 import { sentry } from '../../../../../logging/sentry'
@@ -10,7 +11,6 @@ import { matches_cmd } from '../../../logging/views/matches-cmd'
 import { renderMatchesPage } from '../../../logging/views/matches-view'
 import { cancelMatch, setMatchWinner } from '../../manage-matches'
 import { renderManageMatchPage } from '../pages/manage-match-view'
-import { StringDataSchema } from '@repo/utils'
 
 const optionnames = {
   match_id: `match_id`,
@@ -84,77 +84,77 @@ export const settle_match_cmd = settle_match_cmd_sig.set<App>({
     sentry.debug(`${input}`)
 
     return ctx.defer(async ctx => {
-        sentry.debug(`settle match. ${input.match_id}, ${input.player}`)
+      sentry.debug(`settle match. ${input.match_id}, ${input.player}`)
 
-        // Determine the match to act on, from the input. Also get its players
-        const match = await (async function () {
-          if (input.match_id) {
-            // match id was provided.
-            const match = await app.db.matches.fetch(input.match_id, ctx.interaction.guild_id)
-            return match
-          } else if (input.player?.id) {
-            // user id was provided. get their latest match in the guild
-            const matches = await app.db.matches.getMany({
-              guild_id: ctx.interaction.guild_id,
-              user_ids: [input.player?.id],
-              limit: 1,
-            })
-            if (matches.length === 0) {
-              throw new UserError(`<@${input.player?.id}> has not played any matches in this server`)
-            }
-            return matches[0].match
-          } else {
-            throw new UserError(`Please specify either the match id or player to settle a match for`)
+      // Determine the match to act on, from the input. Also get its players
+      const match = await (async function () {
+        if (input.match_id) {
+          // match id was provided.
+          const match = await app.db.matches.fetch(input.match_id, ctx.interaction.guild_id)
+          return match
+        } else if (input.player?.id) {
+          // user id was provided. get their latest match in the guild
+          const matches = await app.db.matches.getMany({
+            guild_id: ctx.interaction.guild_id,
+            user_ids: [input.player?.id],
+            limit: 1,
+          })
+          if (matches.length === 0) {
+            throw new UserError(`<@${input.player?.id}> has not played any matches in this server`)
           }
-        })()
-
-        // Act on the match, based on the selected action or match
-        if (input.action) {
-          if (input.action === `cancel`) {
-            // Revert the match
-            await cancelMatch(app, match)
-            return void ctx.followup({
-              content: `Match reverted`,
-              flags: D.MessageFlags.Ephemeral,
-            })
-          } else if (input.action === `set winner`) {
-            // Set the winner of the match. The user must be specified
-            if (!input.player?.id) {
-              return void ctx.edit({
-                content: `Please specify the winner of this match`,
-                flags: D.MessageFlags.Ephemeral,
-              })
-            }
-            await setMatchWinner(app, match, input.player?.id)
-            return void ctx.followup({
-              content: `Match winner set`,
-              flags: D.MessageFlags.Ephemeral,
-            })
-          }
-        } else if (input.match_id) {
-          // Match was selected, but no action. Show the match settings page
-          await ctx.edit(await renderManageMatchPage(app, ctx, input.match_id))
+          return matches[0].match
         } else {
-          // No action or match was selected. Show the matches page
-          await ctx.edit(
-            await renderMatchesPage(app, {
-              guild_id: ctx.interaction.guild_id,
-              user_ids: input.player?.id ? [input.player?.id] : undefined,
-            }),
-          )
+          throw new UserError(`Please specify either the match id or player to settle a match for`)
+        }
+      })()
 
-          let x = 0 as any as CommandHandler<CommandSignature<StringDataSchema, D.ApplicationCommandType.ChatInput, true>, App>
-
-          let y: CommandHandler<CommandSignature<StringDataSchema, AnyAppCommandType, true>, App> = x
-
-          
-
+      // Act on the match, based on the selected action or match
+      if (input.action) {
+        if (input.action === `cancel`) {
+          // Revert the match
+          await cancelMatch(app, match)
           return void ctx.followup({
-            content: `Please select a match to settle. Type ${commandMention(app, matches_cmd, ctx.interaction.guild_id)} to see all matches`,
+            content: `Match reverted`,
+            flags: D.MessageFlags.Ephemeral,
+          })
+        } else if (input.action === `set winner`) {
+          // Set the winner of the match. The user must be specified
+          if (!input.player?.id) {
+            return void ctx.edit({
+              content: `Please specify the winner of this match`,
+              flags: D.MessageFlags.Ephemeral,
+            })
+          }
+          await setMatchWinner(app, match, input.player?.id)
+          return void ctx.followup({
+            content: `Match winner set`,
             flags: D.MessageFlags.Ephemeral,
           })
         }
-      },
-    )
+      } else if (input.match_id) {
+        // Match was selected, but no action. Show the match settings page
+        await ctx.edit(await renderManageMatchPage(app, ctx, input.match_id))
+      } else {
+        // No action or match was selected. Show the matches page
+        await ctx.edit(
+          await renderMatchesPage(app, {
+            guild_id: ctx.interaction.guild_id,
+            user_ids: input.player?.id ? [input.player?.id] : undefined,
+          }),
+        )
+
+        let x = 0 as any as CommandHandler<
+          CommandSignature<StringDataSchema, D.ApplicationCommandType.ChatInput, true>,
+          App
+        >
+
+        let y: CommandHandler<CommandSignature<StringDataSchema, AnyAppCommandType, true>, App> = x
+
+        return void ctx.followup({
+          content: `Please select a match to settle. Type ${commandMention(app, matches_cmd, ctx.interaction.guild_id)} to see all matches`,
+          flags: D.MessageFlags.Ephemeral,
+        })
+      }
+    })
   },
 })

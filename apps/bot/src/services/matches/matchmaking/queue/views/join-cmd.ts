@@ -35,26 +35,25 @@ export const join_cmd = join_cmd_sig.set<App>({
   },
   onCommand: async (ctx, app) => {
     return ctx.defer(async ctx => {
-        const input = getOptions(ctx.interaction, {
-          ranking: { type: D.ApplicationCommandOptionType.Integer },
+      const input = getOptions(ctx.interaction, {
+        ranking: { type: D.ApplicationCommandOptionType.Integer },
+      })
+
+      await withSelectedRanking(app, ctx, input.ranking, {}, async p_ranking => {
+        const ranking = await p_ranking.fetch()
+
+        const { match, already_in, expires_at } = await userJoinQueue(app, ctx, p_ranking)
+
+        await ctx.edit({
+          content: Messages.queue_join({ match, already_in, ranking, expires_at }),
+          flags: D.MessageFlags.Ephemeral,
         })
 
-        await withSelectedRanking(app, ctx, input.ranking, {}, async p_ranking => {
-          const ranking = await p_ranking.fetch()
-
-          const { match, already_in, expires_at } = await userJoinQueue(app, ctx, p_ranking)
-
-          await ctx.edit({
-            content: Messages.queue_join({ match, already_in, ranking, expires_at }),
-            flags: D.MessageFlags.Ephemeral,
-          })
-
-          // Send a message to the channel where others can join the queue
-          if (!already_in && !match) {
-            await ctx.send(await Messages.someone_joined_queue(app, ranking, ctx.interaction.guild_id))
-          }
-        })
-      },
-    )
+        // Send a message to the channel where others can join the queue
+        if (!already_in && !match) {
+          await ctx.send(await Messages.someone_joined_queue(app, ranking, ctx.interaction.guild_id))
+        }
+      })
+    })
   },
 })

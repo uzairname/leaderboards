@@ -66,9 +66,8 @@ export const dev_cmd = dev_cmd_sig.set<App>({
           {},
           async ranking => {
             return ctx.defer(async ctx => {
-                await rescoreMatches(app, ranking, { reset_rating_to_initial: true, ctx })
-              },
-            )
+              await rescoreMatches(app, ranking, { reset_rating_to_initial: true, ctx })
+            })
           },
         )
     }

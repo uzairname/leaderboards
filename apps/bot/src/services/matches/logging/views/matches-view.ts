@@ -22,11 +22,10 @@ export const matches_view_sig = new ViewSignature({
 export const matches_view = matches_view_sig.set<App>({
   onComponent: async (ctx, app) => {
     return ctx.defer(async ctx => {
-        return void (ctx.state.data.message_sent ? ctx.edit : ctx.followup)(
-          await renderMatchesPage(app, ctx.state.set.message_sent(true).data),
-        )
-      },
-    )
+      return void (ctx.state.data.message_sent ? ctx.edit : ctx.followup)(
+        await renderMatchesPage(app, ctx.state.set.message_sent(true).data),
+      )
+    })
   },
 })
 

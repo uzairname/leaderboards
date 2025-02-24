@@ -1,6 +1,5 @@
 import {
   AnyGuildInteractionContext,
-  AnyViewSignature,
   ChatInteractionResponse,
   ComponentContext,
   getModalSubmitEntries,
@@ -52,10 +51,9 @@ export const sig = new ViewSignature({
   name: 'settings page',
   guild_only: true,
   state_schema: {
-    a: field.String()
-  }
+    a: field.String(),
+  },
 })
-
 
 export const rankings_view = rankings_view_sig.set<App>({
   onComponent: async (ctx, app) => {
@@ -134,28 +132,26 @@ export async function onCreateRankingModalSubmit(
   app: App,
   ctx: ComponentContext<typeof rankings_view_sig>,
 ): Promise<ChatInteractionResponse> {
-  return ctx.defer(
-    async ctx => {
-      await ensureAdminPerms(app, ctx)
+  return ctx.defer(async ctx => {
+    await ensureAdminPerms(app, ctx)
 
-      const modal_input = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
+    const modal_input = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
 
-      const { ranking } = await createNewRankingInGuild(app, ctx.interaction.guild_id, {
-        name: nonNullable(strOrUndefined(modal_input['name']?.value), 'input name'),
-        teams_per_match: intOrUndefined(modal_input['teams_per_match']?.value),
-        players_per_team: intOrUndefined(modal_input['players_per_team']?.value),
-        matchmaking_settings: {
-          default_best_of: intOrUndefined(modal_input['best_of']?.value),
-        },
-      })
+    const { ranking } = await createNewRankingInGuild(app, ctx.interaction.guild_id, {
+      name: nonNullable(strOrUndefined(modal_input['name']?.value), 'input name'),
+      teams_per_match: intOrUndefined(modal_input['teams_per_match']?.value),
+      players_per_team: intOrUndefined(modal_input['players_per_team']?.value),
+      matchmaking_settings: {
+        default_best_of: intOrUndefined(modal_input['best_of']?.value),
+      },
+    })
 
-      await ctx.edit(
-        await getRankingSettingsPage({
-          app,
-          ctx,
-          ranking_id: ranking.data.id,
-        }),
-      )
-    }
-  )
+    await ctx.edit(
+      await getRankingSettingsPage({
+        app,
+        ctx,
+        ranking_id: ranking.data.id,
+      }),
+    )
+  })
 }

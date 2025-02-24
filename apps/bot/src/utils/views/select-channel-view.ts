@@ -1,8 +1,10 @@
 import {
-  AnyGuildInteractionContext,
   AnyViewSignature,
   ChatInteractionResponse,
   ComponentContext,
+  ComponentInteraction,
+  DeferredComponentContext,
+  DeferredContext,
   InteractionContext,
   ViewSignature,
   ViewState,
@@ -32,33 +34,34 @@ export const select_channel_view = select_channel_view_sig.set<App>({
     if (ctx.state.data.callback) return ctx.state.data.callback(app, ctx)
 
     return ctx.defer(async ctx => {
-        return void ctx.edit(await _selectChannelPage(app, ctx))
-      },
-    )
+      return void ctx.edit(await selectChannelPage(app, ctx))
+    })
   },
 })
 
 export async function renderSelectChannelPage(
   app: App,
-  ctx: AnyGuildInteractionContext,
+  ctx: DeferredContext & InteractionContext<ViewSignature<any, true>, ComponentInteraction>,
   data: ViewState<typeof select_channel_view_sig.state_schema>['data'],
   back_view: AnyViewSignature,
   back_state: typeof back_view & { channel_id: StringField },
   message?: string,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  return await _selectChannelPage(
+  const state = select_channel_view_sig.newState(data)
+
+  return await selectChannelPage(
     app,
     {
       ...ctx,
-      state: select_channel_view_sig.newState(data),
+      state,
     },
     message,
   )
 }
 
-async function _selectChannelPage(
+async function selectChannelPage(
   app: App,
-  ctx: InteractionContext<typeof select_channel_view_sig>,
+  ctx: DeferredComponentContext<typeof select_channel_view_sig>,
   message?: string,
 ): Promise<D.APIInteractionResponseCallbackData> {
   let btns: D.APIButtonComponent[] = [
@@ -124,6 +127,5 @@ async function _selectChannelPage(
 function onSelectChannel(app: App, ctx: ComponentContext<typeof select_channel_view_sig>): ChatInteractionResponse {
   ctx.state.save.selected_channel_id((ctx.interaction.data as D.APIMessageStringSelectInteractionData).values?.[0])
 
-  return ctx.defer(async ctx => ctx.edit(await _selectChannelPage(app, ctx)),
-  )
+  return ctx.defer(async ctx => ctx.edit(await selectChannelPage(app, ctx)))
 }

@@ -4,27 +4,20 @@ import { json } from 'itty-router'
 import { StringDataSchema } from '../../../../utils/src/StringData'
 import { DiscordLogger } from '../../logging'
 import { DiscordAPIClient } from '../../rest'
+import { isChatInputCommandHandler, isCommandHandler, isViewHandler } from '../checks/handlers'
 import { InteractionErrors } from '../errors'
-import {
-  AnyCommandSignature,
-  type AnyHandler,
-  type AnyViewSignature,
-  handlerIsChatInputCommand,
-  handlerIsCommand,
-  type InteractionErrorCallback,
-  type OffloadCallback,
-} from '../types'
-import { Handler, respondToAutocomplete, respondToCommand, respondToComponent } from './handlers'
+import { AnyCommandSignature, AnyViewHandler, type InteractionErrorCallback, type OffloadCallback } from '../types'
+import { CommandHandler, ViewHandler, respondToAutocomplete, respondToCommand, respondToComponent } from './handlers'
 import { logInteraction } from './log-interaction'
 import { ViewState, ViewStateFactory } from './state'
 import { verify } from './verify'
 
 export class ViewManager<Arg extends unknown = undefined> {
-  public all_handlers: Handler<AnyViewSignature, Arg>[]
+  public all_handlers: (ViewHandler<any, Arg> | CommandHandler<any, Arg>)[] = []
 
   logger?: DiscordLogger
 
-  constructor(public handlers: (AnyHandler | ViewManager<Arg>)[]) {
+  constructor(public handlers: (ViewHandler<any, Arg> | CommandHandler<any, Arg> | ViewManager<Arg>)[]) {
     this.all_handlers = handlers.flatMap(v => (v instanceof ViewManager ? v.all_handlers : [v]))
 
     // Identify duplicate custom_id_prefixes
@@ -33,15 +26,11 @@ export class ViewManager<Arg extends unknown = undefined> {
     if (duplicates.length > 0) throw new Error(`Duplicate custom_id_prefixes: ${duplicates} ${duplicates.join(', ')}.`)
   }
 
-  findHandler(command?: { name: string; type: number }, custom_id_prefix?: string): Handler<AnyViewSignature, Arg> {
-    this.logger?.log({ message: 'Finding handler', data: { command, custom_id_prefix } })
+  findCommandHandler(command: { name: string; type: number }): CommandHandler<any, Arg> {
+    this.logger?.log({ message: 'Finding command handler', data: { command } })
 
-    const matching_handlers = this.all_handlers.filter(h => {
-      return custom_id_prefix
-        ? h.signature.config.custom_id_prefix === custom_id_prefix
-        : command
-          ? handlerIsCommand(h) && command.name === h.signature.config.name && command.type === h.signature.config.type
-          : false
+    const matching_handlers = this.all_handlers.filter(isCommandHandler).filter(h => {
+      return command.name === h.signature.config.name && command.type === h.signature.config.type
     })
 
     if (matching_handlers.length !== 1) {
@@ -51,24 +40,35 @@ export class ViewManager<Arg extends unknown = undefined> {
     return matching_handlers[0]
   }
 
-  async respond(
-    {
-      bot,
-      request,
-      onError,
-      offload,
-      direct_response = true,
-      arg,
-    }: {
-      bot: DiscordAPIClient
-      request: Request
-      onError: InteractionErrorCallback
-      offload: OffloadCallback
-      direct_response: boolean
-      arg: Arg
-    },
-    // & (Arg extends undefined ? {arg?: Arg} : { arg: Arg } )
-  ): Promise<Response> {
+  findViewHandler(custom_id_prefix: string): ViewHandler<any, Arg> {
+    this.logger?.log({ message: 'Finding view handler', data: { custom_id_prefix } })
+
+    const matching_handlers = this.all_handlers.filter(isViewHandler).filter(h => {
+      return h.signature.config.custom_id_prefix === custom_id_prefix
+    })
+
+    if (matching_handlers.length !== 1) {
+      throw new Error(`Expecting unique handler for interaction, found ${matching_handlers.length}.`)
+    }
+
+    return matching_handlers[0]
+  }
+
+  async respond({
+    bot,
+    request,
+    onError,
+    offload,
+    direct_response = true,
+    arg,
+  }: {
+    bot: DiscordAPIClient
+    request: Request
+    onError: InteractionErrorCallback
+    offload: OffloadCallback
+    direct_response: boolean
+    arg: Arg
+  }): Promise<Response> {
     if (!(await verify(request, bot.public_key))) {
       this.logger?.log({ message: 'Invalid signature' })
       return new Response('Invalid signature', { status: 401 })
@@ -114,10 +114,10 @@ export class ViewManager<Arg extends unknown = undefined> {
       interaction.type === D.InteractionType.ApplicationCommand ||
       interaction.type === D.InteractionType.ApplicationCommandAutocomplete
     ) {
-      const handler = this.findHandler({ name: interaction.data.name, type: interaction.data.type }, undefined)
+      const handler = this.findCommandHandler({ name: interaction.data.name, type: interaction.data.type })
 
       if (interaction.type === D.InteractionType.ApplicationCommand) {
-        if (handlerIsCommand(handler))
+        if (isCommandHandler(handler))
           return respondToCommand({
             handler,
             interaction: interaction as any /** TODO: fix type */,
@@ -131,7 +131,7 @@ export class ViewManager<Arg extends unknown = undefined> {
       }
 
       if (interaction.type === D.InteractionType.ApplicationCommandAutocomplete) {
-        if (handlerIsChatInputCommand(handler)) return respondToAutocomplete(handler, interaction, this.logger)
+        if (isChatInputCommandHandler(handler)) return respondToAutocomplete(handler, interaction, this.logger)
         throw new InteractionErrors.InvalidViewType()
       }
     }
@@ -141,9 +141,9 @@ export class ViewManager<Arg extends unknown = undefined> {
     return respondToComponent<Arg>({ arg, handler, interaction, state, discord, onError, offload, logger: this.logger })
   }
 
-  fromCustomId(custom_id: string): { handler: AnyHandler; state: ViewState<StringDataSchema> } {
+  fromCustomId(custom_id: string): { handler: AnyViewHandler; state: ViewState<StringDataSchema> } {
     const [prefix, encoded_data] = ViewStateFactory.splitCustomId(custom_id)
-    const handler = this.findHandler(undefined, prefix)
+    const handler = this.findViewHandler(prefix)
     const state = ViewStateFactory.fromSignature(handler.signature).decode(encoded_data)
     return { handler, state }
   }
@@ -157,7 +157,7 @@ export class ViewManager<Arg extends unknown = undefined> {
     include_experimental?: boolean
     arg: Arg
   }): Promise<AnyCommandSignature[]> {
-    const all_commands = this.all_handlers.filter(h => handlerIsCommand(h))
+    const all_commands = this.all_handlers.filter(h => isCommandHandler(h))
 
     const cmds = await sequential(
       all_commands.map(c => async () => {

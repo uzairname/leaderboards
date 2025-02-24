@@ -1,4 +1,4 @@
-import { AnyCommandSignature, AnyViewSignature, CommandSignature, InteractionContext } from '@repo/discord'
+import { CommandSignature, ComponentContext, InitialContext, ViewSignature } from '@repo/discord'
 import { field } from '@repo/utils'
 import { Colors } from 'apps/bot/src/utils/ui'
 import * as D from 'discord-api-types/v10'
@@ -14,35 +14,60 @@ const admin_role_method_options = {
   unset: 'unset',
 }
 
-export const setup_cmd_sig = new CommandSignature({
+export const setup_cmd = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
-
-  custom_id_prefix: 'sp',
-
   name: 'setup',
   description: 'Set up the bot in this server',
+}).set<App>({
+  onCommand: async (ctx, app) => {
+    ensureAdminPerms(app, ctx)
 
+    const ctx2 = {
+      ...ctx,
+      state: setup_view_sig.newState(),
+    }
+
+    return {
+      type: D.InteractionResponseType.ChannelMessageWithSource,
+      data: {
+        embeds: [
+          {
+            title: `Welcome`,
+            description: `This walkthrough will help you set up the bot in your server.`,
+          },
+        ],
+        components: [
+          {
+            type: D.ComponentType.ActionRow,
+            components: [
+              {
+                type: D.ComponentType.Button,
+                label: 'Continue',
+                style: D.ButtonStyle.Primary,
+                custom_id: ctx2.state.set.callback(adminRolePage).cId(),
+              },
+            ],
+          },
+        ],
+      },
+    }
+  },
+})
+
+export const setup_view_sig = new ViewSignature({
+  custom_id_prefix: 'setup',
   state_schema: {
     callback: field.Choice({
-      allRankingsPage: rankingsPage,
+      adminRolePage,
       onAdminRoleMethodSelect,
       onAdminRoleSelect,
+      rankingsPage,
     }),
     admin_role_method: field.Enum(admin_role_method_options),
   },
 })
 
-let x: AnyViewSignature = setup_cmd_sig
-
-export const setup_cmd = setup_cmd_sig.set<App>({
-  onCommand: async (ctx, app) => {
-    ensureAdminPerms(app, ctx)
-    return {
-      type: D.InteractionResponseType.ChannelMessageWithSource,
-      data: await adminRolePage(app, ctx),
-    }
-  },
-
+export const setup_view = setup_view_sig.set<App>({
   onComponent: async (ctx, app) => {
     return {
       type: D.InteractionResponseType.UpdateMessage,
@@ -51,23 +76,9 @@ export const setup_cmd = setup_cmd_sig.set<App>({
   },
 })
 
-export async function startPage(
-  app: App,
-  ctx: InteractionContext<typeof setup_cmd_sig>,
-): Promise<D.APIInteractionResponseCallbackData> {
-  return {
-    embeds: [
-      {
-        title: `Welcome`,
-        description: `This bot is designed to help you manage your server's competitive scene.`,
-      },
-    ],
-  }
-}
-
 export async function adminRolePage(
   app: App,
-  ctx: InteractionContext<typeof setup_cmd_sig>,
+  ctx: InitialContext<typeof setup_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const current_admin_role_id = (await app.db.guilds.fetch(ctx.interaction.guild_id))?.data.admin_role_id
 
@@ -164,7 +175,7 @@ With the dropdowns below, you can
  */
 async function onAdminRoleMethodSelect(
   app: App,
-  ctx: InteractionContext<typeof setup_cmd_sig>,
+  ctx: ComponentContext<typeof setup_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   await ensureAdminPerms(app, ctx)
 
@@ -195,7 +206,7 @@ async function onAdminRoleMethodSelect(
  */
 async function onAdminRoleSelect(
   app: App,
-  ctx: InteractionContext<typeof setup_cmd_sig>,
+  ctx: ComponentContext<typeof setup_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   await ensureAdminPerms(app, ctx)
 

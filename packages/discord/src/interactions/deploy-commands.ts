@@ -1,6 +1,7 @@
 import * as D from 'discord-api-types/v10'
 import type { DiscordAPIClient } from '../rest/client'
-import { AnyCommandSignature, viewIsChatInputCommand } from './types'
+import { isChatInputCommandSignature } from './checks/handlers'
+import { AnyCommandSignature } from './types'
 
 export async function putDiscordCommands(
   bot: DiscordAPIClient,
@@ -19,16 +20,13 @@ export async function putDiscordCommands(
 }
 
 export function appCommandToJSONBody(view: AnyCommandSignature): D.RESTPostAPIApplicationGuildCommandsJSONBody {
-  if (viewIsChatInputCommand(view) && view.config.description.length > 100) {
-    throw new Error(`Description for command ${view.config.custom_id_prefix} > 100 characters`)
+  if (isChatInputCommandSignature(view) && view.config.description.length > 100) {
+    throw new Error(`Description for slash command ${view.config.name} > 100 characters`)
   }
 
   const result = {
     ...view.config,
   }
-
-  delete result.custom_id_prefix
-  delete result.state_schema
 
   return result
 }

@@ -13,10 +13,9 @@ export const connect_cmd = connect_cmd_sig.set<App>({
   guildSignature: () => connect_cmd,
   onCommand: async ctx => {
     return ctx.defer(async ctx => {
-        await ctx.edit({
-          content: `test`,
-        })
-      },
-    )
+      await ctx.edit({
+        content: `test`,
+      })
+    })
   },
 })

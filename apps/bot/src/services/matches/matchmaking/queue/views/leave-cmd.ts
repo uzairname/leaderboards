@@ -20,11 +20,10 @@ export const leave_cmd = leave_cmd_sig.set<App>({
   },
   onCommand: async (ctx, app) => {
     return ctx.defer(async ctx => {
-        await app.db.users.get(ctx.interaction.member.user.id).removePlayersFromQueue()
-        await ctx.edit({
-          content: 'You left the queue',
-        })
-      },
-    )
+      await app.db.users.get(ctx.interaction.member.user.id).removePlayersFromQueue()
+      await ctx.edit({
+        content: 'You left the queue',
+      })
+    })
   },
 })

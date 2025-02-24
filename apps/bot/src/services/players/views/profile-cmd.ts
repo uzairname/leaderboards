@@ -46,17 +46,16 @@ export const profile_cmd = profile_cmd_sig.set<App>({
       const target_user = input.user
 
       return ctx.defer(async ctx => {
-          return void ctx.edit(
-            await profileOverviewPage(app, {
-              ...ctx,
-              state: profile_view_sig.newState({
-                user_id: target_user?.id ?? ctx.interaction.member.user.id,
-                selected_ranking_id: ranking?.data.id,
-              }),
+        return void ctx.edit(
+          await profileOverviewPage(app, {
+            ...ctx,
+            state: profile_view_sig.newState({
+              user_id: target_user?.id ?? ctx.interaction.member.user.id,
+              selected_ranking_id: ranking?.data.id,
             }),
-          )
-        },
-      )
+          }),
+        )
+      })
     })
   },
 })

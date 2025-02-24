@@ -1,4 +1,4 @@
-import { CommandSignature, StateContext } from '@repo/discord'
+import { CommandSignature, ComponentCallback, ComponentContext, DeferredComponentContext, InitialContext, StateContext, ViewSignature } from '@repo/discord'
 import { field } from '@repo/utils'
 import { sentry } from 'apps/bot/src/logging/sentry'
 import * as D from 'discord-api-types/v10'
@@ -17,6 +17,25 @@ const test_cmd_sig = new CommandSignature({
       description: 'The user to test',
     },
   ],
+  guild_only: true,
+})
+
+export const test_cmd = test_cmd_sig.set<App>({
+  onCommand: async ctx => {
+    const user_id = ctx.interaction.member.user.id
+
+    const state = test_view_sig.newState()
+    state.save.original_user(user_id)
+    state.save.counter(0)
+
+    return ctx.defer(async ctx => {
+      await new Promise(r => setTimeout(r, sentry.timeout_ms + 5000))
+      return void (await ctx.edit(testPage(ctx, true)))
+    })
+  },
+})
+
+const test_view_sig = new ViewSignature({
   custom_id_prefix: 'test',
   state_schema: {
     clicked_btn: field.Enum({ wait: null, increment: null, one: null, input: null }),
@@ -24,26 +43,9 @@ const test_cmd_sig = new CommandSignature({
     original_user: field.String(),
     input_date: field.Date(),
   },
-  guild_only: true,
 })
 
-export const test_cmd = test_cmd_sig.set<App>({
-  onCommand: async ctx => {
-    const user_id = ctx.interaction.member.user.id
-    ctx.state.save.original_user(user_id)
-    ctx.state.save.counter(0)
-
-    return ctx.defer(async ctx => {
-        await new Promise(r => setTimeout(r, sentry.timeout_ms + 5000))
-        return void (await ctx.edit(testMessageData(ctx, true)))
-      },
-    )
-
-    return {
-      type: D.InteractionResponseType.ChannelMessageWithSource,
-      data: { content: 'rescored matches', flags: D.MessageFlags.Ephemeral },
-    }
-  },
+export const test_view = test_view_sig.set<App>({
   onComponent: async ctx => {
     const user_id = ctx.interaction.member.user.id
 
@@ -52,7 +54,8 @@ export const test_cmd = test_cmd_sig.set<App>({
     }
 
     if (ctx.state.is.clicked_btn('wait')) {
-      return ctx.defer(async ctx => {
+      return ctx.defer(
+        async ctx => {
           const seconds = ctx.state.data.counter ?? 0
 
           await ctx.edit({
@@ -65,7 +68,8 @@ export const test_cmd = test_cmd_sig.set<App>({
             content: `waited ${seconds} seconds.`,
             flags: D.MessageFlags.Ephemeral,
           })
-        }, {
+        },
+        {
           type: D.InteractionResponseType.ChannelMessageWithSource,
           data: {
             content: `waiting`,
@@ -79,13 +83,14 @@ export const test_cmd = test_cmd_sig.set<App>({
 
     return {
       type: D.InteractionResponseType.UpdateMessage,
-      data: testMessageData(ctx),
+      data: testPage(ctx),
     }
   },
 })
 
-function testMessageData(
-  ctx: StateContext<typeof test_cmd_sig>,
+
+function testPage(
+  ctx: InitialContext<typeof test_view_sig>,
   ephemeral: boolean = false,
 ): D.APIInteractionResponseCallbackData {
   return {

@@ -68,56 +68,55 @@ export const challenge_cmd = challenge_cmd_sig.set<App>({
       },
       async ranking =>
         ctx.defer(async ctx => {
-            const input = getOptions(ctx.interaction, {
-              opponent: { type: D.ApplicationCommandOptionType.User, required: true },
-              best_of: { type: D.ApplicationCommandOptionType.Integer },
-              ranking: { type: D.ApplicationCommandOptionType.Integer },
-            })
-            input.ranking
-            const interaction = ctx.interaction
-            const initiator = await getRegisterPlayer(app, interaction.member.user.id, ranking)
-            input.opponent
+          const input = getOptions(ctx.interaction, {
+            opponent: { type: D.ApplicationCommandOptionType.User, required: true },
+            best_of: { type: D.ApplicationCommandOptionType.Integer },
+            ranking: { type: D.ApplicationCommandOptionType.Integer },
+          })
+          input.ranking
+          const interaction = ctx.interaction
+          const initiator = await getRegisterPlayer(app, interaction.member.user.id, ranking)
+          input.opponent
 
-            const opponent_id = nonNullable(
-              ctx.interaction.data.options?.find(
-                o => o.name === optionnames.opponent,
-              ) as D.APIApplicationCommandInteractionDataUserOption,
-              'opponent option',
-            ).value
+          const opponent_id = nonNullable(
+            ctx.interaction.data.options?.find(
+              o => o.name === optionnames.opponent,
+            ) as D.APIApplicationCommandInteractionDataUserOption,
+            'opponent option',
+          ).value
 
-            const opponent = await getRegisterPlayer(app, opponent_id, ranking)
+          const opponent = await getRegisterPlayer(app, opponent_id, ranking)
 
-            await ensurePlayersEnabled(app, [initiator, opponent])
+          await ensurePlayersEnabled(app, [initiator, opponent])
 
-            const best_of =
-              (
-                ctx.interaction.data.options?.find(o => o.name === optionnames.best_of) as
-                  | D.APIApplicationCommandInteractionDataNumberOption
-                  | undefined
-              )?.value ?? 1
+          const best_of =
+            (
+              ctx.interaction.data.options?.find(o => o.name === optionnames.best_of) as
+                | D.APIApplicationCommandInteractionDataNumberOption
+                | undefined
+            )?.value ?? 1
 
-            if (opponent_id === initiator.data.user_id) {
-              return void ctx.edit({
-                content: `You can't 1v1 yourself`,
-                flags: D.MessageFlags.Ephemeral,
-              })
-            }
-
-            await ctx.send(
-              await renderChallengePage(app, {
-                time_sent: new Date(),
-                initiator_id: initiator.data.user_id,
-                opponent_id,
-                best_of,
-                ranking_id: ranking.data.id,
-              }),
-            )
-
+          if (opponent_id === initiator.data.user_id) {
             return void ctx.edit({
-              content: `Challenge sent`,
+              content: `You can't 1v1 yourself`,
               flags: D.MessageFlags.Ephemeral,
             })
-          },
-        ),
+          }
+
+          await ctx.send(
+            await renderChallengePage(app, {
+              time_sent: new Date(),
+              initiator_id: initiator.data.user_id,
+              opponent_id,
+              best_of,
+              ranking_id: ranking.data.id,
+            }),
+          )
+
+          return void ctx.edit({
+            content: `Challenge sent`,
+            flags: D.MessageFlags.Ephemeral,
+          })
+        }),
     ),
 })

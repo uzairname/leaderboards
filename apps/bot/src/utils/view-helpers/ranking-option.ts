@@ -1,11 +1,5 @@
 import { GuildRanking, PartialGuild, PartialRanking, Ranking } from '@repo/db/models'
-import type {
-  AnyCommandSignature,
-  CommandInteractionResponse,
-  InitialInteractionContext,
-  InteractionContext,
-} from '@repo/discord'
-import { isDeferredCtx, isInitialInteractionCtx } from '@repo/discord'
+import type { AnyAppCommandType, CommandContext, CommandInteractionResponse, CommandSignature } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../errors/user-errors'
 import { sentry } from '../../logging/sentry'
@@ -54,46 +48,34 @@ export async function guildRankingsOption(
   ]
 }
 
-export async function withOptionalSelectedRanking<
-  T extends InteractionContext<
-    AnyCommandSignature,
-    D.APIGuildInteractionWrapper<D.APIChatInputApplicationCommandInteraction>
-  >,
-  U = Promise<T extends InitialInteractionContext<any> ? CommandInteractionResponse : void>,
->(
-  app: App,
-  ctx: T,
-  ranking_option_value: number | undefined,
+export async function withOptionalSelectedRanking(
   options: {
+    app: App
+    ctx: CommandContext<CommandSignature<any, AnyAppCommandType, true>>
+    ranking_id: number | undefined
     available_guild_rankings?: {
       ranking: PartialRanking
       guild_ranking: GuildRanking
     }[]
   },
-  callback: (ranking: PartialRanking | undefined) => Promise<U>,
-): Promise<U> {
-  return _withSelectedRanking(app, ctx, ranking_option_value, options, callback, true)
+  callback: (ranking: PartialRanking | undefined) => Promise<CommandInteractionResponse>,
+): Promise<CommandInteractionResponse> {
+  return _withSelectedRanking(options, callback, true)
 }
 
-export async function withSelectedRanking<
-  T extends InteractionContext<
-    AnyCommandSignature,
-    D.APIGuildInteractionWrapper<D.APIChatInputApplicationCommandInteraction>
-  >,
-  U = Promise<T extends InitialInteractionContext<any> ? CommandInteractionResponse : void>,
->(
-  app: App,
-  ctx: T,
-  ranking_option_value: number | undefined,
+export async function withSelectedRanking(
   options: {
+    app: App
+    ctx: CommandContext<CommandSignature<any, AnyAppCommandType, true>>
+    ranking_id: number | undefined
     available_guild_rankings?: {
       ranking: PartialRanking
       guild_ranking: GuildRanking
     }[]
   },
-  callback: (ranking: PartialRanking) => Promise<U>,
-): Promise<U> {
-  return _withSelectedRanking(app, ctx, ranking_option_value, options, async ranking => callback(ranking!), false)
+  callback: (ranking: PartialRanking) => Promise<CommandInteractionResponse>,
+): Promise<CommandInteractionResponse> {
+  return _withSelectedRanking(options, async ranking => callback(ranking!), false)
 }
 
 /**
@@ -105,33 +87,27 @@ export async function withSelectedRanking<
  *  - if there are multiple, throws an error
  *
  * @param app
- * @param ctx interaction context for command or component
+ * @param ctx interaction context for command
  * @param selected_ranking_id
  * @param options specify to limit the available rankings
  * @param callback the interaction callback
  * @param optional if false, throws an error if no ranking can be selected
  * @returns
  */
-async function _withSelectedRanking<
-  T extends InteractionContext<
-    AnyCommandSignature,
-    D.APIGuildInteractionWrapper<D.APIChatInputApplicationCommandInteraction>
-  >,
-  U = Promise<T extends InitialInteractionContext<any> ? CommandInteractionResponse : void>,
->(
-  app: App,
-  ctx: T,
-  selected_ranking_id: number | undefined,
+async function _withSelectedRanking(
   options: {
+    app: App
+    ctx: CommandContext<CommandSignature<any, AnyAppCommandType, true>>
+    ranking_id: number | undefined
     available_guild_rankings?: {
       ranking: PartialRanking
       guild_ranking: GuildRanking
     }[]
   },
-  callback: (ranking: PartialRanking | undefined) => Promise<U>,
+  callback: (ranking: PartialRanking | undefined) => Promise<CommandInteractionResponse>,
   optional: boolean,
-): Promise<U> {
-  const guild_id: string = ctx.interaction.guild_id
+): Promise<CommandInteractionResponse> {
+  const { app, ctx, ranking_id, available_guild_rankings } = options
 
   sentry.addBreadcrumb({
     message: `_withSelectedRanking`,
@@ -142,30 +118,23 @@ async function _withSelectedRanking<
   })
 
   let ranking: PartialRanking | undefined
-  if (selected_ranking_id !== undefined) {
-    ranking = await app.db.rankings.fetch(selected_ranking_id)
+  if (ranking_id !== undefined) {
+    ranking = await app.db.rankings.fetch(ranking_id)
   } else {
     if (optional) {
       return callback(undefined)
     }
-    const available_guild_rankings =
-      options.available_guild_rankings !== undefined
-        ? options.available_guild_rankings
-        : await app.db.guild_rankings.getBy({
-            guild_id,
-          })
-    if (available_guild_rankings.length == 1) {
-      ranking = available_guild_rankings[0].ranking
-    } else if (available_guild_rankings.length == 0) {
-      if (isInitialInteractionCtx(ctx)) {
-        return {
-          type: D.InteractionResponseType.ChannelMessageWithSource,
-          data: await rankingsPage(app, ctx),
-        } as U
-      } else if (isDeferredCtx(ctx)) {
-        return void ctx.followup(await rankingsPage(app, ctx)) as U
-      } else {
-        throw new Error(`Expected either initial or deferred interaction context`)
+    const available_guild_rankings_ =
+      available_guild_rankings !== undefined
+        ? available_guild_rankings
+        : await app.db.guild_rankings.getBy({ guild_id: ctx.interaction.guild_id })
+
+    if (available_guild_rankings_.length == 1) {
+      ranking = available_guild_rankings_[0].ranking
+    } else if (available_guild_rankings_.length == 0) {
+      return {
+        type: D.InteractionResponseType.ChannelMessageWithSource,
+        data: await rankingsPage(app, ctx),
       }
     } else {
       throw new UserError('Please specify a ranking')

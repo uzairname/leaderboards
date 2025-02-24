@@ -123,22 +123,21 @@ async function accept(app: App, ctx: ComponentContext<typeof challenge_view_sig>
 
   // accept the challenge
   return ctx.defer(async ctx => {
-      ctx.state.save.opponent_accepted(true)
+    ctx.state.save.opponent_accepted(true)
 
-      // User ids that will participate in the match
-      const user_ids = [[ctx.state.get.initiator_id()], [ctx.state.get.opponent_id()]]
+    // User ids that will participate in the match
+    const user_ids = [[ctx.state.get.initiator_id()], [ctx.state.get.opponent_id()]]
 
-      // Register them as players in the ranking
-      const players = await sequential(
-        user_ids.map(team => () => sequential(team.map(i => () => getRegisterPlayer(app, i, ranking)))),
-      )
+    // Register them as players in the ranking
+    const players = await sequential(
+      user_ids.map(team => () => sequential(team.map(i => () => getRegisterPlayer(app, i, ranking)))),
+    )
 
-      // Start the match
-      const { thread } = await start1v1SeriesThread(app, guild_ranking, players, ctx.state.data.best_of)
+    // Start the match
+    const { thread } = await start1v1SeriesThread(app, guild_ranking, players, ctx.state.data.best_of)
 
-      // Update the challenge message
-      ctx.state.save.ongoing_match_channel_id(thread.id)
-      await ctx.edit((await renderChallengePage(app, ctx.state.data)).as_response)
-    },
-  )
+    // Update the challenge message
+    ctx.state.save.ongoing_match_channel_id(thread.id)
+    await ctx.edit((await renderChallengePage(app, ctx.state.data)).as_response)
+  })
 }

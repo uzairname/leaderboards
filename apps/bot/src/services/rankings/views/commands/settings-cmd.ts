@@ -52,25 +52,23 @@ export const settings_cmd = settings_cmd_sig.set<App>({
       {},
       async ranking => {
         return ctx.defer(async ctx => {
-            if (ranking) {
-              const setting_option_value = getOptions(ctx.interaction, {
-                setting: { type: D.ApplicationCommandOptionType.String },
-              }).setting
-              if (setting_option_value) {
-              } else {
-                await ctx.followup(await getRankingSettingsPage({ app, ctx, ranking_id: ranking.data.id }))
-              }
+          if (ranking) {
+            const setting_option_value = getOptions(ctx.interaction, {
+              setting: { type: D.ApplicationCommandOptionType.String },
+            }).setting
+            if (setting_option_value) {
             } else {
-              await ctx.followup(await rankingsPage(app, ctx))
+              await ctx.followup(await getRankingSettingsPage({ app, ctx, ranking_id: ranking.data.id }))
             }
-          },
-        )
+          } else {
+            await ctx.followup(await rankingsPage(app, ctx))
+          }
+        })
       },
     ),
 
   onComponent: async (ctx, app) => {
-    return ctx.defer(async ctx => ctx.edit(await rankingsPage(app, ctx)),
-    )
+    return ctx.defer(async ctx => ctx.edit(await rankingsPage(app, ctx)))
   },
 })
 

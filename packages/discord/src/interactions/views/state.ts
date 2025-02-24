@@ -1,7 +1,7 @@
 import { LZString, StringData, StringDataSchema } from '@repo/utils'
+import { AnyViewSignature } from '..'
 import { DiscordLogger } from '../../logging/discord-logger'
 import { InteractionErrors } from '../errors'
-import { AnyViewSignature } from '../types'
 import { ViewSignature } from './signature'
 
 export class ViewState<T extends StringDataSchema> extends StringData<T> {
