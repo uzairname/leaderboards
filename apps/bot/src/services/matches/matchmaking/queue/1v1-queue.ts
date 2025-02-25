@@ -1,6 +1,6 @@
 import { Match, PartialGuildRanking, PartialPlayer, PartialRanking, Player } from '@repo/db/models'
-import { AnyDeferContext, checkGuildInteraction } from '@repo/discord'
-import { nonNullable, unflatten } from '@repo/utils'
+import { AnyDeferredContext, checkGuildInteraction, DeferredComponentContext, ViewSignature } from '@repo/discord'
+import { nonNullable, StringDataSchema, unflatten } from '@repo/utils'
 import { UserError } from '../../../../errors/user-errors'
 import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
@@ -17,7 +17,7 @@ import { start1v1SeriesThread } from '../../ongoing-math-thread/manage-ongoing-m
  */
 export async function userJoinQueue(
   app: App,
-  ctx: AnyDeferContext,
+  ctx: AnyDeferredContext,
   ranking_: PartialRanking,
 ): Promise<{ already_in: boolean; match?: Match; expires_at: Date }> {
   const { guild_ranking, ranking } = await app.db.guild_rankings.getBy({
@@ -40,7 +40,7 @@ export async function userJoinQueue(
   }
   const expires_at = await addPlayerToQueue(app, player)
 
-  const match = await findMatchFromQueue(app, guild_ranking, ctx)
+  const match = await findMatchFromQueue(app, guild_ranking)
 
   return { already_in, match, expires_at }
 }
@@ -48,7 +48,6 @@ export async function userJoinQueue(
 export async function findMatchFromQueue(
   app: App,
   gr: PartialGuildRanking,
-  ctx?: AnyDeferContext,
 ): Promise<Match | undefined> {
   const { ranking, guild_ranking } = await gr.fetch()
   if (!ranking.data.matchmaking_settings.queue_enabled) {

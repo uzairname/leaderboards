@@ -30,8 +30,6 @@ export function inviteUrl(app: App): string {
   return app.discord.botInviteURL(app.config.RequiredBotPermissions).toString()
 }
 
-let x: AnyCommandHandler = setup_cmd
-
 export async function commandMention(
   app: App,
   command: AnyCommandHandler,

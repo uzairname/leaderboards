@@ -117,14 +117,14 @@ export function deferComponentResponse(
         followup: async (response_data: D.APIInteractionResponseCallbackData) => {
           return discord.createFollowupMessage(interaction.token, response_data)
         },
-        edit: async (data: D.RESTPatchAPIWebhookWithTokenMessageJSONBody) => {
-          await discord.editOriginalInteractionResponse(interaction.token, {
+        edit: async (data: D.RESTPatchAPIWebhookWithTokenMessageJSONBody) => 
+          discord.editOriginalInteractionResponse(interaction.token, {
             content: null,
             embeds: null,
             components: null,
             ...data,
           })
-        },
+        ,
         delete: async (message_id?: string) => {
           await discord.deleteInteractionResponse(interaction.token, message_id)
         },
@@ -141,9 +141,9 @@ export function deferComponentResponse(
   )
 }
 
-export function deferCommandResponse(
-  callback: (ctx: DeferredCommandContext<AnyCommandSignature>) => Promise<void>,
-  interaction: CommandInteraction,
+export function deferCommandResponse<Sig extends AnyCommandSignature>(
+  callback: (ctx: DeferredCommandContext<Sig>) => Promise<void>,
+  interaction: Sig["config"]["guild_only"] extends true ? D.APIGuildInteractionWrapper<CommandTypeToInteraction<Sig["config"]["type"]>> : CommandTypeToInteraction<Sig["config"]["type"]>,
   discord: DiscordAPIClient,
   onError: InteractionErrorCallback,
   offload: OffloadCallback,
@@ -152,14 +152,13 @@ export function deferCommandResponse(
     async ctx =>
       await callback({
         interaction,
-        edit: async (data: D.RESTPatchAPIWebhookWithTokenMessageJSONBody) => {
-          await discord.editOriginalInteractionResponse(interaction.token, {
+        edit: async (data: D.RESTPatchAPIWebhookWithTokenMessageJSONBody) => discord.editOriginalInteractionResponse(interaction.token, {
             content: null,
             embeds: null,
             components: null,
             ...data,
           })
-        },
+        ,
         send: async data => {
           return await discord.createMessage(interaction.channel!.id, data instanceof MessageData ? data.as_post : data)
         },
@@ -207,7 +206,7 @@ export async function respondToCommand<Sig extends AnyCommandSignature, Arg exte
     {
       interaction: valid_interaction,
       defer: (callback, response) => {
-        deferCommandResponse(callback, interaction, discord, onError, offload)
+        deferCommandResponse<Sig>(callback, valid_interaction, discord, onError, offload)
         const default_response = {
           type: D.InteractionResponseType.DeferredChannelMessageWithSource,
         } as InteractionResponse<CommandTypeToInteraction<Sig['config']['type']>>

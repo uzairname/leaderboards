@@ -39,17 +39,17 @@ export const ban_cmd = ban_cmd_sig.set<App>({
       ),
     })
   },
-  onCommand: async (ctx, app) =>
-    withOptionalSelectedRanking(
+  onCommand: async (ctx, app) => {
+    const options = getOptions(ctx.interaction, {
+      user: { type: D.ApplicationCommandOptionType.User, required: true, name: 'player' },
+      unban: { type: D.ApplicationCommandOptionType.String },
+      ranking: { type: D.ApplicationCommandOptionType.Integer }
+    })
+    return withOptionalSelectedRanking({
       app,
       ctx,
-      getOptions(ctx.interaction, { ranking: { type: D.ApplicationCommandOptionType.Integer } }).ranking,
-      {},
-      async ranking => {
-        const options = getOptions(ctx.interaction, {
-          user: { type: D.ApplicationCommandOptionType.User, required: true, name: 'player' },
-          unban: { type: D.ApplicationCommandOptionType.String },
-        })
+      ranking_id: options.ranking,
+      }, async ranking => {
 
         // Get the selected ranking and player(s) to act on.
         const { players, rankings } = await (async () => {
@@ -79,6 +79,6 @@ export const ban_cmd = ban_cmd_sig.set<App>({
             content: `You have ${options.unban ? `unbanned` : `banned`} <@${options.user.id}> from participating in ${rankings.map(r => r.data.name).join(', ')}`,
           },
         }
-      },
-    ),
+      }
+)}
 })

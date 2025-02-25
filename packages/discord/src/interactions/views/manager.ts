@@ -21,9 +21,10 @@ export class ViewManager<Arg extends unknown = undefined> {
     this.all_handlers = handlers.flatMap(v => (v instanceof ViewManager ? v.all_handlers : [v]))
 
     // Identify duplicate custom_id_prefixes
-    const custom_id_prefixes = this.all_handlers.map(h => h.signature.config.custom_id_prefix)
+    const custom_id_prefixes = this.all_handlers.filter(isViewHandler).map(h => h.signature.config.custom_id_prefix)
     const duplicates = custom_id_prefixes.filter((v, i) => v !== undefined && custom_id_prefixes.indexOf(v) !== i)
     if (duplicates.length > 0) throw new Error(`Duplicate custom_id_prefixes: ${duplicates} ${duplicates.join(', ')}.`)
+
   }
 
   findCommandHandler(command: { name: string; type: number }): CommandHandler<any, Arg> {

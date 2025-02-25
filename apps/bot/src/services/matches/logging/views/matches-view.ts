@@ -1,4 +1,4 @@
-import { ViewSignature } from '@repo/discord'
+import { StateContext, ViewSignature } from '@repo/discord'
 import { field } from '@repo/utils'
 import { Colors } from 'apps/bot/src/utils/ui'
 import * as D from 'discord-api-types/v10'
@@ -23,17 +23,18 @@ export const matches_view = matches_view_sig.set<App>({
   onComponent: async (ctx, app) => {
     return ctx.defer(async ctx => {
       return void (ctx.state.data.message_sent ? ctx.edit : ctx.followup)(
-        await renderMatchesPage(app, ctx.state.set.message_sent(true).data),
+        await matchesPage(app, {...ctx, state: ctx.state.set.message_sent(true)}),
       )
     })
   },
 })
 
-export async function renderMatchesPage(
+
+export async function matchesPage(
   app: App,
-  data: Parameters<(typeof matches_view_sig)['newState']>[0],
+  ctx: StateContext<typeof matches_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  const state = matches_view_sig.newState(data)
+  const state = ctx.state
 
   state.saveAll({
     message_sent: true,

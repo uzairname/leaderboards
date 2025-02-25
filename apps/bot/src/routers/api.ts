@@ -1,18 +1,20 @@
-import { appCommandToJSONBody } from '@repo/discord'
+import { appCommandToJSONBody, isCommandHandler } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { json, Router } from 'itty-router'
-import { GuildCommand } from '../classes/ViewModule'
 import { App } from '../setup/app'
 import { getViewManager } from '../setup/handler-manager'
 import { inviteUrl } from '../utils/'
 import rankingsRouter from './api/rankings'
 import { getUserAccessToken, saveUserAccessToken } from './oauth'
+import { authorize } from './base'
 
 export default (app: App) =>
   Router({ base: '/api' })
     .get('/', async () => {
       return new Response('API')
     })
+
+    .post('*', authorize(app.env))
 
     .get('/endpoints', async request => {
       const result = {
@@ -23,14 +25,14 @@ export default (app: App) =>
       return json(result)
     })
 
-    .get('/commands', async () => {
+    .get('/handlers', async () => {
       const result = {
-        'defined commands': getViewManager()
+        'defined view and command handlers': getViewManager()
           .all_handlers.map(c => {
             return {
               cid_prefix: `${c.signature.config.custom_id_prefix}`,
               name: `${c.signature.config.name}`,
-              is_guild_command: c instanceof GuildCommand,
+              is_guild_command: !!(isCommandHandler(c) && c.guildSignature),
               experimental: c.signature.config.experimental,
             }
           })

@@ -1,4 +1,4 @@
-import { CommandSignature, ComponentCallback, ComponentContext, DeferredComponentContext, InitialContext, StateContext, ViewSignature } from '@repo/discord'
+import { CommandSignature, ComponentCallback, ComponentContext, DeferredComponentContext, DeferredContext, InitialContext, StateContext, ViewSignature } from '@repo/discord'
 import { field } from '@repo/utils'
 import { sentry } from 'apps/bot/src/logging/sentry'
 import * as D from 'discord-api-types/v10'
@@ -20,6 +20,7 @@ const test_cmd_sig = new CommandSignature({
   guild_only: true,
 })
 
+
 export const test_cmd = test_cmd_sig.set<App>({
   onCommand: async ctx => {
     const user_id = ctx.interaction.member.user.id
@@ -30,7 +31,8 @@ export const test_cmd = test_cmd_sig.set<App>({
 
     return ctx.defer(async ctx => {
       await new Promise(r => setTimeout(r, sentry.timeout_ms + 5000))
-      return void (await ctx.edit(testPage(ctx, true)))
+      const state = test_view_sig.newState()
+      await ctx.edit(testPage({state}, true))
     })
   },
 })
@@ -90,7 +92,7 @@ export const test_view = test_view_sig.set<App>({
 
 
 function testPage(
-  ctx: InitialContext<typeof test_view_sig>,
+  ctx: StateContext<typeof test_view_sig>,
   ephemeral: boolean = false,
 ): D.APIInteractionResponseCallbackData {
   return {

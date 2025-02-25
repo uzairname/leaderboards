@@ -1,4 +1,4 @@
-import { CommandSignature, getOptions } from '@repo/discord'
+import { CommandSignature, getOptions, ViewSignature } from '@repo/discord'
 import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../../../../errors/user-errors'
@@ -12,10 +12,6 @@ export const start_match_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
   name: 'start-match',
   description: 'Start a match between players',
-  custom_id_prefix: 'sm',
-  state_schema: {
-    ranking_id: field.Int(),
-  },
 })
 
 const optionnames = {
@@ -50,21 +46,22 @@ export const start_match_cmd = start_match_cmd_sig.set<App>({
       ).concat(options),
     })
   },
-  onCommand: (ctx, app) =>
-    withSelectedRanking(
+  onCommand: (ctx, app) =>{
+    const input = getOptions(ctx.interaction, {
+      ranking: { type: D.ApplicationCommandOptionType.Integer, name: optionnames.ranking },
+      p1_id: { type: D.ApplicationCommandOptionType.User, name: optionnames.player1 },
+      p2_id: { type: D.ApplicationCommandOptionType.User, name: optionnames.player2 },
+    })
+
+    return withSelectedRanking({
       app,
       ctx,
-      getOptions(ctx.interaction, { for: { type: D.ApplicationCommandOptionType.Integer } }).for,
-      {},
-      async p_ranking =>
+      ranking_id: input.ranking
+    }, async p_ranking =>
         ctx.defer(async ctx => {
           await ensureAdminPerms(app, ctx)
 
           const ranking = await p_ranking.fetch()
-
-          ctx.state.saveAll({
-            ranking_id: ranking.data.id,
-          })
 
           if (ranking.data.players_per_team === 1 && ranking.data.teams_per_match === 2) {
             // If this is a 1v1 ranking, check if both players were selected
@@ -103,6 +100,6 @@ export const start_match_cmd = start_match_cmd_sig.set<App>({
           }
 
           throw new UserError('Select the players for the match')
-        }),
-    ),
+        })
+    )}
 })

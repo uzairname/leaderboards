@@ -3,7 +3,7 @@ import * as D from 'discord-api-types/v10'
 import { App } from '../../../../setup/app'
 import { guildRankingsOption, withOptionalSelectedRanking } from '../../../../utils/view-helpers/ranking-option'
 import { numRankings } from '../../../guilds/properties'
-import { renderMatchesPage } from './matches-view'
+import { matches_view_sig, matchesPage } from './matches-view'
 
 export const matches_command_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
@@ -37,39 +37,34 @@ export const matches_cmd = matches_command_sig.set<App>({
     })
   },
   onCommand: async (ctx, app) =>
-    withOptionalSelectedRanking(
+    withOptionalSelectedRanking({
       app,
       ctx,
-      getOptions(ctx.interaction, { ranking: { type: D.ApplicationCommandOptionType.Integer } }).ranking,
-      {},
-      async ranking => {
-        const user_option_value =
-          (
-            ctx.interaction.data.options?.find(o => o.name === optionnames.user) as
-              | D.APIApplicationCommandInteractionDataUserOption
-              | undefined
-          )?.value ?? undefined
+      ranking_id: getOptions(ctx.interaction, { ranking: { type: D.ApplicationCommandOptionType.Integer } }).ranking,
+    }, async ranking => {
+      const user_option_value =
+        (
+          ctx.interaction.data.options?.find(o => o.name === optionnames.user) as
+            | D.APIApplicationCommandInteractionDataUserOption
+            | undefined
+        )?.value ?? undefined
 
-        return ctx.defer(
-          {
-            type: D.InteractionResponseType.DeferredChannelMessageWithSource,
-            data: { flags: D.MessageFlags.Ephemeral },
-          },
-          async ctx => {
-            const ranking_ids = ranking ? [ranking.data.id] : undefined
+      return ctx.defer(
+        async ctx => {
+          const ranking_ids = ranking ? [ranking.data.id] : undefined
 
-            // if not filtering by ranking, filtery by all matches in the guild
-            const guild_id = ranking_ids === undefined ? ctx.interaction.guild_id : undefined
+          // if not filtering by ranking, filtery by all matches in the guild
+          const guild_id = ranking_ids === undefined ? ctx.interaction.guild_id : undefined
 
-            await ctx.edit(
-              await renderMatchesPage(app, {
-                ranking_ids,
-                guild_id,
-                user_ids: user_option_value ? [user_option_value] : undefined,
-              }),
-            )
-          },
-        )
-      },
-    ),
+          await ctx.edit(
+            await matchesPage(app, {state: matches_view_sig.newState({
+              ranking_ids,
+              guild_id,
+              user_ids: user_option_value ? [user_option_value] : undefined,
+            })}
+          ),
+          )
+        },
+      )
+    }),
 })

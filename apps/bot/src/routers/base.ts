@@ -11,7 +11,7 @@ export default (app: App) =>
 
     .get(`/oauth/*`, request => oauthRouter(app).handle(request))
 
-    .all('/api/*', authorize(app.env), request => apiRouter(app).handle(request))
+    .all('/api/*', request => apiRouter(app).handle(request))
 
     .post('/update/*', authorize(app.env), request => updateRouter(app).handle(request))
 

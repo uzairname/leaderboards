@@ -55,20 +55,32 @@ export const dev_cmd = dev_cmd_sig.set<App>({
           },
         }
       case scnames.rescore:
-        return await withSelectedRanking(
-          app,
-          ctx,
-          getOptions(ctx.interaction, {
+        // return await withSelectedRanking(
+        //   app,
+        //   ctx,
+        //   getOptions(ctx.interaction, {
+        //     ranking: {
+        //       type: D.ApplicationCommandOptionType.Integer,
+        //     },
+        //   }).ranking,
+        //   {},
+        //   async ranking => {
+        //     return ctx.defer(async ctx => {
+        //       await rescoreMatches(app, ranking, { reset_rating_to_initial: true, ctx })
+        //     })
+        //   },
+        // )
+        return withSelectedRanking({
+          app, ctx, ranking_id: getOptions(ctx.interaction, {
             ranking: {
               type: D.ApplicationCommandOptionType.Integer,
-            },
+            }
           }).ranking,
-          {},
-          async ranking => {
-            return ctx.defer(async ctx => {
-              await rescoreMatches(app, ranking, { reset_rating_to_initial: true, ctx })
-            })
-          },
+        }, async ranking => {
+          return ctx.defer(async ctx => {
+            await rescoreMatches(app, ranking, { reset_rating_to_initial: true, ctx })
+          })
+        }
         )
     }
 

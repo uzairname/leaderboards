@@ -5,7 +5,7 @@ import {
   ViewSignature,
   ViewState,
 } from '@repo/discord'
-import { field } from '@repo/utils'
+import { field, StringDataSchema } from '@repo/utils'
 import { Colors } from 'apps/bot/src/utils/ui'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../../../setup/app'
@@ -82,6 +82,11 @@ export async function queueMessage(
 
 async function join(app: App, ctx: DeferredComponentContext<typeof queue_view_sig>) {
   const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
+
+  let x = 0 as any as DeferredComponentContext<ViewSignature<StringDataSchema, any>>
+
+  x = ctx
+
   const { already_in: rejoined } = await userJoinQueue(app, ctx, ranking)
   ctx.state.set.last_active(new Date())
   await ctx.edit({

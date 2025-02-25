@@ -8,9 +8,9 @@ import { ensureAdminPerms } from '../../../../../utils/perms'
 import { commandMention } from '../../../../../utils/ui'
 import { numRankings } from '../../../../guilds/properties'
 import { matches_cmd } from '../../../logging/views/matches-cmd'
-import { renderMatchesPage } from '../../../logging/views/matches-view'
+import { matches_view_sig, matchesPage } from '../../../logging/views/matches-view'
 import { cancelMatch, setMatchWinner } from '../../manage-matches'
-import { renderManageMatchPage } from '../pages/manage-match-view'
+import { manage_match_view_sig, manageMatchPage } from '../pages/manage-match-view'
 
 const optionnames = {
   match_id: `match_id`,
@@ -133,14 +133,17 @@ export const settle_match_cmd = settle_match_cmd_sig.set<App>({
         }
       } else if (input.match_id) {
         // Match was selected, but no action. Show the match settings page
-        await ctx.edit(await renderManageMatchPage(app, ctx, input.match_id))
+        const state = manage_match_view_sig.newState({
+          match_id: input.match_id
+        })
+        await ctx.edit(await manageMatchPage(app, {...ctx, state}))
       } else {
         // No action or match was selected. Show the matches page
         await ctx.edit(
-          await renderMatchesPage(app, {
+          await matchesPage(app, {state: matches_view_sig.newState({
             guild_id: ctx.interaction.guild_id,
             user_ids: input.player?.id ? [input.player?.id] : undefined,
-          }),
+          })}),
         )
 
         let x = 0 as any as CommandHandler<

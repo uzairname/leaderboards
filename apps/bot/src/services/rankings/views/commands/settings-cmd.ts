@@ -1,4 +1,4 @@
-import { CommandSignature, getOptions } from '@repo/discord'
+import { CommandSignature, getOptions, ViewSignature } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../../setup/app'
 import { guildRankingsOption, withOptionalSelectedRanking } from '../../../../utils/view-helpers/ranking-option'
@@ -45,12 +45,11 @@ export const settings_cmd = settings_cmd_sig.set<App>({
     })
   },
   onCommand: async (ctx, app) =>
-    withOptionalSelectedRanking(
+    withOptionalSelectedRanking({
       app,
       ctx,
-      getOptions(ctx.interaction, { ranking: { type: D.ApplicationCommandOptionType.Integer } }).ranking,
-      {},
-      async ranking => {
+      ranking_id: getOptions(ctx.interaction, { ranking: { type: D.ApplicationCommandOptionType.Integer } }).ranking,
+      }, async ranking => {
         return ctx.defer(async ctx => {
           if (ranking) {
             const setting_option_value = getOptions(ctx.interaction, {
@@ -64,13 +63,25 @@ export const settings_cmd = settings_cmd_sig.set<App>({
             await ctx.followup(await rankingsPage(app, ctx))
           }
         })
-      },
+      }
     ),
+})
 
+
+const settings_view_sig = new ViewSignature({
+  custom_id_prefix: 's',
+  state_schema: {
+    
+  }
+})
+
+
+export const settings_view = settings_view_sig.set<App>({
   onComponent: async (ctx, app) => {
-    return ctx.defer(async ctx => ctx.edit(await rankingsPage(app, ctx)))
+    return ctx.defer(async ctx => void ctx.edit(await rankingsPage(app, ctx)))
   },
 })
+
 
 // /**
 //  * Redirects to the appropriate setting page, based on the selected setting option.

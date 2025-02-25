@@ -37,22 +37,24 @@ export const profile_cmd = profile_cmd_sig.set<App>({
     })
   },
   onCommand: async (ctx, app) => {
-    const input = getOptions(ctx.interaction, {
+    const options = getOptions(ctx.interaction, {
       user: { type: D.ApplicationCommandOptionType.User },
       ranking: { type: D.ApplicationCommandOptionType.Number },
     })
 
-    return withOptionalSelectedRanking(app, ctx, input.ranking, {}, async ranking => {
-      const target_user = input.user
+    return withOptionalSelectedRanking({app, ctx, ranking_id: options.ranking}, async ranking => {
+      const target_user = options.user
+      
+      const state = profile_view_sig.newState({
+        user_id: target_user?.id ?? ctx.interaction.member.user.id,
+        selected_ranking_id: ranking?.data.id,
+      })
 
       return ctx.defer(async ctx => {
         return void ctx.edit(
           await profileOverviewPage(app, {
             ...ctx,
-            state: profile_view_sig.newState({
-              user_id: target_user?.id ?? ctx.interaction.member.user.id,
-              selected_ranking_id: ranking?.data.id,
-            }),
+            state
           }),
         )
       })

@@ -1,5 +1,5 @@
 import { MatchStatus, Vote } from '@repo/db/models'
-import { DeferredComponentContext, MessageData, PageSignature, ViewState } from '@repo/discord'
+import { DeferredComponentContext, MessageData, ViewSignature, ViewState } from '@repo/discord'
 import { field, maxIndex, nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../../../../errors/user-errors'
@@ -8,7 +8,7 @@ import { App } from '../../../../../setup/app'
 import { castPlayerVote, start1v1SeriesThread } from '../../manage-ongoing-match'
 import { ongoingMatch1v1Message } from '../../ongoing-1v1-match-message'
 
-export const ongoing_match_view_sig = new PageSignature({
+export const ongoing_match_view_sig = new ViewSignature({
   name: 'Ongoing Series Message',
   custom_id_prefix: 'om',
   state_schema: {

@@ -34,12 +34,12 @@ export const join_cmd = join_cmd_sig.set<App>({
     })
   },
   onCommand: async (ctx, app) => {
-    return ctx.defer(async ctx => {
-      const input = getOptions(ctx.interaction, {
-        ranking: { type: D.ApplicationCommandOptionType.Integer },
-      })
+    
+    const input = getOptions(ctx.interaction, {
+      ranking: { type: D.ApplicationCommandOptionType.Integer },
+    })
+    return await withSelectedRanking({app, ctx, ranking_id: input.ranking}, async p_ranking => ctx.defer(async ctx => {
 
-      await withSelectedRanking(app, ctx, input.ranking, {}, async p_ranking => {
         const ranking = await p_ranking.fetch()
 
         const { match, already_in, expires_at } = await userJoinQueue(app, ctx, p_ranking)
@@ -54,6 +54,6 @@ export const join_cmd = join_cmd_sig.set<App>({
           await ctx.send(await Messages.someone_joined_queue(app, ranking, ctx.interaction.guild_id))
         }
       })
-    })
+    )
   },
 })

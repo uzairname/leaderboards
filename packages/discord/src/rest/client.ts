@@ -320,7 +320,7 @@ export class DiscordAPIClient extends REST {
       RequestMethod.Patch,
       D.Routes.webhookMessage(this.application_id, interaction_token, '@original'),
       { body },
-    )
+    ) as Promise<D.RESTPatchAPIWebhookWithTokenMessageResult>
   }
 
   async deleteInteractionResponse(interaction_token: string, message_id?: string) {

@@ -1,4 +1,4 @@
-import { InteractionContext, ViewSignature } from '@repo/discord'
+import { InitialContext, InteractionContext, ViewSignature } from '@repo/discord'
 import { field } from '@repo/utils'
 import { Colors } from 'apps/bot/src/utils/ui'
 import * as D from 'discord-api-types/v10'
@@ -30,7 +30,7 @@ export const profile_view = profile_view_sig.set<App>({
 
 export async function profileOverviewPage(
   app: App,
-  ctx: InteractionContext<typeof profile_view_sig>,
+  ctx: InitialContext<typeof profile_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const target_user_id = ctx.state.get.user_id()
 

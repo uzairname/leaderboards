@@ -30,8 +30,12 @@ export const leaderboard_cmd = leaderboard_cmd_sig.set<App>({
         }).ranking,
       },
       async ranking => {
+        const state = leaderboard_view_sig.newState({
+          ranking_id: ranking.data.id,
+          page: 1,
+        })
         return ctx.defer(async ctx => {
-          const message_data = await leaderboardPage(app, ctx, ranking, 1)
+          const message_data = await leaderboardPage(app, { ...ctx, state})
           await ctx.edit(message_data)
         })
       },
@@ -55,10 +59,7 @@ const leaderboard_view_sig = new ViewSignature({
 
 export const leaderboard_view = leaderboard_view_sig.set<App>({
   onComponent: async (ctx, app) => {
-    const ranking_id = ctx.state.get.ranking_id()
-    const ranking = await app.db.rankings.fetch(ranking_id)
     return ctx.defer(async ctx => {
-      const clicked_btn = ctx.state.get.clicked_btn()
       const current_page = ctx.state.get.page()
 
       const new_page = {
@@ -66,26 +67,30 @@ export const leaderboard_view = leaderboard_view_sig.set<App>({
         prev: current_page - 1,
         next: current_page + 1,
         end: ctx.state.get.max_page(),
-      }[clicked_btn]
+      }[ctx.state.get.clicked_btn()]
 
-      await ctx.edit(await leaderboardPage(app, ctx, ranking, new_page))
+      ctx.state.save.page(new_page)
+
+      await ctx.edit(await leaderboardPage(app, ctx))
     })
   },
 })
 
 async function leaderboardPage(
   app: App,
-  ctx: InitialContext<typeof leaderboard_cmd_sig>,
-  ranking: PartialRanking,
-  page?: number,
+  ctx: InitialContext<typeof leaderboard_view_sig>
 ): Promise<D.APIInteractionResponseCallbackData> {
-  const { embeds, max_page } = await leaderboardMessage(app, await ranking.fetch(), {
+
+  const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
+  const page = ctx.state.get.page()
+
+  const { embeds, max_page } = await leaderboardMessage(app, ranking, {
     guild_id: ctx.interaction.guild_id,
     full: true,
-    page: page,
+    page: page
   })
 
-  ctx.state.saveAll({ max_page, page, ranking_id: ranking.data.id })
+  ctx.state.saveAll({ max_page })
 
   const components: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = [
     {

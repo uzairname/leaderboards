@@ -8,7 +8,7 @@ import {
   PartialRanking,
   Rating,
 } from '@repo/db/models'
-import { AnyDeferContext } from '@repo/discord'
+import { AnyDeferredContext } from '@repo/discord'
 import { UserError } from '../../../errors/user-errors'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
@@ -118,7 +118,7 @@ export async function rescoreMatches(
     finished_on_or_after?: Date | null
     affected_ratings?: Readonly<Map<number, Rating>>
     reset_rating_to_initial?: boolean
-    ctx?: AnyDeferContext
+    ctx?: AnyDeferredContext
   } = {},
 ) {
   ctx?.edit({ content: `Recalculating ratings...` })

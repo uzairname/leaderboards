@@ -44,7 +44,7 @@ export type AnyAppCommandType =
   | D.ApplicationCommandType.User
   | D.ApplicationCommandType.Message
 
-export type AnyViewSignature = ViewSignature<AnyStringDataSchema, boolean>
+export type AnyViewSignature = ViewSignature<AnyStringDataSchema, any>
 
 export type AnyChatInputCommandSignature = CommandSignature<
   AnyStringDataSchema,
@@ -52,7 +52,7 @@ export type AnyChatInputCommandSignature = CommandSignature<
   any
 >
 
-export type AnyCommandSignature = CommandSignature<AnyStringDataSchema, AnyAppCommandType, boolean>
+export type AnyCommandSignature = CommandSignature<AnyStringDataSchema, AnyAppCommandType, any>
 
 export type AnySignature = AnyViewSignature | AnyCommandSignature
 
@@ -83,20 +83,24 @@ export interface InteractionContext<S extends AnySignature, I extends AnyChatInt
 }
 
 // Defer
-export interface DeferredContext {
-  edit: (data: D.APIInteractionResponseCallbackData) => Promise<void>
+export interface BaseDeferredContext {
+  edit: (data: D.APIInteractionResponseCallbackData) => Promise<D.RESTPatchAPIWebhookWithTokenMessageResult>
   followup: (data: D.APIInteractionResponseCallbackData) => Promise<D.RESTPostAPIWebhookWithTokenWaitResult>
   delete: (message_id?: string) => Promise<void>
 }
 
 export interface DeferredCommandContext<S extends AnyCommandSignature>
-  extends DeferredContext,
+  extends BaseDeferredContext,
     InteractionContext<S, CommandTypeToInteraction<S['config']['type']>> {}
 
 export interface DeferredComponentContext<S extends AnyViewSignature>
-  extends DeferredContext,
-    InteractionContext<S, ComponentInteraction>,
-    StateContext<S> {}
+  extends BaseDeferredContext, 
+    InteractionContext<S, ComponentInteraction>, StateContext<S> {}
+
+// Same as DeferredComponentContext, but includes command interactions 
+export interface DeferredContext<S extends AnyViewSignature> extends BaseDeferredContext, InteractionContext<S, AnyChatInteraction>, StateContext<S> {}
+
+export type Context<S extends AnyViewSignature> = InitialContext<S> | DeferredContext<S>
 
 // Initial context
 export interface CommandContext<S extends AnyCommandSignature>
@@ -108,8 +112,7 @@ export interface CommandContext<S extends AnyCommandSignature>
 }
 
 export interface ComponentContext<S extends AnyViewSignature>
-  extends InteractionContext<S, ComponentInteraction>,
-    StateContext<S> {
+  extends InteractionContext<S, ComponentInteraction>, StateContext<S> {
   defer: (
     callback: (ctx: DeferredComponentContext<S>) => Promise<void>,
     initial_response?: ChatInteractionResponse,
@@ -119,9 +122,8 @@ export interface ComponentContext<S extends AnyViewSignature>
 /**
  *  Either a command or component interaction, not yet deferred
  */
-export interface InitialContext<S extends AnyViewSignature>
-  extends InteractionContext<S, AnyChatInteraction>,
-    StateContext<S> {}
+export interface InitialContext<S extends AnyViewSignature> 
+  extends InteractionContext<S>, StateContext<S> {}
 
 // Any context
 
@@ -135,14 +137,14 @@ export type AnyComponentContext = ComponentContext<AnyViewSignature>
 
 export type AnyCommandContext = CommandContext<AnyCommandSignature>
 
-export type AnyDeferContext = DeferredComponentContext<AnyViewSignature> | DeferredCommandContext<AnyCommandSignature>
+export type AnyDeferredContext = DeferredComponentContext<AnyViewSignature> | DeferredCommandContext<AnyCommandSignature>
 
 export type AnyContext =
   | AnyStateContext
   | AnyInteractionContext
   | AnyComponentContext
   | AnyCommandContext
-  | AnyDeferContext
+  | AnyDeferredContext
 
 /**
  * CALLBACKS

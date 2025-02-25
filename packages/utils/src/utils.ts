@@ -79,10 +79,16 @@ export function isInt(value: unknown, nonnegative?: boolean): value is number {
   return typeof value === 'number' && isFinite(value) && Math.floor(value) === value && !(nonnegative && value < 0)
 }
 
+/**
+ * Parses a string into a non-empty string. Returns undefined if the string is empty or only whitespace.
+ */
 export function strOrUndefined(value?: string): string | undefined {
   return value?.trim() || undefined
 }
 
+/**
+ * Parses a string into an integer. Returns undefined if the string is not a valid integer.
+ */
 export function intOrUndefined(value?: string): number | undefined {
   const int = parseInt(value ?? '')
   return isNaN(int) ? undefined : int

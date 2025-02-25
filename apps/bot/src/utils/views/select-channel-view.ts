@@ -4,7 +4,7 @@ import {
   ComponentContext,
   ComponentInteraction,
   DeferredComponentContext,
-  DeferredContext,
+  BaseDeferredContext,
   InteractionContext,
   ViewSignature,
   ViewState,
@@ -41,7 +41,7 @@ export const select_channel_view = select_channel_view_sig.set<App>({
 
 export async function renderSelectChannelPage(
   app: App,
-  ctx: DeferredContext & InteractionContext<ViewSignature<any, true>, ComponentInteraction>,
+  ctx: BaseDeferredContext & InteractionContext<ViewSignature<any, true>, ComponentInteraction>,
   data: ViewState<typeof select_channel_view_sig.state_schema>['data'],
   back_view: AnyViewSignature,
   back_state: typeof back_view & { channel_id: StringField },
@@ -127,5 +127,5 @@ async function selectChannelPage(
 function onSelectChannel(app: App, ctx: ComponentContext<typeof select_channel_view_sig>): ChatInteractionResponse {
   ctx.state.save.selected_channel_id((ctx.interaction.data as D.APIMessageStringSelectInteractionData).values?.[0])
 
-  return ctx.defer(async ctx => ctx.edit(await selectChannelPage(app, ctx)))
+  return ctx.defer(async ctx => void ctx.edit(await selectChannelPage(app, ctx)))
 }

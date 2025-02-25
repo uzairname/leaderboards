@@ -63,7 +63,7 @@ export async function onSettingsModalSubmit(
       matchmaking_settings: new_matchmaking_settings,
     })
 
-    return ctx.edit(await rankingSettingsPage(app, ctx))
+    return void ctx.edit(await rankingSettingsPage(app, ctx))
   })
 }
 

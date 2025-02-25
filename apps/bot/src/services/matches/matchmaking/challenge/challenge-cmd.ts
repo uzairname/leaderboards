@@ -55,24 +55,25 @@ export const challenge_cmd = challenge_cmd_sig.set<App>({
         }),
     })
   },
-  onCommand: async (ctx, app) =>
-    withSelectedRanking(
+  onCommand: async (ctx, app) =>{
+    const input = getOptions(ctx.interaction, {
+      opponent: { type: D.ApplicationCommandOptionType.User, required: true },
+      best_of: { type: D.ApplicationCommandOptionType.Integer },
+      ranking: { type: D.ApplicationCommandOptionType.Integer },
+    })
+
+    const challenge_enabled_rankings = await getChallengeEnabledRankings(
+      app,
+      await getOrAddGuild(app, ctx.interaction.guild_id),
+    )
+
+    return withSelectedRanking({
       app,
       ctx,
-      getOptions(ctx.interaction, { ranking: { type: D.ApplicationCommandOptionType.Integer } }).ranking,
-      {
-        available_guild_rankings: await getChallengeEnabledRankings(
-          app,
-          await getOrAddGuild(app, ctx.interaction.guild_id),
-        ),
-      },
-      async ranking =>
+      ranking_id: input.ranking,
+      available_guild_rankings: challenge_enabled_rankings,
+      }, async ranking =>
         ctx.defer(async ctx => {
-          const input = getOptions(ctx.interaction, {
-            opponent: { type: D.ApplicationCommandOptionType.User, required: true },
-            best_of: { type: D.ApplicationCommandOptionType.Integer },
-            ranking: { type: D.ApplicationCommandOptionType.Integer },
-          })
           input.ranking
           const interaction = ctx.interaction
           const initiator = await getRegisterPlayer(app, interaction.member.user.id, ranking)
@@ -117,6 +118,7 @@ export const challenge_cmd = challenge_cmd_sig.set<App>({
             content: `Challenge sent`,
             flags: D.MessageFlags.Ephemeral,
           })
-        }),
-    ),
+        })
+    )
+  }
 })
