@@ -12,7 +12,7 @@ import {
 import { UserErrors } from '../../../errors/user-errors'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
-import { rankingProperties } from '../../rankings/ranking-properties'
+import { rankingProperties } from '../../rankings/properties'
 import { rescoreMatches, validateMatchData } from './manage-matches'
 
 /**

@@ -1,7 +1,6 @@
 import type { AnyCommandHandler } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import type { App } from '../../setup/app'
-import { setup_cmd } from '../../setup/views'
 
 export const emojis = {
   green_triangle: `<:green_triangle:1198069662353735740>`,

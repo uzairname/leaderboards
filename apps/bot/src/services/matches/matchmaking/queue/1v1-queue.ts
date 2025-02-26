@@ -1,12 +1,12 @@
 import { Match, PartialGuildRanking, PartialPlayer, PartialRanking, Player } from '@repo/db/models'
-import { AnyDeferredContext, checkGuildInteraction, DeferredComponentContext, ViewSignature } from '@repo/discord'
-import { nonNullable, StringDataSchema, unflatten } from '@repo/utils'
+import { AnyDeferredContext, checkGuildInteraction } from '@repo/discord'
+import { nonNullable, unflatten } from '@repo/utils'
 import { UserError } from '../../../../errors/user-errors'
 import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
 import { getRegisterPlayer } from '../../../players/manage-players'
 import { ensureNoActiveMatches, ensurePlayersEnabled } from '../../management/match-creation'
-import { start1v1SeriesThread } from '../../ongoing-math-thread/manage-ongoing-match'
+import { start1v1SeriesThread } from '../../ongoing-match/manage-ongoing-match'
 
 // for team size 1 rankings
 
@@ -20,7 +20,7 @@ export async function userJoinQueue(
   ctx: AnyDeferredContext,
   ranking_: PartialRanking,
 ): Promise<{ already_in: boolean; match?: Match; expires_at: Date }> {
-  const { guild_ranking, ranking } = await app.db.guild_rankings.getBy({
+  const { guild_ranking, ranking } = await app.db.guild_rankings.fetchBy({
     ranking_id: ranking_.data.id,
     guild_id: checkGuildInteraction(ctx.interaction).guild_id,
   })
@@ -45,10 +45,7 @@ export async function userJoinQueue(
   return { already_in, match, expires_at }
 }
 
-export async function findMatchFromQueue(
-  app: App,
-  gr: PartialGuildRanking,
-): Promise<Match | undefined> {
+export async function findMatchFromQueue(app: App, gr: PartialGuildRanking): Promise<Match | undefined> {
   const { ranking, guild_ranking } = await gr.fetch()
   if (!ranking.data.matchmaking_settings.queue_enabled) {
     throw new UserError(`The queue is not enabled for ${ranking.data.name}`)

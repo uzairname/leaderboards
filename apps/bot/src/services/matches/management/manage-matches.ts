@@ -98,6 +98,16 @@ export async function updateMatchOutcome(
   await syncMatchSummaryMessages(app, match)
 }
 
+export async function rescoreAllMatches(app: App, p_ranking: PartialRanking) {
+  const ranking = await p_ranking.fetch()
+  const affected_ratings = new Map<number, Rating>()
+
+  const players = await ranking.players()
+  players.forEach(p => affected_ratings.set(p.data.id, ranking.data.initial_rating))
+
+  await rescoreMatches(app, ranking, { affected_ratings, reset_rating_to_initial: true })
+}
+
 /**
  * Recalculate ratings in the ranking based on all matches after the specified date, using the ranking's scorer.
  * @param affected_ratings A map of player IDs to their ratings before any of these matches were scored
@@ -111,7 +121,7 @@ export async function rescoreMatches(
   p_ranking: PartialRanking,
   {
     finished_on_or_after,
-    affected_ratings: running_player_ratings = new Map(),
+    affected_ratings = new Map(),
     reset_rating_to_initial,
     ctx,
   }: {
@@ -144,12 +154,11 @@ export async function rescoreMatches(
         If not, reset them if specified, otherwise leave them as they were before.
         */
         const rating_before =
-          running_player_ratings.get(mp.player.data.id) ??
-          (reset_rating_to_initial ? ranking.data.initial_rating : mp.rating)
+          affected_ratings.get(mp.player.data.id) ?? (reset_rating_to_initial ? ranking.data.initial_rating : mp.rating)
 
         const new_match_player = { ...mp, rating: rating_before }
         match_players_update.push({ match_id: match.match.data.id, update: new_match_player })
-        running_player_ratings.set(mp.player.data.id, rating_before)
+        affected_ratings.set(mp.player.data.id, rating_before)
         return new_match_player
       }),
     )
@@ -173,7 +182,7 @@ export async function rescoreMatches(
     new_ratings.forEach((team, i) =>
       team.forEach((recalculated_rating, j) => {
         const player_id = match_players[i][j].player.data.id
-        running_player_ratings.set(player_id, recalculated_rating)
+        affected_ratings.set(player_id, recalculated_rating)
       }),
     )
   }
@@ -181,7 +190,7 @@ export async function rescoreMatches(
   await app.db.matches.updateMatchPlayers(match_players_update)
 
   const new_players: { player: PartialPlayer; rating: Rating }[] = []
-  for (const [player_id, rating] of running_player_ratings) {
+  for (const [player_id, rating] of affected_ratings) {
     new_players.push({ player: app.db.players.get(player_id), rating })
   }
 

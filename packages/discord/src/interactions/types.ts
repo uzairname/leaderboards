@@ -66,43 +66,47 @@ export type AnyHandler = AnyViewHandler | AnyCommandHandler
  * INTERACTION CONTEXTS
  */
 
-// Autocomplete interactions
+/**
+ * Autocomplete interactions
+ */
 export interface AutocompleteContext {
   interaction: D.APIApplicationCommandAutocompleteInteraction
 }
 
-// Any interaction that can have a custom id
+/**
+ * Any interaction that can have a custom id
+ */
 export interface StateContext<S extends AnyViewSignature> {
   state: ViewState<S['state_schema']>
 }
 
-// Any interaction except ping and autocomplete
+/**
+ * Any interaction except ping and autocomplete
+ */
 export interface InteractionContext<S extends AnySignature, I extends AnyChatInteraction = AnyChatInteraction> {
   interaction: S['guild_only'] extends true ? D.APIGuildInteractionWrapper<I> : I
   send: (data: D.RESTPostAPIChannelMessageJSONBody | MessageData) => Promise<D.RESTPostAPIChannelMessageResult>
 }
 
 // Defer
-export interface BaseDeferredContext {
-  edit: (data: D.APIInteractionResponseCallbackData) => Promise<D.RESTPatchAPIWebhookWithTokenMessageResult>
+export interface BaseDeferredContext<S extends AnySignature, I extends AnyChatInteraction>
+  extends InteractionContext<S, I> {
+  edit: (
+    data: D.APIInteractionResponseCallbackData,
+    message_id?: string,
+  ) => Promise<D.RESTPatchAPIWebhookWithTokenMessageResult>
   followup: (data: D.APIInteractionResponseCallbackData) => Promise<D.RESTPostAPIWebhookWithTokenWaitResult>
   delete: (message_id?: string) => Promise<void>
 }
 
 export interface DeferredCommandContext<S extends AnyCommandSignature>
-  extends BaseDeferredContext,
-    InteractionContext<S, CommandTypeToInteraction<S['config']['type']>> {}
+  extends BaseDeferredContext<S, CommandTypeToInteraction<S['config']['type']>> {}
 
 export interface DeferredComponentContext<S extends AnyViewSignature>
-  extends BaseDeferredContext, 
-    InteractionContext<S, ComponentInteraction>, StateContext<S> {}
+  extends BaseDeferredContext<S, ComponentInteraction>,
+    StateContext<S> {}
 
-// Same as DeferredComponentContext, but includes command interactions 
-export interface DeferredContext<S extends AnyViewSignature> extends BaseDeferredContext, InteractionContext<S, AnyChatInteraction>, StateContext<S> {}
-
-export type Context<S extends AnyViewSignature> = InitialContext<S> | DeferredContext<S>
-
-// Initial context
+// Initial contexts
 export interface CommandContext<S extends AnyCommandSignature>
   extends InteractionContext<S, CommandTypeToInteraction<S['config']['type']>> {
   defer: (
@@ -112,7 +116,8 @@ export interface CommandContext<S extends AnyCommandSignature>
 }
 
 export interface ComponentContext<S extends AnyViewSignature>
-  extends InteractionContext<S, ComponentInteraction>, StateContext<S> {
+  extends InteractionContext<S, ComponentInteraction>,
+    StateContext<S> {
   defer: (
     callback: (ctx: DeferredComponentContext<S>) => Promise<void>,
     initial_response?: ChatInteractionResponse,
@@ -120,31 +125,34 @@ export interface ComponentContext<S extends AnyViewSignature>
 }
 
 /**
- *  Either a command or component interaction, not yet deferred
+ * Either a command or component interaction, not yet deferred
  */
-export interface InitialContext<S extends AnyViewSignature> 
-  extends InteractionContext<S>, StateContext<S> {}
+export interface InitialContext<S extends AnyViewSignature>
+  extends InteractionContext<S, AnyChatInteraction>,
+    StateContext<S> {}
+
+/**
+ * Same as DeferredComponentContext, but includes command interactions
+ */
+export interface DeferredContext<S extends AnyViewSignature>
+  extends BaseDeferredContext<S, AnyChatInteraction>,
+    InteractionContext<S, AnyChatInteraction>,
+    StateContext<S> {}
+
+/**
+ * An initial interaction from a command or component interaction, or deferred context from a component interaction.
+ */
+export type Context<S extends AnyViewSignature> = InitialContext<S> | DeferredComponentContext<S>
 
 // Any context
-
-export type AnyStateContext = StateContext<AnyViewSignature>
 
 export type AnyInteractionContext = InteractionContext<AnySignature>
 
 export type AnyGuildInteractionContext = InteractionContext<ViewSignature<any, true>>
 
-export type AnyComponentContext = ComponentContext<AnyViewSignature>
-
-export type AnyCommandContext = CommandContext<AnyCommandSignature>
-
-export type AnyDeferredContext = DeferredComponentContext<AnyViewSignature> | DeferredCommandContext<AnyCommandSignature>
-
-export type AnyContext =
-  | AnyStateContext
-  | AnyInteractionContext
-  | AnyComponentContext
-  | AnyCommandContext
-  | AnyDeferredContext
+export type AnyDeferredContext =
+  | DeferredComponentContext<AnyViewSignature>
+  | DeferredCommandContext<AnyCommandSignature>
 
 /**
  * CALLBACKS

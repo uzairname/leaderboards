@@ -1,18 +1,26 @@
-import { Match, MatchStatus, PartialRanking, Rating } from '@repo/db/models'
+import { Match, MatchStatus, PartialRanking, Ranking, Rating } from '@repo/db/models'
 import { nonNullable } from '@repo/utils'
 import { App } from '../../setup/app'
 import { getScorerFn } from '../matches/scoring/scorers'
+import { usesDisplaySdOffset } from '../rankings/properties'
 
-export const calcDisplayRating = (app: App, initial_rating: Rating) => (rating: Rating) => {
+/**
+ * From a player's rating, get the number to display as their rating.
+ * Offsets the rating by a constant amount of standard deviations if enabled by the rating method.
+ * Determines if the rating is provisional.
+ */
+export const getDisplayRating = (app: App, ranking: Ranking) => (rating: Rating) => {
   return {
     rating: Math.max(
       0,
       Math.round(
-        // rating.mu
-        (rating.mu + app.config.DisplaySdOffset * rating.rd) * (app.config.DisplayMeanRating / initial_rating.mu),
+        usesDisplaySdOffset(ranking.data.rating_settings.scoring_method)
+          ? (rating.mu + app.config.DisplaySdOffset * rating.rd) *
+              (app.config.DisplayMeanRating / ranking.data.initial_rating.mu)
+          : rating.mu * (app.config.DisplayMeanRating / ranking.data.initial_rating.mu),
       ),
     ),
-    is_provisional: rating.rd > initial_rating.rd * app.config.ProvisionalRdThreshold,
+    is_provisional: rating.rd > ranking.data.initial_rating.rd * app.config.ProvisionalRdThreshold,
   }
 }
 
@@ -35,7 +43,7 @@ export async function getOrderedLeaderboardPlayers(
   const players_display = players
     .map(player => ({
       user_id: player.data.user_id,
-      ...calcDisplayRating(app, initial_rating)(player.data.rating),
+      ...getDisplayRating(app, ranking)(player.data.rating),
     }))
     .sort((a, b) => b.rating - a.rating)
 
@@ -55,7 +63,7 @@ export async function getMatchPlayersDisplayStats(
   const ranking = await match.ranking.fetch()
   const team_players = await match.players()
   const initial_rating = ranking.data.initial_rating
-  const display = calcDisplayRating(app, initial_rating)
+  const display = getDisplayRating(app, ranking)
 
   const scorer = getScorerFn(ranking.data.rating_settings.scoring_method)
 

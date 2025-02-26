@@ -83,6 +83,12 @@ export class PartialRanking {
     return Object.values(teams)
   }
 
+  async players(): Promise<Player[]> {
+    const data = await this.db.drizzle.select().from(Players).where(eq(Players.ranking_id, this.data.id))
+
+    return data.map(player => new Player(player, this.db))
+  }
+
   async popTeamsFromQueue(
     teams_per_match: number,
   ): Promise<{ id: number; rating?: number; players: Player[] }[] | null> {

@@ -6,7 +6,7 @@ import { MatchMetadata } from './models/matches'
 import { PlayerFlags, PlayerStats } from './models/players'
 import { Versions } from './models/settings'
 import { Rating, MatchmakingSettings, MatchSettings, RatingSettings } from './models/rankings'
-import { GuildRankingDisplaySettings } from './models/guildrankings'
+import { GuildRankingDisplaySettings } from './models/guild-rankings'
 
 export const Settings = pgTable('Settings', {
   id: integer('id').primaryKey().default(1),

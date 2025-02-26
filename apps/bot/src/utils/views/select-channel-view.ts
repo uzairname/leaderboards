@@ -2,10 +2,7 @@ import {
   AnyViewSignature,
   ChatInteractionResponse,
   ComponentContext,
-  ComponentInteraction,
-  DeferredComponentContext,
-  BaseDeferredContext,
-  InteractionContext,
+  Context,
   ViewSignature,
   ViewState,
 } from '@repo/discord'
@@ -41,7 +38,7 @@ export const select_channel_view = select_channel_view_sig.set<App>({
 
 export async function renderSelectChannelPage(
   app: App,
-  ctx: BaseDeferredContext & InteractionContext<ViewSignature<any, true>, ComponentInteraction>,
+  ctx: Context<typeof select_channel_view_sig>,
   data: ViewState<typeof select_channel_view_sig.state_schema>['data'],
   back_view: AnyViewSignature,
   back_state: typeof back_view & { channel_id: StringField },
@@ -61,7 +58,7 @@ export async function renderSelectChannelPage(
 
 async function selectChannelPage(
   app: App,
-  ctx: DeferredComponentContext<typeof select_channel_view_sig>,
+  ctx: Context<typeof select_channel_view_sig>,
   message?: string,
 ): Promise<D.APIInteractionResponseCallbackData> {
   let btns: D.APIButtonComponent[] = [

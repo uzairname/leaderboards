@@ -312,13 +312,14 @@ export class DiscordAPIClient extends REST {
     })) as D.RESTPostAPIWebhookWithTokenWaitResult
   }
 
-  async editOriginalInteractionResponse(
+  async editInteractionResponse(
     interaction_token: string,
     body: D.RESTPatchAPIInteractionOriginalResponseJSONBody,
+    message_id?: string,
   ) {
     return this.fetch(
       RequestMethod.Patch,
-      D.Routes.webhookMessage(this.application_id, interaction_token, '@original'),
+      D.Routes.webhookMessage(this.application_id, interaction_token, message_id ?? '@original'),
       { body },
     ) as Promise<D.RESTPatchAPIWebhookWithTokenMessageResult>
   }

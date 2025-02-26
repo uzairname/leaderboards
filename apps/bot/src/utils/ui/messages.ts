@@ -1,26 +1,22 @@
-import { Guild, GuildRanking, Match, PartialGuildRanking, Ranking } from '@repo/db/models'
+import { Guild, Match, PartialGuildRanking, Ranking } from '@repo/db/models'
 import { MessageData } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { APIEmbed } from 'discord-api-types/v10'
-import { Colors, commandMention, dateTimestamp, escapeMd, messageLink, relativeTimestamp } from '.'
-import { sentry } from '../../logging/sentry'
-import { setup_cmd } from '../../services/admin/setup-cmd'
-import { syncGuildRankingLbMessage } from '../../services/leaderboard/leaderboard-message'
-import { syncMatchesChannel } from '../../services/matches/logging/matches-channel'
-import { matches_cmd } from '../../services/matches/logging/views/matches-cmd'
-import { default_matchmaking_settings } from '../../services/rankings/ranking-properties'
-import { create_ranking_cmd } from '../../services/rankings/views/commands/create-ranking-cmd'
+import { Colors, commandMention, escapeMd, relativeTimestamp } from '.'
+import { setup_cmd } from '../../services/setup-ui/setup-cmd'
+import { matches_cmd } from '../../services/matches/ui/matches/matches-cmd'
+import { liveLbMsgLink } from '../../services/rankings/properties'
+import { create_ranking_cmd } from '../../services/rankings/ui/create-ranking-cmd'
 import { App } from '../../setup/app'
 import {
   challenge_cmd,
-  help_cmd,
   join_cmd,
   leave_cmd,
   record_match_cmd,
   settings_cmd,
   settle_match_cmd,
   start_match_cmd,
-} from '../../setup/views'
+} from '../../setup/all-interaction-handlers'
 
 export const concise_description = `This bot manages competitive leaderboards for any game by coordinating and tracking ranked matches between players in your community. It has additional features for matchmaking, analytics, customization, and moderation.`
 
@@ -30,7 +26,7 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
     title: `Guide`,
     fields: [
       {
-        name: `Overview`,
+        name: `Setup`,
         value:
           `Every player, match, and rating that this bot tracks belongs to a **ranking**.` +
           ` You might want to have a separate ranking for different games or gamemodes.` +
@@ -82,89 +78,21 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
   }
 }
 
-export async function allRankingsPageEmbeds(
-  app: App,
-  guild: Guild,
-  guild_rankings: GuildRanking[],
-): Promise<APIEmbed[]> {
-  const rankings_embed_title_and_desc =
-    guild_rankings.length === 0
-      ? {
-          title: `Create a Ranking`,
-          description: `${escapeMd(guild.data.name)} has no rankings set up.
-
-For more info, use ${await commandMention(app, help_cmd)}`,
-        }
-      : {
-          title: `All Rankings`,
-          description: `${escapeMd(guild.data.name)} has **${guild_rankings.length}** ranking${guild_rankings.length === 1 ? `` : `s`}. Adjust their settings by selecting a ranking below.`,
-        }
-
-  const embeds: D.APIEmbed[] = [
-    {
-      ...rankings_embed_title_and_desc,
-      fields: await Promise.all(
-        guild_rankings.map(async gr => {
-          return {
-            name: escapeMd((await gr.ranking.fetch()).data.name),
-            value: await guildRankingDescription(app, gr),
-            inline: false,
-          }
-        }),
-      ),
-      color: Colors.Primary,
-    },
-  ]
-
-  return embeds
-}
-
-export async function guildRankingDescription(
+/**
+ * Returns a field with the ranking title and display channel
+ */
+export async function guildRankingDescriptionField(
   app: App,
   p_guild_ranking: PartialGuildRanking,
-  include_details = false,
-): Promise<string> {
-  sentry.debug(`guildRankingDescription(${p_guild_ranking})`)
+): Promise<D.APIEmbedField> {
+  const { ranking } = await p_guild_ranking.fetch()
+  const lb_msg_link = await liveLbMsgLink(app, p_guild_ranking)
 
-  const { guild_ranking, ranking } = await p_guild_ranking.fetch()
-
-  const time_created = ranking.data.time_created
-  const teams_per_match = ranking.data.teams_per_match
-  const players_per_team = ranking.data.players_per_team
-
-  // Get the match logs channel if it's enabled
-  const match_logs_channel_id = guild_ranking.data.display_settings?.log_matches
-    ? (await syncMatchesChannel(app, guild_ranking.guild))?.id
-    : undefined
-
-  const result = await syncGuildRankingLbMessage(app, guild_ranking, {
-    enable_if_disabled: false,
-    no_edit: true,
-  })
-
-  const message_link = result
-    ? messageLink(guild_ranking.data.guild_id, result.channel_id, result.message.id)
-    : undefined
-
-  let text =
-    `- Match type: **` +
-    new Array(teams_per_match).fill(players_per_team).join('v') +
-    `**` +
-    `\n- ` +
-    (message_link ? `Live leaderboard: ${message_link}` : `Leaderboard not displayed anywhere`)
-
-  if (include_details) {
-    text +=
-      (time_created ? `\n- Created on ${dateTimestamp(time_created)}` : ``) +
-      (match_logs_channel_id ? `\n- Matches are logged in <#${match_logs_channel_id}>` : ``) +
-      `\n- Matchmaking queue (${await commandMention(app, join_cmd, guild_ranking.data.guild_id)}): ` +
-      (ranking.data.matchmaking_settings.queue_enabled ? `**Enabled**` : `**Disabled**`) +
-      `\n- Direct challenges (${await commandMention(app, challenge_cmd, guild_ranking.data.guild_id)}): ` +
-      (ranking.data.matchmaking_settings.direct_challenge_enabled ? `**Enabled**` : `**Disabled**`) +
-      `\n- By default, new matches are a best of **${ranking.data.matchmaking_settings.default_best_of ?? default_matchmaking_settings.default_best_of}**`
+  return {
+    name: escapeMd((await ranking.fetch()).data.name),
+    value: lb_msg_link ? `Live leaderboard: ${lb_msg_link}` : `Live leaderboard not displayed anywhere`,
+    inline: false,
   }
-
-  return text
 }
 
 export const queue_join = ({

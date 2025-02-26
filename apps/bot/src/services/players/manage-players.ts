@@ -5,7 +5,7 @@ import { getUserAccessToken } from '../../routers/oauth'
 import { App } from '../../setup/app'
 import { syncRankingLbMessages } from '../leaderboard/leaderboard-message'
 import { updateUserRoleConnectionData } from '../linked-roles/role-connections'
-import { calcDisplayRating } from './display'
+import { getDisplayRating } from './display'
 
 /**
  * Gets a player by user and ranking, or registers a new player in that ranking.
@@ -67,7 +67,7 @@ export async function updatePlayerRatings(app: App, update: { player: PartialPla
 
         if (app.config.features.RatingRoleConnections) {
           // calculate display rating using updated rating or current rating
-          const display_rating = calcDisplayRating(app, ranking.data.initial_rating)(rating)
+          const display_rating = getDisplayRating(app, ranking)(rating)
 
           const access_token = await getUserAccessToken(app, player.data.user_id, [D.OAuth2Scopes.RoleConnectionsWrite])
           if (access_token) {

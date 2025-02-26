@@ -105,3 +105,7 @@ export async function hash(input: unknown): Promise<string> {
   const hashArray = Array.from(new Uint8Array(hashBuffer)) // Convert buffer to byte array
   return hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('') // Convert bytes to hex string
 }
+export function fillDefaults<T extends object>(object: Partial<T> | undefined, defaults: T): T {
+  if (!object) return defaults as T
+  return { ...defaults, ...object }
+}

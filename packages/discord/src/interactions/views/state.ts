@@ -1,8 +1,8 @@
 import { LZString, StringData, StringDataSchema } from '@repo/utils'
-import { AnyAppCommandType, AnyViewSignature } from '..'
+import { AnyViewSignature } from '..'
 import { DiscordLogger } from '../../logging/discord-logger'
 import { InteractionErrors } from '../errors'
-import { CommandSignature, ViewSignature } from './signature'
+import { ViewSignature } from './signature'
 
 export class ViewState<T extends StringDataSchema> extends StringData<T> {
   set = {} as {

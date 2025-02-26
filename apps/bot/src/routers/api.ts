@@ -5,8 +5,8 @@ import { App } from '../setup/app'
 import { getViewManager } from '../setup/handler-manager'
 import { inviteUrl } from '../utils/'
 import rankingsRouter from './api/rankings'
-import { getUserAccessToken, saveUserAccessToken } from './oauth'
 import { authorize } from './base'
+import { getUserAccessToken, saveUserAccessToken } from './oauth'
 
 export default (app: App) =>
   Router({ base: '/api' })

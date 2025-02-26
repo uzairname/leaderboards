@@ -7,10 +7,10 @@ export namespace field {
   export function Enum<T extends { [key: string]: unknown }>(options: T) {
     return new EnumField<T>(options)
   }
-  export function Choice<T extends { [key: string]: any }>(options: T) {
+  export function Choice<T extends { [key: string]: unknown }>(options: T) {
     return new ChoiceField<T>(options)
   }
-  export function ListValue(options: any[]) {
+  export function ListValue<T>(options: T[]) {
     return new ListValueField(options)
   }
   export function Array<T>(field: Field<T>) {

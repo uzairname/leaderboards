@@ -7,7 +7,7 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import postgres from 'postgres'
 import { DbClient, getNeonDrizzleWsClient } from '../src'
 import { matches_trigger_query } from '../src/migration-utils/queries'
-import { RatingSettings, ScoringMethod } from '../src/models'
+import { ScoringMethod } from '../src/models'
 
 // Run this script from the directory database/
 
@@ -48,15 +48,19 @@ async function customMigrations(postgres_url: string) {
 
   if (v <= 0) {
     await drizzle.transaction(async tx => {
-      await migratev0(tx)
+      await migratev0(tx, new DbClient(tx))
       await tx.execute(sql`UPDATE "Settings" SET "db_version" = 1;`)
     })
   }
+  // if (v <= 1) {
+  //   await drizzle.transaction(async tx => {
+  //     await migratev1(tx, new DbClient(tx))
+  //     await tx.execute(sql`UPDATE "Settings" SET "db_version" = 2;`)
+  //   })
+  // }
 }
 
-async function migratev0(tx: NeonDatabase) {
-  const db = new DbClient(tx)
-
+async function migratev0(tx: NeonDatabase, db: DbClient) {
   await tx.execute(`
     ALTER TABLE "Rankings" ADD COLUMN "match_config" jsonb;
   `)
@@ -71,7 +75,7 @@ async function migratev0(tx: NeonDatabase) {
   // Add in default values
   const rankings = await tx.execute(`SELECT * FROM "Rankings"`)
   for (const ranking of rankings.rows) {
-    const rating_settings: RatingSettings = {
+    const rating_settings: any = {
       scoring_method: ScoringMethod.TrueSkill,
     }
     await db.rankings.get(ranking.id as number).update({ rating_settings })
@@ -87,3 +91,5 @@ async function migratev0(tx: NeonDatabase) {
   const rankings_ = await tx.execute(`SELECT * FROM "Rankings"`)
   console.log(rankings_.rows)
 }
+
+async function migratev1(tx: NeonDatabase, db: DbClient) {}

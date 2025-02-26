@@ -1,11 +1,10 @@
 import { Match, MatchStatus, PartialGuild } from '@repo/db/models'
 import { MessageData } from '@repo/discord'
 import { maxIndex } from '@repo/utils'
-import { Colors } from 'apps/bot/src/utils/ui'
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
-import { emojis, escapeMd, relativeTimestamp, spaces } from '../../../utils/ui'
+import { Colors, emojis, escapeMd, relativeTimestamp, spaces } from '../../../utils/ui'
 import { getMatchPlayersDisplayStats } from '../../players/display'
 import { syncMatchesChannel } from './matches-channel'
 
@@ -13,7 +12,7 @@ import { syncMatchesChannel } from './matches-channel'
  * Sync match summary messages for this match across all guilds the match's ranking is in
  */
 export async function syncMatchSummaryMessages(app: App, match: Match): Promise<void> {
-  const guild_rankings = await app.db.guild_rankings.getBy({ ranking_id: match.data.ranking_id })
+  const guild_rankings = await app.db.guild_rankings.fetchBy({ ranking_id: match.data.ranking_id })
   sentry.debug(`syncMatchSummaryMessages ${match} in ${guild_rankings.length} guilds`)
   await Promise.all(
     guild_rankings.map(async item => {
@@ -28,7 +27,7 @@ export async function syncMatchSummaryMessages(app: App, match: Match): Promise<
 export async function syncMatchSummaryMessage(app: App, match: Match, p_guild: PartialGuild): Promise<D.APIMessage> {
   sentry.debug(`syncMatchSummaryMessage ${match}, ${p_guild}`)
   // Check whether match logging is enabled for this guild ranking
-  const { guild_ranking, guild } = await app.db.guild_rankings.getBy({
+  const { guild_ranking, guild } = await app.db.guild_rankings.fetchBy({
     guild_id: p_guild.data.id,
     ranking_id: match.data.ranking_id,
   })

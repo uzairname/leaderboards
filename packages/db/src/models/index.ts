@@ -1,5 +1,5 @@
-export * from './accesstokens'
-export * from './guildrankings'
+export * from './access-tokens'
+export * from './guild-rankings'
 export * from './guilds'
 export * from './matches'
 export * from './players'

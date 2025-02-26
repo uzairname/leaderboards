@@ -8,11 +8,11 @@ import { Colors, commandMention, escapeMd, relativeTimestamp, space } from '../.
 import { syncRankedCategory } from '../guilds/manage-guilds'
 import { numRankings } from '../guilds/properties'
 import { getOrderedLeaderboardPlayers } from '../players/display'
-import { leaderboard_cmd } from './views/leaderboard-cmd'
+import { leaderboard_cmd } from './ui/leaderboard-cmd'
 
 export async function syncRankingLbMessages(app: App, ranking: PartialRanking): Promise<void> {
   sentry.debug(`syncRankingLbMessages ranking: ${ranking.data.id}`)
-  const guild_rankings = await app.db.guild_rankings.getBy({ ranking_id: ranking.data.id })
+  const guild_rankings = await app.db.guild_rankings.fetchBy({ ranking_id: ranking.data.id })
   await Promise.all(guild_rankings.map(guild_ranking => syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)))
 }
 
@@ -157,7 +157,7 @@ export async function leaderboardMessage(
     ` are hidden from the main leaderboard until they play more games.` +
     (options?.full
       ? ``
-      : `\nUse ${await commandMention(app, leaderboard_cmd, options?.guild_id)}${guild && (await numRankings(app, guild)) > 1 ? ` \`${escapeMd(ranking.data.name)}\`` : ``} to see the full leaderboard.`)
+      : `\nUse ${await commandMention(app, leaderboard_cmd, options?.guild_id)}${guild && (await numRankings(app, guild)) > 1 ? ` \`${ranking.data.name}\`` : ``} to see the full leaderboard.`)
 
   const embed: D.APIEmbed = {
     title: `${escapeMd(ranking.data.name)} Leaderboard`,
