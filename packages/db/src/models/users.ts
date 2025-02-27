@@ -29,6 +29,11 @@ export class PartialUser {
     return data.map(data => new Player(data, this.db))
   }
 
+  async update(data: UserUpdate): Promise<User> {
+    const new_data = (await this.db.drizzle.update(Users).set(data).where(eq(Users.id, this.data.id)).returning())[0]
+    return new User(new_data, this.db)
+  }
+
   async removePlayersFromQueue(): Promise<number> {
     const result = await this.db.drizzle
       .update(Players)
@@ -38,7 +43,8 @@ export class PartialUser {
     return result.length
   }
 
-  private async removeFromTeamQueues(): Promise<number> {
+  async removeFromTeamQueues(): Promise<number> {
+    throw new Error('Not implemented')
     const result = await this.db.drizzle
       .delete(QueueTeams)
       .where(
@@ -52,6 +58,11 @@ export class PartialUser {
       )
       .returning() // prettier-ignore
     return result.length
+  }
+
+  async delete(): Promise<void> {
+    await this.db.drizzle.delete(Users).where(eq(Users.id, this.data.id))
+    this.db.cache.users.delete(this.data.id)
   }
 }
 

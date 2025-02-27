@@ -1,10 +1,10 @@
-import { InitialContext, ViewSignature } from '@repo/discord'
+import { Context, ViewSignature } from '@repo/discord'
 import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../setup/app'
 import { Colors, escapeMd, userAvatarUrl } from '../../../utils/ui'
 import { matches_view_sig } from '../../matches/ui/matches/matches-view'
-import { getDisplayRating } from '../display'
+import { displayRatingFn } from '../../rankings/properties'
 
 export const profile_view_sig = new ViewSignature({
   name: 'Profile page',
@@ -29,7 +29,7 @@ export const profile_view = profile_view_sig.set<App>({
 
 export async function profileOverviewPage(
   app: App,
-  ctx: InitialContext<typeof profile_view_sig>,
+  ctx: Context<typeof profile_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const target_user_id = ctx.state.get.user_id()
 
@@ -41,12 +41,14 @@ export async function profileOverviewPage(
 
   const is_requesting_user = ctx.interaction.member.user.id === target_user_id
 
+  // find every ranking this user is in, in the guild
   // find all of the user's players that are in a ranking that the guild has
+  // sort by rd, rough heuristic of activity.
   const guild_id = ctx.interaction.guild_id
   const guild_rankings = await app.db.guild_rankings.fetchBy({ guild_id })
-  const players = (await target_app_user.players())
-    .filter(p => guild_rankings.some(r => r.ranking.data.id === p.data.ranking_id))
-    .sort((a, b) => a.data.rating.rd - b.data.rating.rd)
+  const players = (await target_app_user.players()).filter(p =>
+    guild_rankings.some(r => r.ranking.data.id === p.data.ranking_id),
+  )
 
   const embed: D.APIEmbed = {
     title: `${target_user_name}'s Stats`,
@@ -58,7 +60,7 @@ export async function profileOverviewPage(
       (await Promise.all(
         players.map(async p => {
           const ranking = await p.ranking()
-          const display_rating = getDisplayRating(app, ranking)(p.data.rating)
+          const display_rating = displayRatingFn(app, ranking)(p.data.rating)
           const rating_text = display_rating.is_provisional
             ? `${display_rating.rating}? (Unranked)`
             : `${display_rating.rating}`

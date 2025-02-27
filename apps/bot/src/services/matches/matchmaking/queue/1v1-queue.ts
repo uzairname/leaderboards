@@ -4,7 +4,7 @@ import { nonNullable, unflatten } from '@repo/utils'
 import { UserError } from '../../../../errors/user-errors'
 import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
-import { getRegisterPlayer } from '../../../players/manage-players'
+import { getOrCreatePlayer } from '../../../players/manage-players'
 import { ensureNoActiveMatches, ensurePlayersEnabled } from '../../management/match-creation'
 import { start1v1SeriesThread } from '../../ongoing-match/manage-ongoing-match'
 
@@ -29,7 +29,7 @@ export async function userJoinQueue(
   }
 
   const user = checkGuildInteraction(ctx.interaction).member.user.id
-  const player = await getRegisterPlayer(app, user, ranking)
+  const player = await getOrCreatePlayer(app, user, ranking)
 
   await ensureNoActiveMatches(app, [player])
   await ensurePlayersEnabled(app, [player])
@@ -100,7 +100,7 @@ export async function addPlayerToQueue(app: App, p: PartialPlayer): Promise<Date
 }
 
 export async function removePlayersFromQueue(app: App, players: PartialPlayer[]): Promise<void> {
-  await app.db.players.updateMany(
+  await app.db.players.setMany(
     players.map(p => p.data.id),
     { time_joined_queue: null },
   )

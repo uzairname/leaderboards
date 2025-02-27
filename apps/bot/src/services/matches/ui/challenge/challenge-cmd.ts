@@ -4,10 +4,10 @@ import * as D from 'discord-api-types/v10'
 import { App } from '../../../../setup/app'
 import { guildRankingsOption, withSelectedRanking } from '../../../../utils/view-helpers/ranking-option'
 import { getOrAddGuild } from '../../../guilds/manage-guilds'
-import { getRegisterPlayer } from '../../../players/manage-players'
+import { getOrCreatePlayer } from '../../../players/manage-players'
+import { getChallengeEnabledRankings } from '../../../rankings/properties'
 import { ensurePlayersEnabled } from '../../management/match-creation'
 import { renderChallengePage } from './challenge-view'
-import { getChallengeEnabledRankings } from '../../../rankings/properties'
 
 const optionnames = {
   opponent: 'opponent',
@@ -78,7 +78,7 @@ export const challenge_cmd = challenge_cmd_sig.set<App>({
         ctx.defer(async ctx => {
           input.ranking
           const interaction = ctx.interaction
-          const initiator = await getRegisterPlayer(app, interaction.member.user.id, ranking)
+          const initiator = await getOrCreatePlayer(app, interaction.member.user.id, ranking)
           input.opponent
 
           const opponent_id = nonNullable(
@@ -88,7 +88,7 @@ export const challenge_cmd = challenge_cmd_sig.set<App>({
             'opponent option',
           ).value
 
-          const opponent = await getRegisterPlayer(app, opponent_id, ranking)
+          const opponent = await getOrCreatePlayer(app, opponent_id, ranking)
 
           await ensurePlayersEnabled(app, [initiator, opponent])
 

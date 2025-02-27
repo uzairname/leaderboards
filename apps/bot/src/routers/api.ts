@@ -2,7 +2,7 @@ import { appCommandToJSONBody, isCommandHandler } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { json, Router } from 'itty-router'
 import { App } from '../setup/app'
-import { getViewManager } from '../setup/handler-manager'
+import { initInteractionHandler } from '../setup/interaction-handler'
 import { inviteUrl } from '../utils/'
 import rankingsRouter from './api/rankings'
 import { authorize } from './base'
@@ -27,7 +27,7 @@ export default (app: App) =>
 
     .get('/handlers', async () => {
       const result = {
-        'defined view and command handlers': getViewManager()
+        'defined view and command handlers': initInteractionHandler()
           .all_handlers.map(c => {
             return {
               cid_prefix: `${c.signature.config.custom_id_prefix}`,

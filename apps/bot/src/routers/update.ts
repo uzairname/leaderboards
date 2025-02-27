@@ -29,6 +29,7 @@ export default (app: App) =>
         message: `Updated Leaderboards app in ${guild_names.length} guilds`,
         data: { guild_names },
       })
+
       return new Response(`Updated Leaderboards app in ${guild_names.length} guilds`, {
         status: 200,
       })

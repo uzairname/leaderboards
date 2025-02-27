@@ -2,7 +2,7 @@ import { RequestData } from '@discordjs/rest'
 import { DbLogger } from '@repo/db'
 import { DiscordLogger, LogLevel } from '@repo/discord'
 import { truncateString } from '@repo/utils'
-import { Logger } from '../../logging/logger'
+import { Logger } from './logger'
 
 export class DbLoggerWrapper extends DbLogger {
   constructor(private sentry: Logger) {

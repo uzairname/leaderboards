@@ -1,4 +1,4 @@
-A Discord bot that handles elo rating, matchmaking, and leaderboards.
+An elo rating Discord bot.
 
 # Deploying
 
@@ -68,7 +68,7 @@ Run `npx tsc` from the `apps/bot` directory
 
 ### Database
 
-Run these commands from the `packages/database` directory
+Run these commands from the `packages/db` directory
 
 #### Generate migrations
 

@@ -5,12 +5,12 @@ import { getUserAccessToken } from '../../routers/oauth'
 import { App } from '../../setup/app'
 import { syncRankingLbMessages } from '../leaderboard/leaderboard-message'
 import { updateUserRoleConnectionData } from '../linked-roles/role-connections'
-import { getDisplayRating } from './display'
+import { displayRatingFn } from '../rankings/properties'
 
 /**
  * Gets a player by user and ranking, or registers a new player in that ranking.
  */
-export async function getRegisterPlayer(
+export async function getOrCreatePlayer(
   app: App,
   partial_discord_user: D.APIUser | string,
   p_ranking: PartialRanking,
@@ -35,9 +35,9 @@ export async function getRegisterPlayer(
     player = await app.db.players.create(app_user, ranking, {
       name: app_user.data.name,
       rating: {
-        mu: ranking.data.initial_rating.mu,
-        rd: ranking.data.initial_rating.rd,
-        vol: ranking.data.initial_rating.vol,
+        mu: ranking.data.rating_settings.initial_rating.mu,
+        rd: ranking.data.rating_settings.initial_rating.rd,
+        vol: ranking.data.rating_settings.initial_rating.vol,
       },
     })
   }
@@ -46,28 +46,38 @@ export async function getRegisterPlayer(
 }
 
 /**
- * Updates players in the database. Updates their role connections and the ranking leaderboards.
+ * Updates players in the database.
+ *
+ * Also updates:
+ * - their role connections
+ * - the ranking leaderboard messages
  */
 export async function updatePlayerRatings(app: App, update: { player: PartialPlayer; rating: Rating }[]) {
   sentry.debug(`updatePlayerRatings, ${update.map(u => u.player.data.id)}`)
-  const ranking_ids_affected = new Set<number>()
+
+  const all_players = await app.db.players.fetchMany({
+    player_ids: update.map(u => u.player.data.id),
+  })
+
+  // Update, with full player object
+  const update_players = update.map(({ player, rating }) => ({
+    player: all_players.find(p => p.data.id === player.data.id)!,
+    rating,
+  }))
+
+  const ranking_ids_affected = new Set(all_players.map(player => player.data.ranking_id))
 
   await Promise.all([
-    // Update player ratings
-    app.db.players.updateRatings(update),
-    // Update leaderboard and role connections
+    await app.db.players.updateRatings(update),
     Promise.all(
-      update.map(async ({ player: p_player, rating }) => {
-        // For each player to update, update role connections and leaderboard if rating or name changed
-        const player = await p_player.fetch()
-        const ranking = await player.ranking()
-
-        // store affected rankings for later leaderboard update
-        ranking_ids_affected.add(ranking.data.id)
-
+      update_players.map(async ({ player, rating }) => {
+        // For each player to update, update role connections
         if (app.config.features.RatingRoleConnections) {
+          const ranking = await player.ranking()
+
+          // store affected rankings for later leaderboard update
           // calculate display rating using updated rating or current rating
-          const display_rating = getDisplayRating(app, ranking)(rating)
+          const display_rating = displayRatingFn(app, ranking)(rating)
 
           const access_token = await getUserAccessToken(app, player.data.user_id, [D.OAuth2Scopes.RoleConnectionsWrite])
           if (access_token) {
@@ -94,4 +104,10 @@ export async function setPlayerDisabled(app: App, player: Player, disabled: bool
   })
 
   await syncRankingLbMessages(app, await player.ranking())
+}
+
+export async function refreshPlayerName(app: App, player: Player) {
+  const discord_user = await app.discord.getUser(player.data.user_id)
+  const new_name = discord_user.global_name ?? discord_user.username
+  await Promise.all([player.update({ name: new_name }), app.db.users.get(discord_user.id).update({ name: new_name })])
 }

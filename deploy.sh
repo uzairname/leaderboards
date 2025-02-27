@@ -19,7 +19,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Run migrations
-cd packages/database
+cd packages/db
 
 npx tsx scripts/migrate.ts ../../$env_path
 if [ $? -ne 0 ]; then

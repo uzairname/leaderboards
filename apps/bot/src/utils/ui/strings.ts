@@ -14,6 +14,7 @@ export class Colors {
   static Pending = 0xdee887
   static DiscordBackground = 0x313338
   static EmbedBackground = 0x2b2d31
+  static Error = 0xff4d4d
 }
 
 export function randomColor() {
@@ -68,7 +69,8 @@ export function escapeMd(str: string | undefined | null): string {
     .replace(/#/g, '\\#')
 }
 
-export const space = `⠀` // U+2800: Braille Pattern Blank
+// export const space = `⠀` // U+2800: Braille Pattern Blank
+export const space = ` ` // U+2003: Em Space
 
 export function spaces(n: number): string {
   return space.repeat(n)

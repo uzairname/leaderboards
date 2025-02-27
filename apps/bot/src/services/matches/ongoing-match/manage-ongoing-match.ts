@@ -7,8 +7,8 @@ import { Colors } from '../../../utils'
 import { syncMatchSummaryMessage } from '../logging/match-summary-message'
 import { cancelMatch, updateMatchOutcome } from '../management/manage-matches'
 import { startNewMatch } from '../management/match-creation'
-import { generateCustomMatchDesc } from './ongoing-1v1-match-message'
 import { ongoing_match_view_sig, ongoingMatchPage } from '../ui/ongoing-match/ongoing-match-view'
+import { generateCustomMatchDesc } from './ongoing-1v1-match-message'
 
 /**
  * Starts a new match. Syncs the match's summary message in the guild

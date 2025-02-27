@@ -1,12 +1,22 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import { Player } from '@repo/db/models'
 import { DiscordErrors } from '@repo/discord'
+import { truncateString } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { App } from '../setup/app'
 import { inviteUrl, listToString, permsToString } from '../utils/ui'
 
 export class UserError extends Error {
-  constructor(message?: string) {
+  /**
+   * Any exception while interacting with the Bot.
+   * @param message Message displayed in the embed body.
+   * @param title Title of the error message.
+   */
+
+  constructor(
+    message?: string,
+    public title?: string,
+  ) {
     super(message)
     this.name = `${UserError.name}.${this.constructor.name}`
   }
@@ -22,22 +32,17 @@ export namespace UserErrors {
 
   export class BotPermissions extends UserError {
     constructor(app: App, e: DiscordErrors.BotPermissions) {
-      let msg = "I'm missing some permissions"
-
       const missing_perms = e.missingPermissionsNames
 
-      if (missing_perms.length > 0) {
-        msg = `Make sure the bot has the following permission(s): ${permsToString(missing_perms)}`
-      }
-      msg =
-        msg +
-        `\n[Click here to re-invite me with the required perms](${inviteUrl(app)})
-If this doesn't work, then this action is not allowed.`
-      super(msg)
+      const title = `Missing Permissions${missing_perms.length > 0 ? `: ${truncateString(permsToString(missing_perms), 60)}` : ``}`
+
+      const msg = `[Click here](${inviteUrl(app)}) to re-invite the bot with the required permissions, then ensure that no roles or channels are restricting its permissions. If this doesn't work, then this action is not allowed.`
+
+      super(msg, title)
     }
   }
 
-  export class RateLimitError extends UserError {
+  export class DiscordRateLimit extends UserError {
     constructor(public timeToReset: number) {
       super(`Being rate limited. Try again in ${timeToReset / 1000} seconds`)
     }

@@ -13,7 +13,8 @@ import { UserErrors } from '../../../errors/user-errors'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { rankingProperties } from '../../rankings/properties'
-import { rescoreMatches, validateMatchData } from './manage-matches'
+import { rescoreMatches } from '../scoring/score_match'
+import { validateMatchData } from './manage-matches'
 
 /**
  * Starts a new match, using the players' current ratings

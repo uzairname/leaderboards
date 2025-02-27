@@ -2,8 +2,8 @@ import { CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../../../errors/user-errors'
 import { App } from '../../../../setup/app'
-import { guildRankingsOption, withSelectedRanking, ensureAdminPerms } from '../../../../utils'
-import { getRegisterPlayer } from '../../../players/manage-players'
+import { ensureAdminPerms, guildRankingsOption, withSelectedRanking } from '../../../../utils'
+import { getOrCreatePlayer } from '../../../players/manage-players'
 import { start1v1SeriesThread } from '../../ongoing-match/manage-ongoing-match'
 
 export const start_match_cmd_sig = new CommandSignature({
@@ -83,7 +83,7 @@ export const start_match_cmd = start_match_cmd_sig.set<App>({
 
               const team_players = await Promise.all(
                 [[p1_id], [p2_id]].map(async team => {
-                  return Promise.all(team.map(id => getRegisterPlayer(app, id, ranking)))
+                  return Promise.all(team.map(id => getOrCreatePlayer(app, id, ranking)))
                 }),
               )
               const { guild_ranking } = await app.db.guild_rankings.fetchBy({

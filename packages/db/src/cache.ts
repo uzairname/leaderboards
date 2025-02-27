@@ -35,4 +35,8 @@ export default class DbCache {
     this.maps.push(map)
     return map
   }
+
+  toString() {
+    return this.maps.map((map) => map.toString()).join('\n')
+  } 
 }

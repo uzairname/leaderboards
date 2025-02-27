@@ -1,4 +1,4 @@
-import { CommandSignature, getOptions, InitialContext } from '@repo/discord'
+import { CommandSignature, Context, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../setup/app'
 import { guildRankingsOption, withSelectedRanking } from '../../../utils/view-helpers/ranking-option'
@@ -14,9 +14,11 @@ const leaderboard_cmd_sig = new CommandSignature({
 export const leaderboard_cmd = leaderboard_cmd_sig.set<App>({
   guildSignature: async (app, guild_id) => {
     const guild = app.db.guilds.get(guild_id)
+    const guild_rankings = await app.db.guild_rankings.fetchBy({ guild_id: guild.data.id })
+    if (guild_rankings.length == 0) return null
     return new CommandSignature({
       ...leaderboard_cmd_sig.config,
-      options: [(await guildRankingsOption(app, guild, 'ranking')) || []].flat(),
+      options: await guildRankingsOption(app, guild),
     })
   },
   onCommand: async (ctx, app) =>
@@ -43,7 +45,7 @@ export const leaderboard_cmd = leaderboard_cmd_sig.set<App>({
 
 export async function leaderboardPage(
   app: App,
-  ctx: InitialContext<typeof leaderboard_view_sig>,
+  ctx: Context<typeof leaderboard_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
   const page = ctx.state.get.page()

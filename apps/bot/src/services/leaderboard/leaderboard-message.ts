@@ -7,7 +7,8 @@ import { type App } from '../../setup/app'
 import { Colors, commandMention, escapeMd, relativeTimestamp, space } from '../../utils/ui'
 import { syncRankedCategory } from '../guilds/manage-guilds'
 import { numRankings } from '../guilds/properties'
-import { getOrderedLeaderboardPlayers } from '../players/display'
+import { getOrderedLeaderboardPlayers } from '../players/properties'
+import { rankingProperties } from '../rankings/properties'
 import { leaderboard_cmd } from './ui/leaderboard-cmd'
 
 export async function syncRankingLbMessages(app: App, ranking: PartialRanking): Promise<void> {
@@ -64,16 +65,18 @@ export async function syncGuildRankingLbMessage(
 }
 
 export async function disableGuildRankingLbMessage(app: App, guild_ranking: GuildRanking) {
-  await app.discord.deleteMessageIfExists(
-    guild_ranking.data.leaderboard_channel_id,
-    guild_ranking.data.leaderboard_message_id,
-  )
-  await guild_ranking.update({
-    display_settings: {
-      ...guild_ranking.data.display_settings,
-      leaderboard_message: false,
-    },
-  })
+  await Promise.all([
+    app.discord.deleteMessageIfExists(
+      guild_ranking.data.leaderboard_channel_id,
+      guild_ranking.data.leaderboard_message_id,
+    ),
+    guild_ranking.update({
+      display_settings: {
+        ...guild_ranking.data.display_settings,
+        leaderboard_message: false,
+      },
+    }),
+  ])
 }
 
 export async function sendLbChannel(app: App, guild: Guild, ranking: Ranking): Promise<D.APIChannel> {
@@ -113,7 +116,7 @@ export async function leaderboardMessage(
             if (place == 1) return `🥇`
             else if (place == 2) return `🥈`
             else if (place == 3) return `🥉`
-            else return `${place}.${space}`
+            else return `${place}. `
           })(place)}` +
           `${space}${rating_text}` +
           `${space}<@${p.user_id}> `
@@ -153,8 +156,9 @@ export async function leaderboardMessage(
 
   const bottom_text =
     `-# Last updated ${relativeTimestamp(new Date(Date.now()))}. ` +
-    `\n-# Unranked players are given a provisional rating and` +
-    ` are hidden from the main leaderboard until they play more games.` +
+    (rankingProperties(ranking).uses_provisional_ratings
+      ? `\n-# Unranked players are given a provisional rating and are hidden from the main leaderboard until they play more games.`
+      : ``) +
     (options?.full
       ? ``
       : `\nUse ${await commandMention(app, leaderboard_cmd, options?.guild_id)}${guild && (await numRankings(app, guild)) > 1 ? ` \`${ranking.data.name}\`` : ``} to see the full leaderboard.`)

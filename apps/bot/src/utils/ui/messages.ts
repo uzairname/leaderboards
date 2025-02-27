@@ -3,11 +3,10 @@ import { MessageData } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { APIEmbed } from 'discord-api-types/v10'
 import { Colors, commandMention, escapeMd, relativeTimestamp } from '.'
-import { setup_cmd } from '../../services/setup-ui/setup-cmd'
 import { matches_cmd } from '../../services/matches/ui/matches/matches-cmd'
 import { liveLbMsgLink } from '../../services/rankings/properties'
 import { create_ranking_cmd } from '../../services/rankings/ui/create-ranking-cmd'
-import { App } from '../../setup/app'
+import { setup_cmd } from '../../services/setup-ui/setup-cmd'
 import {
   challenge_cmd,
   join_cmd,
@@ -17,8 +16,9 @@ import {
   settle_match_cmd,
   start_match_cmd,
 } from '../../setup/all-interaction-handlers'
+import { App } from '../../setup/app'
 
-export const concise_description = `This bot manages competitive leaderboards for any game by coordinating and tracking ranked matches between players in your community. It has additional features for matchmaking, analytics, customization, and moderation.`
+export const concise_description = `This bot manages competitive leaderboards for your Discord community by arranging and tracking ranked matches between players. It has additional features for matchmaking, analytics, moderation, and cross-server rankings.`
 
 export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
   const guild_id = guild?.data.id ?? '0'
@@ -68,7 +68,7 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
       },
       {
         name: `Player Ratings`,
-        value: `The bot tracks every player's **estimated skill level** (Also known as their rating, elo, score, number of points, etc.) as they play matches. For each ranking, you can choose any of the following scoring methods that the bot can use to calculate ratings:
+        value: `The bot tracks every player's **estimated skill level** (Also known as their rating, elo, score, number of points, etc.) as they play matches. For each ranking, you can choose any of the following rating methods that the bot can use to calculate ratings:
 - **Wins - Losses**: The simplest method. Awards one point to a player for winning a game, and takes away one point for losing.
 - **TrueSkill2**: Skill ratings are based on the [TrueSkill2](https://en.wikipedia.org/wiki/TrueSkill) algorithm developed my Microsoft. At first, your skill will be uncertain and you will be hidden from the leaderboard. Winning against opponents comparatively better than you will award more points. Playing more games makes your rating more certain, and thus it will change more slowly.
 - **Chess Elo**: The classic chess rating system. Winning against an opponent with a higher rating will award more points. Losing against an opponent with a lower rating will take away more points. Comes with a k-factor setting.`,

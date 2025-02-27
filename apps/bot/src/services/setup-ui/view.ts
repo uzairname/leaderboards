@@ -1,12 +1,25 @@
-import { ComponentContext, Context } from '@repo/discord'
+import { Context, ViewSignature } from '@repo/discord'
+import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../logging/sentry'
 import { App } from '../../setup/app'
-import { Colors, ensureAdminPerms } from '../../utils'
-import { getOrAddGuild, syncGuildAdminRole } from '../guilds/manage-guilds'
-import { rankingsPage } from '../rankings/ui/rankings-view'
+import { Colors } from '../../utils'
+import { AllRankingsHandlers } from '../rankings/ui/all-rankings/handlers'
+import { SetupHandlers } from './handlers'
 import { admin_role_method_options } from './setup-cmd'
-import { setup_view_sig } from './setup-view'
+
+export const setup_view_sig = new ViewSignature({
+  custom_id_prefix: 'setup',
+  state_schema: {
+    handler: field.Choice(SetupHandlers),
+    admin_role_method: field.Enum(admin_role_method_options),
+  },
+})
+
+export const setup_view = setup_view_sig.set<App>({
+  onComponent: async (ctx, app) => {
+    return ctx.state.get.handler()(app, ctx)
+  },
+})
 
 export async function adminRolePage(
   app: App,
@@ -20,7 +33,7 @@ export async function adminRolePage(
       components: [
         {
           type: D.ComponentType.StringSelect,
-          custom_id: ctx.state.set.callback(onAdminRoleMethodSelect).cId(),
+          custom_id: ctx.state.set.handler(SetupHandlers.onAdminRoleMethodSelect).cId(),
           placeholder: `What do you want to do?`,
           options: [
             {
@@ -55,7 +68,7 @@ export async function adminRolePage(
       components: [
         {
           type: D.ComponentType.RoleSelect,
-          custom_id: ctx.state.set.callback(onAdminRoleSelect).cId(),
+          custom_id: ctx.state.set.handler(SetupHandlers.onAdminRoleSelect).cId(),
         },
       ],
     })
@@ -68,7 +81,7 @@ export async function adminRolePage(
         type: D.ComponentType.Button,
         label: current_admin_role_id ? 'Next' : 'Skip',
         style: D.ButtonStyle.Primary,
-        custom_id: ctx.state.set.callback(rankingsPage).cId(),
+        custom_id: ctx.state.set.handler(AllRankingsHandlers.sendAllRankingsPage).cId(),
       },
     ],
   })
@@ -93,7 +106,7 @@ With the dropdowns below, you can
   return {
     embeds: [
       {
-        title: 'Settings → Admin Role',
+        title: 'Settings ➛ Admin Role',
         description,
         color: Colors.Primary,
       },
@@ -101,56 +114,4 @@ With the dropdowns below, you can
     components,
     flags: D.MessageFlags.Ephemeral,
   }
-} /**
- * The user selects an action to take for the admin role.
- */
-
-export async function onAdminRoleMethodSelect(
-  app: App,
-  ctx: ComponentContext<typeof setup_view_sig>,
-): Promise<D.APIInteractionResponseCallbackData> {
-  await ensureAdminPerms(app, ctx)
-
-  const data = ctx.interaction.data as unknown as D.APIMessageStringSelectInteractionData
-  const method = data.values[0]
-
-  const guild = await getOrAddGuild(app, ctx.interaction.guild_id)
-
-  if (method === admin_role_method_options.new) {
-    sentry.debug(`new`)
-    ctx.state.save.admin_role_method('new')
-    const role_result = await syncGuildAdminRole(app, guild)
-    await app.discord.addRoleToMember(ctx.interaction.guild_id, ctx.interaction.member.user.id, role_result.role.id)
-  } else if (method === admin_role_method_options.choose) {
-    sentry.debug(`choose`)
-    ctx.state.save.admin_role_method('choose')
-  } else if (method === admin_role_method_options.unset) {
-    sentry.debug(`unset`)
-    ctx.state.save.admin_role_method('unset')
-    await app.db.guilds.get(ctx.interaction.guild_id).update({ admin_role_id: null })
-  }
-
-  return adminRolePage(app, ctx)
-}
-/**
- * The user selects an existig role to set as the admin role.
- */
-
-export async function onAdminRoleSelect(
-  app: App,
-  ctx: ComponentContext<typeof setup_view_sig>,
-): Promise<D.APIInteractionResponseCallbackData> {
-  await ensureAdminPerms(app, ctx)
-
-  const data = ctx.interaction.data as unknown as D.APIMessageRoleSelectInteractionData
-  const role_id = data.values[0]
-
-  const guild = await getOrAddGuild(app, ctx.interaction.guild_id)
-
-  // Try adding the role to the user. If this throws an error, the bot is either
-  // missing permissions, or it is a reserved role.
-  await app.discord.addRoleToMember(ctx.interaction.guild_id, ctx.interaction.member.user.id, role_id)
-  await syncGuildAdminRole(app, guild, role_id)
-
-  return adminRolePage(app, ctx)
 }

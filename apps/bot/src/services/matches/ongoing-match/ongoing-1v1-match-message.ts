@@ -4,7 +4,7 @@ import { Match, MatchPlayer, MatchStatus, Vote } from '@repo/db/models'
 import { nonNullable } from '@repo/utils'
 import { App } from '../../../setup/app'
 import { Colors } from '../../../utils'
-import { trackBestOf } from '../../rankings/properties'
+import { rankingProperties } from '../../rankings/properties'
 
 /**
  * Determine the custom description to display at the top of the match thread,
@@ -77,7 +77,7 @@ export async function ongoingMatch1v1Message(
 
   let description = ``
 
-  if (trackBestOf(ranking.data.rating_settings.scoring_method)) {
+  if (rankingProperties(ranking).tracks_best_of) {
     description += `This match is a **best of ${best_of}**.\n`
   }
 

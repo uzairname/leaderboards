@@ -1,4 +1,4 @@
-import { MatchPlayer, Rating, RatingSettings, ScoringMethod } from '@repo/db/models'
+import { MatchPlayer, Rating, RatingSettings, RatingStrategy } from '@repo/db/models'
 import { TrueSkill, Rating as TrueskillRating } from 'ts-trueskill'
 
 /**
@@ -10,20 +10,19 @@ import { TrueSkill, Rating as TrueskillRating } from 'ts-trueskill'
 export type Scorer = (param: {
   outcome: number[]
   match_players: MatchPlayer[][]
-  initial_rating: Rating
   best_of?: number
   rating_settings: RatingSettings
 }) => Rating[][]
 
-const trueskill: Scorer = ({ outcome, match_players, initial_rating, best_of = 1 }) => {
+const trueskill: Scorer = ({ outcome, match_players, rating_settings: rs, best_of = 1 }) => {
   const team_ranks = outcome.map(score => 1 - score)
 
-  const env = new TrueSkill(initial_rating.mu, initial_rating.rd)
+  const env = new TrueSkill(rs.initial_rating.mu, rs.initial_rating.rd)
 
   // Higher beta = more assumed volatility and slower convergence
-  // Multiply by 5 to increase assumed volatility
+  // Multiply to increase assumed volatility
   // Divide by term related to best_of to reduce the uncertainty for longer series
-  env.beta = (5 * env.beta) / Math.sqrt(best_of)
+  env.beta = (3 * env.beta) / Math.sqrt(best_of)
 
   const old_player_ratings = match_players.map(team => {
     return team.map(player => {
@@ -80,14 +79,14 @@ const winsMinusLosses: Scorer = ({ outcome, match_players }) => {
   return new_player_ratings
 }
 
-export function getScorerFn(type: ScoringMethod): Scorer {
+export function getScorerFn(type: RatingStrategy): Scorer {
   const fn = {
-    [ScoringMethod.TrueSkill]: trueskill,
-    [ScoringMethod.WinsMinusLosses]: winsMinusLosses,
-    [ScoringMethod.Elo]: elo,
+    [RatingStrategy.TrueSkill]: trueskill,
+    [RatingStrategy.WinsMinusLosses]: winsMinusLosses,
+    [RatingStrategy.Elo]: elo,
   }[type]
 
-  if (!fn) throw new Error(`Unknown scoring method ${type}`)
+  if (!fn) throw new Error(`Unknown rating method ${type}`)
 
   return fn
 }

@@ -7,8 +7,15 @@ export abstract class DiscordError extends Error {
   }
 }
 
+export abstract class DiscordUserError extends DiscordError {
+  constructor(message?: string) {
+    super(message)
+    this.name = `${DiscordUserError.name}.${this.constructor.name}`
+  }
+}
+
 export namespace DiscordErrors {
-  export class BotPermissions extends DiscordError {
+  export class BotPermissions extends DiscordUserError {
     get missingPermissionsNames() {
       const missing_permissions_names: string[] = []
       for (const [key, value] of Object.entries(D.PermissionFlagsBits)) {
@@ -30,5 +37,5 @@ export namespace DiscordErrors {
     }
   }
 
-  export class GeneralPermissions extends DiscordError {}
+  export class GeneralPermissions extends DiscordUserError {}
 }

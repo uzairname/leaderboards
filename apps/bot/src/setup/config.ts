@@ -1,4 +1,4 @@
-import { ScoringMethod } from '@repo/db/models'
+import { RatingStrategy } from '@repo/db/models'
 import * as D from 'discord-api-types/v10'
 import { Env } from '../Env'
 import { getScorerFn } from '../services/matches/scoring/scorers'
@@ -28,9 +28,7 @@ export class Config {
 
   /**
    * Configuration class for the bot application.
-   * @param DirectResponse -
-   *  - true: Return a value directly.
-   *  - false: Rall respond endpoint. Requests will get canceled. Will log interaction response errors in sentry.
+   * @param DirectResponse - Return a value directly for interactions
    * @param ProvisionalRdThreshold - Players with a rating deviatino below this will be hidden.
    * @param defaultScorer - The default scoring function.
    * @param RematchTimeoutMinutes - The default amount of time players have to vote for a rematch.
@@ -53,10 +51,10 @@ export class Config {
       RatingRoleConnections: false,
       WebDashboardEnabled: false,
     },
-    readonly ProvisionalRdThreshold = IsDev ? 0.85 : 0.85,
+    readonly ProvisionalRdThreshold = IsDev ? 0.85 : 0.95,
     readonly DisplayMeanRating = IsDev ? 1000 : 1000,
     readonly DisplaySdOffset = IsDev ? -0.6 : -0.6,
-    readonly defaultScorer = getScorerFn(ScoringMethod.TrueSkill),
+    readonly defaultScorer = getScorerFn(RatingStrategy.TrueSkill),
     readonly RematchTimeoutMinutes = 30,
     readonly ChallengeTimeoutMs = 1000 * 60 * 10,
     readonly QueueJoinTimeoutMs = IsDev ? 1000 * 60 * 0.2 : 1000 * 60 * 20,

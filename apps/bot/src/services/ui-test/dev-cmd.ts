@@ -2,12 +2,13 @@ import { CommandSignature, getOptions, getSubcommandOption } from '@repo/discord
 import * as D from 'discord-api-types/v10'
 import { App } from '../../setup/app'
 import { guildRankingsOption, withSelectedRanking } from '../../utils/view-helpers/ranking-option'
-import { rescoreMatches } from '../matches/management/manage-matches'
+import { rescoreMatches } from '../matches/scoring/score_match'
 
 export const dev_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
   name: 'dev',
   description: 'Test command',
+  experimental: true,
 })
 
 const scnames = {
@@ -31,13 +32,13 @@ export const dev_cmd = dev_cmd_sig.set<App>({
           type: D.ApplicationCommandOptionType.Subcommand,
           name: scnames.rescore,
           description: 'Rescore all matches',
-          options: await guildRankingsOption(app, guild, 'ranking'),
+          options: await guildRankingsOption(app, guild),
         },
         {
           type: D.ApplicationCommandOptionType.Subcommand,
           name: scnames.lb,
           description: 'Show full leaderboard',
-          options: await guildRankingsOption(app, guild, 'ranking'),
+          options: await guildRankingsOption(app, guild),
         },
       ],
     })
@@ -55,21 +56,6 @@ export const dev_cmd = dev_cmd_sig.set<App>({
           },
         }
       case scnames.rescore:
-        // return await withSelectedRanking(
-        //   app,
-        //   ctx,
-        //   getOptions(ctx.interaction, {
-        //     ranking: {
-        //       type: D.ApplicationCommandOptionType.Integer,
-        //     },
-        //   }).ranking,
-        //   {},
-        //   async ranking => {
-        //     return ctx.defer(async ctx => {
-        //       await rescoreMatches(app, ranking, { reset_rating_to_initial: true, ctx })
-        //     })
-        //   },
-        // )
         return withSelectedRanking(
           {
             app,

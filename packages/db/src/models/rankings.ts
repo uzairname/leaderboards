@@ -12,18 +12,18 @@ export type RankingUpdate = Partial<RankingInsert>
 
 export type Rating = {
   mu: number
-  rd: number
+  rd?: number
   vol?: number
 }
 
-export enum ScoringMethod {
+export enum RatingStrategy {
   TrueSkill = 0,
   WinsMinusLosses = 1,
   Elo = 2,
 }
 
 export type RatingSettings = {
-  scoring_method: ScoringMethod
+  rating_strategy: RatingStrategy
   initial_rating: Rating
   k_factor?: number
 }
@@ -85,7 +85,6 @@ export class PartialRanking {
 
   async players(): Promise<Player[]> {
     const data = await this.db.drizzle.select().from(Players).where(eq(Players.ranking_id, this.data.id))
-
     return data.map(player => new Player(player, this.db))
   }
 
