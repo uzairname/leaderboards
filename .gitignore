@@ -344,3 +344,4 @@ dist
 .dev.vars
 .wrangler/
 wranglerdeploy.sh
+CLAUDE.md
