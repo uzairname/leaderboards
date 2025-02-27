@@ -12,13 +12,13 @@ import { logInteraction } from './log-interaction'
 import { ViewState, ViewStateFactory } from './state'
 import { verify } from './verify'
 
-export class ViewManager<Arg extends unknown = undefined> {
+export class InteractionHandler<Arg extends unknown = undefined> {
   public all_handlers: (ViewHandler<any, Arg> | CommandHandler<any, Arg>)[] = []
 
   logger?: DiscordLogger
 
-  constructor(public handlers: (ViewHandler<any, Arg> | CommandHandler<any, Arg> | ViewManager<Arg>)[]) {
-    this.all_handlers = handlers.flatMap(v => (v instanceof ViewManager ? v.all_handlers : [v]))
+  constructor(public handlers: (ViewHandler<any, Arg> | CommandHandler<any, Arg> | InteractionHandler<Arg>)[]) {
+    this.all_handlers = handlers.flatMap(v => (v instanceof InteractionHandler ? v.all_handlers : [v]))
 
     // Identify duplicate custom_id_prefixes
     const custom_id_prefixes = this.all_handlers.filter(isViewHandler).map(h => h.signature.config.custom_id_prefix)
@@ -54,6 +54,13 @@ export class ViewManager<Arg extends unknown = undefined> {
     return matching_handlers[0]
   }
 
+  /**
+   *
+   * @param direct_response -
+   *  - true: Return a value directly.
+   *  - false: Call respond endpoint. Will log interaction response errors in sentry, but successful requests will get canceled.
+   * @returns
+   */
   async respond({
     bot,
     request,
@@ -75,6 +82,8 @@ export class ViewManager<Arg extends unknown = undefined> {
     }
 
     const interaction = (await request.json()) as D.APIInteraction
+
+    this.logger?.log({ message: 'Received interaction' })
 
     const response = await this._respond({ interaction, bot, onError, offload, arg })
       .then(res => res)
@@ -142,9 +151,13 @@ export class ViewManager<Arg extends unknown = undefined> {
   }
 
   fromCustomId(custom_id: string): { handler: AnyViewHandler; state: ViewState<StringDataSchema> } {
-    const [prefix, encoded_data] = ViewStateFactory.splitCustomId(custom_id)
+    const { prefix, encoded_data } = ViewStateFactory.splitCustomId(custom_id)
     const handler = this.findViewHandler(prefix)
     const state = ViewStateFactory.fromSignature(handler.signature).decode(encoded_data)
+    this.logger?.log({
+      message: `Decoded custom_id`,
+      data: { custom_id, prefix, encoded_data, data: state.data },
+    })
     return { handler, state }
   }
 

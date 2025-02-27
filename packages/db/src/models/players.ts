@@ -129,17 +129,20 @@ export class PlayersManager extends DbObjectManager {
   }
 
   async fetchMany({
+    player_ids,
     allow_disabled = false,
     ranking_id,
   }: {
+    player_ids?: number[]
     allow_disabled?: boolean
-    in_queue?: boolean
     ranking_id?: number
   } = {}): Promise<Player[]> {
     const where_chunks: SQL[] = []
 
     if (ranking_id) where_chunks.push(eq(Players.ranking_id, ranking_id))
     if (!allow_disabled) where_chunks.push(sql`(${Players.flags} & ${PlayerFlags.Disabled}) = 0`)
+    if (player_ids) where_chunks.push(inArray(Players.id, player_ids))
+    if (where_chunks.length === 0) throw new DbErrors.ValueError('No filters provided')
 
     const players = await this.db.drizzle
       .select()
@@ -151,10 +154,16 @@ export class PlayersManager extends DbObjectManager {
     })
   }
 
-  async updateMany(ids: number[], data: PlayerUpdate) {
+  /**
+   * Update multiple players at once with the same data.
+   */
+  async setMany(ids: number[], data: PlayerUpdate) {
     await this.db.drizzle.update(Players).set(data).where(inArray(Players.id, ids))
   }
 
+  /**
+   * Update multiple players at once with ratings.
+   */
   async updateRatings(data: { player: PartialPlayer; rating: Rating }[]) {
     this.db.cache.match_players.clear()
     this.db.cache.players.clear()
@@ -162,8 +171,8 @@ export class PlayersManager extends DbObjectManager {
 
     if (data.length === 0) return
 
-    const player_ids = data.map(p => p.player.data.id)
-    const ratings = data.map(p => `'${JSON.stringify(p.rating)}'`)
+    const player_ids = `ARRAY[${data.map(p => p.player.data.id).join(',')}]`
+    const ratings = `ARRAY[${data.map(p => `'${JSON.stringify(p.rating)}'`).join(',')}]::jsonb[]`
 
     const pg_dialect = new PgDialect()
 
@@ -171,8 +180,8 @@ export class PlayersManager extends DbObjectManager {
       `with values as (
       SELECT * 
         FROM UNNEST(
-            ARRAY[${player_ids.join(',')}],
-            ARRAY[${ratings.join(',')}]::jsonb[]
+          ${player_ids},
+          ${ratings}
         ) AS v(a, b)` +
       pg_dialect.sqlToQuery(sql`
       )

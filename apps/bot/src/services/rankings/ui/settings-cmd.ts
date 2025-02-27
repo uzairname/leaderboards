@@ -3,9 +3,10 @@ import { CommandContext, CommandInteractionResponse, CommandSignature, getOption
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../setup/app'
 import { guildRankingsOption, withOptionalSelectedRanking } from '../../../utils/view-helpers/ranking-option'
-import { renameModal } from './components'
-import { queueSettingsPage, ranking_settings_view_sig, rankingSettingsPage } from './settings/ranking-settings-view'
-import { rankingsPage } from './rankings-view'
+import { AllRankingsPages } from './all-rankings/pages'
+import { RankingSettingsHandlers } from './ranking-settings/handlers'
+import { RankingSettingsPages } from './ranking-settings/pages'
+import { ranking_settings_view_sig } from './ranking-settings/view'
 
 export const settings_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
@@ -17,33 +18,36 @@ export const settings_cmd_sig = new CommandSignature({
 export const settings_cmd = settings_cmd_sig.set<App>({
   guildSignature: async (app, guild_id) => {
     const guild = app.db.guilds.get(guild_id)
+    const guild_rankings = await app.db.guild_rankings.fetchBy({ guild_id: guild.data.id })
+
+    let options = await guildRankingsOption(app, guild, 'ranking', { optional: true })
+
+    // If there is a ranking, include the option to choose the setting
+    if (guild_rankings.length > 0) {
+      options.push({
+        type: D.ApplicationCommandOptionType.String,
+        name: 'setting',
+        description: 'Which setting to change',
+        choices: [
+          {
+            name: `Rename the ranking`,
+            value: 'rename',
+          },
+          {
+            name: `Customize rating algorithm`,
+            value: `rating`,
+          },
+          {
+            name: `Configure matchmaking queue`,
+            value: `queue`,
+          },
+        ],
+      })
+    }
+
     return new CommandSignature({
       ...settings_cmd_sig.config,
-      options: (
-        await guildRankingsOption(app, guild, 'ranking', {
-          optional: true,
-        })
-      ).concat([
-        {
-          type: D.ApplicationCommandOptionType.String,
-          name: 'setting',
-          description: 'Which setting to change',
-          choices: [
-            {
-              name: `Rename the ranking`,
-              value: 'rename',
-            },
-            {
-              name: `Customize rating algorithm`,
-              value: `rating`,
-            },
-            {
-              name: `Configure matchmaking queue`,
-              value: `queue`,
-            },
-          ],
-        },
-      ]),
+      options,
     })
   },
 
@@ -65,20 +69,20 @@ export const settings_cmd = settings_cmd_sig.set<App>({
           if (setting_option_value) {
             return routeToSettingPage(app, ctx, ranking, setting_option_value)
           } else {
-            return {
-              type: D.InteractionResponseType.ChannelMessageWithSource,
-              data: await rankingSettingsPage(app, {
-                ...ctx,
-                state: ranking_settings_view_sig.newState({
-                  ranking_id: ranking.data.id,
+            return ctx.defer(
+              async ctx =>
+                await RankingSettingsPages.main(app, {
+                  ...ctx,
+                  state: ranking_settings_view_sig.newState({
+                    ranking_id: ranking.data.id,
+                  }),
                 }),
-              }),
-            }
+            )
           }
         } else {
           return {
             type: D.InteractionResponseType.ChannelMessageWithSource,
-            data: await rankingsPage(app, ctx),
+            data: await AllRankingsPages.main(app, ctx),
           }
         }
       },
@@ -95,19 +99,23 @@ async function routeToSettingPage(
   ranking: PartialRanking,
   setting: string,
 ): Promise<CommandInteractionResponse> {
-  const state = ranking_settings_view_sig.newState({
-    ranking_id: ranking.data.id,
-  })
+  const new_ctx = {
+    ...ctx,
+    state: ranking_settings_view_sig.newState({
+      ranking_id: ranking.data.id,
+    }),
+  }
 
   switch (setting) {
     case 'rename':
-      return await renameModal(app, {
-        ...ctx,
-        state,
-      })
+      return await RankingSettingsHandlers.renameModal(app, new_ctx)
     case 'queue':
       return ctx.defer(async ctx => {
-        await ctx.edit(await queueSettingsPage(app, { ...ctx, state }))
+        await ctx.edit(await RankingSettingsPages.queue(app, new_ctx))
+      })
+    case 'rating':
+      return ctx.defer(async ctx => {
+        await ctx.edit(await RankingSettingsPages.scoringMethod(app, new_ctx))
       })
   }
 

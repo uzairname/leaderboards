@@ -1,7 +1,14 @@
 export class InteractionError extends Error {
   constructor(message?: string) {
     super(message)
-    this.name = `ViewError.${this.constructor.name}`
+    this.name = `${InteractionError.name}.${this.constructor.name}`
+  }
+}
+
+export class InteractionUserError extends InteractionError {
+  constructor(message?: string) {
+    super(message)
+    this.name = `${InteractionUserError}.${this.constructor.name}`
   }
 }
 
@@ -46,5 +53,8 @@ export namespace InteractionErrors {
 
   export class InvalidOptionType extends InteractionError {}
 
-  export class WrongContext extends InteractionError {}
+  /**
+   * For validating the context of an interaction. eg, DM or a guild
+   */
+  export class WrongContext extends InteractionUserError {}
 }

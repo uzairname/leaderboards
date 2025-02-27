@@ -3,8 +3,9 @@ import * as D from 'discord-api-types/v10'
 import { App } from '../../setup/app'
 import { Colors } from '../../utils'
 import { ensureAdminPerms } from '../../utils/perms'
-import { adminRolePage } from './setup-handlers'
-import { setup_view_sig } from './setup-view'
+import { SetupHandlers } from './handlers'
+import { SetupPages } from './pages'
+import { setup_view_sig } from './view'
 
 export const admin_role_method_options = {
   new: 'new',
@@ -16,13 +17,14 @@ export const setup_cmd = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
   name: 'setup',
   description: 'Set up the bot in this server',
+  experimental: true,
 }).set<App>({
   onCommand: async (ctx, app) => {
     ensureAdminPerms(app, ctx)
 
-    const ctx2 = {
-      ...ctx,
-      state: setup_view_sig.newState(),
+    return {
+      type: D.InteractionResponseType.ChannelMessageWithSource,
+      data: await SetupPages.start(app),
     }
 
     return {
@@ -43,11 +45,12 @@ export const setup_cmd = new CommandSignature({
                 type: D.ComponentType.Button,
                 label: 'Continue',
                 style: D.ButtonStyle.Primary,
-                custom_id: ctx2.state.set.callback(adminRolePage).cId(),
+                custom_id: setup_view_sig.newState({ handler: SetupHandlers.sendAdminRolePage }).cId(),
               },
             ],
           },
         ],
+        flags: D.MessageFlags.Ephemeral,
       },
     }
   },

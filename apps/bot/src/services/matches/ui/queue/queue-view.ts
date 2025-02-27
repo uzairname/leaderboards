@@ -8,7 +8,7 @@ import {
 import { field, StringDataSchema } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../../setup/app'
-import { escapeMd, relativeTimestamp, Colors } from '../../../../utils'
+import { Colors, escapeMd, relativeTimestamp } from '../../../../utils'
 import { userJoinQueue } from '../../matchmaking/queue/1v1-queue'
 
 export const queue_view_sig = new ViewSignature({

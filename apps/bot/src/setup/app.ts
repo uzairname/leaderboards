@@ -1,12 +1,12 @@
 import { DbClient, getNeonDrizzleClient } from '@repo/db'
 import { Guild } from '@repo/db/models'
-import { DiscordAPIClient, putDiscordCommands, ViewManager } from '@repo/discord'
+import { DiscordAPIClient, InteractionHandler, putDiscordCommands } from '@repo/discord'
 import { Env } from '../Env'
+import { onViewError } from '../errors/on-view-error'
 import { sentry } from '../logging/sentry'
+import { DbLoggerWrapper, DiscordLoggerWrapper } from '../logging/wrappers'
 import { Config } from './config'
 import { AppEvents, getAppEvents } from './events'
-import { DbLoggerWrapper, DiscordLoggerWrapper } from './middleware/loggers'
-import { onViewError } from './middleware/on-view-error'
 
 export class App {
   public config: Config
@@ -18,7 +18,7 @@ export class App {
 
   constructor(
     public env: Env,
-    public view_manager: ViewManager<App>,
+    public view_manager: InteractionHandler<App>,
     public all_event_listeners: ((events: AppEvents) => void)[],
     {
       db,

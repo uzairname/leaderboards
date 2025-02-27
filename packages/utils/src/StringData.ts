@@ -83,7 +83,11 @@ class ChoiceField<T extends { [key: string]: any }> extends Field<T[keyof T]> {
     if (matching.length != 1) throw new Error(`No unique key with value "${value.toString()}"`)
     return this.key_ids[matching[0][0]]
   }
-  decompress = (value: string) => this.values[this.id_keys[value]]
+  decompress = (value: string) => {
+    const key = this.id_keys[value]
+    if (!key) throw new Error(`Value ${value} doesn't exist`)
+    return this.values[key]
+  }
 }
 
 class ListValueField<T> extends Field<T> {

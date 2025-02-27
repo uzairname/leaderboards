@@ -6,7 +6,8 @@ import { Colors, escapeMd } from '../../../utils'
 import { ensureAdminPerms } from '../../../utils/perms'
 import { createNewRankingInGuild } from '../manage'
 import { default_players_per_team, default_teams_per_match } from '../properties'
-import { ranking_settings_view_sig, rankingSettingsPage } from './settings/ranking-settings-view'
+import { RankingSettingsPages } from './ranking-settings/pages'
+import { ranking_settings_view_sig } from './ranking-settings/view'
 
 export const create_ranking_cmd_sig = new CommandSignature({
   name: 'create-ranking',
@@ -69,14 +70,12 @@ export const create_ranking_cmd = create_ranking_cmd_sig.set<App>({
         ],
       })
 
-      await ctx.followup(
-        await rankingSettingsPage(app, {
-          ...ctx,
-          state: ranking_settings_view_sig.newState({
-            ranking_id: ranking.data.id,
-          }),
+      await RankingSettingsPages.main(app, {
+        ...ctx,
+        state: ranking_settings_view_sig.newState({
+          ranking_id: ranking.data.id,
         }),
-      )
+      })
     })
   },
 })

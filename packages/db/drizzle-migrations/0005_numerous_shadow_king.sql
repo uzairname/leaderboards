@@ -1,0 +1,1 @@
+ALTER TABLE "Rankings" DROP COLUMN IF EXISTS "initial_rating";

@@ -1,6 +1,5 @@
-import { nonNullable } from '@repo/utils'
 import { and, eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
-import { Player, Ranking } from '.'
+import { Player } from '.'
 import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
 import { Players, QueueTeams, TeamPlayers, Teams } from '../schema'
@@ -63,11 +62,6 @@ export class Team implements DbObject<TeamSelect> {
     return this
   }
 
-  protected async updateRating(): Promise<void> {
-    const rating = calculateTeamRating(await this.players(), await this.ranking.fetch())
-    await this.update({ rating })
-  }
-
   async addToQueue(): Promise<void> {
     // if already in queue, updates time_created
     await this.db.drizzle
@@ -82,9 +76,7 @@ export class Team implements DbObject<TeamSelect> {
 }
 
 export class TeamsManager extends DbObjectManager {
-  async create(ranking: Ranking, data: Omit<TeamInsert, 'ranking_id'>, players: Player[] = []): Promise<Team> {
-    data.rating = calculateTeamRating(players, ranking)
-
+  async create(ranking: PartialRanking, players: Player[], data: Omit<TeamInsert, 'ranking_id'>): Promise<Team> {
     const new_data = (
       await this.db.drizzle
         .insert(Teams)
@@ -108,14 +100,4 @@ export class TeamsManager extends DbObjectManager {
       return new Team(data, this.db)
     }
   }
-}
-
-function calculateTeamRating(players: Player[], ranking: Ranking): number {
-  const initial_rating = nonNullable(ranking.data.initial_rating.mu, 'initial_rating')
-  return players.length > 0
-    ? players.reduce((acc, player) => {
-        const rating = player.data.rating.mu ?? initial_rating
-        return acc + rating
-      }, 0) / players.length
-    : initial_rating
 }

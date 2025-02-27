@@ -5,9 +5,10 @@ import {
   PartialRanking,
   Ranking,
   RankingUpdate,
-  Rating,
   RatingSettings,
+  RatingStrategy,
 } from '@repo/db/models'
+import { fillDefaults } from '@repo/utils'
 import { UserError } from '../../errors/user-errors'
 import { sentry } from '../../logging/sentry'
 import { App } from '../../setup/app'
@@ -16,14 +17,13 @@ import { syncGuildRankingLbMessage, syncRankingLbMessages } from '../leaderboard
 import { syncMatchesChannel } from '../matches/logging/matches-channel'
 import {
   default_display_settings,
-  default_initial_rating,
   default_matchmaking_settings,
   default_players_per_team,
-  default_rating_settings,
+  default_rating_strategy,
   default_teams_per_match,
+  rating_strategy_to_rating_settings,
   validateRankingOptions,
 } from './properties'
-import { fillDefaults } from '@repo/utils'
 
 /**
  * Creates a new ranking and adds it to the guild
@@ -42,7 +42,7 @@ export async function createNewRankingInGuild(
     name: string
     teams_per_match?: number
     players_per_team?: number
-    initial_rating?: Rating
+    rating_strategy?: RatingStrategy
     // Guild ranking options
     matchmaking_settings?: MatchmakingSettings
     display_settings?: GuildRankingDisplaySettings
@@ -68,13 +68,14 @@ export async function createNewRankingInGuild(
     throw new UserError(`This server already has a ranking called \`${options.name}\``)
   }
 
+  const rating_settings = rating_strategy_to_rating_settings[options.rating_strategy ?? default_rating_strategy]
+
   const new_ranking = await app.db.rankings.create({
     name: options.name,
     players_per_team: options.players_per_team || default_players_per_team,
     teams_per_match: options.teams_per_match || default_teams_per_match,
-    initial_rating: options.initial_rating || default_initial_rating,
+    rating_settings,
     matchmaking_settings: fillDefaults(options.matchmaking_settings, default_matchmaking_settings),
-    rating_settings: fillDefaults(options.rating_settings, default_rating_settings),
   })
 
   const new_guild_ranking = await app.db.guild_rankings.create(guild, new_ranking, {
@@ -104,7 +105,7 @@ export async function updateRanking(app: App, ranking: PartialRanking, options: 
   }
 }
 
-export async function deleteRanking(app: App, ranking: Ranking): Promise<void> {
+export async function deleteRanking(app: App, ranking: PartialRanking): Promise<void> {
   const guild_rankings = await app.db.guild_rankings.fetchBy({ ranking_id: ranking.data.id })
   await Promise.all(
     guild_rankings.map(async item => {
@@ -122,4 +123,3 @@ export async function deleteRanking(app: App, ranking: Ranking): Promise<void> {
     }),
   )
 }
-

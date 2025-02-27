@@ -1,7 +1,7 @@
 import { MatchSettingsSchema, Ranking } from '@repo/db/models'
 import { json, Router } from 'itty-router'
 import { leaderboardMessage, syncRankingLbMessages } from '../../services/leaderboard/leaderboard-message'
-import { rescoreMatches } from '../../services/matches/management/manage-matches'
+import { rescoreAllMatches } from '../../services/matches/scoring/score_match'
 import { App } from '../../setup/app'
 
 export default (app: App, ranking: Ranking) =>
@@ -17,9 +17,7 @@ export default (app: App, ranking: Ranking) =>
     })
 
     .post('/rescore', async request => {
-      const result = await rescoreMatches(app, ranking, {
-        reset_rating_to_initial: true,
-      })
+      const result = await rescoreAllMatches(app, ranking)
       return json(result.map(m => ({ player: m.player.data.id, rating: m.rating })))
     })
 

@@ -16,7 +16,7 @@ import { Colors, hasAdminPerms } from '../../../../utils'
 import { escapeMd, messageLink, relativeTimestamp } from '../../../../utils/ui'
 import { guildRankingsOption, withSelectedRanking } from '../../../../utils/view-helpers/ranking-option'
 import { numRankings } from '../../../guilds/properties'
-import { getRegisterPlayer } from '../../../players/manage-players'
+import { getOrCreatePlayer } from '../../../players/manage-players'
 import { matchSummaryEmbed } from '../../logging/match-summary-message'
 import { recordAndScoreMatch } from '../../management/match-creation'
 import { record_match_view_sig } from './record-match-view'
@@ -132,8 +132,8 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
             if (winner_id && loser_id) {
               if (state.is.admin()) {
                 // record the match
-                const winner = await getRegisterPlayer(app, winner_id, ranking)
-                const loser = await getRegisterPlayer(app, loser_id, ranking)
+                const winner = await getOrCreatePlayer(app, winner_id, ranking)
+                const loser = await getOrCreatePlayer(app, loser_id, ranking)
 
                 const match = await recordAndScoreMatch(
                   app,
@@ -305,7 +305,7 @@ export async function selectAndConfirmOutcomePage(
   // find the name of the users in the match
   const all_player_names = await Promise.all(
     players.flat().map(async p => {
-      return (await getRegisterPlayer(app, nonNullable(p.user_id, 'user_id'), ranking)).data.name // "The field user won't be included in the member object attached to MESSAGE_CREATE and MESSAGE_UPDATE gateway events."
+      return (await getOrCreatePlayer(app, nonNullable(p.user_id, 'user_id'), ranking)).data.name // "The field user won't be included in the member object attached to MESSAGE_CREATE and MESSAGE_UPDATE gateway events."
     }),
   )
 
@@ -546,7 +546,7 @@ async function recordMatchFromSelectedTeams(
     selected_user_ids.map(async user_ids => {
       return Promise.all(
         user_ids.map(async id => {
-          const player = await getRegisterPlayer(app, id, ranking)
+          const player = await getOrCreatePlayer(app, id, ranking)
           return {
             player,
             ...player.data,

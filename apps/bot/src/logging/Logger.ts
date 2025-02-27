@@ -91,6 +91,7 @@ export class Logger extends Toucan {
       })
 
     const result = Promise.race([timeout_promise, callback_promise]).finally(() => {
+      this.debug(`Finished offload ${request_name}. Clearing timeout.`)
       clearTimeout(timeout)
     })
 

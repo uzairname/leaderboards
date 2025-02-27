@@ -7,7 +7,7 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import postgres from 'postgres'
 import { DbClient, getNeonDrizzleWsClient } from '../src'
 import { matches_trigger_query } from '../src/migration-utils/queries'
-import { ScoringMethod } from '../src/models'
+import { RatingStrategy } from '../src/models'
 
 // Run this script from the directory database/
 
@@ -40,27 +40,23 @@ migrate_database(postgres_url)
     process.exit(1)
   })
 
+const custom_migrations: ((tx: NeonDatabase, db: DbClient) => Promise<void>)[] = []
+
 async function customMigrations(postgres_url: string) {
   const drizzle = getNeonDrizzleWsClient(postgres_url)
 
   const v = (await drizzle.execute(sql`SELECT * FROM "Settings"`)).rows[0].db_version
   if (!isInt(v)) throw new Error('db_version is not an int')
 
-  if (v <= 0) {
+  for (let i = v; i < custom_migrations.length; i++) {
     await drizzle.transaction(async tx => {
-      await migratev0(tx, new DbClient(tx))
-      await tx.execute(sql`UPDATE "Settings" SET "db_version" = 1;`)
+      await custom_migrations[i](tx, new DbClient(tx))
+      await tx.execute(sql`UPDATE "Settings" SET "db_version" = ${i + 1};`)
     })
   }
-  // if (v <= 1) {
-  //   await drizzle.transaction(async tx => {
-  //     await migratev1(tx, new DbClient(tx))
-  //     await tx.execute(sql`UPDATE "Settings" SET "db_version" = 2;`)
-  //   })
-  // }
 }
 
-async function migratev0(tx: NeonDatabase, db: DbClient) {
+custom_migrations.push(async (tx, db) => {
   await tx.execute(`
     ALTER TABLE "Rankings" ADD COLUMN "match_config" jsonb;
   `)
@@ -76,10 +72,9 @@ async function migratev0(tx: NeonDatabase, db: DbClient) {
   const rankings = await tx.execute(`SELECT * FROM "Rankings"`)
   for (const ranking of rankings.rows) {
     const rating_settings: any = {
-      scoring_method: ScoringMethod.TrueSkill,
+      scoring_method: RatingStrategy.TrueSkill,
     }
     await db.rankings.get(ranking.id as number).update({ rating_settings })
-    // await tx.execute(sql`UPDATE "Rankings" SET "rating_settings" = ${rating_settings} WHERE id = ${ranking.id}`)
   }
 
   // Apply remaining migrations: make rating_settings not null
@@ -90,6 +85,35 @@ async function migratev0(tx: NeonDatabase, db: DbClient) {
 
   const rankings_ = await tx.execute(`SELECT * FROM "Rankings"`)
   console.log(rankings_.rows)
-}
+})
 
-async function migratev1(tx: NeonDatabase, db: DbClient) {}
+custom_migrations.push(async (tx, db) => {
+  const rankings = await tx.execute(`SELECT * FROM "Rankings"`)
+  for (const ranking of rankings.rows) {
+    const old_rating_settings = ranking.rating_settings as any
+    const rating_settings: any = {
+      ...old_rating_settings,
+      initial_rating: ranking.initial_rating ?? {
+        mu: 50,
+        rd: 50 / 3,
+      },
+    }
+    await db.rankings.get(ranking.id as number).update({ rating_settings })
+  }
+
+  await tx.execute(`ALTER TABLE "Rankings" DROP COLUMN IF EXISTS "initial_rating";`)
+})
+
+custom_migrations.push(async (tx, db) => {
+  const rankings = await tx.execute(`SELECT * FROM "Rankings"`)
+  for (const ranking of rankings.rows) {
+    // rename rating_settings.scoring_method to rating_settings.rating_strategy
+    const old_rating_settings = ranking.rating_settings as any
+    const rating_settings: any = {
+      ...old_rating_settings,
+      rating_strategy: old_rating_settings.scoring_method ?? RatingStrategy.TrueSkill,
+    }
+    delete rating_settings.scoring_method
+    await db.rankings.get(ranking.id as number).update({ rating_settings })
+  }
+})

@@ -1,18 +1,13 @@
-import { Context, StateContext } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../../logging/sentry'
-import { App } from '../../../setup/app'
-import { default_players_per_team, default_teams_per_match, max_ranking_name_length } from '../properties'
-import { onSettingsModalSubmit } from './settings/ranking-settings-handlers'
-import { ranking_settings_view_sig } from './settings/ranking-settings-view'
-import { onCreateRankingModalSubmit, rankings_view_sig } from './rankings-view'
+import { sentry } from '../../../../logging/sentry'
+import { default_players_per_team, default_teams_per_match, max_ranking_name_length } from '../../properties'
 
 /**
  * If name is specified and current name is not provided, it will be required
  * @param include Which fields to include, along with their current value
  * @returns
  */
-export function rankingSettingsModal(include: {
+export function rankingSettingsModalComponents(include: {
   name?: { current?: string }
   best_of?: { current?: number }
   team_size?: {
@@ -90,47 +85,4 @@ export function rankingSettingsModal(include: {
   }
 
   return components
-}
-
-/**
- * The same as the Ranking Settings Modal but with the name field required
- */
-export function createRankingModal(
-  app: App,
-  ctx: StateContext<typeof rankings_view_sig>,
-): D.APIModalInteractionResponse {
-  let components = rankingSettingsModal({
-    name: {
-      current: ctx.state.data.modal_input?.name,
-    },
-    best_of: {},
-    team_size: app.config.features.AllowNon1v1 ? {} : undefined,
-  })
-
-  return {
-    type: D.InteractionResponseType.Modal,
-    data: {
-      custom_id: ctx.state.set.callback(onCreateRankingModalSubmit).cId(),
-      title: 'Create a new ranking',
-      components,
-    },
-  }
-}
-
-export async function renameModal(
-  app: App,
-  ctx: Context<typeof ranking_settings_view_sig>,
-): Promise<D.APIModalInteractionResponse> {
-  const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
-
-  return {
-    type: D.InteractionResponseType.Modal,
-    data: {
-      custom_id: ctx.state.set.handler(onSettingsModalSubmit).cId(),
-      title: `Rename ${ranking.data.name}`,
-      components: rankingSettingsModal({
-        name: { current: ranking.data.name },
-      }),
-    },
-  }
 }

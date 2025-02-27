@@ -51,7 +51,6 @@ export const Rankings = pgTable('Rankings', {
   time_created: timestamp('time_created').notNull().defaultNow(),
   players_per_team: integer('players_per_team').notNull(),
   teams_per_match: integer('teams_per_match').notNull(),
-  initial_rating: jsonb('initial_rating').notNull().$type<Rating>(), // move into rating_settings
   rating_settings: jsonb('rating_settings').notNull().$type<RatingSettings>(),
   matchmaking_settings: jsonb('matchmaking_settings').notNull().$type<MatchmakingSettings>(),
   match_settings: jsonb('match_settings').$type<MatchSettings>(),

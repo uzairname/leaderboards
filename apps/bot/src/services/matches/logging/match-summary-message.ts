@@ -5,7 +5,7 @@ import * as D from 'discord-api-types/v10'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { Colors, emojis, escapeMd, relativeTimestamp, spaces } from '../../../utils/ui'
-import { getMatchPlayersDisplayStats } from '../../players/display'
+import { getMatchPlayersDisplayStats } from '../../players/properties'
 import { syncMatchesChannel } from './matches-channel'
 
 /**

@@ -1,7 +1,8 @@
 import { CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
+import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
-import { guildRankingsOption, withSelectedRanking, Messages } from '../../../../utils'
+import { guildRankingsOption, Messages, withSelectedRanking } from '../../../../utils'
 import { isQueueEnabled } from '../../../rankings/properties'
 import { userJoinQueue } from '../../matchmaking/queue/1v1-queue'
 
@@ -17,6 +18,10 @@ export const join_cmd = join_cmd_sig.set<App>({
     const guild_rankings = await app.db.guild_rankings.fetchBy({ guild_id: guild.data.id })
     const queue_enabled_rankings = guild_rankings.filter(r => isQueueEnabled(r.guild_ranking))
 
+    sentry.debug(
+      `queue_enabled_rankings in ${guild.data.id}: ${queue_enabled_rankings.length}, ${queue_enabled_rankings.map(r => r.ranking.data.name)}`,
+    )
+
     if (queue_enabled_rankings.length == 0) return null
 
     let options: D.APIApplicationCommandOption[] = []
@@ -30,6 +35,10 @@ export const join_cmd = join_cmd_sig.set<App>({
     return new CommandSignature({
       ...join_cmd_sig.config,
       options,
+      description:
+        queue_enabled_rankings.length == 1
+          ? `Join the queue for ${queue_enabled_rankings[0].ranking.data.name}`
+          : `Join the matchmaking queue for a ranking`,
     })
   },
   onCommand: async (ctx, app) => {
