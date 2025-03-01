@@ -1,20 +1,11 @@
 import { StringDataSchema } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import {
-  checkGuildInteraction,
-  checkGuildMessageComponentInteraction,
-  DiscordAPIClient,
-  DiscordLogger,
-  InteractionErrors,
-  MessageData,
-  ViewState,
-} from '../..'
+import { checkGuildInteraction, DiscordAPIClient, MessageData, ViewState } from '../..'
 import type {
   AnyChatInteraction,
   AnyCommandSignature,
   AnySignature,
   AnyViewSignature,
-  ChatInteractionResponse,
   CommandContext,
   CommandInteractionResponse,
   CommandTypeToInteraction,
@@ -23,7 +14,6 @@ import type {
   DeferredCommandContext,
   DeferredComponentContext,
   InteractionErrorCallback,
-  InteractionResponse,
   OffloadCallback,
   ViewAutocompleteCallback,
 } from '../types'
@@ -50,111 +40,6 @@ export function validateInteraction<Sig extends AnySignature, I extends AnyChatI
   return (
     signature.config.guild_only ? checkGuildInteraction(interaction) : interaction
   ) as Sig['config']['guild_only'] extends true ? D.APIGuildInteractionWrapper<I> : I
-}
-
-export async function respondToAutocomplete<Arg extends unknown>(
-  handler: CommandHandler<any, Arg>,
-  interaction: D.APIApplicationCommandAutocompleteInteraction,
-  arg: Arg,
-  logger?: DiscordLogger,
-): Promise<D.APIApplicationCommandAutocompleteResponse> {
-  logger?.setInteractionType(`${handler.signature.name} Autocomplete`)
-  if (!handler.onAutocomplete) {
-    throw new InteractionErrors.CallbackNotImplemented(`onAutocomplete`)
-  }
-  const data = await handler.onAutocomplete({ interaction }, arg)
-  return {
-    type: D.InteractionResponseType.ApplicationCommandAutocompleteResult,
-    data: data ?? {
-      choices: [],
-    },
-  }
-}
-
-export async function respondToCommand<Sig extends AnyCommandSignature, Arg extends unknown>({
-  arg,
-  handler,
-  interaction,
-  discord,
-  onError,
-  offload,
-  logger,
-}: {
-  arg: Arg
-  handler: CommandHandler<Sig, Arg>
-  interaction: CommandTypeToInteraction<Sig['config']['type']>
-  discord: DiscordAPIClient
-  onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource
-  offload: OffloadCallback
-  logger?: DiscordLogger
-}): Promise<CommandInteractionResponse> {
-  logger?.setInteractionType(`${handler.signature.config.name} Command`)
-
-  let valid_interaction = validateInteraction<Sig, CommandTypeToInteraction<Sig['config']['type']>>(
-    handler.signature,
-    interaction,
-  )
-
-  return handler.onCommand(
-    {
-      interaction: valid_interaction,
-      defer: (callback, response) => {
-        deferCommandResponse<Sig>(callback, valid_interaction, discord, onError, offload)
-        const default_response = {
-          type: D.InteractionResponseType.DeferredChannelMessageWithSource,
-          data: { flags: D.MessageFlags.Ephemeral },
-        } as InteractionResponse<CommandTypeToInteraction<Sig['config']['type']>>
-        return response ?? default_response
-      },
-      send: async data =>
-        discord.createMessage(interaction.channel.id, data instanceof MessageData ? data.as_post : data),
-    },
-    arg,
-  )
-}
-
-export async function respondToComponent<Arg extends unknown>({
-  arg,
-  handler,
-  interaction,
-  state,
-  discord,
-  onError,
-  offload,
-  logger,
-}: {
-  arg: Arg
-  handler: ViewHandler<AnyViewSignature, Arg>
-  interaction: ComponentInteraction
-  state: ViewState<StringDataSchema>
-  discord: DiscordAPIClient
-  onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource
-  offload: OffloadCallback
-  logger?: DiscordLogger
-}): Promise<ChatInteractionResponse> {
-  logger?.setInteractionType(`${handler.signature.name} Component`)
-
-  let valid_interaction = validateInteraction(handler.signature, interaction)
-
-  if (!handler.onComponent) {
-    throw new InteractionErrors.CallbackNotImplemented(`onComponent`)
-  }
-
-  return handler.onComponent(
-    {
-      interaction: valid_interaction,
-      state,
-      defer: (callback, response) => {
-        deferComponentResponse(callback, interaction, state, discord, onError, offload)
-        return response ?? { type: D.InteractionResponseType.DeferredMessageUpdate }
-      },
-      send: async data => {
-        const _interaction = checkGuildMessageComponentInteraction(interaction)
-        return await discord.createMessage(_interaction.channel.id, data instanceof MessageData ? data.as_post : data)
-      },
-    },
-    arg,
-  )
 }
 
 export function deferCommandResponse<Sig extends AnyCommandSignature>(

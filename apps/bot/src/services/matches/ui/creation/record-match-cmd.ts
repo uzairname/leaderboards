@@ -14,11 +14,11 @@ import { UserError } from '../../../../errors/user-errors'
 import { App } from '../../../../setup/app'
 import { Colors, hasAdminPerms } from '../../../../utils'
 import { escapeMd, messageLink, relativeTimestamp } from '../../../../utils/ui'
-import { guildRankingsOption, withSelectedRanking } from '../../../../utils/view-helpers/ranking-option'
+import { guildRankingsOption, withSelectedRanking } from '../../../../utils/ui/view-helpers/ranking-option'
 import { numRankings } from '../../../guilds/properties'
 import { getOrCreatePlayer } from '../../../players/manage-players'
 import { matchSummaryEmbed } from '../../logging/match-summary-message'
-import { recordAndScoreMatch } from '../../management/match-creation'
+import { recordAndScoreMatch } from '../../management/create-matches'
 import { record_match_view_sig } from './record-match-view'
 
 export const record_match_cmd_sig = new CommandSignature({
@@ -39,7 +39,15 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
     const guild = app.db.guilds.get(guild_id)
     if ((await numRankings(app, guild)) == 0) return null
 
-    const options: D.APIApplicationCommandBasicOption[] = [
+    let options = await guildRankingsOption(
+      app,
+      guild,
+      optionnames.ranking,
+      {},
+      'Which ranking should this match belong to',
+    )
+
+    options = options.concat([
       {
         name: optionnames.winner,
         description: 'Who won (if applicable)',
@@ -55,13 +63,11 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
         description: 'Snowflake or Unix timestamp of when the match was finished (default now)',
         type: D.ApplicationCommandOptionType.String,
       },
-    ]
+    ])
 
     return new CommandSignature({
       ...record_match_cmd_sig.config,
-      options: (
-        await guildRankingsOption(app, guild, optionnames.ranking, {}, 'Which ranking should this match belong to')
-      ).concat(options),
+      options,
     })
   },
   onCommand: (ctx, app) => {
@@ -82,7 +88,7 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
     const state = record_match_view_sig.newState({})
 
     const selected_time_finished = intOrUndefined(input.time_finished)
-    if (selected_time_finished) {
+    if (selected_time_finished !== undefined) {
       if (selected_time_finished.toString().length < 13) {
         // assume it's a unix timestamp
         state.save.selected_time_finished(new Date(selected_time_finished * 1000))

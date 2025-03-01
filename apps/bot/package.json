@@ -6,6 +6,7 @@
     "migrate": "npx tsx scripts/migrate.ts"
   },
   "dependencies": {
+    "@discordjs/builders": "^1.10.1",
     "@discordjs/rest": "^2.4.3",
     "@repo/database": "*",
     "@repo/discord": "*",

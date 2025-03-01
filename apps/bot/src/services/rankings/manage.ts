@@ -13,7 +13,7 @@ import { UserError } from '../../errors/user-errors'
 import { sentry } from '../../logging/sentry'
 import { App } from '../../setup/app'
 import { getOrAddGuild } from '../guilds/manage-guilds'
-import { syncGuildRankingLbMessage, syncRankingLbMessages } from '../leaderboard/leaderboard-message'
+import { syncGuildRankingLbMessage, syncRankingLbMessages } from '../leaderboard/manage'
 import { syncMatchesChannel } from '../matches/logging/matches-channel'
 import {
   default_display_settings,

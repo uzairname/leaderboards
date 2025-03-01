@@ -1,4 +1,4 @@
-import { CacheMap } from '../../utils/src/CacheMap'
+import { CacheMap } from '../../utils/src/cache-map'
 import { DbLogger } from './logging'
 import { Guild, GuildRanking, Match, Player, Ranking, Setting, Team, User } from './models'
 import { MatchPlayer } from './models/matches'

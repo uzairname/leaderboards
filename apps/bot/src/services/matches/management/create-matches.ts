@@ -14,7 +14,7 @@ import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { rankingProperties } from '../../rankings/properties'
 import { rescoreMatches } from '../scoring/score_match'
-import { validateMatchData } from './manage-matches'
+import { validateMatchData } from './update-matches'
 
 /**
  * Starts a new match, using the players' current ratings

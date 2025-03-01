@@ -1,7 +1,7 @@
 import { ViewSignature } from '@repo/discord'
 import { field } from '@repo/utils'
+import { AllRankingsHandlers } from '.'
 import { App } from '../../../../setup/app'
-import { AllRankingsHandlers } from './handlers'
 
 export const rankings_view_sig = new ViewSignature({
   custom_id_prefix: 's',

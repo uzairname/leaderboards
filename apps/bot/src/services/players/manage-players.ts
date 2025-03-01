@@ -3,9 +3,8 @@ import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging/sentry'
 import { getUserAccessToken } from '../../routers/oauth'
 import { App } from '../../setup/app'
-import { syncRankingLbMessages } from '../leaderboard/leaderboard-message'
-import { updateUserRoleConnectionData } from '../linked-roles/role-connections'
-import { displayRatingFn } from '../rankings/properties'
+import { syncRankingLbMessages } from '../leaderboard/manage'
+import { updateUserRoleConnectionData } from '../role-connections/role-connections'
 
 /**
  * Gets a player by user and ranking, or registers a new player in that ranking.
@@ -18,7 +17,7 @@ export async function getOrCreatePlayer(
   const discord_user_id = typeof partial_discord_user === 'string' ? partial_discord_user : partial_discord_user.id
   sentry.debug(`getRegisterPlayer: ${discord_user_id} in ${p_ranking}`)
 
-  let player = await app.db.players.fetchByUserRanking(discord_user_id, p_ranking)
+  let player = await app.db.players.fetchBy({ user_id: discord_user_id, ranking: p_ranking })
 
   if (!player) {
     const ranking = await p_ranking.fetch()
@@ -77,11 +76,10 @@ export async function updatePlayerRatings(app: App, update: { player: PartialPla
 
           // store affected rankings for later leaderboard update
           // calculate display rating using updated rating or current rating
-          const display_rating = displayRatingFn(app, ranking)(rating)
 
           const access_token = await getUserAccessToken(app, player.data.user_id, [D.OAuth2Scopes.RoleConnectionsWrite])
           if (access_token) {
-            await updateUserRoleConnectionData(app, access_token, display_rating.rating, ranking.data.name)
+            await updateUserRoleConnectionData(app, access_token, player)
           }
         }
       }),

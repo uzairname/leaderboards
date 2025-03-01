@@ -1,5 +1,5 @@
 import { ViewSignature } from '@repo/discord'
-import { field } from '@repo/utils'
+import { field, intOrUndefined } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../../../errors/user-errors'
 import { App } from '../../../../setup/app'
@@ -62,7 +62,7 @@ export const record_match_view = record_match_view_sig.set<App>({
     } //
     else if (ctx.state.is.clicked_component('select winner')) {
       const data = ctx.interaction.data as unknown as D.APIMessageStringSelectInteractionData
-      ctx.state.save.selected_winning_team_index(parseInt(data.values[0]))
+      ctx.state.save.selected_winning_team_index(intOrUndefined(data.values[0]))
       return {
         type: D.InteractionResponseType.UpdateMessage,
         data: await selectAndConfirmOutcomePage(app, ctx),

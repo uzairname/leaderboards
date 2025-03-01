@@ -114,7 +114,7 @@ export class PlayersManager extends DbObjectManager {
     return new Player(data, this.db)
   }
 
-  async fetchByUserRanking(user_id: string, ranking: PartialRanking): Promise<Player | undefined> {
+  async fetchBy({ user_id, ranking }: { user_id: string; ranking: PartialRanking }): Promise<Player | undefined> {
     const cached_player = this.db.cache.players_by_ranking_user.get(ranking.data.id, user_id)
     if (cached_player) return cached_player
 

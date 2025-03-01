@@ -6,7 +6,7 @@ import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
 import { commandMention, ensureAdminPerms } from '../../../../utils'
 import { numRankings } from '../../../guilds/properties'
-import { cancelMatch, setMatchWinner } from '../../management/manage-matches'
+import { cancelMatch, setMatchWinner } from '../../management/update-matches'
 import { matches_cmd } from '../matches/matches-cmd'
 import { matches_view_sig, matchesPage } from '../matches/matches-view'
 import { manage_match_view_sig, manageMatchPage } from './manage-match-view'
@@ -18,9 +18,9 @@ const optionnames = {
 }
 
 export const settle_match_cmd_sig = new CommandSignature({
-  name: `settle-match`,
+  name: `edit-match`,
   type: D.ApplicationCommandType.ChatInput,
-  description: `(Admin) Cancel or decide the result of specific match`,
+  description: `Cancel or update the result of specific match`,
   options: [
     {
       type: D.ApplicationCommandOptionType.String,
@@ -70,9 +70,10 @@ export const settle_match_cmd = settle_match_cmd_sig.set<App>({
         type: D.ApplicationCommandOptionType.String,
         required: false,
       },
-      player: {
+      user: {
         type: D.ApplicationCommandOptionType.User,
         required: false,
+        name: optionnames.user,
       },
       match_id: {
         type: D.ApplicationCommandOptionType.Integer,
@@ -83,7 +84,7 @@ export const settle_match_cmd = settle_match_cmd_sig.set<App>({
     sentry.debug(`${input}`)
 
     return ctx.defer(async ctx => {
-      sentry.debug(`settle match. ${input.match_id}, ${input.player}`)
+      sentry.debug(`settle match. ${input.match_id}, ${input.user}`)
 
       // Determine the match to act on, from the input. Also get its players
       const match = await (async function () {
@@ -91,15 +92,15 @@ export const settle_match_cmd = settle_match_cmd_sig.set<App>({
           // match id was provided.
           const match = await app.db.matches.fetch(input.match_id, ctx.interaction.guild_id)
           return match
-        } else if (input.player?.id) {
+        } else if (input.user?.id) {
           // user id was provided. get their latest match in the guild
           const matches = await app.db.matches.getMany({
             guild_id: ctx.interaction.guild_id,
-            user_ids: [input.player?.id],
+            user_ids: [input.user.id],
             limit: 1,
           })
           if (matches.length === 0) {
-            throw new UserError(`<@${input.player?.id}> has not played any matches in this server`)
+            throw new UserError(`<@${input.user?.id}> has not played any matches in this server`)
           }
           return matches[0].match
         } else {
@@ -118,13 +119,13 @@ export const settle_match_cmd = settle_match_cmd_sig.set<App>({
           })
         } else if (input.action === `set winner`) {
           // Set the winner of the match. The user must be specified
-          if (!input.player?.id) {
+          if (!input.user?.id) {
             return void ctx.edit({
               content: `Please specify the winner of this match`,
               flags: D.MessageFlags.Ephemeral,
             })
           }
-          await setMatchWinner(app, match, input.player?.id)
+          await setMatchWinner(app, match, input.user?.id)
           return void ctx.followup({
             content: `Match winner set`,
             flags: D.MessageFlags.Ephemeral,
@@ -142,7 +143,7 @@ export const settle_match_cmd = settle_match_cmd_sig.set<App>({
           await matchesPage(app, {
             state: matches_view_sig.newState({
               guild_id: ctx.interaction.guild_id,
-              user_ids: input.player?.id ? [input.player?.id] : undefined,
+              user_ids: input.user?.id ? [input.user?.id] : undefined,
             }),
           }),
         )

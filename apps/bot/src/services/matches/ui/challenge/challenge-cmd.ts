@@ -2,11 +2,11 @@ import { CommandSignature, getOptions } from '@repo/discord'
 import { nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../../setup/app'
-import { guildRankingsOption, withSelectedRanking } from '../../../../utils/view-helpers/ranking-option'
+import { guildRankingsOption, withSelectedRanking } from '../../../../utils/ui/view-helpers/ranking-option'
 import { getOrAddGuild } from '../../../guilds/manage-guilds'
 import { getOrCreatePlayer } from '../../../players/manage-players'
 import { getChallengeEnabledRankings } from '../../../rankings/properties'
-import { ensurePlayersEnabled } from '../../management/match-creation'
+import { ensurePlayersEnabled } from '../../management/create-matches'
 import { renderChallengePage } from './challenge-view'
 
 const optionnames = {

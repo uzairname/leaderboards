@@ -25,6 +25,7 @@ export class DbClient {
   ) {
     if (cache.db && cache.db instanceof DbCache) {
       this.cache = cache.db
+
       logger?.log({
         data: {
           cache: `${this.cache}`,
@@ -32,6 +33,11 @@ export class DbClient {
         },
       })
     } else {
+      logger?.log({
+        data: {
+          cache: 'cache miss',
+        },
+      })
       this.cache = new DbCache(logger)
     }
     cache.db = this.cache

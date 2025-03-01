@@ -5,7 +5,7 @@ import { UserError } from '../../../../errors/user-errors'
 import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
 import { getOrCreatePlayer } from '../../../players/manage-players'
-import { ensureNoActiveMatches, ensurePlayersEnabled } from '../../management/match-creation'
+import { ensureNoActiveMatches, ensurePlayersEnabled } from '../../management/create-matches'
 import { start1v1SeriesThread } from '../../ongoing-match/manage-ongoing-match'
 
 // for team size 1 rankings

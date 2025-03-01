@@ -12,7 +12,7 @@ export class ViewState<T extends StringDataSchema> extends StringData<T> {
   }
 
   copy(): ViewState<T> {
-    return new ViewState(this.schema, this.cid_prefix).decode(this.encode())
+    return new ViewState(this.schema, this.cid_prefix).parse(this.encode())
   }
 
   cId(): string {
@@ -40,7 +40,7 @@ export abstract class ViewStateFactory<T extends StringDataSchema> extends ViewS
   static splitCustomId(custom_id: string): { prefix: string; encoded_data: string } {
     const decompressed_custom_id = LZString.decompressFromUTF16(custom_id)
 
-    if (!decompressed_custom_id) throw new InteractionErrors.InvalidEncodedCustomId(custom_id)
+    if (!decompressed_custom_id) throw new InteractionErrors.DecompressError(custom_id)
 
     const [prefix, ...rest] = decompressed_custom_id.split('.')
     const encoded_data = rest.join('.')

@@ -1,7 +1,7 @@
 import { Router } from 'itty-router'
 import { sentry } from '../logging/sentry'
 import { getOrAddGuild, updateGuild } from '../services/guilds/manage-guilds'
-import { getAppRoleConnectionsMetadata } from '../services/linked-roles/role-connections'
+import { getAppRoleConnectionsMetadata } from '../services/role-connections/role-connections'
 import { App } from '../setup/app'
 
 export default (app: App) =>
@@ -40,7 +40,7 @@ export default (app: App) =>
         throw new Error('Guild ID not provided')
       }
       const guild = await getOrAddGuild(app, request.params.guild_id)
-      app.syncDiscordCommands(guild)
+      await app.syncDiscordCommands(guild)
       return new Response(`Updated leaderborads app in guild ${guild?.data.name}`, { status: 200 })
     })
     .all('*', () => new Response('Init endpoint not found', { status: 404 }))

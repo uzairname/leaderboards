@@ -22,10 +22,6 @@ export function randomColor() {
   return Math.floor(Math.random() * 0xffffff)
 }
 
-export function inviteAndRoleConnectionsUrl(app: App): string {
-  return app.config.env.BASE_URL + `/oauth` + app.config.OauthRoutes.BotAndRoleConnections
-}
-
 export function inviteUrl(app: App): string {
   return app.discord.botInviteURL(app.config.RequiredBotPermissions).toString()
 }
@@ -130,4 +126,92 @@ export function listToString(list: string[], conjunction = 'and') {
   if (list.length === 1) return list[0]
   if (list.length === 2) return `${list[0]} ${conjunction} ${list[1]}`
   return `${list.slice(0, -1).join(', ')}, ${conjunction} ${list[list.length - 1]}`
+}
+
+export function breadcrumbsTitle(...path: string[]) {
+  return path.join(' ➛ ')
+}
+
+export type TableRow = (
+  | string
+  | {
+      text: string
+      format?: AnsiFormat
+      color?: AnsiColor
+      backgroundColor?: AnsiBgColor
+      col_separator?: {
+        format?: AnsiFormat
+        color?: AnsiColor
+        backgroundColor?: AnsiBgColor
+      }
+    }
+)[]
+
+export function formatTable(...rows: TableRow[]) {
+  const col_widths = rows[0].map((_, i) =>
+    Math.max(
+      ...rows.map(row => {
+        const cell = row[i]
+        return typeof cell === 'string' ? cell.length : cell.text.length
+      }),
+    ),
+  )
+  return (
+    `\`\`\`ansi\n` +
+    rows
+      .map((row, i) =>
+        row
+          .map((cell, j) => {
+            const col_width = col_widths[j]
+            const cellText = typeof cell === 'string' ? cell : cell.text
+            const padded_cell = cellText.padEnd(col_width)
+            if (typeof cell === 'string') return padded_cell
+            const formatted_cell = formatAnsi(padded_cell, cell.color, cell.backgroundColor, cell.format)
+            return formatted_cell
+          })
+          .join(formatAnsi(' | ', AnsiColor.DarkGray)),
+      )
+      .join('\n') +
+    `\n\`\`\``
+  )
+}
+
+export enum AnsiFormat {
+  Normal = '0',
+  Bold = '1',
+  Underline = '4',
+}
+
+export enum AnsiColor {
+  DarkGray = '30',
+  Red = '31',
+  Lime = '32',
+  Gold = '33',
+  Blue = '34',
+  Pink = '35',
+  Teal = '36',
+  White = '37',
+}
+
+export enum AnsiBgColor {
+  BlueishBlack = '40',
+  RustBrown = '41',
+  Gray40 = '42',
+  Gray45 = '43',
+  LightGray55 = '44',
+  Blurple = '45',
+  LightGray60 = '46',
+  CreamWhite = '47',
+}
+
+export function formatAnsi(
+  text: string,
+  color: AnsiColor = AnsiColor.White,
+  backgroundColor?: AnsiBgColor,
+  format?: AnsiFormat,
+) {
+  const colorCode = `[${color}`
+  const backgroundColorCode = backgroundColor ? `;${backgroundColor}` : ''
+  const formatCode = format ? `;${format}` : ''
+  return `${colorCode}${backgroundColorCode}${formatCode}m${text}[0m`
 }

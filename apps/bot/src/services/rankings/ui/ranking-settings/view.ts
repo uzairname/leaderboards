@@ -1,15 +1,17 @@
-import { GuildRanking, Ranking } from '@repo/db/models'
 import { ChatInteractionResponse, ComponentContext, ViewSignature } from '@repo/discord'
 import { field } from '@repo/utils'
+import { RankingSettingsHandlers } from '.'
+import { GuildRanking } from '@repo/db/models'
+import { Ranking } from '@repo/db/models'
 import { App } from '../../../../setup/app'
-import { RankingSettingsHandlers } from './handlers'
+import * as handlers from './handlers'
 
 export const ranking_settings_view_sig = new ViewSignature({
   name: 'ranking settings',
   custom_id_prefix: 'rs',
   state_schema: {
     ranking_id: field.Int(),
-    handler: field.Choice(RankingSettingsHandlers),
+    handler: field.Choice(handlers),
   },
   guild_only: true,
 })
@@ -19,7 +21,6 @@ export const ranking_settings_view = ranking_settings_view_sig.set<App>({
     return ctx.state.get.handler()(app, ctx)
   },
 })
-
 export const settingsOptions: (gr: { guild_ranking: GuildRanking; ranking: Ranking }) => {
   [key: string]: {
     label: string

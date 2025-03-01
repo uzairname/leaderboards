@@ -26,7 +26,7 @@ export async function registerGuild(app: App, guild_id: string): Promise<Guild> 
 }
 
 export async function updateGuild(app: App, guild: Guild): Promise<void> {
-  app.syncDiscordCommands(guild)
+  await app.syncDiscordCommands(guild)
 }
 
 export async function communityEnabled(app: App, guild_id: string): Promise<boolean> {

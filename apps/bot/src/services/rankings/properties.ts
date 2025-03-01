@@ -12,7 +12,7 @@ import {
 import { UserError, UserErrors } from '../../errors/user-errors'
 import { App } from '../../setup/app'
 import { messageLink } from '../../utils'
-import { syncGuildRankingLbMessage } from '../leaderboard/leaderboard-message'
+import { syncGuildRankingLbMessage } from '../leaderboard/manage'
 
 // General Defaults
 export const default_teams_per_match = 2
@@ -24,6 +24,12 @@ export const default_k_factor = 32
 export const trueskill_default_initial_rating = {
   mu: 50,
   rd: 50 / 3,
+}
+
+export const rating_strategy_desc = {
+  [RatingStrategy.WinsMinusLosses]: `Wins - Losses`,
+  [RatingStrategy.TrueSkill]: `TrueSkill2`,
+  [RatingStrategy.Elo]: `Elo`,
 }
 
 /**
@@ -78,6 +84,7 @@ export const max_players_per_team = 12
 export function rankingProperties(r: Ranking) {
   const rating_strategy = r.data.rating_settings.rating_strategy
   return {
+    // Matches are a best of this, unless otherwise specified
     default_best_of: r.data.matchmaking_settings.default_best_of ?? default_best_of,
     tracks_best_of: rating_strategy === RatingStrategy.TrueSkill,
     // based on displayRatingFn
@@ -92,26 +99,31 @@ export async function isQueueEnabled(guild_ranking: PartialGuildRanking) {
   return gr.ranking.data.matchmaking_settings.queue_enabled === true
 }
 
+/**
+ * Returns a function that maps a player's rating to a number to display as their rating.
+ * The function offsets the rating by a constant amount of standard deviations if enabled by the rating method.
+ * Determines if the rating is provisional.
+ */
 export function displayRatingFn(
   app: App,
   ranking: Ranking,
-): (rating: Rating) => { rating: number; is_provisional?: boolean } {
+): (rating: Rating) => { points: number; is_provisional?: boolean } {
   const rating_settings = ranking.data.rating_settings
   return rating => {
     if (rating_settings.rating_strategy === RatingStrategy.WinsMinusLosses) {
       return {
-        rating: rating.mu,
+        points: rating.mu,
       }
     } else if (rating_settings.rating_strategy === RatingStrategy.Elo) {
       return {
-        rating: Math.max(0, Math.round(rating.mu * (app.config.DisplayMeanRating / rating_settings.initial_rating.mu))),
+        points: Math.max(0, Math.round(rating.mu * (app.config.DisplayMeanRating / rating_settings.initial_rating.mu))),
       }
     } else if (rating_settings.rating_strategy === RatingStrategy.TrueSkill) {
       const initial_rating = rating_settings.initial_rating.rd ?? trueskill_default_initial_rating.rd
       const player_rd = rating.rd ?? initial_rating
 
       return {
-        rating: Math.max(
+        points: Math.max(
           0,
           Math.round(
             (rating.mu + app.config.DisplaySdOffset * player_rd) *
@@ -182,15 +194,9 @@ export function validateRankingOptions(o: Partial<RankingInsert>): void {
   }
 }
 
-export const rating_strategy_desc = {
-  [RatingStrategy.WinsMinusLosses]: `Wins - Losses`,
-  [RatingStrategy.TrueSkill]: `TrueSkill2`,
-  [RatingStrategy.Elo]: `Elo`,
-}
 /**
  * Get all of the rankings in the guild that have direct challenges enabled
  */
-
 export async function getChallengeEnabledRankings(app: App, guild: PartialGuild) {
   const guild_rankings = await app.db.guild_rankings.fetchBy({ guild_id: guild.data.id })
 
@@ -199,8 +205,4 @@ export async function getChallengeEnabledRankings(app: App, guild: PartialGuild)
   })
 
   return result
-} /**
- * Returns a function that maps a player's rating to a number to display as their rating.
- * The function offsets the rating by a constant amount of standard deviations if enabled by the rating method.
- * Determines if the rating is provisional.
- */
+}

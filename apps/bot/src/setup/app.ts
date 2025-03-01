@@ -65,21 +65,18 @@ export class App {
     })
   }
 
-  syncDiscordCommands(guild?: Guild) {
-    sentry.offload(
-      async () => {
-        await putDiscordCommands(
-          this.discord,
-          await this.view_manager.commandSignatures({
-            guild_id: guild?.data.id,
-            include_experimental: this.config.features.ExperimentalCommands,
-            arg: this,
-          }),
-          guild?.data.id,
-        )
-      },
-      undefined,
-      `Sync ${guild ? 'guild' : 'global'} commands`,
+  /**
+   * Syncs either global or guild-specific app commands on Discord.
+   */
+  async syncDiscordCommands(guild?: Guild) {
+    await putDiscordCommands(
+      this.discord,
+      await this.view_manager.commandSignatures({
+        guild_id: guild?.data.id,
+        include_experimental: this.config.features.ExperimentalCommands,
+        arg: this,
+      }),
+      guild?.data.id,
     )
   }
 }

@@ -2,11 +2,11 @@ import { PartialRanking } from '@repo/db/models'
 import { CommandContext, CommandInteractionResponse, CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../setup/app'
-import { guildRankingsOption, withOptionalSelectedRanking } from '../../../utils/view-helpers/ranking-option'
-import { AllRankingsPages } from './all-rankings/pages'
-import { RankingSettingsHandlers } from './ranking-settings/handlers'
-import { RankingSettingsPages } from './ranking-settings/pages'
+import { guildRankingsOption, withOptionalSelectedRanking } from '../../../utils/ui/view-helpers/ranking-option'
+import { AllRankingsPages } from './all-rankings'
+import { RankingSettingsHandlers, RankingSettingsPages } from './ranking-settings'
 import { ranking_settings_view_sig } from './ranking-settings/view'
+import {  } from '@discordjs/builders'
 
 export const settings_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
@@ -30,17 +30,21 @@ export const settings_cmd = settings_cmd_sig.set<App>({
         description: 'Which setting to change',
         choices: [
           {
-            name: `Rename the ranking`,
-            value: 'rename',
-          },
-          {
-            name: `Customize rating algorithm`,
+            name: `Customize the rating algorithm`,
             value: `rating`,
           },
           {
-            name: `Configure matchmaking queue`,
+            name: `Rename`,
+            value: 'rename',
+          },
+          {
+            name: `Matchmaking queue`,
             value: `queue`,
           },
+          {
+            name: `Delete`,
+            value: `delete`,
+          }
         ],
       })
     }

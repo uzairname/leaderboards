@@ -1,7 +1,7 @@
 import { CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../setup/app'
-import { guildRankingsOption, withOptionalSelectedRanking } from '../../../utils/view-helpers/ranking-option'
+import { guildRankingsOption, withOptionalSelectedRanking } from '../../../utils/ui/view-helpers/ranking-option'
 import { numRankings } from '../../guilds/properties'
 import { getOrCreatePlayer, setPlayerDisabled as setIsUserDisabled } from '../manage-players'
 

@@ -1,10 +1,12 @@
 import { MatchStatus, Vote } from '@repo/db/models'
 import { DeferredComponentContext, MessageData, ViewSignature, ViewState } from '@repo/discord'
-import { field, maxIndex, nonNullable } from '@repo/utils'
+import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../../../errors/user-errors'
 import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
+import { listToString } from '../../../../utils'
+import { getOutcome } from '../../management/properties'
 import { castPlayerVote, start1v1SeriesThread } from '../../ongoing-match/manage-ongoing-match'
 import { ongoingMatch1v1Message } from '../../ongoing-match/ongoing-1v1-match-message'
 
@@ -115,13 +117,28 @@ async function vote(app: App, ctx: DeferredComponentContext<typeof ongoing_match
   await castPlayerVote(app, match, ctx.interaction.member.user.id, ctx.state.get.claim())
 
   if (match.data.status === MatchStatus.Finished) {
-    // The match was finished and scored
-    const outcome = nonNullable(match.data.outcome, 'finished match outcome')
-    const winner_index = maxIndex(outcome)
+    // Send a message indicating the winner
+    const { winning_team_indices, is_draw } = getOutcome(match)
     const team_players = await match.players()
-    const winner = team_players[winner_index][0]
-    await ctx.send({ content: `### <@${winner.player.data.user_id}> wins!` })
+    if (is_draw) await ctx.send({ content: `It's a draw!` })
+    else if (winning_team_indices) {
+      const winning_teams = winning_team_indices.map(i => team_players[i])
+      if (winning_teams.length === 1) {
+        // One winning team (most cases)
+        const winning_team = winning_teams[0]
+        await ctx.send({
+          content:
+            winning_team.length > 1
+              ? `${listToString(winning_team.map(p => `<@${p.player.data.user_id}>`))}'s team won!`
+              : `<@${winning_team[0].player.data.user_id}> won!`,
+        })
+      } else {
+        // Multiple winning teams (maybe count this as a draw)
+        await ctx.send({ content: `It's a draw!` })
+      }
+    }
   }
+
   if (match.data.status === MatchStatus.Finished || match.data.status === MatchStatus.Canceled) {
     const thread_id = match.data.ongoing_match_channel_id
     if (thread_id) await app.discord.editChannel(thread_id, { archived: true })

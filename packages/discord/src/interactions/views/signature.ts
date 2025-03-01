@@ -1,7 +1,7 @@
 import type { StringDataSchema } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { ViewState, ViewStateFactory } from '.'
-import { InteractionErrors } from '../errors'
+import { InteractionError } from '../errors'
 import { AnyAppCommandType } from '../types'
 import { CommandHandler, ViewHandler } from './handlers'
 
@@ -23,7 +23,7 @@ export class ViewSignature<TSchema extends StringDataSchema = {}, Guild extends 
     this.name = config.name ?? this.config.custom_id_prefix ?? 'Unnamed View'
     this.guild_only = config.guild_only ?? (true as Guild)
     if (config.custom_id_prefix?.includes('.')) {
-      throw new InteractionErrors.InvalidCustomId(`Custom id prefix contains delimiter: ${config.custom_id_prefix}`)
+      throw new InteractionError(`Custom id prefix contains delimiter: ${config.custom_id_prefix}`)
     }
   }
 

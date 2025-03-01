@@ -5,11 +5,11 @@ import { App } from '../../../setup/app'
 import { syncMatchSummaryMessages } from '../logging/match-summary-message'
 import { rescoreMatches } from '../scoring/score_match'
 
-// The match management service. Responsible for updating match outcomes, canceling matches, and reverting matches.
+// The match updating service. Responsible for updating match outcomes, and canceling matches.
 
 /**
- * Cancels a match. Sets the time finished to now and status to canceled.
- * Archives the ongoing match channel.
+ * Sets the time finished to now and the status to canceled.
+ * Archives the ongoing match channel, if it exists.
  */
 export async function cancelMatch(app: App, match: Match): Promise<void> {
   sentry.debug(`cancelMatch: ${match}`)
@@ -44,6 +44,9 @@ export async function cancelMatch(app: App, match: Match): Promise<void> {
   await syncMatchSummaryMessages(app, match)
 }
 
+/**
+ * Utility function to set the match outcome based on winner's user id
+ */
 export async function setMatchWinner(app: App, match: Match, user_id: string) {
   const team_players = await match.players()
 

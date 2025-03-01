@@ -12,8 +12,8 @@
     "fmt": "prettier --write 'apps/**/*.{ts,js,css,json,md}' 'packages/**/*.{ts,js,css,json,md}'"
   },
   "devDependencies": {
-    "prettier": "^3.5.1",
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
+    "prettier": "^3.5.1",
     "prettier-plugin-organize-imports": "^4.1.0"
   }
 }

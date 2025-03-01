@@ -8,7 +8,7 @@ import {
 } from '@repo/discord'
 import { field, StringField } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { App } from '../../setup/app'
+import { App } from '../../../setup/app'
 
 export const select_channel_view_sig = new ViewSignature({
   name: 'select channel',

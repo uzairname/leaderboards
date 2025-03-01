@@ -1,15 +1,12 @@
 import { Guild, GuildRanking, PartialGuildRanking, PartialRanking, Ranking } from '@repo/db/models'
 import { MessageData } from '@repo/discord'
 import { nonNullable } from '@repo/utils'
-import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging/sentry'
-import { type App } from '../../setup/app'
-import { Colors, commandMention, escapeMd, relativeTimestamp, space } from '../../utils/ui'
+import type { App } from '../../setup/app'
+import { escapeMd } from '../../utils'
 import { syncRankedCategory } from '../guilds/manage-guilds'
-import { numRankings } from '../guilds/properties'
-import { getOrderedLeaderboardPlayers } from '../players/properties'
-import { rankingProperties } from '../rankings/properties'
-import { leaderboard_cmd } from './ui/leaderboard-cmd'
+import { leaderboardMessage } from './ui/pages'
+import * as D from 'discord-api-types/v10'
 
 export async function syncRankingLbMessages(app: App, ranking: PartialRanking): Promise<void> {
   sentry.debug(`syncRankingLbMessages ranking: ${ranking.data.id}`)
@@ -17,17 +14,22 @@ export async function syncRankingLbMessages(app: App, ranking: PartialRanking): 
   await Promise.all(guild_rankings.map(guild_ranking => syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)))
 }
 
+/**
+ * Ensures that the guild ranking's leaderboard message exists and is up to date. 
+ * @param param2.enable_if_disabled If true, will update the guild ranking's config to enable the lb message.
+ * If false, does nothing if the live leaderboard message is disabled.
+ * @param param2.no_edit If true, will not edit the message if it already exists
+ */
 export async function syncGuildRankingLbMessage(
   app: App,
   p_guild_ranking: PartialGuildRanking,
   {
-    // if true, will update the guild ranking's config to enable the lb message
     enable_if_disabled = false,
-    // if true, will not edit the message if it already exists
     no_edit = false,
   } = {},
 ): Promise<{ message: D.APIMessage; channel_id: string } | undefined> {
   sentry.debug(`syncGuildRankingLbMessage ${p_guild_ranking}`)
+
 
   const { guild, ranking, guild_ranking } = await p_guild_ranking.fetch()
 
@@ -79,7 +81,7 @@ export async function disableGuildRankingLbMessage(app: App, guild_ranking: Guil
   ])
 }
 
-export async function sendLbChannel(app: App, guild: Guild, ranking: Ranking): Promise<D.APIChannel> {
+async function sendLbChannel(app: App, guild: Guild, ranking: Ranking): Promise<D.APIChannel> {
   const category = (await syncRankedCategory(app, guild)).channel
   return await app.discord.createGuildChannel(guild.data.id, {
     type: D.ChannelType.GuildText,
@@ -90,98 +92,9 @@ export async function sendLbChannel(app: App, guild: Guild, ranking: Ranking): P
   })
 }
 
-export async function leaderboardMessage(
-  app: App,
-  ranking: Ranking,
-  options?: {
-    guild_id?: string
-    full?: boolean
-    page?: number
-  },
-): Promise<{ embeds: D.APIEmbed[]; max_page: number }> {
-  const players = await getOrderedLeaderboardPlayers(app, ranking)
-
-  let place = 0
-  const max_rating_len = players[0]?.rating.toFixed(0).length ?? 0
-
-  const players_lines = players
-    .map(p => {
-      const rating_text = `\`${p.rating.toFixed(0)}\``.padStart(max_rating_len + 2 - `${place}`.length)
-      if (p.is_provisional) {
-        return null
-      } else {
-        place++
-        return (
-          `### ${(place => {
-            if (place == 1) return `🥇`
-            else if (place == 2) return `🥈`
-            else if (place == 3) return `🥉`
-            else return `${place}. `
-          })(place)}` +
-          `${space}${rating_text}` +
-          `${space}<@${p.user_id}> `
-        )
-      }
-    })
-    .filter(Boolean) as string[]
-
-  const provisional_players_lines = options?.full
-    ? (players
-        .map(p => {
-          // const rating_text = `\`${p.rating.toFixed(0)}?\``
-          if (p.is_provisional) {
-            return `### -# ?.${space + space}\`???\`${space}<@${p.user_id}>`
-          } else {
-            return null
-          }
-        })
-        .filter(Boolean) as string[])
-    : undefined
-
-  const lines_per_page = 25
-  const page = options?.page ?? 1
-
-  let all_lines = players_lines
-  if (options?.full) {
-    all_lines = all_lines.concat(provisional_players_lines ?? [])
-  }
-
-  const current_page_lines = all_lines.slice((page - 1) * lines_per_page, page * lines_per_page)
-
-  if (current_page_lines.length == 0) {
-    current_page_lines.push(`No players to show.`)
-  }
-
-  const guild = options?.guild_id ? await app.db.guilds.get(options?.guild_id) : undefined
-
-  const bottom_text =
-    `-# Last updated ${relativeTimestamp(new Date(Date.now()))}. ` +
-    (rankingProperties(ranking).uses_provisional_ratings
-      ? `\n-# Unranked players are given a provisional rating and are hidden from the main leaderboard until they play more games.`
-      : ``) +
-    (options?.full
-      ? ``
-      : `\nUse ${await commandMention(app, leaderboard_cmd, options?.guild_id)}${guild && (await numRankings(app, guild)) > 1 ? ` \`${ranking.data.name}\`` : ``} to see the full leaderboard.`)
-
-  const embed: D.APIEmbed = {
-    title: `${escapeMd(ranking.data.name)} Leaderboard`,
-    description: current_page_lines.join('\n') + '\n' + bottom_text,
-    color: Colors.Primary,
-  }
-
-  const embeds = [embed]
-
-  const max_page = Math.ceil(all_lines.length / lines_per_page)
-
-  return {
-    embeds,
-    max_page,
-  }
-}
-
-export function leaderboardChannelPermissionOverwrites(
+function leaderboardChannelPermissionOverwrites(
   guild_id: string,
-  application_id: string,
+  application_id: string
 ): D.RESTAPIChannelPatchOverwrite[] {
   return [
     {

@@ -214,27 +214,31 @@ export class StringData<TSchema extends StringDataSchema> {
     return data_str
   }
 
-  decode(encoded_str: string): this {
-    const [encoded_defined_fields, ...compressed_field_values] = stringToArray(encoded_str)
-    const defined_fields = parseInt(
-      ((1 << Object.keys(this.fields).length) - 1 - parseInt(encoded_defined_fields, 36))
-        .toString(2)
-        .split('')
-        .reverse()
-        .join('')
-        .padEnd(Object.keys(this.fields).length, '0'),
-      2,
-    )
-    let i = 0
-    for (const compressed_field_value of compressed_field_values) {
-      while (0 == (defined_fields & (1 << i))) {
+  parse(encoded_str: string): this {
+    try {
+      const [encoded_defined_fields, ...compressed_field_values] = stringToArray(encoded_str)
+      const defined_fields = parseInt(
+        ((1 << Object.keys(this.fields).length) - 1 - parseInt(encoded_defined_fields, 36))
+          .toString(2)
+          .split('')
+          .reverse()
+          .join('')
+          .padEnd(Object.keys(this.fields).length, '0'),
+        2,
+      )
+      let i = 0
+      for (const compressed_field_value of compressed_field_values) {
+        while (0 == (defined_fields & (1 << i))) {
+          i++
+        }
+        const key = Object.keys(this.fields)[i] as keyof TSchema
+        this.data[key] = this.fields[key].decompress(compressed_field_value)
         i++
       }
-      const key = Object.keys(this.fields)[i] as keyof TSchema
-      this.data[key] = this.fields[key].decompress(compressed_field_value)
-      i++
+      return this
+    } catch (e) {
+      throw new ParseError()
     }
-    return this
   }
 
   constructor(
@@ -261,7 +265,7 @@ export class StringData<TSchema extends StringDataSchema> {
     }
 
     if (encoded_str) {
-      this.decode(encoded_str)
+      this.parse(encoded_str)
     }
   }
 
@@ -328,4 +332,11 @@ function shiftString(str: string, shift: number): string {
 function nonNullable<T>(value: T, value_name?: string): NonNullable<T> {
   if (value === null || value === undefined) throw new Error(`${value_name || 'value'} is null or undefined`)
   return value
+}
+
+export class ParseError extends Error {
+  constructor() {
+    super()
+    this.name = `${this.constructor.name}`
+  }
 }

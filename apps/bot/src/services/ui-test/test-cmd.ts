@@ -1,8 +1,7 @@
-import { CommandSignature, StateContext, ViewSignature } from '@repo/discord'
+import { CommandSignature, getOptions, StateContext, ViewSignature } from '@repo/discord'
 import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { UserErrors } from '../../errors/user-errors'
-import { sentry } from '../../logging/sentry'
 import { App } from '../../setup/app'
 import { test_helper_view_config } from './test-helper-view'
 
@@ -16,6 +15,11 @@ const test_cmd_sig = new CommandSignature({
       name: 'user',
       description: 'The user to test',
     },
+    {
+      type: D.ApplicationCommandOptionType.String,
+      name: 'string',
+      description: 'A string to test',
+    },
   ],
   experimental: true,
 })
@@ -24,16 +28,28 @@ export const test_cmd = test_cmd_sig.set<App>({
   onCommand: async ctx => {
     const user_id = ctx.interaction.member.user.id
 
+    const input = getOptions(ctx.interaction, {
+      user: { type: D.ApplicationCommandOptionType.User, required: false },
+      string: { type: D.ApplicationCommandOptionType.String, required: false },
+    })
+
     const state = test_view_sig.newState()
     state.save.original_user(user_id)
     state.save.counter(0)
 
-    return ctx.defer(async ctx => {
-      throw new Error('test')
-      await new Promise(r => setTimeout(r, sentry.timeout_ms + 5000))
-      const state = test_view_sig.newState()
-      await ctx.edit(testPage({ state }, true))
-    })
+    return {
+      type: D.InteractionResponseType.ChannelMessageWithSource,
+      data: {
+        content: `You said:\n${input.string ?? 'no input'}`,
+      },
+    }
+
+    // return ctx.defer(async ctx => {
+    //   throw new Error('test')
+    //   await new Promise(r => setTimeout(r, sentry.timeout_ms + 5000))
+    //   const state = test_view_sig.newState()
+    //   await ctx.edit(testPage({ state }, true))
+    // })
   },
 })
 

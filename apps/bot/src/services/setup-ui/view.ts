@@ -2,8 +2,8 @@ import { Context, ViewSignature } from '@repo/discord'
 import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../setup/app'
-import { Colors } from '../../utils'
-import { AllRankingsHandlers } from '../rankings/ui/all-rankings/handlers'
+import { breadcrumbsTitle, Colors } from '../../utils'
+import { AllRankingsHandlers } from '../rankings/ui/all-rankings'
 import { SetupHandlers } from './handlers'
 import { admin_role_method_options } from './setup-cmd'
 
@@ -106,7 +106,7 @@ With the dropdowns below, you can
   return {
     embeds: [
       {
-        title: 'Settings ➛ Admin Role',
+        title: breadcrumbsTitle(`Settings`, `Admin Role`),
         description,
         color: Colors.Primary,
       },

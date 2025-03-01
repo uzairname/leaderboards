@@ -1,5 +1,18 @@
 import * as D from 'discord-api-types/v10'
 import { InteractionErrors } from '../errors'
+import { CommandInteraction } from '../types'
+
+/**
+ * Checks if the interaction is
+ */
+export function isCommandInteraction(
+  interaction: D.APIApplicationCommandInteraction,
+): interaction is CommandInteraction {
+  return (
+    D.Utils.isChatInputApplicationCommandInteraction(interaction) ||
+    D.Utils.isContextMenuApplicationCommandInteraction(interaction)
+  )
+}
 
 export function checkDmInteraction<T extends D.APIBaseInteraction<any, any>>(
   interaction: T,

@@ -6,8 +6,8 @@ import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
 import { GuildRankings, MatchPlayers, MatchSummaryMessages, Matches, Players } from '../schema'
-import { PlayerSelect } from './players'
-import { PartialRanking } from './rankings'
+import { PlayerFlags, PlayerSelect } from './players'
+import { PartialRanking, Rating } from './rankings'
 
 export type MatchMetadata = {
   best_of: number
@@ -36,7 +36,18 @@ export type MatchSummaryMessageSelect = InferSelectModel<typeof MatchSummaryMess
 export type MatchPlayerSelect = InferSelectModel<typeof MatchPlayers>
 export type MatchPlayerInsert = InferInsertModel<typeof MatchPlayers>
 
-export type MatchPlayer = { player: Player } & Omit<MatchPlayerSelect, 'match_id' | 'player_id' | 'team_num'>
+export type MatchPlayer = {
+  /**
+   * The player object, as it is at the time it is queried.
+   */
+  player: Player
+
+  /**
+   * The player's rating before playing the match.
+   */
+  rating: Rating
+  flags: PlayerFlags
+}
 
 export class Match implements DbObject<MatchSelect> {
   constructor(
@@ -231,9 +242,10 @@ export class MatchesManager extends DbObjectManager {
   }
 
   /**
-   * Returns a list of matches, in order of in order of oldest to most recent.
+   * Retrieves multiple matches based on the provided filters.
    *
-   * earlient_first: Determines the order to use when applying limit and offset.
+   * @param filters.player_ids: If specified, only matches with at least one
+   * @param filters.earlient_first: Determines the order to use when applying limit and offset.
    *  Final result is always ascending by time_finished, time_started.
    */
   async getMany(filters: {

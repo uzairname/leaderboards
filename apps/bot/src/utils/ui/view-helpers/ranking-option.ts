@@ -1,10 +1,10 @@
 import { GuildRanking, PartialGuild, PartialRanking, Ranking } from '@repo/db/models'
 import type { AnyAppCommandType, CommandContext, CommandInteractionResponse, CommandSignature } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { UserError } from '../../errors/user-errors'
-import { sentry } from '../../logging/sentry'
-import { AllRankingsPages } from '../../services/rankings/ui/all-rankings/pages'
-import type { App } from '../../setup/app'
+import { UserError } from '../../../errors/user-errors'
+import { sentry } from '../../../logging/sentry'
+import { AllRankingsPages } from '../../../services/rankings/ui/all-rankings'
+import type { App } from '../../../setup/app'
 
 export const create_ranking_choice_value = 'create'
 
@@ -57,6 +57,7 @@ export async function withOptionalSelectedRanking(
       ranking: PartialRanking
       guild_ranking: GuildRanking
     }[]
+    prefer_default?: boolean
   },
   callback: (ranking: PartialRanking | undefined) => Promise<CommandInteractionResponse>,
 ): Promise<CommandInteractionResponse> {
@@ -92,6 +93,7 @@ export async function withSelectedRanking(
  * @param options specify to limit the available rankings
  * @param callback the interaction callback
  * @param optional if false, throws an error if no ranking can be selected
+ * @param prefer_default if true and optional, uses the default ranking if available
  * @returns
  */
 async function _withSelectedRanking(
@@ -103,11 +105,12 @@ async function _withSelectedRanking(
       ranking: PartialRanking
       guild_ranking: GuildRanking
     }[]
+    prefer_default?: boolean
   },
   callback: (ranking: PartialRanking | undefined) => Promise<CommandInteractionResponse>,
   optional: boolean,
 ): Promise<CommandInteractionResponse> {
-  const { app, ctx, ranking_id, available_guild_rankings } = options
+  const { app, ctx, ranking_id, available_guild_rankings, prefer_default } = options
 
   sentry.addBreadcrumb({
     message: `_withSelectedRanking`,
@@ -121,13 +124,21 @@ async function _withSelectedRanking(
   if (ranking_id !== undefined) {
     ranking = await app.db.rankings.fetch(ranking_id)
   } else {
-    if (optional) {
+    // Try to find the default ranking
+    if (optional && !prefer_default) {
+      // If it's optional and we don't prefer the default, use undefined
       return callback(undefined)
     }
+
     const available_guild_rankings_ =
       available_guild_rankings !== undefined
         ? available_guild_rankings
         : await app.db.guild_rankings.fetchBy({ guild_id: ctx.interaction.guild_id })
+
+    if (optional && available_guild_rankings_.length !== 1) {
+      // If there's still not exactly one ranking and its optional, use undefined
+      return callback(undefined)
+    }
 
     if (available_guild_rankings_.length == 1) {
       ranking = available_guild_rankings_[0].ranking

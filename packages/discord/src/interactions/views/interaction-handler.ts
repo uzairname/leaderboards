@@ -3,11 +3,29 @@ import * as D from 'discord-api-types/v10'
 import { json } from 'itty-router'
 import { StringDataSchema } from '../../../../utils/src/StringData'
 import { DiscordLogger } from '../../logging'
-import { DiscordAPIClient } from '../../rest'
+import { DiscordAPIClient, MessageData } from '../../rest'
+import { checkGuildMessageComponentInteraction, isCommandInteraction } from '../checks'
 import { isChatInputCommandHandler, isCommandHandler, isViewHandler } from '../checks/handlers'
 import { InteractionErrors } from '../errors'
-import { AnyCommandSignature, AnyViewHandler, type InteractionErrorCallback, type OffloadCallback } from '../types'
-import { CommandHandler, ViewHandler, respondToAutocomplete, respondToCommand, respondToComponent } from './handlers'
+import {
+  AnyCommandSignature,
+  AnyViewHandler,
+  AnyViewSignature,
+  ChatInteractionResponse,
+  CommandInteractionResponse,
+  CommandTypeToInteraction,
+  ComponentInteraction,
+  InteractionResponse,
+  type InteractionErrorCallback,
+  type OffloadCallback,
+} from '../types'
+import {
+  CommandHandler,
+  ViewHandler,
+  deferCommandResponse,
+  deferComponentResponse,
+  validateInteraction,
+} from './handlers'
 import { logInteraction } from './log-interaction'
 import { ViewState, ViewStateFactory } from './state'
 import { verify } from './verify'
@@ -34,7 +52,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     })
 
     if (matching_handlers.length !== 1) {
-      throw new Error(`Expecting unique handler for interaction, found ${matching_handlers.length}.`)
+      throw new InteractionErrors.UnknownView()
     }
 
     return matching_handlers[0]
@@ -48,7 +66,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     })
 
     if (matching_handlers.length !== 1) {
-      throw new Error(`Expecting unique handler for interaction, found ${matching_handlers.length}.`)
+      throw new InteractionErrors.UnknownView()
     }
 
     return matching_handlers[0]
@@ -126,39 +144,43 @@ export class InteractionHandler<Arg extends unknown = undefined> {
       const handler = this.findCommandHandler({ name: interaction.data.name, type: interaction.data.type })
 
       if (interaction.type === D.InteractionType.ApplicationCommand) {
-        if (isCommandHandler(handler))
-          return respondToCommand({
-            handler,
-            interaction: interaction as any /** TODO: fix type */,
-            discord,
-            onError,
-            offload,
-            arg,
-            logger: this.logger,
-          })
-        throw new InteractionErrors.InvalidViewType()
+        if (!isCommandHandler(handler) || !isCommandInteraction(interaction))
+          throw new InteractionErrors.InvalidViewType()
+        return this.respondToCommand<typeof handler.signature>({
+          handler,
+          interaction,
+          discord,
+          onError,
+          offload,
+          arg,
+          logger: this.logger,
+        })
       }
 
       if (interaction.type === D.InteractionType.ApplicationCommandAutocomplete) {
-        if (isChatInputCommandHandler(handler)) return respondToAutocomplete(handler, interaction, this.logger)
-        throw new InteractionErrors.InvalidViewType()
+        if (!isChatInputCommandHandler(handler)) throw new InteractionErrors.InvalidViewType()
+        return this.respondToAutocomplete(handler, interaction, arg, this.logger)
       }
     }
 
     const { handler, state } = this.fromCustomId(interaction.data.custom_id)
 
-    return respondToComponent<Arg>({ arg, handler, interaction, state, discord, onError, offload, logger: this.logger })
+    return this.respondToComponent({ arg, handler, interaction, state, discord, onError, offload, logger: this.logger })
   }
 
   fromCustomId(custom_id: string): { handler: AnyViewHandler; state: ViewState<StringDataSchema> } {
-    const { prefix, encoded_data } = ViewStateFactory.splitCustomId(custom_id)
-    const handler = this.findViewHandler(prefix)
-    const state = ViewStateFactory.fromSignature(handler.signature).decode(encoded_data)
-    this.logger?.log({
-      message: `Decoded custom_id`,
-      data: { custom_id, prefix, encoded_data, data: state.data },
-    })
-    return { handler, state }
+    try {
+      const { prefix, encoded_data } = ViewStateFactory.splitCustomId(custom_id)
+      const handler = this.findViewHandler(prefix)
+      const state = ViewStateFactory.fromSignature(handler.signature).parse(encoded_data)
+      this.logger?.log({
+        message: `Decoded custom_id`,
+        data: { custom_id, prefix, encoded_data, data: state.data },
+      })
+      return { handler, state }
+    } catch (e) {
+      throw new InteractionErrors.CustomIdParseError(custom_id, e)
+    }
   }
 
   async commandSignatures({
@@ -195,5 +217,110 @@ export class InteractionHandler<Arg extends unknown = undefined> {
 
     const filtered = cmds.filter(v => !!v)
     return filtered
+  }
+
+  respondToCommand<Sig extends AnyCommandSignature>({
+    arg,
+    handler,
+    interaction,
+    discord,
+    onError,
+    offload,
+    logger,
+  }: {
+    arg: Arg
+    handler: CommandHandler<Sig, Arg>
+    interaction: CommandTypeToInteraction<Sig['config']['type']>
+    discord: DiscordAPIClient
+    onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource
+    offload: OffloadCallback
+    logger?: DiscordLogger
+  }): Promise<CommandInteractionResponse> {
+    logger?.setInteractionType(`${handler.signature.config.name} Command`)
+
+    let valid_interaction = validateInteraction<Sig, CommandTypeToInteraction<Sig['config']['type']>>(
+      handler.signature,
+      interaction,
+    )
+
+    return handler.onCommand(
+      {
+        interaction: valid_interaction,
+        defer: (callback, response) => {
+          deferCommandResponse<Sig>(callback, valid_interaction, discord, onError, offload)
+          const default_response = {
+            type: D.InteractionResponseType.DeferredChannelMessageWithSource,
+            data: { flags: D.MessageFlags.Ephemeral },
+          } as InteractionResponse<CommandTypeToInteraction<Sig['config']['type']>>
+          return response ?? default_response
+        },
+        send: async data =>
+          discord.createMessage(interaction.channel.id, data instanceof MessageData ? data.as_post : data),
+      },
+      arg,
+    )
+  }
+
+  async respondToAutocomplete<Arg extends unknown>(
+    handler: CommandHandler<any, Arg>,
+    interaction: D.APIApplicationCommandAutocompleteInteraction,
+    arg: Arg,
+    logger?: DiscordLogger,
+  ): Promise<D.APIApplicationCommandAutocompleteResponse> {
+    logger?.setInteractionType(`${handler.signature.name} Autocomplete`)
+    if (!handler.onAutocomplete) {
+      throw new InteractionErrors.CallbackNotImplemented(`onAutocomplete`)
+    }
+    const data = await handler.onAutocomplete({ interaction }, arg)
+    return {
+      type: D.InteractionResponseType.ApplicationCommandAutocompleteResult,
+      data: data ?? {
+        choices: [],
+      },
+    }
+  }
+
+  respondToComponent({
+    arg,
+    handler,
+    interaction,
+    state,
+    discord,
+    onError,
+    offload,
+    logger,
+  }: {
+    arg: Arg
+    handler: ViewHandler<AnyViewSignature, Arg>
+    interaction: ComponentInteraction
+    state: ViewState<StringDataSchema>
+    discord: DiscordAPIClient
+    onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource
+    offload: OffloadCallback
+    logger?: DiscordLogger
+  }): Promise<ChatInteractionResponse> {
+    logger?.setInteractionType(`${handler.signature.name} Component`)
+
+    let valid_interaction = validateInteraction(handler.signature, interaction)
+
+    if (!handler.onComponent) {
+      throw new InteractionErrors.CallbackNotImplemented(`onComponent`)
+    }
+
+    return handler.onComponent(
+      {
+        interaction: valid_interaction,
+        state,
+        defer: (callback, response) => {
+          deferComponentResponse(callback, interaction, state, discord, onError, offload)
+          return response ?? { type: D.InteractionResponseType.DeferredMessageUpdate }
+        },
+        send: async data => {
+          const _interaction = checkGuildMessageComponentInteraction(interaction)
+          return await discord.createMessage(_interaction.channel.id, data instanceof MessageData ? data.as_post : data)
+        },
+      },
+      arg,
+    )
   }
 }

@@ -1,11 +1,11 @@
 import { Match, MatchStatus, PartialGuild } from '@repo/db/models'
 import { MessageData } from '@repo/discord'
-import { maxIndex } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { Colors, emojis, escapeMd, relativeTimestamp, spaces } from '../../../utils/ui'
-import { getMatchPlayersDisplayStats } from '../../players/properties'
+import { matchPlayersDisplayStats } from '../../players/properties'
+import { getOutcome } from '../management/properties'
 import { syncMatchesChannel } from './matches-channel'
 
 /**
@@ -64,7 +64,7 @@ async function conciseMatchSummary(app: App, match: Match) {}
 export async function matchSummaryEmbed(app: App, match: Match, {} = {}): Promise<D.APIEmbed> {
   const ranking = await match.ranking.fetch()
 
-  const team_player_stats = await getMatchPlayersDisplayStats(app, match)
+  const team_player_stats = await matchPlayersDisplayStats(app, match)
 
   const embed: D.APIEmbed = {
     description:
@@ -84,12 +84,11 @@ export async function matchSummaryEmbed(app: App, match: Match, {} = {}): Promis
   const fields: D.APIEmbedField[] = team_player_stats.map((team, team_num) => {
     return {
       name: (outcome => {
-        if (match.data.status === MatchStatus.Finished && outcome) {
-          const winning_team_index = maxIndex(outcome)
-          const is_draw = winning_team_index === -1
+        const { winning_team_indices, is_draw } = getOutcome(match)
+        if (winning_team_indices) {
           return is_draw
             ? emojis.light_circle + `Draw`
-            : team_num === winning_team_index
+            : winning_team_indices.includes(team_num)
               ? emojis.green_triangle + `Win`
               : emojis.red_triangle + `Loss`
         } else {
@@ -100,15 +99,15 @@ export async function matchSummaryEmbed(app: App, match: Match, {} = {}): Promis
       value: team
         .map(p => {
           const rating_before_text = p.before.is_provisional
-            ? `\`${p.before.rating.toFixed(0)}?\``
-            : `${p.before.rating.toFixed(0)}`
+            ? `\`${p.before.points.toFixed(0)}?\``
+            : `${p.before.points.toFixed(0)}`
 
           if (p.after !== undefined) {
             const rating_after_text = p.after.is_provisional
-              ? `\`${p.after.rating.toFixed(0)}?\``
-              : `**${p.after.rating.toFixed(0)}**`
+              ? `\`${p.after.points.toFixed(0)}?\``
+              : `**${p.after.points.toFixed(0)}**`
 
-            const diff = p.after.rating - p.before.rating
+            const diff = p.after.points - p.before.points
 
             const rating_diff_text = p.after.is_provisional
               ? `\n-# (unranked)`

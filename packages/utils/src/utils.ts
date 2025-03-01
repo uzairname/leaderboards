@@ -46,23 +46,11 @@ export function unflatten<T>(arr: T[], dim_2_size: number, full_rows: boolean = 
 }
 
 /**
- * @returns The index of the maximum value in the array.
- * If there are multiple maximum values or the array is empty, returns -1.
+ * @returns The indices of the maximum value in the array.
  */
-export function maxIndex(arr: number[]): number {
-  let max = -Infinity
-  let max_index = -1
-  let max_repeated = false
-  for (let i = 0; i < arr.length; i++) {
-    if (arr[i] > max) {
-      max = arr[i]
-      max_index = i
-      max_repeated = false
-    } else if (arr[i] === max) {
-      max_repeated = true
-    }
-  }
-  return max_repeated ? -1 : max_index
+export function maxIndex(arr: number[]): number[] {
+  const max = Math.max(...arr)
+  return arr.map((v, i) => (v === max ? i : -1)).filter(i => i !== -1)
 }
 
 /**
@@ -105,7 +93,14 @@ export async function hash(input: unknown): Promise<string> {
   const hashArray = Array.from(new Uint8Array(hashBuffer)) // Convert buffer to byte array
   return hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('') // Convert bytes to hex string
 }
+
 export function fillDefaults<T extends object>(object: Partial<T> | undefined, defaults: T): T {
   if (!object) return defaults as T
   return { ...defaults, ...object }
+}
+
+export function intToOrdinal(n: number): string {
+  const suffixes = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0])
 }

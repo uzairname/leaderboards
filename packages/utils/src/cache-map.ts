@@ -4,13 +4,27 @@
 export class CacheMap<K, V, K2 extends string | number | undefined = undefined> extends Map<K, V> {
   constructor(
     public name?: string,
-    private log: (msg: string) => void = () => {},
+    private log?: (msg: string) => void,
+    options: { log_hits?: boolean; log_misses?: boolean } = {},
   ) {
     super()
+    this.log_hits = options.log_hits ?? true
+    this.log_misses = options.log_misses ?? true
   }
+  private readonly log_hits: boolean
+  private readonly log_misses: boolean
 
   toString() {
-    return `${this.name}: ${JSON.stringify([...this.entries()])}`
+    // list the keys in the map. If the value is a CacheMap, list the keys in that as well
+    return `[CacheMap ${this.name}: ${Array.from(this.entries())
+      .map(([key, value]): string => {
+        if (value instanceof CacheMap) {
+          return `${key}: ${value.toString()}`
+        } else {
+          return `${key}: ${value}`
+        }
+      })
+      .join(', ')}]`
   }
 
   /**
@@ -23,10 +37,10 @@ export class CacheMap<K, V, K2 extends string | number | undefined = undefined> 
         if (!(value instanceof CacheMap)) return
         const value2 = value.get(key2)
         if (value2) {
-          // this.name && this.log && this.log(`Cache hit for ${this.name} ${key} ${key2}`)
+          this.name && this.log && this.log_hits && this.log(`Cache hit for ${this.name} ${key} ${key2}`)
           return value2
         } else {
-          this.name && this.log && this.log(`Cache miss for ${this.name} ${key} ${key2}`)
+          this.name && this.log && this.log_misses && this.log(`Cache miss for ${this.name} ${key} ${key2}`)
           return
         }
       } else {
@@ -34,7 +48,7 @@ export class CacheMap<K, V, K2 extends string | number | undefined = undefined> 
         return value
       }
     } else {
-      this.name && this.log && this.log(`Cache miss for ${this.name} ${key}`)
+      this.name && this.log && this.log_misses && this.log(`Cache miss for ${this.name} ${key}`)
     }
   }
 

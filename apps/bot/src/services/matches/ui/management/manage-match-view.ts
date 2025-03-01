@@ -7,7 +7,7 @@ import { App } from '../../../../setup/app'
 import { Colors } from '../../../../utils'
 import { hasAdminPerms } from '../../../../utils/perms'
 import { matchSummaryEmbed } from '../../logging/match-summary-message'
-import { cancelMatch, updateMatchOutcome } from '../../management/manage-matches'
+import { cancelMatch, updateMatchOutcome } from '../../management/update-matches'
 
 export const manage_match_view_sig = new ViewSignature({
   custom_id_prefix: 'm',

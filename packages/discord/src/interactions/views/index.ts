@@ -1,5 +1,5 @@
 export * from './handlers'
-export * from './manager'
+export * from './interaction-handler'
 export * from './signature'
 export * from './state'
 export * from './verify'

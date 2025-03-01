@@ -6,7 +6,7 @@ import { Colors, escapeMd } from '../../../utils'
 import { ensureAdminPerms } from '../../../utils/perms'
 import { createNewRankingInGuild } from '../manage'
 import { default_players_per_team, default_teams_per_match } from '../properties'
-import { RankingSettingsPages } from './ranking-settings/pages'
+import { RankingSettingsPages } from './ranking-settings'
 import { ranking_settings_view_sig } from './ranking-settings/view'
 
 export const create_ranking_cmd_sig = new CommandSignature({

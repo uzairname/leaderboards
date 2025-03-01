@@ -1,8 +1,9 @@
 import { eq, InferInsertModel, InferSelectModel, sql } from 'drizzle-orm'
 import { DbObjectManager } from '../classes'
 import { DbClient } from '../client'
-import { Players, QueueTeams, TeamPlayers, Users } from '../schema'
+import { Players, QueueTeams, Rankings, TeamPlayers, Users } from '../schema'
 import { Player } from './players'
+import { Ranking } from './rankings'
 
 export type UserSelect = InferSelectModel<typeof Users>
 export type UserInsert = InferInsertModel<typeof Users>
@@ -24,9 +25,18 @@ export class PartialUser {
     return new User(data, this.db)
   }
 
-  async players(): Promise<Player[]> {
-    const data = await this.db.drizzle.select().from(Players).where(eq(Players.user_id, this.data.id))
-    return data.map(data => new Player(data, this.db))
+  async players(): Promise<{ player: Player; ranking: Ranking }[]> {
+    const data = await this.db.drizzle
+      .select()
+      .from(Players)
+      .where(eq(Players.user_id, this.data.id))
+      .innerJoin(Rankings, eq(Players.ranking_id, Rankings.id))
+    return data.map(data => {
+      return {
+        player: new Player(data.Players, this.db),
+        ranking: new Ranking(data.Rankings, this.db),
+      }
+    })
   }
 
   async update(data: UserUpdate): Promise<User> {

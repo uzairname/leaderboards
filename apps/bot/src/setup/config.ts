@@ -12,13 +12,13 @@ export class Config {
     Identify: '/login',
   }
 
-  readonly DevGuildId = '1041458052055978024'
-
-  readonly OwnerIds = ['991398096565182467', '375438205253713933']
-
   readonly SupportServerInvite = `https://dsc.gg/leaderboard`
 
   readonly GithubUrl = `https://github.com/uzairname/leaderboards`
+
+  readonly DevGuildId = '1041458052055978024'
+
+  readonly OwnerIds = ['991398096565182467', '375438205253713933']
 
   readonly RequiredBotPermissions =
     D.PermissionFlagsBits.ManageChannels |
@@ -38,6 +38,8 @@ export class Config {
   constructor(
     readonly env: Env,
     readonly OauthRedirectURI = env.BASE_URL + `/oauth` + this.OauthRoutes.Redirect,
+    readonly OauthRoleConnectionsUrl = env.BASE_URL + `/oauth` + this.OauthRoutes.LinkedRoles,
+    readonly oauthInviteAndRoleConnectionsUrl = env.BASE_URL + `/oauth` + this.OauthRoutes.BotAndRoleConnections,
     // readonly WebDashboardURL = env.BASE_URL + `/dashboard`,
     readonly IsDev = env.ENVIRONMENT === 'development',
     readonly DirectResponse = IsDev ? true : true,

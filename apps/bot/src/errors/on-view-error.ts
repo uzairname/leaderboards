@@ -27,6 +27,8 @@ export function onViewError(app: App) {
       _e = new UserErrors.DiscordRateLimit(e.timeToReset)
     } else if (e instanceof InteractionUserError) {
       _e = new UserError(e.message)
+    } else if (e instanceof Error) {
+      _e = e
     } else {
       _e = new Error(e instanceof Error ? e.message : `${e}`)
     }
@@ -62,8 +64,9 @@ function _onViewError(
     // If not a user error, it is unexpected
     setSentryException ? setSentryException(e) : sentry.setException(e)
 
-    let description =
-      e.message + `\n\nThis is a bug! please report it in the [support server](${app.config.SupportServerInvite})`
+    let description = `${e.name}: ${e.message}
+      
+This is a bug! please report it in the [support server](${app.config.SupportServerInvite})`
 
     if (app.config.IsDev) {
       // If in dev, add the error to the description

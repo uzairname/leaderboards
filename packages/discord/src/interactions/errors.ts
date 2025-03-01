@@ -8,20 +8,48 @@ export class InteractionError extends Error {
 export class InteractionUserError extends InteractionError {
   constructor(message?: string) {
     super(message)
-    this.name = `${InteractionUserError}.${this.constructor.name}`
+    this.name = `${InteractionUserError.name}.${this.constructor.name}`
   }
 }
 
 export namespace InteractionErrors {
-  export class UnknownView extends InteractionError {
+  /**
+   * No unique command matches the command name and type
+   */
+  export class UnknownCommand extends InteractionUserError {
     constructor() {
-      super(`Unrecognized command or component. It may be outdated`)
+      super(`Unrecognized command`)
     }
   }
 
-  export class UnknownHandler extends InteractionError {
+  /**
+   * No unique view matches the custom id
+   */
+  export class UnknownView extends InteractionUserError {
     constructor() {
-      super(`This command or component may be outdated`)
+      super(`Unrecognized component. It may be outdated`)
+    }
+  }
+
+  /**
+   * LZstring fails to decompress the encoded part of the custom id
+   */
+  export class DecompressError extends InteractionUserError {
+    constructor(encoded_data: string) {
+      super(`Unable to decompress from UTF 16: '${encoded_data}'`)
+    }
+  }
+
+  /**
+   * Any error while parsing the custom id into a state and view
+   */
+  export class CustomIdParseError extends InteractionUserError {
+    constructor(custom_id: string, cause: unknown) {
+      if (cause instanceof Error) {
+        super(`Unable to parse custom id '${custom_id}'. ${cause.name}: ${cause.message}`)
+      } else {
+        super(`Unable to parse custom id '${custom_id}'. ${cause}`)
+      }
     }
   }
 
@@ -36,14 +64,6 @@ export namespace InteractionErrors {
       super(`Custom id is ${custom_id.length} characters long: ${custom_id}`)
     }
   }
-
-  export class InvalidEncodedCustomId extends InteractionError {
-    constructor(custom_id: string) {
-      super(`Unable to decompress custom id '${custom_id}'`)
-    }
-  }
-
-  export class InvalidCustomId extends InteractionError {}
 
   export class CallbackNotImplemented extends InteractionError {
     constructor(callback: string) {
