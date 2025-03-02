@@ -6,7 +6,7 @@ import { DbClient } from '../client'
 import { DbErrors } from '../errors'
 import { Players, TeamPlayers, Teams } from '../schema'
 import { PartialRanking, Rating } from './rankings'
-import { PartialUser, User } from './users'
+import { PartialUser } from './users'
 
 export type PlayerSelect = InferSelectModel<typeof Players>
 export type PlayerInsert = Omit<InferInsertModel<typeof Players>, 'id'>
@@ -81,17 +81,18 @@ export class UserPlayer extends Player {
     public data: PlayerSelect & { user_id: string },
     public db: DbClient,
   ) {
-    super(data, db) 
+    super(data, db)
     if (data.user_id !== null) db.cache.user_players.set(data.ranking_id, this, data.user_id)
   }
 }
 
 export class PlayersManager extends DbObjectManager {
-
-  async create(data: {
-    ranking: PartialRanking
-    user?: PartialUser,
-  } & Omit<PlayerInsert, 'user_id' | 'ranking_id'>): Promise<Player> {
+  async create(
+    data: {
+      ranking: PartialRanking
+      user?: PartialUser
+    } & Omit<PlayerInsert, 'user_id' | 'ranking_id'>,
+  ): Promise<Player> {
     if (data.role_id !== undefined && data.guild_id === undefined) {
       throw new DbErrors.ValueError('Guild id is required when role id is provided')
     }
@@ -115,7 +116,7 @@ export class PlayersManager extends DbObjectManager {
         .values({ user_id: user.data.id, ranking_id: ranking.data.id, ...data })
         .returning()
     )[0]
-    return new UserPlayer({...new_data, user_id: user.data.id}, this.db)
+    return new UserPlayer({ ...new_data, user_id: user.data.id }, this.db)
   }
 
   get(id: number): PartialPlayer {
@@ -129,7 +130,13 @@ export class PlayersManager extends DbObjectManager {
     return new Player(data, this.db)
   }
 
-  async fetchByUser({ user_id, ranking }: { user_id: string; ranking: PartialRanking }): Promise<UserPlayer | undefined> {
+  async fetchByUser({
+    user_id,
+    ranking,
+  }: {
+    user_id: string
+    ranking: PartialRanking
+  }): Promise<UserPlayer | undefined> {
     const cached_player = this.db.cache.user_players.get(ranking.data.id, user_id)
     if (cached_player) return cached_player
 
@@ -140,16 +147,26 @@ export class PlayersManager extends DbObjectManager {
         .where(and(eq(Players.user_id, user_id), eq(Players.ranking_id, ranking.data.id)))
     )[0]
     if (!data) return
-    return new UserPlayer({...data, user_id }, this.db)
+    return new UserPlayer({ ...data, user_id }, this.db)
   }
 
-  async fetchBy({ ranking, user_id, role_id, name}: { ranking: PartialRanking, user_id?: string; role_id?: string; name?: string,  }): Promise<Player | undefined> {
+  async fetchBy({
+    ranking,
+    user_id,
+    role_id,
+    name,
+  }: {
+    ranking: PartialRanking
+    user_id?: string
+    role_id?: string
+    name?: string
+  }): Promise<Player | undefined> {
     const where_chunks: SQL[] = []
     if (user_id) where_chunks.push(eq(Players.user_id, user_id))
     if (role_id) where_chunks.push(eq(Players.role_id, role_id))
     if (name) where_chunks.push(eq(Players.name, name))
     if (where_chunks.length === 0) throw new DbErrors.ValueError('No filters provided')
-    
+
     where_chunks.push(eq(Players.ranking_id, ranking.data.id))
 
     const data = (

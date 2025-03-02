@@ -62,12 +62,8 @@
           "name": "AccessTokens_user_id_Users_id_fk",
           "tableFrom": "AccessTokens",
           "tableTo": "Users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -144,12 +140,8 @@
           "name": "GuildRankings_guild_id_Guilds_id_fk",
           "tableFrom": "GuildRankings",
           "tableTo": "Guilds",
-          "columnsFrom": [
-            "guild_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["guild_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -157,12 +149,8 @@
           "name": "GuildRankings_ranking_id_Rankings_id_fk",
           "tableFrom": "GuildRankings",
           "tableTo": "Rankings",
-          "columnsFrom": [
-            "ranking_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ranking_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -170,10 +158,7 @@
       "compositePrimaryKeys": {
         "GuildRankings_guild_id_ranking_id_pk": {
           "name": "GuildRankings_guild_id_ranking_id_pk",
-          "columns": [
-            "guild_id",
-            "ranking_id"
-          ]
+          "columns": ["guild_id", "ranking_id"]
         }
       },
       "uniqueConstraints": {},
@@ -280,12 +265,8 @@
           "name": "MatchPlayers_match_id_Matches_id_fk",
           "tableFrom": "MatchPlayers",
           "tableTo": "Matches",
-          "columnsFrom": [
-            "match_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["match_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -293,12 +274,8 @@
           "name": "MatchPlayers_player_id_Players_id_fk",
           "tableFrom": "MatchPlayers",
           "tableTo": "Players",
-          "columnsFrom": [
-            "player_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["player_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -306,10 +283,7 @@
       "compositePrimaryKeys": {
         "MatchPlayers_match_id_player_id_pk": {
           "name": "MatchPlayers_match_id_player_id_pk",
-          "columns": [
-            "match_id",
-            "player_id"
-          ]
+          "columns": ["match_id", "player_id"]
         }
       },
       "uniqueConstraints": {},
@@ -352,12 +326,8 @@
           "name": "MatchSummaryMessages_match_id_Matches_id_fk",
           "tableFrom": "MatchSummaryMessages",
           "tableTo": "Matches",
-          "columnsFrom": [
-            "match_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["match_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -365,12 +335,8 @@
           "name": "MatchSummaryMessages_guild_id_Guilds_id_fk",
           "tableFrom": "MatchSummaryMessages",
           "tableTo": "Guilds",
-          "columnsFrom": [
-            "guild_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["guild_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -378,10 +344,7 @@
       "compositePrimaryKeys": {
         "MatchSummaryMessages_match_id_guild_id_pk": {
           "name": "MatchSummaryMessages_match_id_guild_id_pk",
-          "columns": [
-            "match_id",
-            "guild_id"
-          ]
+          "columns": ["match_id", "guild_id"]
         }
       },
       "uniqueConstraints": {},
@@ -506,12 +469,8 @@
           "name": "Matches_ranking_id_Rankings_id_fk",
           "tableFrom": "Matches",
           "tableTo": "Rankings",
-          "columnsFrom": [
-            "ranking_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ranking_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -638,12 +597,8 @@
           "name": "Players_ranking_id_Rankings_id_fk",
           "tableFrom": "Players",
           "tableTo": "Rankings",
-          "columnsFrom": [
-            "ranking_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ranking_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -651,12 +606,8 @@
           "name": "Players_user_id_Users_id_fk",
           "tableFrom": "Players",
           "tableTo": "Users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -664,12 +615,8 @@
           "name": "Players_guild_id_Guilds_id_fk",
           "tableFrom": "Players",
           "tableTo": "Guilds",
-          "columnsFrom": [
-            "guild_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["guild_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -704,12 +651,8 @@
           "name": "QueueTeams_team_id_Teams_id_fk",
           "tableFrom": "QueueTeams",
           "tableTo": "Teams",
-          "columnsFrom": [
-            "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["team_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -852,12 +795,8 @@
           "name": "TeamPlayers_team_id_Teams_id_fk",
           "tableFrom": "TeamPlayers",
           "tableTo": "Teams",
-          "columnsFrom": [
-            "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["team_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -865,12 +804,8 @@
           "name": "TeamPlayers_player_id_Players_id_fk",
           "tableFrom": "TeamPlayers",
           "tableTo": "Players",
-          "columnsFrom": [
-            "player_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["player_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -878,10 +813,7 @@
       "compositePrimaryKeys": {
         "TeamPlayers_team_id_player_id_pk": {
           "name": "TeamPlayers_team_id_player_id_pk",
-          "columns": [
-            "team_id",
-            "player_id"
-          ]
+          "columns": ["team_id", "player_id"]
         }
       },
       "uniqueConstraints": {},
@@ -931,12 +863,8 @@
           "name": "Teams_ranking_id_Rankings_id_fk",
           "tableFrom": "Teams",
           "tableTo": "Rankings",
-          "columnsFrom": [
-            "ranking_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ranking_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }

@@ -1,13 +1,11 @@
-import * as D from 'discord-api-types/v10'
-import { App } from '../../setup/app'
-import { SetupHandlers } from '.'
-import { setup_view_sig } from './view'
 import { Context } from '@repo/discord'
+import * as D from 'discord-api-types/v10'
+import { SetupHandlers } from '.'
+import { App } from '../../setup/app'
 import { breadcrumbsTitle, Colors } from '../../utils'
 import { AllRankingsHandlers } from '../rankings/ui/all-rankings'
-import { admin_role_method_options } from './view'
 import { all_rankings_view_sig } from '../rankings/ui/all-rankings/view'
-
+import { admin_role_method_options, setup_view_sig } from './view'
 
 export async function start(app: App): Promise<D.APIInteractionResponseCallbackData> {
   return {
@@ -36,7 +34,7 @@ export async function start(app: App): Promise<D.APIInteractionResponseCallbackD
 }
 export async function adminRolePage(
   app: App,
-  ctx: Context<typeof setup_view_sig>
+  ctx: Context<typeof setup_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const current_admin_role_id = (await app.db.guilds.fetch(ctx.interaction.guild_id))?.data.admin_role_id
 
@@ -62,13 +60,13 @@ export async function adminRolePage(
           ].concat(
             current_admin_role_id
               ? [
-                {
-                  label: `Unset the admin role`,
-                  value: admin_role_method_options.unset,
-                  default: ctx.state.is.admin_role_method('unset'),
-                },
-              ]
-              : []
+                  {
+                    label: `Unset the admin role`,
+                    value: admin_role_method_options.unset,
+                    default: ctx.state.is.admin_role_method('unset'),
+                  },
+                ]
+              : [],
           ),
         },
       ],
@@ -87,7 +85,6 @@ export async function adminRolePage(
     })
   }
 
-
   components.push({
     type: D.ComponentType.ActionRow,
     components: [
@@ -95,9 +92,11 @@ export async function adminRolePage(
         type: D.ComponentType.Button,
         label: current_admin_role_id ? 'Next' : 'Skip',
         style: D.ButtonStyle.Primary,
-        custom_id: all_rankings_view_sig.newState({
-          handler: AllRankingsHandlers.sendMainPage,
-        }).cId(),
+        custom_id: all_rankings_view_sig
+          .newState({
+            handler: AllRankingsHandlers.sendMainPage,
+          })
+          .cId(),
       },
     ],
   })
@@ -131,4 +130,3 @@ With the dropdowns below, you can
     flags: D.MessageFlags.Ephemeral,
   }
 }
-

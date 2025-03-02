@@ -4,10 +4,8 @@ import { sentry } from '../../logging/sentry'
 import { App } from '../../setup/app'
 import { ensureAdminPerms } from '../../utils'
 import { getOrAddGuild, syncGuildAdminRole } from '../guilds/manage-guilds'
-import { admin_role_method_options } from './view'
-import { setup_view_sig } from './view'
 import { adminRolePage } from './pages'
-
+import { admin_role_method_options, setup_view_sig } from './view'
 
 export async function sendAdminRolePage(
   app: App,

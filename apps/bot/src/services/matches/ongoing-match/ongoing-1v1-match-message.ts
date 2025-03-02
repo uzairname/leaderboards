@@ -4,8 +4,8 @@ import { Match, MatchPlayer, MatchStatus, Player, Vote } from '@repo/db/models'
 import { nonNullable } from '@repo/utils'
 import { App } from '../../../setup/app'
 import { Colors } from '../../../utils'
-import { rankingProperties } from '../../rankings/properties'
 import { mentionOrName } from '../../players/properties'
+import { rankingProperties } from '../../rankings/properties'
 
 /**
  * Determine the custom description to display at the top of the match thread,

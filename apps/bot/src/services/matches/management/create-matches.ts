@@ -13,9 +13,9 @@ import { UserErrors } from '../../../errors/user-errors'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { rankingProperties } from '../../rankings/properties'
+import { syncMatchSummaryMessages } from '../logging/match-summary-message'
 import { rescoreMatches } from '../scoring/score_match'
 import { validateMatchData } from './update-matches'
-import { syncMatchSummaryMessages } from '../logging/match-summary-message'
 
 /**
  * Starts a new match, using the players' current ratings
@@ -92,9 +92,7 @@ export async function recordAndScoreMatch(
   )
 
   // Determine what the players' ratings were at the time of the match
-  const team_players = players.map(team =>
-    team.map(p => p),
-  )
+  const team_players = players.map(team => team.map(p => p))
 
   const match = await app.db.matches.create({
     ranking,

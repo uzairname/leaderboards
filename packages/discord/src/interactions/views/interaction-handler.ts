@@ -165,7 +165,16 @@ export class InteractionHandler<Arg extends unknown = undefined> {
 
     const { handler, state } = this.fromCustomId(interaction.data.custom_id)
 
-    return this.respondToComponent({ arg, handler, interaction, state, discord, onError, offload, logger: this.logger })
+    return this.respondToComponent({
+      arg,
+      handler,
+      interaction,
+      state,
+      discord,
+      onError,
+      offload,
+      logger: this.logger,
+    })
   }
 
   fromCustomId(custom_id: string): { handler: AnyViewHandler; state: ViewState<StringDataSchema> } {

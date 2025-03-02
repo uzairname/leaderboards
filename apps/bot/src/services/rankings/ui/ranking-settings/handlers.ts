@@ -256,7 +256,11 @@ export async function appearanceModal(
   })
 
   const modal = rankingSettingsModal({
-    color: { ph: guild_ranking.data.display_settings?.color ? `#${guild_ranking.data.display_settings?.color?.toString(16)}` : undefined},
+    color: {
+      ph: guild_ranking.data.display_settings?.color
+        ? `#${guild_ranking.data.display_settings?.color?.toString(16)}`
+        : undefined,
+    },
   })
     .setTitle(`Edit Appearance of ${ranking.data.name}`)
     .setCustomId(ctx.state.set.handler(onSettingsModalSubmit).cId())

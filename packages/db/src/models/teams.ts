@@ -2,7 +2,7 @@ import { and, eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { Player } from '.'
 import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
-import { Players, QueueTeams, TeamPlayers, Teams } from '../schema'
+import { Players, TeamPlayers, Teams } from '../schema'
 import { PartialRanking } from './rankings'
 
 export type TeamSelect = InferSelectModel<typeof Teams>
@@ -63,11 +63,7 @@ export class Team implements DbObject<TeamSelect> {
   }
 
   async addToQueue(): Promise<void> {
-    // if already in queue, updates time_created
-    await this.db.drizzle
-      .insert(QueueTeams)
-      .values({ team_id: this.data.id })
-      .onConflictDoUpdate({ target: QueueTeams.team_id, set: { time_created: new Date() } })
+    throw new Error('Not implemented')
   }
 
   async delete(id: number): Promise<void> {

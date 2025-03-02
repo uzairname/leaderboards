@@ -44,7 +44,6 @@ export async function getOrCreatePlayerByUser(
   return player
 }
 
-
 /**
  * Returns a player associated with the given role and user
  */
@@ -60,14 +59,14 @@ export async function getOrCreatePlayer(options: {
 }): Promise<Player> {
   sentry.debug(`getOrCreatePlayer: user:${options.user} role:${options.role} in ${options.ranking}`)
 
-  const {app} = options
+  const { app } = options
 
   if (options.user) return getOrCreatePlayerByUser(options.app, options.user, options.ranking)
 
   // User is not specified.
 
   // Get any existing player based on the role and/or name
-  let player = await app.db.players.fetchBy({ 
+  let player = await app.db.players.fetchBy({
     role_id: typeof options.role === 'string' ? options.role : options.role?.id,
     name: options.name,
     ranking: options.ranking,
@@ -109,10 +108,6 @@ export async function getOrCreatePlayer(options: {
   return player
 }
 
-
-
-
-
 /**
  * Updates players in the database.
  *
@@ -142,10 +137,12 @@ export async function updatePlayerRatings(app: App, update: { player: PartialPla
         // For each player to update, update role connections
         if (app.config.features.RatingRoleConnections) {
           // Update rating roles
-          
+
           // Update role connections if player associated with a user
           if (player.data.user_id) {
-            const access_token = await getUserAccessToken(app, player.data.user_id, [D.OAuth2Scopes.RoleConnectionsWrite])
+            const access_token = await getUserAccessToken(app, player.data.user_id, [
+              D.OAuth2Scopes.RoleConnectionsWrite,
+            ])
             if (access_token) {
               await updateUserRoleConnectionData(app, access_token, player)
             }

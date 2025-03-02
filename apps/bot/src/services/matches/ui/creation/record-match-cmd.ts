@@ -1,23 +1,11 @@
-import {
-  ChatInteractionResponse,
-  checkGuildMessageComponentInteraction,
-  CommandSignature,
-  ComponentContext,
-  Context,
-  DeferredComponentContext,
-  getOptions,
-  StateContext,
-} from '@repo/discord'
-import { assert, intOrUndefined, nonNullable, snowflakeToDate } from '@repo/utils'
+import { CommandSignature, getOptions } from '@repo/discord'
+import { intOrUndefined, snowflakeToDate } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { UserError } from '../../../../errors/user-errors'
 import { App } from '../../../../setup/app'
-import { Colors, ensureAdminPerms, hasAdminPerms } from '../../../../utils'
-import { escapeMd, messageLink, relativeTimestamp } from '../../../../utils/ui'
+import { ensureAdminPerms } from '../../../../utils'
+import { messageLink } from '../../../../utils/ui'
 import { guildRankingsOption, withSelectedRanking } from '../../../../utils/ui/view-helpers/ranking-option'
-import { numRankings } from '../../../guilds/properties'
-import { getOrCreatePlayer, getOrCreatePlayerByUser } from '../../../players/manage'
-import { matchSummaryEmbed } from '../../logging/match-summary-message'
+import { getOrCreatePlayer } from '../../../players/manage'
 import { recordAndScoreMatch } from '../../management/create-matches'
 
 export const record_match_cmd_sig = new CommandSignature({
@@ -59,14 +47,17 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
           name: optionnames.loser,
           description: 'Who lost (if applicable)',
           type: D.ApplicationCommandOptionType.Mentionable,
-        }])
+        },
+      ])
     }
 
-    options = options.concat([{
-      name: optionnames.time_finished,
-      description: 'Snowflake or Unix timestamp of when the match was finished (default now)',
-      type: D.ApplicationCommandOptionType.String,
-    }])
+    options = options.concat([
+      {
+        name: optionnames.time_finished,
+        description: 'Snowflake or Unix timestamp of when the match was finished (default now)',
+        type: D.ApplicationCommandOptionType.String,
+      },
+    ])
 
     return new CommandSignature({
       ...record_match_cmd_sig.config,
@@ -113,21 +104,34 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
         ctx.defer(async ctx => {
           const ranking = await p_ranking.fetch()
 
-          // If this is a 1v1 ranking, check if the winner and loser were specified            
+          // If this is a 1v1 ranking, check if the winner and loser were specified
           if (ranking.data.players_per_team == 1 && ranking.data.teams_per_match == 2) {
-            
             if (input.winner && input.loser) {
-              const winner = await getOrCreatePlayer({app, user: input.winner.user, role: input.winner.role ? {
-                id: input.winner.role?.id,
-                guild_id: ctx.interaction.guild_id,
-              } : undefined, ranking})
-              const loser = await getOrCreatePlayer({app, user: input.loser.user, role: input.loser.role ? {
-                id: input.loser.role?.id,
-                guild_id: ctx.interaction.guild_id,
-              } : undefined, ranking})
+              const winner = await getOrCreatePlayer({
+                app,
+                user: input.winner.user,
+                role: input.winner.role
+                  ? {
+                      id: input.winner.role?.id,
+                      guild_id: ctx.interaction.guild_id,
+                    }
+                  : undefined,
+                ranking,
+              })
+              const loser = await getOrCreatePlayer({
+                app,
+                user: input.loser.user,
+                role: input.loser.role
+                  ? {
+                      id: input.loser.role?.id,
+                      guild_id: ctx.interaction.guild_id,
+                    }
+                  : undefined,
+                ranking,
+              })
 
               await ensureAdminPerms(app, ctx)
-              
+
               const match = await recordAndScoreMatch(
                 app,
                 ranking,
@@ -156,10 +160,9 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
                     : ``),
                 flags: D.MessageFlags.Ephemeral,
               })
-              
             }
           }
-        })
+        }),
     )
   },
 })

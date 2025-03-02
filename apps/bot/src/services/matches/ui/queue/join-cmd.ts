@@ -9,7 +9,7 @@ import { userJoinQueue } from '../../matchmaking/queue/1v1-queue'
 export const join_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
   name: 'join',
-  description: `Join the matchmaking queue for a ranking`,
+  description: `Join a matchmaking queue`,
 })
 
 export const join_cmd = join_cmd_sig.set<App>({

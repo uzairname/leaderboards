@@ -2,9 +2,9 @@ import { Match, MatchInsert, MatchMetadata, MatchPlayer, MatchStatus, Player, Ra
 import { UserError } from '../../../errors/user-errors'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
+import { mentionOrName } from '../../players/properties'
 import { syncMatchSummaryMessages } from '../logging/match-summary-message'
 import { rescoreMatches } from '../scoring/score_match'
-import { mentionOrName } from '../../players/properties'
 
 // The match updating service. Responsible for updating match outcomes, and canceling matches.
 

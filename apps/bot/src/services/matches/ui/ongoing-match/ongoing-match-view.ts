@@ -6,10 +6,10 @@ import { UserError } from '../../../../errors/user-errors'
 import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
 import { listToString } from '../../../../utils'
+import { mentionOrName } from '../../../players/properties'
 import { getOutcome } from '../../management/properties'
 import { castPlayerVote, start1v1SeriesThread } from '../../ongoing-match/manage-ongoing-match'
 import { ongoingMatch1v1Message } from '../../ongoing-match/ongoing-1v1-match-message'
-import { mentionOrName } from '../../../players/properties'
 
 export const ongoing_match_view_sig = new ViewSignature({
   name: 'Ongoing Series Message',

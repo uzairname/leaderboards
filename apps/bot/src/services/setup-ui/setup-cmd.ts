@@ -1,10 +1,10 @@
 import { CommandSignature } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
+import { SetupHandlers, SetupPages } from '.'
 import { App } from '../../setup/app'
 import { Colors } from '../../utils'
 import { ensureAdminPerms } from '../../utils/perms'
 import { setup_view_sig } from './view'
-import { SetupPages, SetupHandlers } from '.'
 
 export const setup_cmd = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,

@@ -1,7 +1,7 @@
 import { eq, InferInsertModel, InferSelectModel, sql } from 'drizzle-orm'
 import { DbObjectManager } from '../classes'
 import { DbClient } from '../client'
-import { Players, QueueTeams, Rankings, TeamPlayers, Users } from '../schema'
+import { Players, Rankings, TeamPlayers, Users } from '../schema'
 import { Player } from './players'
 import { Ranking } from './rankings'
 
@@ -55,19 +55,6 @@ export class PartialUser {
 
   async removeFromTeamQueues(): Promise<number> {
     throw new Error('Not implemented')
-    const result = await this.db.drizzle
-      .delete(QueueTeams)
-      .where(
-        sql`${QueueTeams.team_id} in (
-          select ${TeamPlayers.team_id} from ${TeamPlayers}
-          where ${TeamPlayers.player_id} in (
-            select ${Players.id} from ${Players}
-            where ${Players.user_id} = ${this.data.id}
-          )
-        )`,
-      )
-      .returning() // prettier-ignore
-    return result.length
   }
 
   async delete(): Promise<void> {

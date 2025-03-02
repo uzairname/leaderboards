@@ -14,7 +14,6 @@ export type PlayerDisplay = {
   is_provisional?: boolean
 }
 
-
 /**
  * Info about a player in a match to display
  */
@@ -29,10 +28,12 @@ export type MatchPlayerDisplay = {
  * Otherwise, return their name.
  */
 export function mentionOrName(player: Player): string {
-  return player.data.user_id ? `<@${player.data.user_id}>` : 
-    player.data.role_id ? `<@&${player.data.role_id}>` : player.data.name
+  return player.data.user_id
+    ? `<@${player.data.user_id}>`
+    : player.data.role_id
+      ? `<@&${player.data.role_id}>`
+      : player.data.name
 }
-
 
 export const PlayerStatsSchema = z.object({
   display_rating: z.object({
@@ -165,12 +166,7 @@ export async function orderedLeaderboardPlayers(app: App, p_ranking: PartialRank
   return players_display
 }
 
-export async function matchPlayersDisplayStats(
-  app: App,
-  match: Match,
-): Promise<
-  MatchPlayerDisplay[][]
-> {
+export async function matchPlayersDisplayStats(app: App, match: Match): Promise<MatchPlayerDisplay[][]> {
   const ranking = await match.ranking.fetch()
   const team_players = await match.players()
   const display = displayRatingFn(app, ranking)
