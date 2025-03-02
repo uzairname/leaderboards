@@ -21,6 +21,7 @@ type OptionValueType<T extends D.ApplicationCommandOptionType> =
     T extends D.ApplicationCommandOptionType.User ? D.APIUser :
     T extends D.ApplicationCommandOptionType.Channel ? D.APIInteractionDataResolvedChannel :
     T extends D.ApplicationCommandOptionType.Role ? D.APIRole :
+    T extends D.ApplicationCommandOptionType.Mentionable ? { user?: D.APIUser, role?: D.APIRole } :
     never
 
 /**
@@ -144,6 +145,10 @@ export function getResolvedOptionValue(
     } else if (o.type === D.ApplicationCommandOptionType.Channel) {
       const channel = nonNullable(data.resolved?.channels?.[o.value], `interaction data resolved channel`)
       return channel
+    } else if (o.type === D.ApplicationCommandOptionType.Mentionable) {
+      const user = data.resolved?.users?.[o.value]
+      const role = data.resolved?.roles?.[o.value]
+      return { user, role }
     }
   }
 }

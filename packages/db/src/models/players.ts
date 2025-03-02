@@ -4,9 +4,9 @@ import { Ranking, Team } from '.'
 import { DbObjectManager } from '../classes'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
-import { Players, QueueTeams, TeamPlayers, Teams } from '../schema'
+import { Players, TeamPlayers, Teams } from '../schema'
 import { PartialRanking, Rating } from './rankings'
-import { PartialUser } from './users'
+import { PartialUser, User } from './users'
 
 export type PlayerSelect = InferSelectModel<typeof Players>
 export type PlayerInsert = Omit<InferInsertModel<typeof Players>, 'id'>
@@ -34,14 +34,13 @@ export class PartialPlayer {
     return this.db.rankings.fetch(ranking_id)
   }
 
-  async teams(): Promise<{ team: Team; in_queue: boolean }[]> {
+  async teams(): Promise<Team[]> {
     const data = await this.db.drizzle
-      .select({ team: Teams, queue_team: QueueTeams })
+      .select({ team: Teams })
       .from(Teams)
       .innerJoin(TeamPlayers, and(eq(TeamPlayers.team_id, Teams.id), eq(TeamPlayers.player_id, this.data.id)))
-      .leftJoin(QueueTeams, eq(QueueTeams.team_id, Teams.id))
 
-    return data.map(data => ({ team: new Team(data.team, this.db), in_queue: !!data.queue_team }))
+    return data.map(data => new Team(data.team, this.db))
   }
 
   async update(data: Partial<Omit<PlayerInsert, 'user_id' | 'ranking_id'>>): Promise<Player> {
@@ -59,16 +58,7 @@ export class PartialPlayer {
   }
 
   async removeTeamsFromQueue(): Promise<number> {
-    const result = await this.db.drizzle
-      .delete(QueueTeams)
-      .where(
-        sql`${QueueTeams.team_id} in (
-          select ${TeamPlayers.team_id} from ${TeamPlayers}
-          where ${TeamPlayers.player_id} = ${this.data.id}
-        )`,
-      )
-      .returning() // prettier-ignore
-    return result.length
+    throw new Error('Method not implemented.')
   }
 }
 
@@ -79,8 +69,6 @@ export class Player extends PartialPlayer {
   ) {
     super({ id: data.id }, db)
     db.cache.players.set(data.id, this)
-    // Set without checking it exists so that on update(), the cache gets updated
-    db.cache.players_by_ranking_user.set(data.ranking_id, this, data.user_id)
   }
 
   toString() {
@@ -88,19 +76,46 @@ export class Player extends PartialPlayer {
   }
 }
 
+export class UserPlayer extends Player {
+  constructor(
+    public data: PlayerSelect & { user_id: string },
+    public db: DbClient,
+  ) {
+    super(data, db) 
+    if (data.user_id !== null) db.cache.user_players.set(data.ranking_id, this, data.user_id)
+  }
+}
+
 export class PlayersManager extends DbObjectManager {
-  async create(
+
+  async create(data: {
+    ranking: PartialRanking
+    user?: PartialUser,
+  } & Omit<PlayerInsert, 'user_id' | 'ranking_id'>): Promise<Player> {
+    if (data.role_id !== undefined && data.guild_id === undefined) {
+      throw new DbErrors.ValueError('Guild id is required when role id is provided')
+    }
+    const new_data = (
+      await this.db.drizzle
+        .insert(Players)
+        .values({ ranking_id: data.ranking.data.id, ...data })
+        .returning()
+    )[0]
+    return new Player(new_data, this.db)
+  }
+
+  async createWithUser(
     user: PartialUser,
     ranking: PartialRanking,
     data: Omit<PlayerInsert, 'user_id' | 'ranking_id'>,
-  ): Promise<Player> {
+  ): Promise<UserPlayer> {
     const new_data = (
       await this.db.drizzle
         .insert(Players)
         .values({ user_id: user.data.id, ranking_id: ranking.data.id, ...data })
         .returning()
     )[0]
-    return new Player(new_data, this.db)
+    return new UserPlayer({...new_data, user_id: user.data.id}, this.db)
   }
 
   get(id: number): PartialPlayer {
@@ -114,8 +129,8 @@ export class PlayersManager extends DbObjectManager {
     return new Player(data, this.db)
   }
 
-  async fetchBy({ user_id, ranking }: { user_id: string; ranking: PartialRanking }): Promise<Player | undefined> {
-    const cached_player = this.db.cache.players_by_ranking_user.get(ranking.data.id, user_id)
+  async fetchByUser({ user_id, ranking }: { user_id: string; ranking: PartialRanking }): Promise<UserPlayer | undefined> {
+    const cached_player = this.db.cache.user_players.get(ranking.data.id, user_id)
     if (cached_player) return cached_player
 
     const data = (
@@ -123,6 +138,25 @@ export class PlayersManager extends DbObjectManager {
         .select()
         .from(Players)
         .where(and(eq(Players.user_id, user_id), eq(Players.ranking_id, ranking.data.id)))
+    )[0]
+    if (!data) return
+    return new UserPlayer({...data, user_id }, this.db)
+  }
+
+  async fetchBy({ ranking, user_id, role_id, name}: { ranking: PartialRanking, user_id?: string; role_id?: string; name?: string,  }): Promise<Player | undefined> {
+    const where_chunks: SQL[] = []
+    if (user_id) where_chunks.push(eq(Players.user_id, user_id))
+    if (role_id) where_chunks.push(eq(Players.role_id, role_id))
+    if (name) where_chunks.push(eq(Players.name, name))
+    if (where_chunks.length === 0) throw new DbErrors.ValueError('No filters provided')
+    
+    where_chunks.push(eq(Players.ranking_id, ranking.data.id))
+
+    const data = (
+      await this.db.drizzle
+        .select()
+        .from(Players)
+        .where(and(...where_chunks))
     )[0]
     if (!data) return
     return new Player(data, this.db)
@@ -167,7 +201,7 @@ export class PlayersManager extends DbObjectManager {
   async updateRatings(data: { player: PartialPlayer; rating: Rating }[]) {
     this.db.cache.match_players.clear()
     this.db.cache.players.clear()
-    this.db.cache.players_by_ranking_user.clear()
+    this.db.cache.user_players.clear()
 
     if (data.length === 0) return
 

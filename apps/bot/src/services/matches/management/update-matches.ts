@@ -1,9 +1,10 @@
-import { Match, MatchInsert, MatchMetadata, MatchPlayer, MatchStatus, Rating } from '@repo/db/models'
+import { Match, MatchInsert, MatchMetadata, MatchPlayer, MatchStatus, Player, Rating } from '@repo/db/models'
 import { UserError } from '../../../errors/user-errors'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { syncMatchSummaryMessages } from '../logging/match-summary-message'
 import { rescoreMatches } from '../scoring/score_match'
+import { mentionOrName } from '../../players/properties'
 
 // The match updating service. Responsible for updating match outcomes, and canceling matches.
 
@@ -45,13 +46,13 @@ export async function cancelMatch(app: App, match: Match): Promise<void> {
 }
 
 /**
- * Utility function to set the match outcome based on winner's user id
+ * Utility function to set the match outcome based on winner's user id, role, or name
  */
-export async function setMatchWinner(app: App, match: Match, user_id: string) {
+export async function setMatchWinner(app: App, match: Match, player: Player) {
   const team_players = await match.players()
 
-  const team_index = team_players.findIndex(team => team.some(p => p.player.data.user_id === user_id))
-  if (team_index == -1) throw new UserError(`<@${user_id}> isn't participating in this match`)
+  const team_index = team_players.findIndex(team => team.some(p => p.player.data.id === player.data.id))
+  if (team_index == -1) throw new UserError(`${mentionOrName(player)} isn't participating in this match`)
 
   const outcome = team_players.map((_, i) => (i === team_index ? 1 : 0))
   await updateMatchOutcome(app, match, outcome)

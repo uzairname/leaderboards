@@ -10,7 +10,7 @@ import { field, sequential } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../../setup/app'
 import { Colors, relativeTimestamp } from '../../../../utils/ui'
-import { getOrCreatePlayer } from '../../../players/manage'
+import { getOrCreatePlayerByUser } from '../../../players/manage'
 import { rankingProperties } from '../../../rankings/properties'
 import { start1v1SeriesThread } from '../../ongoing-match/manage-ongoing-match'
 
@@ -130,7 +130,7 @@ async function accept(app: App, ctx: ComponentContext<typeof challenge_view_sig>
 
     // Register them as players in the ranking
     const players = await sequential(
-      user_ids.map(team => () => sequential(team.map(i => () => getOrCreatePlayer(app, i, ranking)))),
+      user_ids.map(team => () => sequential(team.map(i => () => getOrCreatePlayerByUser(app, i, ranking)))),
     )
 
     // Start the match

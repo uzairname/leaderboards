@@ -10,6 +10,7 @@ import { cancelMatch, setMatchWinner } from '../../management/update-matches'
 import { matches_cmd } from '../matches/matches-cmd'
 import { matches_view_sig, matchesPage } from '../matches/matches-view'
 import { manage_match_view_sig, manageMatchPage } from './manage-match-view'
+import { getOrCreatePlayerByUser } from '../../../players/manage'
 
 const optionnames = {
   match_id: `match_id`,
@@ -125,7 +126,9 @@ export const settle_match_cmd = settle_match_cmd_sig.set<App>({
               flags: D.MessageFlags.Ephemeral,
             })
           }
-          await setMatchWinner(app, match, input.user?.id)
+          const winner = await getOrCreatePlayerByUser(app, input.user.id, match.ranking)
+          
+          await setMatchWinner(app, match, winner)
           return void ctx.followup({
             content: `Match winner set`,
             flags: D.MessageFlags.Ephemeral,

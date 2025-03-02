@@ -4,7 +4,7 @@ import * as D from 'discord-api-types/v10'
 import { App } from '../../../../setup/app'
 import { guildRankingsOption, withSelectedRanking } from '../../../../utils/ui/view-helpers/ranking-option'
 import { getOrAddGuild } from '../../../guilds/manage-guilds'
-import { getOrCreatePlayer } from '../../../players/manage'
+import { getOrCreatePlayerByUser } from '../../../players/manage'
 import { getChallengeEnabledRankings } from '../../../rankings/properties'
 import { ensurePlayersEnabled } from '../../management/create-matches'
 import { renderChallengePage } from './challenge-view'
@@ -76,10 +76,9 @@ export const challenge_cmd = challenge_cmd_sig.set<App>({
       },
       async ranking =>
         ctx.defer(async ctx => {
-          input.ranking
           const interaction = ctx.interaction
-          const initiator = await getOrCreatePlayer(app, interaction.member.user.id, ranking)
-          input.opponent
+          const initiator = await getOrCreatePlayerByUser(app, interaction.member.user.id, ranking)
+          const initiator_id = nonNullable(initiator.data.user_id, `initiator.user_id`)
 
           const opponent_id = nonNullable(
             ctx.interaction.data.options?.find(
@@ -88,7 +87,7 @@ export const challenge_cmd = challenge_cmd_sig.set<App>({
             'opponent option',
           ).value
 
-          const opponent = await getOrCreatePlayer(app, opponent_id, ranking)
+          const opponent = await getOrCreatePlayerByUser(app, opponent_id, ranking)
 
           await ensurePlayersEnabled(app, [initiator, opponent])
 

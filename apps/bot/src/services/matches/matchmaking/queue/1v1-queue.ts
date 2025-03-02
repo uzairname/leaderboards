@@ -4,7 +4,7 @@ import { nonNullable, unflatten } from '@repo/utils'
 import { UserError } from '../../../../errors/user-errors'
 import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
-import { getOrCreatePlayer } from '../../../players/manage'
+import { getOrCreatePlayerByUser } from '../../../players/manage'
 import { ensureNoActiveMatches, ensurePlayersEnabled } from '../../management/create-matches'
 import { start1v1SeriesThread } from '../../ongoing-match/manage-ongoing-match'
 
@@ -29,7 +29,7 @@ export async function userJoinQueue(
   }
 
   const user = checkGuildInteraction(ctx.interaction).member.user.id
-  const player = await getOrCreatePlayer(app, user, ranking)
+  const player = await getOrCreatePlayerByUser(app, user, ranking)
 
   await ensureNoActiveMatches(app, [player])
   await ensurePlayersEnabled(app, [player])

@@ -9,6 +9,7 @@ import { listToString } from '../../../../utils'
 import { getOutcome } from '../../management/properties'
 import { castPlayerVote, start1v1SeriesThread } from '../../ongoing-match/manage-ongoing-match'
 import { ongoingMatch1v1Message } from '../../ongoing-match/ongoing-1v1-match-message'
+import { mentionOrName } from '../../../players/properties'
 
 export const ongoing_match_view_sig = new ViewSignature({
   name: 'Ongoing Series Message',
@@ -129,7 +130,7 @@ async function vote(app: App, ctx: DeferredComponentContext<typeof ongoing_match
         await ctx.send({
           content:
             winning_team.length > 1
-              ? `${listToString(winning_team.map(p => `<@${p.player.data.user_id}>`))}'s team won!`
+              ? `${listToString(winning_team.map(p => mentionOrName(p.player)))}'s team won!`
               : `<@${winning_team[0].player.data.user_id}> won!`,
         })
       } else {

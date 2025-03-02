@@ -1,10 +1,11 @@
 import * as D from 'discord-api-types/v10'
 
-import { Match, MatchPlayer, MatchStatus, Vote } from '@repo/db/models'
+import { Match, MatchPlayer, MatchStatus, Player, Vote } from '@repo/db/models'
 import { nonNullable } from '@repo/utils'
 import { App } from '../../../setup/app'
 import { Colors } from '../../../utils'
 import { rankingProperties } from '../../rankings/properties'
+import { mentionOrName } from '../../players/properties'
 
 /**
  * Determine the custom description to display at the top of the match thread,
@@ -50,13 +51,13 @@ export async function ongoingMatch1v1Message(
   const ranking = await match.ranking.fetch()
   const team_votes = nonNullable(match.data.team_votes, 'match.team_votes')
 
-  function voteToString(user_id: string, vote: Vote) {
+  function voteToString(player: Player, vote: Vote) {
     if (vote === Vote.Undecided) {
       return ``
     }
 
     return (
-      `**<@${user_id}> ` +
+      mentionOrName(player) +
       {
         [Vote.Win]: 'claims win**',
         [Vote.Loss]: 'claims loss**',
@@ -67,7 +68,7 @@ export async function ongoingMatch1v1Message(
   }
 
   const votes_str = players
-    .map((p, i) => voteToString(p.player.data.user_id, team_votes[i]))
+    .map((p, i) => voteToString(p.player, team_votes[i]))
     .filter(Boolean)
     .join(`\n`)
 

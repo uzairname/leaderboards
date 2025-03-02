@@ -3,7 +3,7 @@ import * as D from 'discord-api-types/v10'
 import { App } from '../../../setup/app'
 import { guildRankingsOption, withOptionalSelectedRanking } from '../../../utils/ui/view-helpers/ranking-option'
 import { numRankings } from '../../guilds/properties'
-import { getOrCreatePlayer, setPlayerDisabled as setIsUserDisabled } from '../manage'
+import { getOrCreatePlayerByUser, setPlayerDisabled as setIsUserDisabled } from '../manage'
 
 export const ban_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
@@ -56,7 +56,7 @@ export const ban_cmd = ban_cmd_sig.set<App>({
         const { players, rankings } = await (async () => {
           if (ranking) {
             // A ranking was selected
-            const player = await getOrCreatePlayer(app, options.user, ranking)
+            const player = await getOrCreatePlayerByUser(app, options.user, ranking)
             return { players: [player], rankings: [await ranking.fetch()] }
           } else {
             // No ranking was selected. Act on all rankings in the guild.
@@ -65,7 +65,7 @@ export const ban_cmd = ban_cmd_sig.set<App>({
             })
             return {
               players: await Promise.all(
-                guild_rankings.map(item => getOrCreatePlayer(app, options.user, item.ranking)),
+                guild_rankings.map(item => getOrCreatePlayerByUser(app, options.user, item.ranking)),
               ).then(players => players.filter((p): p is NonNullable<typeof p> => !!p)),
               rankings: guild_rankings.map(r => r.ranking),
             }

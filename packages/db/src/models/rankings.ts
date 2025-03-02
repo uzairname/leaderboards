@@ -158,7 +158,7 @@ export class PartialRanking {
     await this.db.drizzle.delete(Rankings).where(eq(Rankings.id, this.data.id))
     this.db.cache.rankings.delete(this.data.id)
     this.db.cache.guild_rankings.clear()
-    this.db.cache.players_by_ranking_user.delete(this.data.id)
+    this.db.cache.user_players.delete(this.data.id)
     this.db.cache.players.clear()
     this.db.cache.teams.clear()
     this.db.cache.matches.clear()

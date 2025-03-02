@@ -75,10 +75,12 @@ export const GuildRankings = pgTable('GuildRankings', {
 
 export const Players = pgTable('Players', {
   id: serial('id').primaryKey(),
-  user_id: text('user_id').notNull().references(() => Users.id, { onDelete: 'cascade' }),
   ranking_id: integer('ranking_id').notNull().references(() => Rankings.id, { onDelete: 'cascade' }),
-  time_created: timestamp('time_created').notNull().defaultNow(),
   name: text('name').notNull(),
+  user_id: text('user_id').references(() => Users.id, { onDelete: 'cascade' }),
+  role_id: text('role_id'),
+  guild_id: text('guild_id').references(() => Guilds.id, { onDelete: 'cascade' }),
+  time_created: timestamp('time_created').notNull().defaultNow(),
   rating: jsonb('rating').notNull().$type<Rating>(),
   flags: integer('flags').notNull().$type<PlayerFlags>().default(0),
   time_joined_queue: timestamp('time_joined_queue'),
@@ -105,12 +107,6 @@ export const TeamPlayers = pgTable('TeamPlayers', {
 }, (table) => [
   primaryKey({ columns: [table.team_id, table.player_id] }),
 ])
-
-
-export const QueueTeams = pgTable('QueueTeams', {
-  team_id: integer('team_id').primaryKey().references(() => Teams.id, {onDelete: 'cascade'}),
-  time_created: timestamp('time_created').notNull().defaultNow(),
-})
 
 
 export const Matches = pgTable('Matches', {

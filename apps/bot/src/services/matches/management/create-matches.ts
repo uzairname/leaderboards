@@ -91,9 +91,14 @@ export async function recordAndScoreMatch(
     players.flat().map(p => p.player),
   )
 
+  // Determine what the players' ratings were at the time of the match
+  const team_players = players.map(team =>
+    team.map(p => p),
+  )
+
   const match = await app.db.matches.create({
     ranking,
-    team_players: players,
+    team_players,
     outcome,
     metadata,
     time_started,

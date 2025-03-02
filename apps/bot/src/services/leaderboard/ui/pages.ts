@@ -5,7 +5,7 @@ import * as D from 'discord-api-types/v10'
 import { type App } from '../../../setup/app'
 import { commandMention, escapeMd, relativeTimestamp, space } from '../../../utils/ui'
 import { numRankings } from '../../guilds/properties'
-import { orderedLeaderboardPlayers } from '../../players/properties'
+import { mentionOrName, orderedLeaderboardPlayers } from '../../players/properties'
 import { default_leaderboard_color, rankingProperties } from '../../rankings/properties'
 import { leaderboard_cmd } from './cmd'
 import { leaderboard_view_sig } from './view'
@@ -47,7 +47,7 @@ export async function leaderboardMessage(
             else return `${place}. `
           })(place)}` +
           `${space}${rating_text}` +
-          `${space}<@${p.user_id}> `
+          `${space}${mentionOrName(p.player)} `
         )
       }
     })
@@ -58,7 +58,7 @@ export async function leaderboardMessage(
     ? players
         .filter(p => p.is_provisional)
         .map(p => {
-          return `### -# ${space + space}\`${p.points.toFixed(0)}?\`${space}<@${p.user_id}>`
+          return `### -# ${space + space}\`${p.points.toFixed(0)}?\`${space}${mentionOrName(p.player)} `
         })
     : []
 

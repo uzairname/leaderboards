@@ -4,7 +4,7 @@ import * as D from 'discord-api-types/v10'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { Colors, emojis, escapeMd, relativeTimestamp, spaces } from '../../../utils/ui'
-import { matchPlayersDisplayStats } from '../../players/properties'
+import { matchPlayersDisplayStats, mentionOrName } from '../../players/properties'
 import { getOutcome } from '../management/properties'
 import { syncMatchesChannel } from './matches-channel'
 
@@ -115,10 +115,10 @@ export async function matchSummaryEmbed(app: App, match: Match, {} = {}): Promis
                 ? ``
                 : `\n-# ${spaces(2)}(${(parseInt(diff.toFixed(0)) > 0 ? '+' : '') + diff.toFixed(0)})`
 
-            return `<@${p.user_id}>` + `\n${rating_before_text} → ${rating_after_text}${rating_diff_text}`
+            return mentionOrName(p.player) + `\n${rating_before_text} → ${rating_after_text}${rating_diff_text}`
           } else {
             const provisional_text = p.before.is_provisional ? `\n-# (unranked)` : ``
-            return `<@${p.user_id}>` + `\n${rating_before_text}${provisional_text}`
+            return mentionOrName(p.player) + `\n${rating_before_text}${provisional_text}`
           }
         })
         .join('\n'),

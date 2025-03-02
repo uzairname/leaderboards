@@ -1,6 +1,6 @@
 import { CacheMap } from '../../utils/src/cache-map'
 import { DbLogger } from './logging'
-import { Guild, GuildRanking, Match, Player, Ranking, Setting, Team, User } from './models'
+import { Guild, GuildRanking, Match, Player, Ranking, Setting, Team, User, UserPlayer } from './models'
 import { MatchPlayer } from './models/matches'
 
 // prettier-ignore
@@ -17,7 +17,7 @@ export default class DbCache {
   guild_rankings_by_guild = this.newMap<string, { guild_ranking: GuildRanking; ranking: Ranking }[]>('guild rankings in guild')
   guild_rankings_by_ranking = this.newMap<number, { guild_ranking: GuildRanking; guild: Guild }[]>('guild rankings with ranking')
   players = this.newMap<number, Player>('player')
-  players_by_ranking_user = this.newMap<number, Player, string>('player')
+  user_players = this.newMap<number, UserPlayer, string>('player')
   match_players = this.newMap<number, MatchPlayer[][]>('players for match')
   matches = this.newMap<number, Match>('match')
   teams = this.newMap<number, Team>('team')

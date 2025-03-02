@@ -5,11 +5,34 @@ import { getOutcome } from '../matches/management/properties'
 import { scoreMatch } from '../matches/scoring/score_match'
 import { displayRatingFn } from '../rankings/properties'
 
-export type LeaderboardPlayer = {
-  user_id: string
+/**
+ * Info about a player in a ranking to display
+ */
+export type PlayerDisplay = {
+  player: Player
   points: number
   is_provisional?: boolean
 }
+
+
+/**
+ * Info about a player in a match to display
+ */
+export type MatchPlayerDisplay = {
+  player: Player
+  before: { points: number; is_provisional?: boolean }
+  after?: { points: number; is_provisional?: boolean }
+}
+
+/**
+ * If the player is associated with a user or role, return their mention.
+ * Otherwise, return their name.
+ */
+export function mentionOrName(player: Player): string {
+  return player.data.user_id ? `<@${player.data.user_id}>` : 
+    player.data.role_id ? `<@&${player.data.role_id}>` : player.data.name
+}
+
 
 export const PlayerStatsSchema = z.object({
   display_rating: z.object({
@@ -46,7 +69,7 @@ export async function winsLosses(app: App, player: Player): Promise<PlayerStats>
   const display_rating = displayRatingFn(app, ranking)(player.data.rating)
 
   // Get the leaderboard place
-  const player_index = players.findIndex(p => p.user_id === player.data.user_id)
+  const player_index = players.findIndex(p => p.player.data.id === player.data.id)
   const lb_place = player_index + 1
   const max_lb_place = players.length
 
@@ -127,14 +150,14 @@ export async function getOrRefreshPlayerStats(app: App, player: Player): Promise
   return stats
 }
 
-export async function orderedLeaderboardPlayers(app: App, p_ranking: PartialRanking): Promise<LeaderboardPlayer[]> {
+export async function orderedLeaderboardPlayers(app: App, p_ranking: PartialRanking): Promise<PlayerDisplay[]> {
   const ranking = await p_ranking.fetch()
   const players = await app.db.players.fetchMany({ ranking_id: ranking.data.id })
 
   // Get players' display ratings and sort by them
   const players_display = players
     .map(player => ({
-      user_id: player.data.user_id,
+      player,
       ...displayRatingFn(app, ranking)(player.data.rating),
     }))
     .sort((a, b) => b.points - a.points)
@@ -146,11 +169,7 @@ export async function matchPlayersDisplayStats(
   app: App,
   match: Match,
 ): Promise<
-  {
-    user_id: string
-    before: { points: number; is_provisional?: boolean }
-    after?: { points: number; is_provisional?: boolean }
-  }[][]
+  MatchPlayerDisplay[][]
 > {
   const ranking = await match.ranking.fetch()
   const team_players = await match.players()
@@ -164,7 +183,7 @@ export async function matchPlayersDisplayStats(
   const result = team_players.map((team, i) =>
     team.map((match_player, j) => {
       return {
-        user_id: match_player.player.data.user_id,
+        player: match_player.player,
         before: display(match_player.rating),
         after: new_ratings ? display(new_ratings[i][j]) : undefined,
       }

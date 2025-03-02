@@ -4,7 +4,7 @@ import * as D from 'discord-api-types/v10'
 import { sentry } from '../../../logging/sentry'
 import { getUserAccessToken } from '../../../routers/oauth'
 import { App } from '../../../setup/app'
-import { getOrCreatePlayer } from '../../players/manage'
+import { getOrCreatePlayerByUser } from '../../players/manage'
 import { updateUserRoleConnectionData } from '../role-connections'
 
 export const connect_cmd_sig = new CommandSignature({
@@ -58,7 +58,7 @@ export const connect_cmd = connect_cmd_sig.set<App>({
         })
       }
 
-      const player = await getOrCreatePlayer(app, user_id, app.db.rankings.get(input.ranking))
+      const player = await getOrCreatePlayerByUser(app, user_id, app.db.rankings.get(input.ranking))
 
       const result = await updateUserRoleConnectionData(app, access_token, player)
 
