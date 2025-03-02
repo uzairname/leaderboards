@@ -6,7 +6,7 @@ import { MatchMetadata } from './models/matches'
 import { PlayerFlags, PlayerStats } from './models/players'
 import { Versions } from './models/settings'
 import { Rating, MatchmakingSettings, MatchSettings, RatingSettings } from './models/rankings'
-import { GuildRankingDisplaySettings } from './models/guild-rankings'
+import { GuildRankingDisplaySettings, RatingRoles } from './models/guild-rankings'
 
 export const Settings = pgTable('Settings', {
   id: integer('id').primaryKey().default(1),
@@ -42,6 +42,7 @@ export const Guilds = pgTable('Guilds', {
   admin_role_id: text('admin_role_id'),
   category_id: text('category_id'),
   matches_channel_id: text('matches_channel_id'),
+  epmemeral_commands: boolean('ephemeral_commands').notNull().default(false),
 })
 
 
@@ -65,7 +66,8 @@ export const GuildRankings = pgTable('GuildRankings', {
   leaderboard_channel_id: text('leaderboard_channel_id'),
   leaderboard_message_id: text('leaderboard_message_id'),
   display_settings: jsonb('display_settings').$type<GuildRankingDisplaySettings>(),
-  // matchmaking_setings: jsonb('matchmaking_settings').$type<MatchmakingSettings>(),
+  matchmaking_setings: jsonb('matchmaking_settings').$type<MatchmakingSettings>(),
+  rating_roles: jsonb('rating_roles').$type<RatingRoles>(),
 },(table) => [
   primaryKey({ columns: [table.guild_id, table.ranking_id] })
 ])

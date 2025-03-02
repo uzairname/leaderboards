@@ -1,10 +1,10 @@
+import { PartialGuild } from '@repo/db/models'
 import { CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../setup/app'
 import { guildRankingsOption, withSelectedRanking } from '../../../utils/ui/view-helpers/ranking-option'
 import { leaderboardPage } from './pages'
 import { leaderboard_view_sig } from './view'
-import { PartialGuild } from '@repo/db/models'
 
 const leaderboard_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
@@ -14,7 +14,7 @@ const leaderboard_cmd_sig = new CommandSignature({
 
 export const leaderboard_cmd = leaderboard_cmd_sig.set<App>({
   /**
-   * Only enable in guilds with a ranking, and include the ranking option 
+   * Only enable in guilds with a ranking, and include the ranking option
    * only if the guild has more than one ranking.
    */
   guildSignature: async (app, guild_id) => {
@@ -22,7 +22,7 @@ export const leaderboard_cmd = leaderboard_cmd_sig.set<App>({
     if (guild_rankings.length == 0) return null
     return new CommandSignature({
       ...leaderboard_cmd_sig.config,
-      options: await guildRankingsOption(app, app.db.guilds.get(guild_id))
+      options: await guildRankingsOption(app, app.db.guilds.get(guild_id)),
     })
   },
   onCommand: async (ctx, app) =>
@@ -47,12 +47,4 @@ export const leaderboard_cmd = leaderboard_cmd_sig.set<App>({
     ),
 })
 
-export async function lbCmdMention(
-  app: App,
-  guild?: PartialGuild
-) {
-
-
-
-
-}
+export async function lbCmdMention(app: App, guild?: PartialGuild) {}

@@ -85,7 +85,7 @@ export class Match implements DbObject<MatchSelect> {
     return team_players
   }
 
-  async getSummaryMessage(guild_id: string): Promise<MatchSummaryMessageSelect | undefined> {
+  async summaryMessage(guild_id: string): Promise<MatchSummaryMessageSelect | undefined> {
     const data = (
       await this.db.drizzle
         .select()

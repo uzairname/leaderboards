@@ -10,7 +10,7 @@ import { field, sequential } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../../setup/app'
 import { Colors, relativeTimestamp } from '../../../../utils/ui'
-import { getOrCreatePlayer } from '../../../players/manage-players'
+import { getOrCreatePlayer } from '../../../players/manage'
 import { rankingProperties } from '../../../rankings/properties'
 import { start1v1SeriesThread } from '../../ongoing-match/manage-ongoing-match'
 

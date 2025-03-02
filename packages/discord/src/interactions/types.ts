@@ -142,7 +142,7 @@ export interface DeferredContext<S extends AnyViewSignature>
 /**
  * An initial interaction from a command or component interaction, or deferred context from a component interaction.
  */
-export type Context<S extends AnyViewSignature> = InitialContext<S> | DeferredComponentContext<S>
+export type Context<S extends AnyViewSignature> = InitialContext<S> | DeferredComponentContext<S> | ComponentContext<S>
 
 // Any context
 

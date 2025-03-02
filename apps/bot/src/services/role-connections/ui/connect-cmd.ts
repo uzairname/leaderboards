@@ -4,7 +4,7 @@ import * as D from 'discord-api-types/v10'
 import { sentry } from '../../../logging/sentry'
 import { getUserAccessToken } from '../../../routers/oauth'
 import { App } from '../../../setup/app'
-import { getOrCreatePlayer } from '../../players/manage-players'
+import { getOrCreatePlayer } from '../../players/manage'
 import { updateUserRoleConnectionData } from '../role-connections'
 
 export const connect_cmd_sig = new CommandSignature({

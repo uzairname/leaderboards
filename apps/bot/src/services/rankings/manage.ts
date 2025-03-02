@@ -1,6 +1,7 @@
 import {
   GuildRanking,
   GuildRankingDisplaySettings,
+  GuildRankingUpdate,
   MatchmakingSettings,
   PartialRanking,
   Ranking,
@@ -80,7 +81,7 @@ export async function createNewRankingInGuild(
 
   const new_guild_ranking = await app.db.guild_rankings.create(guild, new_ranking, {
     is_admin: true,
-    display_settings: options.display_settings || default_display_settings,
+    display_settings: options.display_settings || default_display_settings(),
   })
 
   await syncRankingLbMessages(app, new_ranking)
@@ -103,6 +104,16 @@ export async function updateRanking(app: App, ranking: PartialRanking, options: 
     sentry.debug(item.guild_ranking)
     await syncGuildRankingLbMessage(app, item.guild_ranking)
   }
+}
+
+export async function updateGuildRanking(
+  app: App,
+  guild_ranking: GuildRanking,
+  options: GuildRankingUpdate,
+): Promise<void> {
+  await guild_ranking.update(options)
+  app.syncDiscordCommands(guild_ranking.guild)
+  await syncGuildRankingLbMessage(app, guild_ranking)
 }
 
 export async function deleteRanking(app: App, ranking: PartialRanking): Promise<void> {

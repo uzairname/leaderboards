@@ -1,5 +1,5 @@
 import { DbClient, getNeonDrizzleClient } from '@repo/db'
-import { Guild } from '@repo/db/models'
+import { PartialGuild } from '@repo/db/models'
 import { DiscordAPIClient, InteractionHandler, putDiscordCommands } from '@repo/discord'
 import { Env } from '../Env'
 import { onViewError } from '../errors/on-view-error'
@@ -68,7 +68,7 @@ export class App {
   /**
    * Syncs either global or guild-specific app commands on Discord.
    */
-  async syncDiscordCommands(guild?: Guild) {
+  async syncDiscordCommands(guild?: PartialGuild) {
     await putDiscordCommands(
       this.discord,
       await this.view_manager.commandSignatures({

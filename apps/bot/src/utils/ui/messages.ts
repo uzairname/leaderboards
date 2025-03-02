@@ -18,7 +18,7 @@ import {
 } from '../../setup/all-interaction-handlers'
 import { App } from '../../setup/app'
 
-export const concise_description = `This bot manages competitive leaderboards for your Discord community by arranging and tracking ranked matches between players. It has additional features for matchmaking, analytics, moderation, and cross-server rankings.`
+export const concise_description = `This bot hosts leaderboards for your Discord community by tracking ranked matches between players. It has additional features for matchmaking, analytics, moderation, and cross-server rankings.`
 
 export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
   const guild_id = guild?.data.id ?? '0'

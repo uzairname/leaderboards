@@ -3,15 +3,8 @@ import * as D from 'discord-api-types/v10'
 import { App } from '../../setup/app'
 import { Colors } from '../../utils'
 import { ensureAdminPerms } from '../../utils/perms'
-import { SetupHandlers } from './handlers'
-import { SetupPages } from './pages'
 import { setup_view_sig } from './view'
-
-export const admin_role_method_options = {
-  new: 'new',
-  choose: 'choose',
-  unset: 'unset',
-}
+import { SetupPages, SetupHandlers } from '.'
 
 export const setup_cmd = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,

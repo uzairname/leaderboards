@@ -1,14 +1,14 @@
+import { EmbedBuilder } from '@discordjs/builders'
 import { Ranking } from '@repo/db/models'
+import { Context } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { type App } from '../../../setup/app'
-import { Colors, commandMention, escapeMd, relativeTimestamp, space } from '../../../utils/ui'
+import { commandMention, escapeMd, relativeTimestamp, space } from '../../../utils/ui'
 import { numRankings } from '../../guilds/properties'
 import { orderedLeaderboardPlayers } from '../../players/properties'
-import { rankingProperties } from '../../rankings/properties'
+import { default_leaderboard_color, rankingProperties } from '../../rankings/properties'
 import { leaderboard_cmd } from './cmd'
-import { Context, MessageBuilder } from '@repo/discord'
 import { leaderboard_view_sig } from './view'
-import { EmbedBuilder } from '@discordjs/builders'
 
 /**
  * Returns the embeds and max page for the leaderboard
@@ -23,7 +23,7 @@ export async function leaderboardMessage(
     page?: number
   },
 ): Promise<{ embeds: D.APIEmbed[]; max_page: number }> {
-  const lines_per_page = 25  
+  const lines_per_page = 25
   const page = options?.page ?? 1
 
   const players = await orderedLeaderboardPlayers(app, ranking)
@@ -55,9 +55,10 @@ export async function leaderboardMessage(
 
   // Add provisional players at the end, if specified
   const provisional_players_lines = options?.show_provisional
-    ? players.filter(p => p.is_provisional)
+    ? players
+        .filter(p => p.is_provisional)
         .map(p => {
-            return `### -# ${space + space}\`${p.points.toFixed(0)}?\`${space}<@${p.user_id}>`
+          return `### -# ${space + space}\`${p.points.toFixed(0)}?\`${space}<@${p.user_id}>`
         })
     : []
 
@@ -74,7 +75,10 @@ export async function leaderboardMessage(
   // Add bottom text
   const fits_on_one_page = max_page == 1
 
-  const guild = options?.guild_id ? app.db.guilds.get(options?.guild_id) : undefined
+  const { guild, guild_ranking } = options?.guild_id
+    ? await app.db.guild_rankings.fetchBy({ guild_id: options.guild_id, ranking_id: ranking.data.id })
+    : {}
+  const color = guild_ranking?.data.display_settings?.color ?? default_leaderboard_color
 
   const bottom_text =
     `-# Last updated ${relativeTimestamp(new Date(Date.now()))}. ` +
@@ -95,10 +99,9 @@ export async function leaderboardMessage(
   const embed = new EmbedBuilder()
     .setTitle(`${escapeMd(ranking.data.name)} Leaderboard`)
     .setDescription(current_page_lines.join('\n') + '\n' + bottom_text)
-    .setColor(Colors.Primary)
+    .setColor(color)
 
   const embeds = [embed.toJSON()]
-
 
   return {
     embeds,
@@ -108,7 +111,7 @@ export async function leaderboardMessage(
 
 export async function leaderboardPage(
   app: App,
-  ctx: Context<typeof leaderboard_view_sig>
+  ctx: Context<typeof leaderboard_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
   const page = ctx.state.get.page()

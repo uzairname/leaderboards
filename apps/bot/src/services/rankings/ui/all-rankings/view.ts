@@ -3,7 +3,7 @@ import { field } from '@repo/utils'
 import { AllRankingsHandlers } from '.'
 import { App } from '../../../../setup/app'
 
-export const rankings_view_sig = new ViewSignature({
+export const all_rankings_view_sig = new ViewSignature({
   custom_id_prefix: 's',
   name: 'settings page',
   state_schema: {
@@ -18,15 +18,6 @@ export const rankings_view_sig = new ViewSignature({
   guild_only: true,
 })
 
-export const sig = new ViewSignature({
-  custom_id_prefix: 's',
-  name: 'settings page',
-  guild_only: true,
-  state_schema: {
-    a: field.String(),
-  },
-})
-
-export const rankings_view = rankings_view_sig.set<App>({
+export const all_rankings_view = all_rankings_view_sig.set<App>({
   onComponent: async (ctx, app) => ctx.state.get.handler()(app, ctx),
 })

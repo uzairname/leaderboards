@@ -2,7 +2,7 @@ import { Match, MatchPlayer, MatchStatus, PartialPlayer, PartialRanking, Rating 
 import { AnyDeferredContext } from '@repo/discord'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
-import { updatePlayerRatings } from '../../players/manage-players'
+import { updatePlayerRatings } from '../../players/manage'
 import { getScorerFn } from './scorers'
 
 /**

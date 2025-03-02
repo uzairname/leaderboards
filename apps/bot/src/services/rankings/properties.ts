@@ -11,7 +11,7 @@ import {
 } from '@repo/db/models'
 import { UserError, UserErrors } from '../../errors/user-errors'
 import { App } from '../../setup/app'
-import { messageLink } from '../../utils'
+import { Colors, messageLink, randomColor } from '../../utils'
 import { syncGuildRankingLbMessage } from '../leaderboard/manage'
 
 // General Defaults
@@ -26,6 +26,8 @@ export const trueskill_default_initial_rating = {
   rd: 50 / 3,
 }
 
+export const default_leaderboard_color = Colors.Primary
+
 export const rating_strategy_desc = {
   [RatingStrategy.WinsMinusLosses]: `Wins - Losses`,
   [RatingStrategy.TrueSkill]: `TrueSkill2`,
@@ -33,7 +35,16 @@ export const rating_strategy_desc = {
 }
 
 /**
- * Maps rating methods to their settings. When a ranking is created or updated with
+ * Map a string of an int to a RatingStrategy enum value. Throws an error if invalid.
+ */
+export function parseRatingStrategy(value: string): RatingStrategy {
+  const parsed = parseInt(value)
+  if (!Object.values(RatingStrategy).includes(parsed)) throw new Error(`Invalid RatingStratey value: ${value}`)
+  return parsed as RatingStrategy
+}
+
+/**
+ * Maps rating strategies to their settings. When a ranking is created or updated with
  * a rating method, the settings are filled in with the defaults from this map.
  */
 export const rating_strategy_to_rating_settings: Record<RatingStrategy, RatingSettings> = {
@@ -58,10 +69,11 @@ export const rating_strategy_to_rating_settings: Record<RatingStrategy, RatingSe
 }
 
 // Display Settings
-export const default_display_settings: GuildRankingDisplaySettings = {
+export const default_display_settings: () => GuildRankingDisplaySettings = () => ({
   log_matches: true,
   leaderboard_message: true,
-}
+  color: randomColor(),
+})
 
 // Match Settings
 export const default_best_of = 1

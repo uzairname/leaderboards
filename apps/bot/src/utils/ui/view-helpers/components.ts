@@ -1,6 +1,9 @@
 import { Ranking } from '@repo/db/models'
 import * as D from 'discord-api-types/v10'
 
+/**
+ * Select menu of every ranking in a guild
+ */
 export function rankingSelectMenu(
   grs: { ranking: Ranking }[],
   custom_id: string,

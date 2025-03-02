@@ -1,4 +1,5 @@
-import { MatchSettingsSchema, Ranking } from '@repo/db/models'
+import { MatchSettingsSchema, Ranking, RatingRolesSchema } from '@repo/db/models'
+import { strOrUndefined } from '@repo/utils'
 import { json, Router } from 'itty-router'
 import { syncRankingLbMessages } from '../../services/leaderboard/manage'
 import { leaderboardMessage } from '../../services/leaderboard/ui/pages'
@@ -22,7 +23,7 @@ export default (app: App, ranking: Ranking) =>
       return json(result.map(m => ({ player: m.player.data.id, rating: m.rating })))
     })
 
-    .post('/update-match-config', async request => {
+    .post('/update_match_config', async request => {
       const body = await request.json()
       if (!(body instanceof Object && body.hasOwnProperty('match_config')))
         return new Response(`match_config not in body`, { status: 400 })
@@ -33,4 +34,23 @@ export default (app: App, ranking: Ranking) =>
       await ranking.update({ match_settings: match_settings.data })
 
       return new Response(`Updated match config for ${ranking.data.name} leaderboard`)
+    })
+
+    .post('/:guild_id/rating_roles', async request => {
+      const guild_id = strOrUndefined(request.params.guild_id)
+      if (!guild_id) return new Response(`Invalid guild_id`, { status: 400 })
+      const { guild, guild_ranking } = await app.db.guild_rankings.fetchBy({
+        guild_id,
+        ranking_id: ranking.data.id,
+      })
+      const body = await request.json()
+      if (!(body instanceof Object && body.hasOwnProperty('rating_roles')))
+        return new Response(`rating_roles not in body`, { status: 400 })
+      const rating_roles = RatingRolesSchema.safeParse((body as any).rating_roles)
+      if (!rating_roles.success) {
+        return new Response('Invalid rating_roles', { status: 400 })
+      }
+      await guild_ranking.update({ rating_roles: rating_roles.data })
+
+      return new Response(`Updated rating roles for ranking ${ranking.data.name}, in guild ${guild.data.name}`)
     })

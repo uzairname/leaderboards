@@ -12,21 +12,17 @@ export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> 
   return app_guild
 }
 
-export async function registerGuild(app: App, guild_id: string): Promise<Guild> {
+async function registerGuild(app: App, guild_id: string): Promise<Guild> {
   const discord_guild = await app.discord.getGuild(guild_id)
 
   const app_guild = await app.db.guilds.create({
     id: discord_guild.id,
     name: discord_guild.name,
   })
-  await updateGuild(app, app_guild)
+  await app.syncDiscordCommands(app_guild)
 
   await syncGuildAdminRole(app, app_guild)
   return app_guild
-}
-
-export async function updateGuild(app: App, guild: Guild): Promise<void> {
-  await app.syncDiscordCommands(guild)
 }
 
 export async function communityEnabled(app: App, guild_id: string): Promise<boolean> {

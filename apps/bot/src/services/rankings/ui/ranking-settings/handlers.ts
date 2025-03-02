@@ -1,24 +1,26 @@
-import { RatingStrategy } from '@repo/db/models'
 import { ChatInteractionResponse, ComponentContext, Context, getModalSubmitEntries } from '@repo/discord'
 import { intOrUndefined, strOrUndefined } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { RankingSettingsPages } from '.'
+import { UserErrors } from '../../../../errors/user-errors'
 import { App } from '../../../../setup/app'
+import { parseColor } from '../../../../utils'
 import { ensureAdminPerms } from '../../../../utils/perms'
-import { breadcrumbsTitle, Colors, escapeMd } from '../../../../utils/ui'
+import { escapeMd } from '../../../../utils/ui'
 import { disableGuildRankingLbMessage, syncGuildRankingLbMessage } from '../../../leaderboard/manage'
 import { rescoreAllMatches } from '../../../matches/scoring/score_match'
-import { deleteRanking, updateRanking } from '../../manage'
-import { rating_strategy_to_rating_settings } from '../../properties'
+import { deleteRanking, updateGuildRanking, updateRanking } from '../../manage'
+import { parseRatingStrategy, rating_strategy_to_rating_settings } from '../../properties'
 import { AllRankingsPages } from '../all-rankings'
-import { rankingSettingsModalComponents } from './modals'
-import { ranking_settings_view_sig, settingsOptions } from './view'
+import { settingsOptions } from './common'
+import { rankingSettingsModal } from './modals'
+import { ranking_settings_view_sig } from './view'
 
 export async function sendMainPage(
   app: App,
   ctx: ComponentContext<typeof ranking_settings_view_sig>,
 ): Promise<ChatInteractionResponse> {
-  return ctx.defer(async ctx => await RankingSettingsPages.main(app, ctx))
+  return ctx.defer(async ctx => void ctx.edit(await RankingSettingsPages.main(app, ctx)))
 }
 
 export async function onSettingSelect(
@@ -40,34 +42,18 @@ export async function renameModal(
   ctx: Context<typeof ranking_settings_view_sig>,
 ): Promise<D.APIModalInteractionResponse> {
   const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
+
+  const modal = rankingSettingsModal({
+    name: { ph: ranking.data.name },
+  })
+    .setTitle(`Rename ${ranking.data.name}`)
+    .setCustomId(ctx.state.set.handler(onSettingsModalSubmit).cId())
+
   return {
     type: D.InteractionResponseType.Modal,
-    data: {
-      custom_id: ctx.state.set.handler(onSettingsModalSubmit).cId(),
-      title: `Rename ${ranking.data.name}`,
-      components: rankingSettingsModalComponents({
-        name: { current: ranking.data.name },
-      }),
-    },
+    data: modal.toJSON(),
   }
 }
-// export async function sendEditModal(
-//   app: App,
-//   ctx: ComponentContext<typeof ranking_settings_view_sig>,
-// ): Promise<ChatInteractionResponse> {
-//   const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
-//   return {
-//     type: D.InteractionResponseType.Modal,
-//     data: {
-//       custom_id: ctx.state.set.handler(onSettingsModalSubmit).cId(),
-//       title: `Edit ${ranking.data.name}`,
-//       components: rankingSettingsModalComponents({
-//         name: { current: ranking.data.name },
-//         best_of: { current: ranking.data.matchmaking_settings?.default_best_of },
-//       }),
-//     },
-//   }
-// }
 
 /**
  * When either a rename or settings modal is submitted
@@ -79,22 +65,51 @@ export async function onSettingsModalSubmit(
   return ctx.defer(async ctx => {
     await ensureAdminPerms(app, ctx)
 
-    const modal_input = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
-    const new_name = strOrUndefined(modal_input['name']?.value)
-    const new_best_of = intOrUndefined(modal_input['best_of']?.value)
-
-    const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
-    const new_matchmaking_settings = {
-      ...ranking.data.matchmaking_settings,
-      default_best_of: new_best_of ?? ranking.data.matchmaking_settings.default_best_of,
-    }
-
-    await updateRanking(app, ranking, {
-      name: new_name,
-      matchmaking_settings: new_matchmaking_settings,
+    const { guild_ranking, ranking } = await app.db.guild_rankings.fetchBy({
+      guild_id: ctx.interaction.guild_id,
+      ranking_id: ctx.state.get.ranking_id(),
     })
 
-    await RankingSettingsPages.main(app, ctx)
+    const modal_input = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
+
+    const new_name = strOrUndefined(modal_input['name']?.value)
+    const new_best_of = intOrUndefined(modal_input['best_of']?.value)
+    const color_input = strOrUndefined(modal_input['color']?.value)
+
+    // If any setings that apply to the ranking are specified, update them
+    if (new_name || new_best_of) {
+      const new_matchmaking_settings = {
+        ...ranking.data.matchmaking_settings,
+        default_best_of: new_best_of ?? ranking.data.matchmaking_settings.default_best_of,
+      }
+
+      await updateRanking(app, ranking, {
+        name: new_name,
+        matchmaking_settings: new_matchmaking_settings,
+      })
+    }
+
+    // If any settings that apply to the guild ranking are specified, update them
+    if (color_input) {
+      // Validate color
+
+      const valid_color = parseColor(color_input)
+      if (!valid_color) throw new UserErrors.ValidationError('Color must contain a hex code, like ff0000')
+
+      await updateGuildRanking(app, guild_ranking, {
+        display_settings: {
+          ...guild_ranking.data.display_settings,
+          color: valid_color ?? guild_ranking.data.display_settings?.color,
+        },
+      })
+    }
+
+    // If we were on a page, go back to it
+    if (ctx.state.data.page) {
+      return void ctx.edit(await ctx.state.data.page(app, ctx))
+    }
+
+    return void (await ctx.edit(await RankingSettingsPages.main(app, ctx)))
   })
 }
 
@@ -125,7 +140,7 @@ export async function onToggleLiveLeaderboard(
       })
     }
 
-    await RankingSettingsPages.main(app, ctx)
+    return void ctx.edit(await RankingSettingsPages.main(app, ctx))
   })
 }
 
@@ -146,7 +161,7 @@ export async function onToggleChallenge(
       },
     })
 
-    await RankingSettingsPages.main(app, ctx)
+    return void ctx.edit(await RankingSettingsPages.main(app, ctx))
   })
 }
 
@@ -177,7 +192,7 @@ export async function onToggleQueue(
   })
 }
 
-export async function sendScoringMethodSelectMenu(
+export async function sendRatingMethodSelectMenu(
   app: App,
   ctx: Context<typeof ranking_settings_view_sig>,
 ): Promise<ChatInteractionResponse> {
@@ -211,44 +226,44 @@ export async function onRatingMethodSelect(
   })
 }
 
-export async function deletePage(
+export async function sendDeletePage(
   app: App,
   ctx: ComponentContext<typeof ranking_settings_view_sig>,
 ): Promise<ChatInteractionResponse> {
-  const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
   return {
     type: D.InteractionResponseType.UpdateMessage,
-    data: {
-      embeds: [
-        {
-          title: breadcrumbsTitle(`Settings`, `Rankings`, escapeMd(ranking.data.name), `Delete`),
-          description: `# Delete ${escapeMd(ranking.data.name)}?
-  
-            This will delete all of its players and match history`,
-          color: Colors.EmbedBackground,
-        },
-      ],
-      components: [
-        {
-          type: D.ComponentType.ActionRow,
-          components: [
-            {
-              type: D.ComponentType.Button,
-              label: `Delete`,
-              custom_id: ctx.state.set.handler(onDeleteConfirmBtn).cId(),
-              style: D.ButtonStyle.Danger,
-            },
-            {
-              type: D.ComponentType.Button,
-              label: `Cancel`,
-              custom_id: ctx.state.set.handler(sendMainPage).cId(),
-              style: D.ButtonStyle.Secondary,
-            },
-          ],
-        },
-      ],
-      flags: D.MessageFlags.Ephemeral,
-    },
+    data: await RankingSettingsPages.deleteConfirm(app, ctx),
+  }
+}
+
+export async function sendAppearancePage(
+  app: App,
+  ctx: ComponentContext<typeof ranking_settings_view_sig>,
+): Promise<ChatInteractionResponse> {
+  return {
+    type: D.InteractionResponseType.UpdateMessage,
+    data: await RankingSettingsPages.appearance(app, ctx),
+  }
+}
+
+export async function appearanceModal(
+  app: App,
+  ctx: ComponentContext<typeof ranking_settings_view_sig>,
+): Promise<D.APIModalInteractionResponse> {
+  const { ranking, guild_ranking } = await app.db.guild_rankings.fetchBy({
+    guild_id: ctx.interaction.guild_id,
+    ranking_id: ctx.state.get.ranking_id(),
+  })
+
+  const modal = rankingSettingsModal({
+    color: { ph: guild_ranking.data.display_settings?.color ? `#${guild_ranking.data.display_settings?.color?.toString(16)}` : undefined},
+  })
+    .setTitle(`Edit Appearance of ${ranking.data.name}`)
+    .setCustomId(ctx.state.set.handler(onSettingsModalSubmit).cId())
+
+  return {
+    type: D.InteractionResponseType.Modal,
+    data: modal.toJSON(),
   }
 }
 
@@ -263,15 +278,9 @@ export async function onDeleteConfirmBtn(
 
     await ctx.edit(await AllRankingsPages.main(app, ctx))
 
-    return void ctx.followup({
+    await ctx.followup({
       flags: D.MessageFlags.Ephemeral,
       content: `Deleted **${escapeMd(ranking.data.name)}** and all of its players and matches`,
     })
   })
-}
-
-function parseRatingStrategy(value: string): RatingStrategy {
-  const parsed = parseInt(value)
-  if (!Object.values(RatingStrategy).includes(parsed)) throw new Error(`Invalid RatingStratey value: ${value}`)
-  return parsed as RatingStrategy
 }

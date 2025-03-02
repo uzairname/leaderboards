@@ -4,7 +4,7 @@ import { nonNullable, unflatten } from '@repo/utils'
 import { UserError } from '../../../../errors/user-errors'
 import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
-import { getOrCreatePlayer } from '../../../players/manage-players'
+import { getOrCreatePlayer } from '../../../players/manage'
 import { ensureNoActiveMatches, ensurePlayersEnabled } from '../../management/create-matches'
 import { start1v1SeriesThread } from '../../ongoing-match/manage-ongoing-match'
 
@@ -18,10 +18,10 @@ import { start1v1SeriesThread } from '../../ongoing-match/manage-ongoing-match'
 export async function userJoinQueue(
   app: App,
   ctx: AnyDeferredContext,
-  ranking_: PartialRanking,
+  p_ranking: PartialRanking,
 ): Promise<{ already_in: boolean; match?: Match; expires_at: Date }> {
   const { guild_ranking, ranking } = await app.db.guild_rankings.fetchBy({
-    ranking_id: ranking_.data.id,
+    ranking_id: p_ranking.data.id,
     guild_id: checkGuildInteraction(ctx.interaction).guild_id,
   })
   if (!ranking.data.matchmaking_settings.queue_enabled) {

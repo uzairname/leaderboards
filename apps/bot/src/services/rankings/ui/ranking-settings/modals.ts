@@ -1,88 +1,101 @@
+import { ActionRowBuilder, ModalBuilder, TextInputBuilder } from '@discordjs/builders'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../../../logging/sentry'
-import { default_players_per_team, default_teams_per_match, max_ranking_name_length } from '../../properties'
+import {
+  default_best_of,
+  default_leaderboard_color,
+  default_players_per_team,
+  default_teams_per_match,
+  max_ranking_name_length,
+} from '../../properties'
 
 /**
  * If name is specified and current name is not provided, it will be required
- * @param include Which fields to include, along with their current value
- * @returns
+ * @param include Which fields to include, along with their placeholder value
+ * @returns A modal builder without title or custom id.
  */
-export function rankingSettingsModalComponents(include: {
-  name?: { current?: string }
-  best_of?: { current?: number }
+export function rankingSettingsModal(include: {
+  name?: { ph?: string }
+  best_of?: { ph?: number }
   team_size?: {
-    players_per_team?: number
-    teams_per_match?: number
+    players_per_team?: { ph?: number }
+    teams_per_match?: { ph?: number }
   }
-}): D.APIActionRowComponent<D.APITextInputComponent>[] {
-  const example_names = [`Smash 1v1`, `Boosts Only`, `Ping Pong 1v1`, `Chess`]
+  color?: { ph?: string }
+}) {
+  const example_names = [`Smash 1v1`, `Boosts Only`, `Ping Pong 2v2`, `Chess`]
 
-  const components: D.APIActionRowComponent<D.APIModalActionRowComponent>[] = []
+  const action_row = new ActionRowBuilder<TextInputBuilder>()
 
-  sentry.debug(`${JSON.stringify(include)}`)
-
-  if (include.name) {
-    components.push({
-      type: D.ComponentType.ActionRow,
-      components: [
-        {
-          type: D.ComponentType.TextInput,
-          style: D.TextInputStyle.Short,
-          custom_id: 'name',
-          label: 'Name',
-          placeholder:
-            include?.name?.current ?? `e.g. ${example_names[Math.floor(Math.random() * example_names.length)]}`,
-          max_length: max_ranking_name_length,
-          required: !include?.name?.current,
-        },
-      ],
-    })
+  if (include?.name) {
+    action_row.addComponents(
+      new TextInputBuilder({
+        type: D.ComponentType.TextInput,
+        style: D.TextInputStyle.Short,
+        custom_id: 'name',
+        label: 'Name',
+        placeholder: include?.name?.ph ?? `e.g. ${example_names[Math.floor(Math.random() * example_names.length)]}`,
+        max_length: max_ranking_name_length,
+        required: !include?.name?.ph,
+      }),
+    )
   }
 
-  if (include.team_size) {
-    components.push({
-      type: D.ComponentType.ActionRow,
-      components: [
-        {
+  if (include?.team_size) {
+    if (include.team_size.teams_per_match) {
+      action_row.addComponents(
+        new TextInputBuilder({
           type: D.ComponentType.TextInput,
           style: D.TextInputStyle.Short,
           custom_id: 'teams_per_match',
           label: 'Number of teams per match',
-          placeholder: `${include.team_size.teams_per_match ?? default_teams_per_match}`,
+          placeholder: `${include.team_size.teams_per_match.ph ?? default_teams_per_match}`,
           required: false,
-        },
-      ],
-    })
-    components.push({
-      type: D.ComponentType.ActionRow,
-      components: [
-        {
+        }),
+      )
+    }
+    if (include.team_size.players_per_team) {
+      action_row.addComponents(
+        new TextInputBuilder({
           type: D.ComponentType.TextInput,
           style: D.TextInputStyle.Short,
           custom_id: 'players_per_team',
           label: 'Players per team',
-          placeholder: `${include.team_size.players_per_team ?? default_players_per_team}`,
+          placeholder: `${include.team_size.players_per_team.ph ?? default_players_per_team}`,
           required: false,
-        },
-      ],
-    })
+        }),
+      )
+    }
   }
 
   if (include?.best_of) {
-    components.push({
-      type: D.ComponentType.ActionRow,
-      components: [
-        {
-          type: D.ComponentType.TextInput,
-          style: D.TextInputStyle.Short,
-          custom_id: 'best_of',
-          label: 'By default, matches are best of:',
-          placeholder: include?.best_of?.current?.toString() ?? '1',
-          required: false,
-        },
-      ],
-    })
+    action_row.addComponents(
+      new TextInputBuilder({
+        type: D.ComponentType.TextInput,
+        style: D.TextInputStyle.Short,
+        custom_id: 'best_of',
+        label: 'Best of',
+        placeholder: `${include.best_of.ph ?? default_best_of}`,
+        required: false,
+      }),
+    )
   }
 
-  return components
+  if (include?.color) {
+    action_row.addComponents(
+      new TextInputBuilder({
+        type: D.ComponentType.TextInput,
+        style: D.TextInputStyle.Short,
+        custom_id: 'color',
+        label: 'Color',
+        placeholder: `${include.color.ph ?? default_leaderboard_color}`,
+        required: false,
+      }),
+    )
+  }
+
+  if (action_row.components.length == 0) throw new Error('No text input components in modal')
+
+  return new ModalBuilder({
+    components: [action_row.toJSON()],
+  })
 }

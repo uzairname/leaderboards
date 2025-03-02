@@ -16,7 +16,7 @@ import { Colors, hasAdminPerms } from '../../../../utils'
 import { escapeMd, messageLink, relativeTimestamp } from '../../../../utils/ui'
 import { guildRankingsOption, withSelectedRanking } from '../../../../utils/ui/view-helpers/ranking-option'
 import { numRankings } from '../../../guilds/properties'
-import { getOrCreatePlayer } from '../../../players/manage-players'
+import { getOrCreatePlayer } from '../../../players/manage'
 import { matchSummaryEmbed } from '../../logging/match-summary-message'
 import { recordAndScoreMatch } from '../../management/create-matches'
 import { record_match_view_sig } from './record-match-view'
@@ -155,7 +155,7 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
                   state.data.selected_time_finished,
                 )
 
-                const match_summary_message = await match.getSummaryMessage(ctx.interaction.guild_id)
+                const match_summary_message = await match.summaryMessage(ctx.interaction.guild_id)
 
                 return void ctx.edit({
                   content:

@@ -1,3 +1,4 @@
+import {} from '@discordjs/builders'
 import { PartialRanking } from '@repo/db/models'
 import { CommandContext, CommandInteractionResponse, CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
@@ -6,7 +7,6 @@ import { guildRankingsOption, withOptionalSelectedRanking } from '../../../utils
 import { AllRankingsPages } from './all-rankings'
 import { RankingSettingsHandlers, RankingSettingsPages } from './ranking-settings'
 import { ranking_settings_view_sig } from './ranking-settings/view'
-import {  } from '@discordjs/builders'
 
 export const settings_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
@@ -44,7 +44,7 @@ export const settings_cmd = settings_cmd_sig.set<App>({
           {
             name: `Delete`,
             value: `delete`,
-          }
+          },
         ],
       })
     }
@@ -71,16 +71,18 @@ export const settings_cmd = settings_cmd_sig.set<App>({
         if (ranking) {
           const setting_option_value = input.setting
           if (setting_option_value) {
-            return routeToSettingPage(app, ctx, ranking, setting_option_value)
+            return sendSettingsPage(app, ctx, ranking, setting_option_value)
           } else {
             return ctx.defer(
               async ctx =>
-                await RankingSettingsPages.main(app, {
-                  ...ctx,
-                  state: ranking_settings_view_sig.newState({
-                    ranking_id: ranking.data.id,
+                void ctx.edit(
+                  await RankingSettingsPages.main(app, {
+                    ...ctx,
+                    state: ranking_settings_view_sig.newState({
+                      ranking_id: ranking.data.id,
+                    }),
                   }),
-                }),
+                ),
             )
           }
         } else {
@@ -97,7 +99,7 @@ export const settings_cmd = settings_cmd_sig.set<App>({
 /**
  * Redirects to the appropriate setting page, based on the selected setting option.
  */
-async function routeToSettingPage(
+async function sendSettingsPage(
   app: App,
   ctx: CommandContext<typeof settings_cmd_sig>,
   ranking: PartialRanking,
@@ -114,13 +116,11 @@ async function routeToSettingPage(
     case 'rename':
       return await RankingSettingsHandlers.renameModal(app, new_ctx)
     case 'queue':
-      return ctx.defer(async ctx => {
-        await ctx.edit(await RankingSettingsPages.queue(app, new_ctx))
-      })
+      return ctx.defer(async ctx => void (await ctx.edit(await RankingSettingsPages.queue(app, new_ctx))))
     case 'rating':
-      return ctx.defer(async ctx => {
-        await ctx.edit(await RankingSettingsPages.scoringMethod(app, new_ctx))
-      })
+      return ctx.defer(async ctx => void (await ctx.edit(await RankingSettingsPages.scoringMethod(app, new_ctx))))
+    case 'delete':
+      return ctx.defer(async ctx => void (await ctx.edit(await RankingSettingsPages.deleteConfirm(app, new_ctx))))
   }
 
   throw new Error(`Unknwn setting ${setting}`)

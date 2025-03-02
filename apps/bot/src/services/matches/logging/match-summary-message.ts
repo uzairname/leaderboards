@@ -22,7 +22,7 @@ export async function syncMatchSummaryMessages(app: App, match: Match): Promise<
 }
 
 /**
- * Updates the match's summary message, according to the guild ranking's settings
+ * Updates the match's summary message, according to the guild ranking's settings. Creates it if it doesn't exist
  */
 export async function syncMatchSummaryMessage(app: App, match: Match, p_guild: PartialGuild): Promise<D.APIMessage> {
   sentry.debug(`syncMatchSummaryMessage ${match}, ${p_guild}`)
@@ -37,7 +37,7 @@ export async function syncMatchSummaryMessage(app: App, match: Match, p_guild: P
     throw new Error(`Not implemented`)
   }
 
-  const summary_message = await match.getSummaryMessage(guild.data.id)
+  const summary_message = await match.summaryMessage(guild.data.id)
 
   const sync_message_result = await app.discord.utils.syncChannelMessage({
     target_channel_id: guild.data.matches_channel_id,

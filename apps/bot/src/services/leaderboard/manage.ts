@@ -1,12 +1,12 @@
 import { Guild, GuildRanking, PartialGuildRanking, PartialRanking, Ranking } from '@repo/db/models'
 import { MessageData } from '@repo/discord'
 import { nonNullable } from '@repo/utils'
+import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging/sentry'
 import type { App } from '../../setup/app'
 import { escapeMd } from '../../utils'
 import { syncRankedCategory } from '../guilds/manage-guilds'
 import { leaderboardMessage } from './ui/pages'
-import * as D from 'discord-api-types/v10'
 
 export async function syncRankingLbMessages(app: App, ranking: PartialRanking): Promise<void> {
   sentry.debug(`syncRankingLbMessages ranking: ${ranking.data.id}`)
@@ -15,7 +15,7 @@ export async function syncRankingLbMessages(app: App, ranking: PartialRanking): 
 }
 
 /**
- * Ensures that the guild ranking's leaderboard message exists and is up to date. 
+ * Ensures that the guild ranking's leaderboard message exists and is up to date.
  * @param param2.enable_if_disabled If true, will update the guild ranking's config to enable the lb message.
  * If false, does nothing if the live leaderboard message is disabled.
  * @param param2.no_edit If true, will not edit the message if it already exists
@@ -23,13 +23,9 @@ export async function syncRankingLbMessages(app: App, ranking: PartialRanking): 
 export async function syncGuildRankingLbMessage(
   app: App,
   p_guild_ranking: PartialGuildRanking,
-  {
-    enable_if_disabled = false,
-    no_edit = false,
-  } = {},
+  { enable_if_disabled = false, no_edit = false } = {},
 ): Promise<{ message: D.APIMessage; channel_id: string } | undefined> {
   sentry.debug(`syncGuildRankingLbMessage ${p_guild_ranking}`)
-
 
   const { guild, ranking, guild_ranking } = await p_guild_ranking.fetch()
 
@@ -94,7 +90,7 @@ async function sendLbChannel(app: App, guild: Guild, ranking: Ranking): Promise<
 
 function leaderboardChannelPermissionOverwrites(
   guild_id: string,
-  application_id: string
+  application_id: string,
 ): D.RESTAPIChannelPatchOverwrite[] {
   return [
     {

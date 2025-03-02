@@ -1,6 +1,6 @@
 import { Router } from 'itty-router'
 import { sentry } from '../logging/sentry'
-import { getOrAddGuild, updateGuild } from '../services/guilds/manage-guilds'
+import { getOrAddGuild } from '../services/guilds/manage-guilds'
 import { getAppRoleConnectionsMetadata } from '../services/role-connections/role-connections'
 import { App } from '../setup/app'
 
@@ -16,7 +16,8 @@ export default (app: App) =>
         app.db.guilds.getAll().then(guilds =>
           Promise.all(
             guilds.map(guild =>
-              updateGuild(app, guild)
+              app
+                .syncDiscordCommands(guild)
                 .then(() => guild.data.name)
                 .catch(() => undefined),
             ),

@@ -3,7 +3,7 @@ import * as D from 'discord-api-types/v10'
 import { UserError } from '../../../../errors/user-errors'
 import { App } from '../../../../setup/app'
 import { ensureAdminPerms, guildRankingsOption, withSelectedRanking } from '../../../../utils'
-import { getOrCreatePlayer } from '../../../players/manage-players'
+import { getOrCreatePlayer } from '../../../players/manage'
 import { start1v1SeriesThread } from '../../ongoing-match/manage-ongoing-match'
 
 export const start_match_cmd_sig = new CommandSignature({

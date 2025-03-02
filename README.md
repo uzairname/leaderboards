@@ -111,6 +111,6 @@ wrangler dev
 
 <!--
 
-current total gzip size: 403.23 KiB
+current total gzip size: 404.38 KiB
 
 -->

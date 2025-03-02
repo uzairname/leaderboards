@@ -8,13 +8,13 @@ export const emojis = {
   red_triangle: `<:red_triangle:1198069664153079878>`,
 }
 
-export class Colors {
-  static Primary = 0xa1ffda
-  static Success = 0x5fde70
-  static Pending = 0xdee887
-  static DiscordBackground = 0x313338
-  static EmbedBackground = 0x2b2d31
-  static Error = 0xff4d4d
+export enum Colors {
+  Primary = 0xa1ffda,
+  Success = 0x5fde70,
+  Pending = 0xdee887,
+  DiscordBackground = 0x313338,
+  EmbedBackground = 0x2b2d31,
+  Error = 0xff4d4d,
 }
 
 export function randomColor() {

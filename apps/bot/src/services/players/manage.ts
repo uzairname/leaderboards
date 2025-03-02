@@ -72,10 +72,7 @@ export async function updatePlayerRatings(app: App, update: { player: PartialPla
       update_players.map(async ({ player, rating }) => {
         // For each player to update, update role connections
         if (app.config.features.RatingRoleConnections) {
-          const ranking = await player.ranking()
-
-          // store affected rankings for later leaderboard update
-          // calculate display rating using updated rating or current rating
+          // Update rating roles
 
           const access_token = await getUserAccessToken(app, player.data.user_id, [D.OAuth2Scopes.RoleConnectionsWrite])
           if (access_token) {

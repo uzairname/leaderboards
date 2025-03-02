@@ -1,4 +1,5 @@
 import { and, eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
+import { z } from 'zod'
 import { Guild, Ranking } from '.'
 import { DbObjectManager } from '../classes'
 import { DbClient } from '../client'
@@ -29,7 +30,7 @@ export class PartialGuildRanking {
     return this.db.rankings.get(this.data.ranking_id)
   }
 
-  async update(data: Partial<Omit<GuildRankingInsert, 'guild_id' | 'ranking_id'>>): Promise<GuildRanking> {
+  async update(data: GuildRankingUpdate): Promise<GuildRanking> {
     const new_data = (
       await this.db.drizzle
         .update(GuildRankings)
@@ -167,10 +168,22 @@ export class GuildRankingsManager extends DbObjectManager {
     }
   }
 }
+
 export type GuildRankingSelect = InferSelectModel<typeof GuildRankings>
 export type GuildRankingInsert = InferInsertModel<typeof GuildRankings>
+export type GuildRankingUpdate = Partial<Omit<GuildRankingInsert, 'guild_id' | 'ranking_id'>>
 
 export type GuildRankingDisplaySettings = {
   leaderboard_message?: boolean
   log_matches?: boolean
+  color?: number
 }
+
+export const RatingRolesSchema = z.array(
+  z.object({
+    min_rating: z.number(),
+    role: z.string(),
+  }),
+)
+
+export type RatingRoles = z.infer<typeof RatingRolesSchema>

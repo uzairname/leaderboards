@@ -70,12 +70,14 @@ export const create_ranking_cmd = create_ranking_cmd_sig.set<App>({
         ],
       })
 
-      await RankingSettingsPages.main(app, {
-        ...ctx,
-        state: ranking_settings_view_sig.newState({
-          ranking_id: ranking.data.id,
+      return void ctx.edit(
+        await RankingSettingsPages.main(app, {
+          ...ctx,
+          state: ranking_settings_view_sig.newState({
+            ranking_id: ranking.data.id,
+          }),
         }),
-      })
+      )
     })
   },
 })

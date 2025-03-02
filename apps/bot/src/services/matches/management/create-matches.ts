@@ -15,6 +15,7 @@ import { App } from '../../../setup/app'
 import { rankingProperties } from '../../rankings/properties'
 import { rescoreMatches } from '../scoring/score_match'
 import { validateMatchData } from './update-matches'
+import { syncMatchSummaryMessages } from '../logging/match-summary-message'
 
 /**
  * Starts a new match, using the players' current ratings
@@ -101,6 +102,8 @@ export async function recordAndScoreMatch(
   })
 
   await rescoreMatches(app, match.ranking, { finished_on_or_after: match.data.time_finished })
+
+  await syncMatchSummaryMessages(app, match)
 
   return app.db.matches.fetch(match.data.id)
 }

@@ -7,7 +7,7 @@ import { guildRankingDescriptionField } from '../../../../utils/ui/messages'
 import { rankingSelectMenu } from '../../../../utils/ui/view-helpers/components'
 import { getOrAddGuild } from '../../../guilds/manage-guilds'
 import { help_cmd } from '../../../help/ui/help-cmd'
-import { rankings_view_sig } from './view'
+import { all_rankings_view_sig } from './view'
 
 export async function main(app: App, ctx: AnyGuildInteractionContext): Promise<D.APIInteractionResponseCallbackData> {
   const guild = await getOrAddGuild(app, ctx.interaction.guild_id)
@@ -31,7 +31,7 @@ For more info, use ${await commandMention(app, help_cmd)}`
 
   const ranking_select = rankingSelectMenu(
     grs,
-    rankings_view_sig.newState({ handler: AllRankingsHandlers.onRankingSelect }).cId(),
+    all_rankings_view_sig.newState({ handler: AllRankingsHandlers.onRankingSelect }).cId(),
   )
 
   const last_action_row: D.APIActionRowComponent<D.APIMessageActionRowComponent> = {
@@ -40,7 +40,7 @@ For more info, use ${await commandMention(app, help_cmd)}`
       {
         type: D.ComponentType.Button,
         style: D.ButtonStyle.Success,
-        custom_id: rankings_view_sig.newState().set.handler(AllRankingsHandlers.sendCreateRankingModal).cId(),
+        custom_id: all_rankings_view_sig.newState().set.handler(AllRankingsHandlers.sendCreateRankingModal).cId(),
         label: 'New Ranking',
         emoji: {
           name: '➕',

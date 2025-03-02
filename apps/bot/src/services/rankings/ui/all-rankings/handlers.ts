@@ -12,25 +12,28 @@ import { App } from '../../../../setup/app'
 import { ensureAdminPerms } from '../../../../utils'
 import { createNewRankingInGuild } from '../../manage'
 import { RankingSettingsPages } from '../ranking-settings'
-import { rankingSettingsModalComponents } from '../ranking-settings/modals'
+import { rankingSettingsModal } from '../ranking-settings/modals'
 import { ranking_settings_view_sig } from '../ranking-settings/view'
-import { rankings_view_sig } from './view'
+import { all_rankings_view_sig } from './view'
 
 /**
  * A ranking is selected throuh the select menu
  */
 export async function onRankingSelect(
   app: App,
-  ctx: ComponentContext<typeof rankings_view_sig>,
+  ctx: ComponentContext<typeof all_rankings_view_sig>,
 ): Promise<ChatInteractionResponse> {
   const ranking_id = intOrUndefined((ctx.interaction.data as D.APIMessageStringSelectInteractionData).values[0])
-
-  return ctx.defer(async ctx => {
-    await RankingSettingsPages.main(app, {
-      ...ctx,
-      state: ranking_settings_view_sig.newState({ ranking_id }),
-    })
-  })
+  if (!ranking_id) return ctx.defer(async () => void 0)
+  return ctx.defer(
+    async ctx =>
+      void ctx.edit(
+        await RankingSettingsPages.main(app, {
+          ...ctx,
+          state: ranking_settings_view_sig.newState({ ranking_id }),
+        }),
+      ),
+  )
 }
 
 /**
@@ -38,25 +41,29 @@ export async function onRankingSelect(
  */
 export function sendCreateRankingModal(
   app: App,
-  ctx: StateContext<typeof rankings_view_sig>,
+  ctx: StateContext<typeof all_rankings_view_sig>,
 ): D.APIModalInteractionResponse {
   return {
     type: D.InteractionResponseType.Modal,
-    data: {
-      custom_id: ctx.state.set.handler(onCreateRankingModalSubmit).cId(),
-      title: 'Create a new ranking',
-      components: rankingSettingsModalComponents({
-        name: {
-          current: ctx.state.data.modal_input?.name,
-        },
-        best_of: {},
-        team_size: app.config.features.AllowNon1v1 ? {} : undefined,
-      }),
-    },
+    data: rankingSettingsModal({
+      name: {
+        ph: ctx.state.data.modal_input?.name,
+      },
+      best_of: {},
+      team_size: app.config.features.AllowNon1v1
+        ? {
+            players_per_team: {},
+            teams_per_match: {},
+          }
+        : undefined,
+    })
+      .setCustomId(ctx.state.set.handler(onCreateRankingModalSubmit).cId())
+      .setTitle('Create a new ranking')
+      .toJSON(),
   }
 }
 
-export async function sendAllRankingsPage(
+export async function sendMainPage(
   app: App,
   ctx: ComponentContext<ViewSignature<any, true>>,
 ): Promise<ChatInteractionResponse> {
@@ -65,7 +72,7 @@ export async function sendAllRankingsPage(
 
 export async function onCreateRankingModalSubmit(
   app: App,
-  ctx: ComponentContext<typeof rankings_view_sig>,
+  ctx: ComponentContext<typeof all_rankings_view_sig>,
 ): Promise<ChatInteractionResponse> {
   return ctx.defer(
     async ctx => {
@@ -82,12 +89,14 @@ export async function onCreateRankingModalSubmit(
         },
       })
 
-      await RankingSettingsPages.main(app, {
-        ...ctx,
-        state: ranking_settings_view_sig.newState({
-          ranking_id: ranking.data.id,
+      return void ctx.edit(
+        await RankingSettingsPages.main(app, {
+          ...ctx,
+          state: ranking_settings_view_sig.newState({
+            ranking_id: ranking.data.id,
+          }),
         }),
-      })
+      )
     },
     {
       type: D.InteractionResponseType.ChannelMessageWithSource,

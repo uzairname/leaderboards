@@ -15,7 +15,7 @@ export default class DbCache {
   rankings = this.newMap<number, Ranking>('ranking')
   guild_rankings = this.newMap<string, GuildRanking, number>('guild ranking')
   guild_rankings_by_guild = this.newMap<string, { guild_ranking: GuildRanking; ranking: Ranking }[]>('guild rankings in guild')
-  guild_rankings_by_ranking = this.newMap<number, { guild_ranking: GuildRanking; guild: Guild }[]>('guild rankings for ranking')
+  guild_rankings_by_ranking = this.newMap<number, { guild_ranking: GuildRanking; guild: Guild }[]>('guild rankings with ranking')
   players = this.newMap<number, Player>('player')
   players_by_ranking_user = this.newMap<number, Player, string>('player')
   match_players = this.newMap<number, MatchPlayer[][]>('players for match')
