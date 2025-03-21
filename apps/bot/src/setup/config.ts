@@ -42,7 +42,7 @@ export class Config {
     readonly oauthInviteAndRoleConnectionsUrl = env.BASE_URL + `/oauth` + this.OauthRoutes.BotAndRoleConnections,
     // readonly WebDashboardURL = env.BASE_URL + `/dashboard`,
     readonly IsDev = env.ENVIRONMENT === 'development',
-    readonly DirectResponse = IsDev ? false : true,
+    readonly DirectResponse = IsDev ? true : true,
     readonly features = {
       GiveBotInvite: !IsDev,
       HelpReference: IsDev,
