@@ -5,6 +5,7 @@ import { sentry } from '../logging/sentry'
 import { App } from '../setup/app'
 import { Colors } from '../utils/ui'
 import { UserError, UserErrors } from './user-errors'
+import { DbError, DbErrors } from '../../../../packages/db/src/errors'
 
 export function onViewError(app: App) {
   return function (
@@ -26,6 +27,8 @@ export function onViewError(app: App) {
     } else if (e instanceof RateLimitError) {
       _e = new UserErrors.DiscordRateLimit(e.timeToReset)
     } else if (e instanceof InteractionUserError) {
+      _e = new UserError(e.message)
+    } else if (e instanceof DbErrors.NotFound) {
       _e = new UserError(e.message)
     } else if (e instanceof Error) {
       _e = e
@@ -64,9 +67,9 @@ function _onViewError(
     // If not a user error, it is unexpected
     setSentryException ? setSentryException(e) : sentry.setException(e)
 
-    let description = `${e.name}: ${e.message}
-      
-This is a bug! please report it in the [support server](${app.config.SupportServerInvite})`
+    let description = `\`${e.name}: ${e.message}\`
+
+If this is a bug, please report it in the [support server](${app.config.SupportServerInvite})`
 
     if (app.config.IsDev) {
       // If in dev, add the error to the description
@@ -92,7 +95,6 @@ ${
     }
 
     embed = {
-      title: `Unexpected error`,
       description,
       color: Colors.Error,
     }

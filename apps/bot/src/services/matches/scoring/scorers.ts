@@ -1,5 +1,6 @@
 import { MatchPlayer, Rating, RatingSettings, RatingStrategy } from '@repo/db/models'
 import { TrueSkill, Rating as TrueskillRating } from 'ts-trueskill'
+import { getOutcomeWinners } from '../management/properties'
 
 /**
  * Interface for a function that calculates the new ratings of players after a match
@@ -65,18 +66,23 @@ const elo: Scorer = ({ outcome, match_players }) => {
 
 /**
  * Simple scorer that just adds 1 to the winning team and subtracts 1 from the losing team
+ * If draw, no change is made
  * If used for a ranking, a player's total rating = wins - losses
  */
 const winsMinusLosses: Scorer = ({ outcome, match_players }) => {
-  const new_player_ratings = match_players.map((team, i) => {
-    return team.map((player, j) => {
+  
+  const { winning_team_indices, is_draw } = getOutcomeWinners(outcome)
+  if (is_draw) return match_players.map(team => team.map(player => player.rating))
+
+  return match_players.map((team, i) => {
+    return team.map(player => {
       return {
-        mu: player.rating.mu + (outcome[i] - 0.5) * 2,
-        rd: player.rating.rd,
+        ...player.rating,
+        // Add 1 for winning team, subtract 1 for losing team
+        mu: player.rating.mu + (winning_team_indices.includes(i) ? 1 : -1), 
       }
     })
   })
-  return new_player_ratings
 }
 
 export function getScorerFn(type: RatingStrategy): Scorer {

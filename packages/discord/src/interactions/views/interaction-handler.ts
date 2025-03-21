@@ -73,7 +73,6 @@ export class InteractionHandler<Arg extends unknown = undefined> {
   }
 
   /**
-   *
    * @param direct_response -
    *  - true: Return a value directly.
    *  - false: Call respond endpoint. Will log interaction response errors in sentry, but successful requests will get canceled.
@@ -94,6 +93,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     direct_response: boolean
     arg: Arg
   }): Promise<Response> {
+
     if (!(await verify(request, bot.public_key))) {
       this.logger?.log({ message: 'Invalid signature' })
       return new Response('Invalid signature', { status: 401 })

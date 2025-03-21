@@ -5,7 +5,7 @@ import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { Colors, emojis, escapeMd, relativeTimestamp, spaces } from '../../../utils/ui'
 import { matchPlayersDisplayStats, mentionOrName } from '../../players/properties'
-import { getOutcome } from '../management/properties'
+import { getMatchWinners } from '../management/properties'
 import { syncMatchesChannel } from './matches-channel'
 
 /**
@@ -84,7 +84,7 @@ export async function matchSummaryEmbed(app: App, match: Match, {} = {}): Promis
   const fields: D.APIEmbedField[] = team_player_stats.map((team, team_num) => {
     return {
       name: (outcome => {
-        const { winning_team_indices, is_draw } = getOutcome(match)
+        const { winning_team_indices, is_draw } = getMatchWinners(match)
         if (winning_team_indices) {
           return is_draw
             ? emojis.light_circle + `Draw`

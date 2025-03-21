@@ -89,7 +89,7 @@ export const settle_match_cmd = settle_match_cmd_sig.set<App>({
 
       // Determine the match to act on, from the input. Also get its players
       const match = await (async function () {
-        if (input.match_id) {
+        if (input.match_id !== undefined) {
           // match id was provided.
           const match = await app.db.matches.fetch(input.match_id, ctx.interaction.guild_id)
           return match

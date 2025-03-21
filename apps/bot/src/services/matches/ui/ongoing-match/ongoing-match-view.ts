@@ -7,7 +7,7 @@ import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
 import { listToString } from '../../../../utils'
 import { mentionOrName } from '../../../players/properties'
-import { getOutcome } from '../../management/properties'
+import { getMatchWinners } from '../../management/properties'
 import { castPlayerVote, start1v1SeriesThread } from '../../ongoing-match/manage-ongoing-match'
 import { ongoingMatch1v1Message } from '../../ongoing-match/ongoing-1v1-match-message'
 
@@ -119,7 +119,7 @@ async function vote(app: App, ctx: DeferredComponentContext<typeof ongoing_match
 
   if (match.data.status === MatchStatus.Finished) {
     // Send a message indicating the winner
-    const { winning_team_indices, is_draw } = getOutcome(match)
+    const { winning_team_indices, is_draw } = getMatchWinners(match)
     const team_players = await match.players()
     if (is_draw) await ctx.send({ content: `It's a draw!` })
     else if (winning_team_indices) {

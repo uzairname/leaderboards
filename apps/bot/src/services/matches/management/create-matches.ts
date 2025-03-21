@@ -108,7 +108,7 @@ export async function recordAndScoreMatch(
 
   await syncMatchSummaryMessages(app, match)
 
-  return app.db.matches.fetch(match.data.id)
+  return match
 }
 
 // Ensures that the players are not in an active match in their ranking

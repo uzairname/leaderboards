@@ -1,7 +1,7 @@
 import { Match, PartialRanking, Player } from '@repo/db/models'
 import { z } from 'zod'
 import { App } from '../../setup/app'
-import { getOutcome } from '../matches/management/properties'
+import { getMatchWinners } from '../matches/management/properties'
 import { scoreMatch } from '../matches/scoring/score_match'
 import { displayRatingFn } from '../rankings/properties'
 
@@ -88,7 +88,7 @@ export async function winsLosses(app: App, player: Player): Promise<PlayerStats>
     // Calculate wins, losses, draws
     const player_team_index = match.team_players.findIndex(team => team.some(p => p.player.data.id === player.data.id))
 
-    const { winning_team_indices: winning_team_indices, is_draw } = getOutcome(match.match)
+    const { winning_team_indices: winning_team_indices, is_draw } = getMatchWinners(match.match)
     if (!winning_team_indices) continue // If this match isn't finished, it's not counted
     if (is_draw) draws++
     else if (winning_team_indices.includes(player_team_index)) wins++
