@@ -9,11 +9,11 @@ export default (app: App) =>
   Router()
     .post('/interactions', request => app.handleInteractionRequest(request))
 
-    .get(`/oauth/*`, request => oauthRouter(app).handle(request))
+    .get(`/oauth/*`, request => oauthRouter(app).fetch(request))
 
-    .all('/api/*', request => apiRouter(app).handle(request))
+    .all('/api/*', request => apiRouter(app).fetch(request))
 
-    .post('/update/*', authorize(app.env), request => updateRouter(app).handle(request))
+    .post('/update/*', authorize(app.env), request => updateRouter(app).fetch(request))
 
     .get('*', () => new Response(`👀`))
 

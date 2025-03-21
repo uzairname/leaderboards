@@ -76,7 +76,7 @@ export default (app: App) =>
       if (!ranking) {
         return new Response('Unknown ranking', { status: 404 })
       }
-      return rankingsRouter(app, ranking).handle(request)
+      return rankingsRouter(app, ranking).fetch(request)
     })
 
     .post('/access-tokens', async request => {

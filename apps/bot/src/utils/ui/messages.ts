@@ -31,7 +31,7 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
           `Every player, match, and rating that this bot tracks belongs to a **ranking**.` +
           ` You might want to have a separate ranking for different games or gamemodes.` +
           `` +
-          `\n - ${await commandMention(app, setup_cmd)}: set up the bot in this server.` +
+          // `\n - ${await commandMention(app, setup_cmd)}: set up the bot in this server.` +
           `\n- ${await commandMention(app, create_ranking_cmd)} \`name\`: create one or more rankings.` +
           `\n- ${await commandMention(app, settings_cmd, guild_id)} \`ranking\`: manage rankings in this server. Enter a specific ranking to view or manage it.`,
       },
