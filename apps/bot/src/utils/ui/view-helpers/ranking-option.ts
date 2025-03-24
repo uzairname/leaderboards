@@ -121,7 +121,7 @@ async function _withSelectedRanking(
   })
 
   let ranking: PartialRanking | undefined
-  if (ranking_id !== undefined) {
+  if (undefined !== ranking_id) {
     ranking = await app.db.rankings.fetch(ranking_id)
   } else {
     // Try to find the default ranking
@@ -131,7 +131,7 @@ async function _withSelectedRanking(
     }
 
     const available_guild_rankings_ =
-      available_guild_rankings !== undefined
+      undefined !== available_guild_rankings
         ? available_guild_rankings
         : await app.db.guild_rankings.fetchBy({ guild_id: ctx.interaction.guild_id })
 

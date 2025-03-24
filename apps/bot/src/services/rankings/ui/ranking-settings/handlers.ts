@@ -208,6 +208,7 @@ export async function onRatingMethodSelect(
 ): Promise<ChatInteractionResponse> {
   return ctx.defer(async ctx => {
     await ensureAdminPerms(app, ctx)
+
     const rating_strategy = parseRatingStrategy(
       (ctx.interaction.data as D.APIMessageStringSelectInteractionData).values[0],
     )
@@ -220,7 +221,7 @@ export async function onRatingMethodSelect(
         ...rating_strategy_to_rating_settings[rating_strategy],
       },
     }),
-      await rescoreAllMatches(app, ranking, ctx)
+    await rescoreAllMatches(app, ranking, ctx)
 
     await ctx.edit(await RankingSettingsPages.scoringMethod(app, ctx))
   })

@@ -3,11 +3,11 @@ import { AccessToken } from '@repo/db/models'
 import { DiscordAPIClient } from '@repo/discord'
 import { nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { Router } from 'itty-router'
+import { IttyRouter } from 'itty-router/IttyRouter'
 import { App } from '../setup/app'
 
 export default (app: App) =>
-  Router({ base: `/oauth` })
+  IttyRouter({ base: `/oauth` })
     .get(app.config.OauthRoutes.Redirect, request => oauthCallback(app, request))
 
     .get(app.config.OauthRoutes.LinkedRoles, () =>

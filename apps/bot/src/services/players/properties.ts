@@ -61,7 +61,7 @@ export type PlayerStats = z.infer<typeof PlayerStatsSchema>
 /**
  * Determine a player's wins, losses, draws, winrate, and place on the leaderboard
  */
-export async function winsLosses(app: App, player: Player): Promise<PlayerStats> {
+export async function refreshPlayerStats(app: App, player: Player): Promise<PlayerStats> {
   const ranking = await player.ranking()
   const players = await orderedLeaderboardPlayers(app, ranking)
   const matches = await app.db.matches.getMany({ player_ids: [player.data.id] })
@@ -114,10 +114,10 @@ export async function winsLosses(app: App, player: Player): Promise<PlayerStats>
   })
 
   // Calculate winrate
-  const total_matches = wins + losses + draws
-  const winrate = total_matches === 0 ? null : wins / total_matches
+  const total = wins + losses
+  const winrate = total === 0 ? null : wins / total
 
-  return {
+  const stats = {
     display_rating,
     wins,
     losses,
@@ -128,6 +128,10 @@ export async function winsLosses(app: App, player: Player): Promise<PlayerStats>
     rating_history,
     stats_last_refreshed: new Date(),
   }
+
+  await player.update({ stats })
+
+  return stats
 }
 
 /**
@@ -141,13 +145,12 @@ export async function getOrRefreshPlayerStats(app: App, player: Player): Promise
     // Check if the stats are new
     const stats = parse_result.data
     const stats_age = new Date().getTime() - stats.stats_last_refreshed.getTime()
-    if (stats_age < 1000 * 10) {
+    if (stats_age < 1000 * 10) { // 10 seconds
       return stats
     }
   }
 
-  const stats = await winsLosses(app, player)
-  await player.update({ stats })
+  const stats = await refreshPlayerStats(app, player)
   return stats
 }
 

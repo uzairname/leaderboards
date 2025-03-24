@@ -1,6 +1,6 @@
 import { sequential } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { json } from 'itty-router'
+import { json } from 'itty-router/json'
 import { StringDataSchema } from '../../../../utils/src/StringData'
 import { DiscordLogger } from '../../logging'
 import { DiscordAPIClient, MessageData } from '../../rest'
@@ -40,7 +40,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
 
     // Identify duplicate custom_id_prefixes
     const custom_id_prefixes = this.all_handlers.filter(isViewHandler).map(h => h.signature.config.custom_id_prefix)
-    const duplicates = custom_id_prefixes.filter((v, i) => v !== undefined && custom_id_prefixes.indexOf(v) !== i)
+    const duplicates = custom_id_prefixes.filter((v, i) => undefined !== v && custom_id_prefixes.indexOf(v) !== i)
     if (duplicates.length > 0) throw new Error(`Duplicate custom_id_prefixes: ${duplicates} ${duplicates.join(', ')}.`)
   }
 
@@ -192,7 +192,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     }
   }
 
-  async commandSignatures({
+  async getCommandSignatures({
     guild_id,
     include_experimental = false,
     arg,
@@ -206,21 +206,11 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     const cmds = await sequential(
       all_commands.map(c => async () => {
         // Ignore experimental commands
-        if (c.signature.config.experimental && !include_experimental) {
-          return null
-        }
-        if (guild_id) {
-          // if we're looking for guild commands, get its guild signature
-          if (c.guildSignature) {
-            return await c.guildSignature(arg, guild_id)
-          }
-        } else {
-          // if we're not looking for guild commands, get its global signature
-          if (!c.guildSignature) {
-            // get its global signature only if it doesn't have a guild signature
-            return c.signature
-          }
-        }
+        if (c.signature.config.experimental && !include_experimental) return null
+        // If its a guild command and we're filtering by guild, return the guild-specific signature
+        if (guild_id && c.guildSignature) return c.guildSignature(arg, guild_id)
+        // If its a global command and we're not filtering by guild, return the global signature
+        else if (!c.guildSignature) return c.signature
       }),
     )
 

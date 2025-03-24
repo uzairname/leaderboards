@@ -94,7 +94,7 @@ export interface BaseDeferredContext<S extends AnySignature, I extends AnyChatIn
   edit: (
     data: D.APIInteractionResponseCallbackData,
     message_id?: string,
-  ) => Promise<D.RESTPatchAPIWebhookWithTokenMessageResult>
+  ) => Promise<D.RESTPatchAPIWebhookWithTokenMessageResult | null>
   followup: (data: D.APIInteractionResponseCallbackData) => Promise<D.RESTPostAPIWebhookWithTokenWaitResult>
   delete: (message_id?: string) => Promise<void>
 }

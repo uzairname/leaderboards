@@ -71,7 +71,7 @@ export class App {
   async syncDiscordCommands(guild?: PartialGuild) {
     await putDiscordCommands(
       this.discord,
-      await this.view_manager.commandSignatures({
+      await this.view_manager.getCommandSignatures({
         guild_id: guild?.data.id,
         include_experimental: this.config.features.ExperimentalCommands,
         arg: this,

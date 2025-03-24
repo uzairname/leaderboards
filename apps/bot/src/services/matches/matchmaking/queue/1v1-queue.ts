@@ -19,7 +19,7 @@ export async function userJoinQueue(
   app: App,
   ctx: AnyDeferredContext,
   p_ranking: PartialRanking,
-): Promise<{ already_in: boolean; match?: Match; expires_at: Date }> {
+): Promise<{ already_in: boolean; new_match?: Match; expires_at: Date }> {
   const { guild_ranking, ranking } = await app.db.guild_rankings.fetchBy({
     ranking_id: p_ranking.data.id,
     guild_id: checkGuildInteraction(ctx.interaction).guild_id,
@@ -40,9 +40,9 @@ export async function userJoinQueue(
   }
   const expires_at = await addPlayerToQueue(app, player)
 
-  const match = await findMatchFromQueue(app, guild_ranking)
+  const new_match = await findMatchFromQueue(app, guild_ranking)
 
-  return { already_in, match, expires_at }
+  return { already_in, new_match, expires_at }
 }
 
 export async function findMatchFromQueue(app: App, gr: PartialGuildRanking): Promise<Match | undefined> {
@@ -53,7 +53,7 @@ export async function findMatchFromQueue(app: App, gr: PartialGuildRanking): Pro
 
   const players_in_q = await getPlayersInQueue(app, ranking)
 
-  sentry.debug(`findMatchFromQueue: Found ${players_in_q.length} players in queue for ${ranking.data}`)
+  sentry.debug(`findMatchFromQueue: Found ${players_in_q.length} players in queue for ${ranking}`)
 
   if (players_in_q.length < ranking.data.teams_per_match * ranking.data.players_per_team) {
     return
@@ -84,7 +84,7 @@ export async function getPlayersInQueue(app: App, ranking: PartialRanking): Prom
 export async function isInQueue(app: App, p: PartialPlayer): Promise<boolean> {
   const player = await p.fetch()
   return (
-    player.data.time_joined_queue !== null &&
+    null !== player.data.time_joined_queue &&
     player.data.time_joined_queue.getTime() > Date.now() - app.config.QueueJoinTimeoutMs
   )
 }

@@ -1,7 +1,8 @@
 import { appCommandToJSONBody, isCommandHandler } from '@repo/discord'
 import { intOrUndefined } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { json, Router } from 'itty-router'
+import { IttyRouter } from 'itty-router/IttyRouter'
+import { json } from 'itty-router/json'
 import { App } from '../setup/app'
 import { initInteractionHandler } from '../setup/interaction-handler'
 import { inviteUrl } from '../utils/'
@@ -10,7 +11,7 @@ import { authorize } from './base'
 import { getUserAccessToken, saveUserAccessToken } from './oauth'
 
 export default (app: App) =>
-  Router({ base: '/api' })
+  IttyRouter({ base: '/api' })
     .get('/', async () => {
       return new Response('API')
     })
@@ -50,7 +51,7 @@ export default (app: App) =>
       app.db.cache.clear()
       const guild_id = request.params.guild_id
 
-      const commands = await app.view_manager.commandSignatures({
+      const commands = await app.view_manager.getCommandSignatures({
         arg: app,
         guild_id: guild_id,
         include_experimental: app.config.features.ExperimentalCommands,
@@ -69,7 +70,7 @@ export default (app: App) =>
 
     .all('/rankings/:ranking_id/*', async request => {
       const ranking_id = intOrUndefined(request.params.ranking_id)
-      if (ranking_id === undefined) {
+      if (undefined === ranking_id) {
         return new Response('Invalid ranking_id', { status: 400 })
       }
       const ranking = await app.db.rankings.fetch(ranking_id)

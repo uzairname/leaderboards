@@ -162,7 +162,7 @@ async function onMatchOutcomeModalSubmit(
     for (const [k, v] of Object.entries(modal_inputs)) {
       const team_num = parseInt(k)
       const score = intOrUndefined(v?.value)
-      if (score === undefined) {
+      if (undefined === score) {
         throw new UserError(`Enter a number for each team's relative score`)
       }
       new_outcome[team_num] = score

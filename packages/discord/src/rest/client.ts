@@ -317,11 +317,19 @@ export class DiscordAPIClient extends REST {
     body: D.RESTPatchAPIInteractionOriginalResponseJSONBody,
     message_id?: string,
   ) {
-    return this.fetch(
-      RequestMethod.Patch,
-      D.Routes.webhookMessage(this.application_id, interaction_token, message_id ?? '@original'),
-      { body },
-    ) as Promise<D.RESTPatchAPIWebhookWithTokenMessageResult>
+    try {
+      return this.fetch(
+        RequestMethod.Patch,
+        D.Routes.webhookMessage(this.application_id, interaction_token, message_id ?? '@original'),
+        { body },
+      ) as Promise<D.RESTPatchAPIWebhookWithTokenMessageResult>
+    } catch (e) {
+      if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.UnknownWebhook) {
+        // If the message is already deleted, we don't want to throw an error
+        return null
+      }
+      throw e
+    }
   }
 
   async deleteInteractionResponse(interaction_token: string, message_id?: string) {

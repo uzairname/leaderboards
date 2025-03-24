@@ -1,11 +1,11 @@
-import { Router } from 'itty-router'
+import { IttyRouter } from 'itty-router/IttyRouter'
 import { sentry } from '../logging/sentry'
 import { getOrAddGuild } from '../services/guilds/manage-guilds'
 import { getAppRoleConnectionsMetadata } from '../services/role-connections/role-connections'
 import { App } from '../setup/app'
 
 export default (app: App) =>
-  Router({ base: '/update' })
+  IttyRouter({ base: '/update' })
     .post('/', async () => {
       await app.db.settings.getOrUpdate({
         last_updated: new Date(),
@@ -21,7 +21,7 @@ export default (app: App) =>
                 .then(() => guild.data.name)
                 .catch(() => undefined),
             ),
-          ).then(res => res.filter(c => c !== undefined)),
+          ).then(res => res.filter(c => undefined !== c)),
         ),
         app.discord.updateRoleConnectionsMetadata(getAppRoleConnectionsMetadata(app)),
       ])

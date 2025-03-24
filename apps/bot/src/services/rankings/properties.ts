@@ -172,13 +172,13 @@ export async function liveLbMsgLink(app: App, p_guild_ranking: PartialGuildRanki
  * @param o Validates whichever ranking options are not undefined in o
  */
 export function validateRankingOptions(o: Partial<RankingInsert>): void {
-  if (o.name !== undefined) {
+  if (undefined !== o.name) {
     if (o.name.length > max_ranking_name_length)
       throw new UserError(`Ranking names must be ${max_ranking_name_length} characters or less`)
     if (o.name.length == 0) throw new UserError(`Ranking name cannot be empty`)
   }
 
-  if (o.teams_per_match !== undefined) {
+  if (undefined !== o.teams_per_match) {
     if (!o.teams_per_match || isNaN(o.teams_per_match))
       throw new UserErrors.ValidationError(`Number of teams must be a number`)
 
@@ -186,15 +186,15 @@ export function validateRankingOptions(o: Partial<RankingInsert>): void {
       throw new UserErrors.ValidationError(`Number of teams must be between 2 and ${max_teams_per_match}`)
   }
 
-  if (o.players_per_team !== undefined) {
+  if (undefined !== o.players_per_team) {
     if (!o.players_per_team || isNaN(o.players_per_team))
       throw new UserErrors.ValidationError(`Players per team must be a number`)
     if (o.players_per_team < 1 || o.players_per_team > max_players_per_team)
       throw new UserErrors.ValidationError(`Players per team must be between 1 and ${max_players_per_team}`)
   }
 
-  if (o.matchmaking_settings !== undefined) {
-    if (o.matchmaking_settings.default_best_of !== undefined) {
+  if (undefined !== o.matchmaking_settings) {
+    if (undefined !== o.matchmaking_settings.default_best_of) {
       if (
         !o.matchmaking_settings.default_best_of ||
         isNaN(o.matchmaking_settings.default_best_of) ||

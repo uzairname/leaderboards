@@ -174,7 +174,7 @@ export class StringData<TSchema extends StringDataSchema> {
   saveAll(data: { [K in keyof TSchema]?: TSchema[K]['type'] | null }): this {
     Object.entries(data).forEach(([key, value]) => {
       if (!this.save[key]) return
-      value !== undefined && this.save[key](value)
+      undefined !== value && this.save[key](value)
     })
     return this
   }
@@ -196,7 +196,7 @@ export class StringData<TSchema extends StringDataSchema> {
     let defined_fields = 0
     const data_list: string[] = []
     Object.keys(this.fields).forEach(key => {
-      if (this.data[key] !== undefined) {
+      if (undefined !== this.data[key]) {
         defined_fields |= 1 << i
         data_list.push(this.fields[key].compress(this.data[key]))
       }
@@ -247,7 +247,7 @@ export class StringData<TSchema extends StringDataSchema> {
   ) {
     for (const key in this.fields) {
       this.save[key] = value => {
-        value === undefined || value === null || (typeof value == 'number' && isNaN(value))
+        (undefined === value) || (null === value) || (typeof value == 'number' && isNaN(value))
           ? delete this.data[key]
           : (this.data[key] = this.validateKeyValue(key, value))
         return this
@@ -256,7 +256,7 @@ export class StringData<TSchema extends StringDataSchema> {
       this.set[key] = value => this.copy().save[key](value)
 
       this.get[key] = () => {
-        if (this.data[key] === null || this.data[key] === undefined)
+        if (null === this.data[key] || undefined === this.data[key])
           throw new Error(`Field ${key.toString()} is null or undefined`)
         return this.data[key] as NonNullable<TSchema[typeof key]['type']>
       }
@@ -330,7 +330,7 @@ function shiftString(str: string, shift: number): string {
 }
 
 function nonNullable<T>(value: T, value_name?: string): NonNullable<T> {
-  if (value === null || value === undefined) throw new Error(`${value_name || 'value'} is null or undefined`)
+  if (null === value || undefined === value) throw new Error(`${value_name || 'value'} is null or undefined`)
   return value
 }
 

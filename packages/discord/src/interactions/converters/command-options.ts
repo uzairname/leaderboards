@@ -57,7 +57,7 @@ export function getBasicOptionValue<T extends D.ApplicationCommandOptionType, Re
   required: Required = false as Required,
 ): Required extends true ? OptionValueType<T> : OptionValueType<T> | undefined {
   const result = _getBasicOptionValue(interaction, options, option_name, type)
-  if (required && result === undefined) {
+  if (required && undefined === result) {
     throw new InteractionError(`Missing required option '${option_name}'`)
   }
   return result as OptionValueType<T>
@@ -70,7 +70,7 @@ function getPossiblyNestedBasicOptionValue<T extends D.ApplicationCommandOptionT
   required: Required = false as Required,
 ): Required extends true ? OptionValueType<T> : OptionValueType<T> | undefined {
   const result = getNestedBasicOptionValue(interaction, interaction.data.options, option_name, type)
-  if (required && result === undefined) {
+  if (required && undefined === result) {
     throw new InteractionError(`Missing required option '${option_name}'`)
   }
   return result as OptionValueType<T>

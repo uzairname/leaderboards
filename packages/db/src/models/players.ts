@@ -82,7 +82,7 @@ export class UserPlayer extends Player {
     public db: DbClient,
   ) {
     super(data, db)
-    if (data.user_id !== null) db.cache.user_players.set(data.ranking_id, this, data.user_id)
+    if (null !== data.user_id) db.cache.user_players.set(data.ranking_id, this, data.user_id)
   }
 }
 
@@ -93,7 +93,7 @@ export class PlayersManager extends DbObjectManager {
       user?: PartialUser
     } & Omit<PlayerInsert, 'user_id' | 'ranking_id'>,
   ): Promise<Player> {
-    if (data.role_id !== undefined && data.guild_id === undefined) {
+    if (undefined !== data.role_id && undefined === data.guild_id) {
       throw new DbErrors.ValueError('Guild id is required when role id is provided')
     }
     const new_data = (

@@ -23,7 +23,7 @@ async function determineAdminPerms(app: App, ctx: AnyInteractionContext) {
   const member = interaction.member
   const is_owner = app.config.OwnerIds.includes(member.user.id)
   const admin_role_id = guild.data.admin_role_id
-  const has_admin_role = admin_role_id !== null && member.roles.includes(admin_role_id)
+  const has_admin_role = null !== admin_role_id && member.roles.includes(admin_role_id)
   const has_admin_perms =
     (BigInt(member.permissions) & D.PermissionFlagsBits.Administrator) === D.PermissionFlagsBits.Administrator
 

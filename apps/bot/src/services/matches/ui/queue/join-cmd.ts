@@ -45,22 +45,24 @@ export const join_cmd = join_cmd_sig.set<App>({
     const input = getOptions(ctx.interaction, {
       ranking: { type: D.ApplicationCommandOptionType.Integer },
     })
+
     return await withSelectedRanking({ app, ctx, ranking_id: input.ranking }, async p_ranking =>
       ctx.defer(async ctx => {
         const ranking = await p_ranking.fetch()
 
-        const { match, already_in, expires_at } = await userJoinQueue(app, ctx, p_ranking)
+        const { new_match, already_in, expires_at } = await userJoinQueue(app, ctx, p_ranking)
 
         await ctx.edit({
-          content: Messages.queue_join({ match, already_in, ranking, expires_at }),
+          content: Messages.queue_join({ match: new_match, already_in, ranking, expires_at }),
           flags: D.MessageFlags.Ephemeral,
         })
 
         // Send a message to the channel where others can join the queue
-        if (!already_in && !match) {
+        if (!already_in && !new_match) {
           await ctx.send(await Messages.someone_joined_queue(app, ranking, ctx.interaction.guild_id))
         }
-      }),
+        
+      })
     )
   },
 })

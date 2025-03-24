@@ -9,7 +9,7 @@ import { PlayerStats } from '../../properties'
 export function wlrTable({ stats }: { stats: PlayerStats }): string {
   const draws_enabled = false
 
-  const winrate_percent = stats.winrate !== null ? `${(stats.winrate * 100).toFixed(1)}%` : `N/A`
+  const winrate_percent = null !== stats.winrate ? `${(stats.winrate * 100).toFixed(1)}%` : `N/A`
 
   let keys: TableRow = [{ text: `Wins` }, { text: `Losses` }]
 
@@ -24,10 +24,12 @@ export function wlrTable({ stats }: { stats: PlayerStats }): string {
     {
       text: `${winrate_percent}`,
       color:
-        stats.winrate !== null
-          ? stats.winrate >= 3 / 4
+        null !== stats.winrate
+          ? stats.winrate >= 1
+            ? AnsiColor.Teal
+          : stats.winrate >= 2/3
             ? AnsiColor.Lime
-            : stats.winrate >= 1 / 4
+            : stats.winrate >= 1/3
               ? AnsiColor.Gold
               : AnsiColor.Red
           : AnsiColor.DarkGray,
@@ -45,7 +47,7 @@ export function ratingTable({ stats }: { stats: PlayerStats }): string {
 
   const peak_rating_idx = maxIndex(stats.rating_history.map(r => r.points))[0]
   let peak_rating: string
-  if (peak_rating_idx === undefined) {
+  if (undefined === peak_rating_idx) {
     peak_rating = `N/A`
   } else {
     if (stats.rating_history[peak_rating_idx].is_provisional) {

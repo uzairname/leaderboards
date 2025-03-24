@@ -12,7 +12,7 @@ export async function putDiscordCommands(
 
   let result: D.RESTPutAPIApplicationGuildCommandsResult
 
-  if (guild_id === undefined) {
+  if (undefined === guild_id) {
     result = await bot.replaceGlobalCommands(commands_data)
   } else {
     result = await bot.replaceGuildCommands(guild_id, commands_data)

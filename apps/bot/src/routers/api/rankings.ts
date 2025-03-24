@@ -1,13 +1,14 @@
 import { MatchSettingsSchema, Ranking, RatingRolesSchema } from '@repo/db/models'
 import { strOrUndefined } from '@repo/utils'
-import { json, Router } from 'itty-router'
+import { IttyRouter } from 'itty-router/IttyRouter'
+import { json } from 'itty-router/json'
 import { syncRankingLbMessages } from '../../services/leaderboard/manage'
 import { leaderboardMessage } from '../../services/leaderboard/ui/pages'
 import { rescoreAllMatches } from '../../services/matches/scoring/score_match'
 import { App } from '../../setup/app'
 
 export default (app: App, ranking: Ranking) =>
-  Router({ base: `/api/rankings/${ranking.data.id}` })
+  IttyRouter({ base: `/api/rankings/${ranking.data.id}` })
     .get('/lb-message', async request => {
       const str = (await leaderboardMessage(app, ranking)).embeds![0].description
       return new Response(str)

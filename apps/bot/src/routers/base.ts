@@ -1,4 +1,4 @@
-import { Router } from 'itty-router'
+import { IttyRouter } from 'itty-router/IttyRouter'
 import { Env } from '../Env'
 import { App } from '../setup/app'
 import apiRouter from './api'
@@ -6,7 +6,7 @@ import oauthRouter from './oauth'
 import updateRouter from './update'
 
 export default (app: App) =>
-  Router()
+  IttyRouter()
     .post('/interactions', request => app.handleInteractionRequest(request))
 
     .get(`/oauth/*`, request => oauthRouter(app).fetch(request))

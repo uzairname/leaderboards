@@ -102,7 +102,7 @@ export async function matchSummaryEmbed(app: App, match: Match, {} = {}): Promis
             ? `\`${p.before.points.toFixed(0)}?\``
             : `${p.before.points.toFixed(0)}`
 
-          if (p.after !== undefined) {
+          if (undefined !== p.after) {
             const rating_after_text = p.after.is_provisional
               ? `\`${p.after.points.toFixed(0)}?\``
               : `**${p.after.points.toFixed(0)}**`

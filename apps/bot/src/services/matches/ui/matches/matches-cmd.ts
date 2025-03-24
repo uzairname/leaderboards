@@ -55,7 +55,7 @@ export const matches_cmd = matches_command_sig.set<App>({
           const ranking_ids = ranking ? [ranking.data.id] : undefined
 
           // if not filtering by ranking, filtery by all matches in the guild
-          const guild_id = ranking_ids === undefined ? ctx.interaction.guild_id : undefined
+          const guild_id = undefined === ranking_ids ? ctx.interaction.guild_id : undefined
 
           await ctx.edit(
             await matchesPage(app, {

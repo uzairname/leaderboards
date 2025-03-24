@@ -79,7 +79,7 @@ export async function main(
     color: Colors.EmbedBackground,
   }
 
-  if (ctx.state.data.ranking_id === undefined) {
+  if (undefined === ctx.state.data.ranking_id) {
     embed.description =
       `${breadcrumbsTitle(`Profiles`, target_user_name)}\n` +
       `## Overview\n` +

@@ -324,9 +324,9 @@ export class MatchesManager extends DbObjectManager {
       }),
     )
 
-    if (matches.some(m => m.team_players === null)) {
+    if (matches.some(m => null === m.team_players)) {
       // Some team players are missing from the database. Delete those matches and retry the query
-      const invalid_teams_match_ids = matches.filter(m => m.team_players === null).map(m => m.match.data.id)
+      const invalid_teams_match_ids = matches.filter(m => null === m.team_players).map(m => m.match.data.id)
       await this.db.drizzle.delete(Matches).where(inArray(Matches.id, invalid_teams_match_ids))
       return this.getMany(filters)
     } else {

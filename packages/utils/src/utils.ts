@@ -7,7 +7,7 @@ export async function sequential<T>(promises: (() => Promise<T>)[]): Promise<T[]
 }
 
 export function nonNullable<T>(value: T, value_name?: string): NonNullable<T> {
-  if (value === null || value === undefined) throw new Error(`${value_name || 'value'} is null or undefined`)
+  if (null === value || undefined === value) throw new Error(`${value_name || 'value'} is null or undefined`)
   return value
 }
 
@@ -86,7 +86,7 @@ export function truncateString(str: string, max_length: number): string {
   return str.length > max_length ? str.slice(0, max_length - 2) + '..' : str
 }
 
-export async function hash(input: unknown): Promise<string> {
+export async function hash(input: object): Promise<string> {
   const encoder = new TextEncoder()
   const data = encoder.encode(JSON.stringify(input)) // Convert input to a Uint8Array
   const hashBuffer = await crypto.subtle.digest('SHA-256', data) // Hash the data
