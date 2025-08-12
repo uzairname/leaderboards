@@ -12,7 +12,7 @@ import {
 import { UserErrors } from '../../../errors/user-errors'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
-import { rankingProperties } from '../../rankings/properties'
+import { rankingProperties } from '../../settings/properties'
 import { syncMatchSummaryMessages } from '../logging/match-summary-message'
 import { rescoreMatches } from '../scoring/score_match'
 import { validateMatchData } from './update-matches'
@@ -26,6 +26,8 @@ export async function startNewMatch(
   players: Player[][],
   best_of?: number,
 ): Promise<Match> {
+  sentry.debug(`startNewMatch: ranking_id=${p_ranking.data.id} players=${players.length}`)
+
   const ranking = await p_ranking.fetch()
 
   const match_players = players.map((team, i) =>

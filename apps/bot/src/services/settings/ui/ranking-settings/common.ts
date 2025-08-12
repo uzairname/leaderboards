@@ -13,45 +13,50 @@ export const settingsOptions: (gr: { guild_ranking: GuildRanking; ranking: Ranki
   }
 } = gr => ({
   rename: {
-    label: 'Rename',
+    label: '✏️ Rename',
     description: 'Rename the ranking',
-    handler: RankingSettingsHandlers.renameModal,
+    handler: RankingSettingsHandlers.sendRenameModal,
+  },
+  queue: {
+    label: `🔎 Matchmaking Queue`,
+    description: `Customize the matchmaking queue`,
+    handler: RankingSettingsHandlers.sendQueueSettingsPage,
+  },
+  rank_roles: {
+    label: '👑 Rank Roles',
+    description: `Assign roles based on players' ratings`,
+    handler: RankingSettingsHandlers.sendRankRolesPage,
+  },
+  scoring: {
+    label: '🔢 Rating Method',
+    description: `Customize the algorithm by which players' ratings are calculated`,
+    handler: RankingSettingsHandlers.sendRatingMethodSelectMenu,
   },
   leaderboard: {
     label: gr.guild_ranking.data.display_settings?.leaderboard_message
-      ? `Disable Live Leaderboard`
-      : `Enable Live Leaderboard`,
+      ? `📃 Disable Live Leaderboard`
+      : `📃 Enable Live Leaderboard`,
     description: gr.guild_ranking.data.display_settings?.leaderboard_message
       ? `Stop maintaining the live leaderboard message`
-      : `Send the leaderboard message, and update it live`,
+      : `Send a leaderboard message, and update it live`,
     handler: RankingSettingsHandlers.onToggleLiveLeaderboard,
   },
   challenge: {
     label: gr.ranking.data.matchmaking_settings?.direct_challenge_enabled
-      ? `Disable Direct Challenges`
-      : `Enable Direct Challenges`,
+      ? `⚔️ Disable Direct Challenges`
+      : `⚔️ Enable Direct Challenges`,
     description: gr.ranking.data.matchmaking_settings?.direct_challenge_enabled
       ? `Don't allow players to use /1v1 in this ranking`
       : `Allow players to use /1v1 in this ranking`,
     handler: RankingSettingsHandlers.onToggleChallenge,
   },
-  queue: {
-    label: `Matchmaking Queue`,
-    description: `Customize the matchmaking queue`,
-    handler: RankingSettingsHandlers.sendQueueSettingsPage,
-  },
-  scoring: {
-    label: 'Rating Method',
-    description: `Customize the algorithm by which players' ratings are calculated`,
-    handler: RankingSettingsHandlers.sendRatingMethodSelectMenu,
-  },
   appearance: {
-    label: 'Appearance',
+    label: '🎨 Appearance',
     description: `Customize how the leaderboard looks`,
     handler: RankingSettingsHandlers.sendAppearancePage,
   },
   delete: {
-    label: 'Delete',
+    label: '🗑️ Delete',
     description: 'Delete the ranking',
     handler: RankingSettingsHandlers.sendDeletePage,
   },

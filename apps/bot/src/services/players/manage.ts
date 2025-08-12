@@ -1,10 +1,11 @@
-import { PartialPlayer, PartialRanking, Player, PlayerFlags, Rating, UserPlayer } from '@repo/db/models'
+import { PartialPlayer, PartialRanking, Player, PlayerFlags, Ranking, Rating, UserPlayer } from '@repo/db/models'
 import * as D from 'discord-api-types/v10'
 import { sentry } from '../../logging/sentry'
 import { getUserAccessToken } from '../../routers/oauth'
 import { App } from '../../setup/app'
 import { syncRankingLbMessages } from '../leaderboard/manage'
 import { updateUserRoleConnectionData } from '../role-connections/role-connections'
+import { updateRankRolesForPlayer } from './rank-roles'
 
 /**
  * Gets a player by user and ranking, or registers a new player associated with the user in that ranking.
@@ -109,13 +110,18 @@ export async function getOrCreatePlayer(options: {
 }
 
 /**
- * Updates players in the database.
+ * Updates the players' ratings
  *
  * Also updates:
  * - their role connections
  * - the ranking leaderboard messages
+ * - their rank roles in guild rankings
  */
-export async function updatePlayerRatings(app: App, update: { player: PartialPlayer; rating: Rating }[]) {
+export async function updatePlayerRatings(
+  app: App,
+  ranking: Ranking,
+  update: { player: PartialPlayer; rating: Rating }[],
+) {
   sentry.debug(`updatePlayerRatings, ${update.map(u => u.player.data.id)}`)
 
   const all_players = await app.db.players.fetchMany({
@@ -128,16 +134,13 @@ export async function updatePlayerRatings(app: App, update: { player: PartialPla
     rating,
   }))
 
-  const ranking_ids_affected = new Set(all_players.map(player => player.data.ranking_id))
-
   await Promise.all([
     await app.db.players.updateRatings(update),
     Promise.all(
       update_players.map(async ({ player, rating }) => {
         // For each player to update, update role connections
-        if (app.config.features.RatingRoleConnections) {
-          // Update rating roles
 
+        if (app.config.features.RatingRoleConnections) {
           // Update role connections if player associated with a user
           if (player.data.user_id) {
             const access_token = await getUserAccessToken(app, player.data.user_id, [
@@ -153,9 +156,20 @@ export async function updatePlayerRatings(app: App, update: { player: PartialPla
   ])
 
   // update ranking leaderboards
-  sentry.debug(`updatePlayers, updating ${ranking_ids_affected.size} leaderboards`)
+  await syncRankingLbMessages(app, ranking)
+
+  // update rank roles
+
+  const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
+
   await Promise.all(
-    Array.from(ranking_ids_affected).map(ranking => syncRankingLbMessages(app, app.db.rankings.get(ranking))),
+    guild_rankings.map(async ({ guild, guild_ranking }) => {
+      await Promise.all(
+        all_players.map(async player => {
+          await updateRankRolesForPlayer(app, player, guild_ranking)
+        }),
+      )
+    }),
   )
 }
 

@@ -1,4 +1,4 @@
-import { MatchSettingsSchema, Ranking, RatingRolesSchema } from '@repo/db/models'
+import { MatchSettingsSchema, Ranking, RankRolesSchema } from '@repo/db/models'
 import { strOrUndefined } from '@repo/utils'
 import { IttyRouter } from 'itty-router/IttyRouter'
 import { json } from 'itty-router/json'
@@ -37,21 +37,21 @@ export default (app: App, ranking: Ranking) =>
       return new Response(`Updated match config for ${ranking.data.name} leaderboard`)
     })
 
-    .post('/:guild_id/rating_roles', async request => {
+    .post('/:guild_id/rank_roles', async request => {
       const guild_id = strOrUndefined(request.params.guild_id)
       if (!guild_id) return new Response(`Invalid guild_id`, { status: 400 })
-      const { guild, guild_ranking } = await app.db.guild_rankings.fetchBy({
+      const { guild, guild_ranking } = await app.db.guild_rankings.fetch({
         guild_id,
         ranking_id: ranking.data.id,
       })
       const body = await request.json()
-      if (!(body instanceof Object && body.hasOwnProperty('rating_roles')))
-        return new Response(`rating_roles not in body`, { status: 400 })
-      const rating_roles = RatingRolesSchema.safeParse((body as any).rating_roles)
-      if (!rating_roles.success) {
-        return new Response('Invalid rating_roles', { status: 400 })
+      if (!(body instanceof Object && body.hasOwnProperty('rank_roles')))
+        return new Response(`rank_roles not in body`, { status: 400 })
+      const rank_roles = RankRolesSchema.safeParse((body as any).rank_roles)
+      if (!rank_roles.success) {
+        return new Response('Invalid rank_roles', { status: 400 })
       }
-      await guild_ranking.update({ rating_roles: rating_roles.data })
+      await guild_ranking.update({ rank_roles: rank_roles.data })
 
-      return new Response(`Updated rating roles for ranking ${ranking.data.name}, in guild ${guild.data.name}`)
+      return new Response(`Updated rank roles for ranking ${ranking.data.name}, in guild ${guild.data.name}`)
     })

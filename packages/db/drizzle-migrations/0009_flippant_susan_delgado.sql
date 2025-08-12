@@ -1,0 +1,1 @@
+ALTER TABLE "GuildRankings" RENAME COLUMN "rating_roles" TO "rank_roles";

@@ -1,10 +1,10 @@
-import { eq, inArray, InferInsertModel, InferSelectModel } from 'drizzle-orm'
+import { eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { z } from 'zod'
 import { Player } from '.'
 import { DbObjectManager } from '../classes'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
-import { Players, Rankings, TeamPlayers, Teams } from '../schema'
+import { Players, Rankings } from '../schema'
 
 export type RankingSelect = InferSelectModel<typeof Rankings>
 export type RankingInsert = Omit<InferInsertModel<typeof Rankings>, 'id'>
@@ -20,6 +20,7 @@ export enum RatingStrategy {
   TrueSkill = 0,
   WinsMinusLosses = 1,
   Elo = 2,
+  Glicko = 3,
 }
 
 export type RatingSettings = {
@@ -57,7 +58,7 @@ export class PartialRanking {
   async fetch(): Promise<Ranking> {
     return this.db.rankings.fetch(this.data.id)
   }
-  
+
   async players(): Promise<Player[]> {
     const data = await this.db.drizzle.select().from(Players).where(eq(Players.ranking_id, this.data.id))
     return data.map(player => new Player(player, this.db))

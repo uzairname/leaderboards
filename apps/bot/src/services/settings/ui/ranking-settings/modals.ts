@@ -24,10 +24,10 @@ export function rankingSettingsModal(include: {
 }) {
   const example_names = [`Smash 1v1`, `Boosts Only`, `Ping Pong 2v2`, `Chess`]
 
-  const action_row = new ActionRowBuilder<TextInputBuilder>()
+  const text_inputs: TextInputBuilder[] = []
 
   if (include?.name) {
-    action_row.addComponents(
+    text_inputs.push(
       new TextInputBuilder({
         type: D.ComponentType.TextInput,
         style: D.TextInputStyle.Short,
@@ -42,7 +42,7 @@ export function rankingSettingsModal(include: {
 
   if (include?.team_size) {
     if (include.team_size.teams_per_match) {
-      action_row.addComponents(
+      text_inputs.push(
         new TextInputBuilder({
           type: D.ComponentType.TextInput,
           style: D.TextInputStyle.Short,
@@ -54,7 +54,7 @@ export function rankingSettingsModal(include: {
       )
     }
     if (include.team_size.players_per_team) {
-      action_row.addComponents(
+      text_inputs.push(
         new TextInputBuilder({
           type: D.ComponentType.TextInput,
           style: D.TextInputStyle.Short,
@@ -68,7 +68,7 @@ export function rankingSettingsModal(include: {
   }
 
   if (include?.best_of) {
-    action_row.addComponents(
+    text_inputs.push(
       new TextInputBuilder({
         type: D.ComponentType.TextInput,
         style: D.TextInputStyle.Short,
@@ -81,7 +81,7 @@ export function rankingSettingsModal(include: {
   }
 
   if (include?.color) {
-    action_row.addComponents(
+    text_inputs.push(
       new TextInputBuilder({
         type: D.ComponentType.TextInput,
         style: D.TextInputStyle.Short,
@@ -93,9 +93,13 @@ export function rankingSettingsModal(include: {
     )
   }
 
-  if (action_row.components.length == 0) throw new Error('No text input components in modal')
+  if (text_inputs.length == 0) throw new Error('No text input components in modal')
+
+  const components = text_inputs.map((input, i) =>
+    new ActionRowBuilder<TextInputBuilder>().setComponents(input).toJSON(),
+  )
 
   return new ModalBuilder({
-    components: [action_row.toJSON()],
+    components,
   })
 }

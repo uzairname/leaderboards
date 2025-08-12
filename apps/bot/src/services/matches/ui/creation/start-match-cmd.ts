@@ -21,7 +21,7 @@ const optionnames = {
 export const start_match_cmd = start_match_cmd_sig.set<App>({
   guildSignature: async (app, guild_id) => {
     const guild = app.db.guilds.get(guild_id)
-    const guild_rankings = await app.db.guild_rankings.fetchBy({ guild_id: guild.data.id })
+    const guild_rankings = await app.db.guild_rankings.fetch({ guild_id: guild.data.id })
     if (guild_rankings.length == 0) return null
 
     const options: D.APIApplicationCommandBasicOption[] = [
@@ -86,7 +86,7 @@ export const start_match_cmd = start_match_cmd_sig.set<App>({
                   return Promise.all(team.map(id => getOrCreatePlayerByUser(app, id, ranking)))
                 }),
               )
-              const { guild_ranking } = await app.db.guild_rankings.fetchBy({
+              const { guild_ranking } = await app.db.guild_rankings.fetch({
                 guild_id: ctx.interaction.guild_id,
                 ranking_id: ranking.data.id,
               })

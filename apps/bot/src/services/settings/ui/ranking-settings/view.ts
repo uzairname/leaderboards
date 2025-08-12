@@ -1,6 +1,6 @@
 import { ViewSignature } from '@repo/discord'
 import { field } from '@repo/utils'
-import { RankingSettingsHandlers, RankingSettingsPages } from '.'
+import { RankingSettingsHandlers } from '.'
 import { App } from '../../../../setup/app'
 
 export const ranking_settings_view_sig = new ViewSignature({
@@ -9,7 +9,6 @@ export const ranking_settings_view_sig = new ViewSignature({
   state_schema: {
     ranking_id: field.Int(),
     handler: field.Choice(RankingSettingsHandlers),
-    page: field.Choice(RankingSettingsPages),
   },
   guild_only: true,
 })

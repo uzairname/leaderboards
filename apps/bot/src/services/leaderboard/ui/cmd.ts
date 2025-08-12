@@ -18,7 +18,7 @@ export const leaderboard_cmd = leaderboard_cmd_sig.set<App>({
    * only if the guild has more than one ranking.
    */
   guildSignature: async (app, guild_id) => {
-    const guild_rankings = await app.db.guild_rankings.fetchBy({ guild_id })
+    const guild_rankings = await app.db.guild_rankings.fetch({ guild_id })
     if (guild_rankings.length == 0) return null
     return new CommandSignature({
       ...leaderboard_cmd_sig.config,

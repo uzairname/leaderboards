@@ -1,11 +1,11 @@
 import { DiscordAPIError, RateLimitError } from '@discordjs/rest'
 import { DiscordErrors, DiscordUserError, InteractionUserError } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
+import { DbErrors } from '../../../../packages/db/src/errors'
 import { sentry } from '../logging/sentry'
 import { App } from '../setup/app'
 import { Colors } from '../utils/ui'
 import { UserError, UserErrors } from './user-errors'
-import { DbError, DbErrors } from '../../../../packages/db/src/errors'
 
 export function onViewError(app: App) {
   return function (

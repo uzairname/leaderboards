@@ -5,7 +5,7 @@ import { App } from '../../../../setup/app'
 import { guildRankingsOption, withSelectedRanking } from '../../../../utils/ui/view-helpers/ranking-option'
 import { getOrAddGuild } from '../../../guilds/manage-guilds'
 import { getOrCreatePlayerByUser } from '../../../players/manage'
-import { getChallengeEnabledRankings } from '../../../rankings/properties'
+import { getChallengeEnabledRankings } from '../../../settings/properties'
 import { ensurePlayersEnabled } from '../../management/create-matches'
 import { renderChallengePage } from './challenge-view'
 

@@ -68,7 +68,7 @@ class EnumField<T extends { [key: string]: unknown }> extends Field<keyof T> {
 class ChoiceField<T extends { [key: string]: any }> extends Field<T[keyof T]> {
   private id_keys = {} as { [key: string]: keyof T }
   private key_ids = {} as { [K in keyof T]: string }
-  constructor(private values: T) {
+  constructor(public values: T) {
     super()
     let i = 0
     for (const key in values) {
@@ -242,12 +242,12 @@ export class StringData<TSchema extends StringDataSchema> {
   }
 
   constructor(
-    protected fields: TSchema,
+    public fields: TSchema,
     encoded_str?: string,
   ) {
     for (const key in this.fields) {
       this.save[key] = value => {
-        (undefined === value) || (null === value) || (typeof value == 'number' && isNaN(value))
+        undefined === value || null === value || (typeof value == 'number' && isNaN(value))
           ? delete this.data[key]
           : (this.data[key] = this.validateKeyValue(key, value))
         return this

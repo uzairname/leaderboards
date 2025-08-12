@@ -6,7 +6,7 @@ import { type App } from '../../../setup/app'
 import { commandMention, escapeMd, relativeTimestamp, space } from '../../../utils/ui'
 import { numRankings } from '../../guilds/properties'
 import { mentionOrName, orderedLeaderboardPlayers } from '../../players/properties'
-import { default_leaderboard_color, rankingProperties } from '../../rankings/properties'
+import { default_leaderboard_color, rankingProperties } from '../../settings/properties'
 import { leaderboard_cmd } from './cmd'
 import { leaderboard_view_sig } from './view'
 
@@ -76,7 +76,7 @@ export async function leaderboardMessage(
   const fits_on_one_page = max_page == 1
 
   const { guild, guild_ranking } = options?.guild_id
-    ? await app.db.guild_rankings.fetchBy({ guild_id: options.guild_id, ranking_id: ranking.data.id })
+    ? await app.db.guild_rankings.fetch({ guild_id: options.guild_id, ranking_id: ranking.data.id })
     : {}
   const color = guild_ranking?.data.display_settings?.color ?? default_leaderboard_color
 
@@ -132,28 +132,28 @@ export async function leaderboardPage(
           type: D.ComponentType.Button,
           style: D.ButtonStyle.Primary,
           emoji: { name: '⏮️' },
-          custom_id: ctx.state.set.clicked_btn('start').cId(),
+          custom_id: ctx.state.set.clicked_nav_btn('start').cId(),
           disabled: page == 1,
         },
         {
           type: D.ComponentType.Button,
           style: D.ButtonStyle.Primary,
           emoji: { name: '◀️' },
-          custom_id: ctx.state.set.clicked_btn('prev').cId(),
+          custom_id: ctx.state.set.clicked_nav_btn('prev').cId(),
           disabled: page == 1,
         },
         {
           type: D.ComponentType.Button,
           style: D.ButtonStyle.Primary,
           emoji: { name: '▶️' },
-          custom_id: ctx.state.set.clicked_btn('next').cId(),
+          custom_id: ctx.state.set.clicked_nav_btn('next').cId(),
           disabled: page == max_page,
         },
         {
           type: D.ComponentType.Button,
           style: D.ButtonStyle.Primary,
           emoji: { name: '⏭️' },
-          custom_id: ctx.state.set.clicked_btn('end').cId(),
+          custom_id: ctx.state.set.clicked_nav_btn('end').cId(),
           disabled: page == max_page,
         },
       ],

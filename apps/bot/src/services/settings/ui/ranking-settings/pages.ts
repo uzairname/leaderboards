@@ -3,6 +3,7 @@ import { RatingStrategy } from '@repo/db/models'
 import { Context } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { RankingSettingsHandlers } from '.'
+import { sentry } from '../../../../logging/sentry'
 import { challenge_cmd, join_cmd, leaderboard_cmd } from '../../../../setup/all-interaction-handlers'
 import { App } from '../../../../setup/app'
 import { breadcrumbsTitle, Colors, commandMention, dateTimestamp, escapeMd } from '../../../../utils'
@@ -11,7 +12,7 @@ import {
   default_leaderboard_color,
   default_matchmaking_settings,
   liveLbMsgLink,
-  rating_strategy_desc,
+  rating_strategy_name,
 } from '../../properties'
 import { AllRankingsHandlers } from '../all-rankings'
 import { all_rankings_view_sig } from '../all-rankings/view'
@@ -26,7 +27,7 @@ export async function main(
   app: App,
   ctx: Context<typeof ranking_settings_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  const { guild, guild_ranking, ranking } = await app.db.guild_rankings.fetchBy({
+  const { guild, guild_ranking, ranking } = await app.db.guild_rankings.fetch({
     guild_id: ctx.interaction.guild_id,
     ranking_id: ctx.state.get.ranking_id(),
   })
@@ -40,21 +41,11 @@ export async function main(
     ? (await syncMatchesChannel(app, guild_ranking.guild))?.id
     : undefined
 
-  const rating_strategy_desc = {
-    [RatingStrategy.WinsMinusLosses]: `Wins - Losses`,
-    [RatingStrategy.TrueSkill]: `TrueSkill2`,
-    [RatingStrategy.Elo]: `Elo`,
-  }[ranking.data.rating_settings.rating_strategy]
-
   const lb_msg_link = await liveLbMsgLink(app, guild_ranking)
 
   const description =
     `# ${escapeMd(ranking.data.name)}\n` +
-    (lb_msg_link
-      ? `Live leaderboard: ${lb_msg_link}`
-      : `View the leaderboard with ${await commandMention(app, leaderboard_cmd, guild.data.id)}`) +
-    (time_created ? `\nCreated on ${dateTimestamp(time_created)}` : ``) +
-    (match_logs_channel_id ? `\nMatches are logged in <#${match_logs_channel_id}>` : ``)
+    `This is the settings panel for the ranking ${escapeMd(ranking.data.name)}. Use the dropdown below to manage the settings.`
 
   const embed = new EmbedBuilder({
     title: breadcrumbsTitle(`Settings`, `Rankings`, escapeMd(ranking.data.name)),
@@ -62,35 +53,50 @@ export async function main(
     color: guild_ranking.data.display_settings?.color ?? default_leaderboard_color,
     fields: [
       {
-        name: `Matchmaking`,
+        name: `General`,
+        value:
+          (lb_msg_link
+            ? `- The live leaderboard is displayed in ${lb_msg_link}`
+            : `- View the leaderboard with ${await commandMention(app, leaderboard_cmd, guild.data.id)}`) +
+          `\n- This ranking was created on ${dateTimestamp(time_created)}` +
+          (app.config.IsDev ? `\n- Ranking id: \`${ranking.data.id}\`` : ``),
+      },
+      {
+        name: `Matches`,
         //prettier-ignore
-        value: `- Match type: **` + new Array(teams_per_match).fill(players_per_team).join('v') + `**\n` +
-            `- Matchmaking queue (${await commandMention(app, join_cmd, guild_ranking.data.guild_id)} \`${ranking.data.name}\`): ` +
-            (ranking.data.matchmaking_settings.queue_enabled ? `**Enabled**` : `**Disabled**`) + `\n` +
-            `- Direct challenges (${await commandMention(app, challenge_cmd, guild_ranking.data.guild_id)} ... \`${ranking.data.name}\`): ` +
-            (ranking.data.matchmaking_settings.direct_challenge_enabled ? `**Enabled**` : `**Disabled**`) + `\n` +
-            `- By default, new matches are a best of **${ranking.data.matchmaking_settings.default_best_of ?? default_matchmaking_settings.default_best_of}**`,
+        value: 
+          `- Match type: **` + new Array(teams_per_match).fill(players_per_team).join('v') + `**` +
+          (match_logs_channel_id 
+            ? `\n- Matches are logged in <#${match_logs_channel_id}>`
+            : `\n- Matches are not logged anywhere`) +
+          `\n- Matchmaking queue: ` +
+            (ranking.data.matchmaking_settings.queue_enabled ? `**✅ Enabled**` : `**❌ Disabled**`) +
+          `\n- Direct challenges (via ${await commandMention(app, challenge_cmd, guild_ranking.data.guild_id)} \`${ranking.data.name}\`): ` +
+            (ranking.data.matchmaking_settings.direct_challenge_enabled ? `**✅ Enabled**` : `**❌ Disabled**`) +
+          `\n- Matches are assumed to be a best of **${ranking.data.matchmaking_settings.default_best_of ?? default_matchmaking_settings.default_best_of}**`,
       },
       {
         name: `Ratings`,
-        value: `- Rating method: **${rating_strategy_desc}**`,
+        value: `- Rating method: **${rating_strategy_name[ranking.data.rating_settings.rating_strategy]}**`,
       },
     ],
   })
-
-  if (app.config.IsDev) {
-    embed.addFields({
-      name: `Details`,
-      value: `- id: ${ranking.data.id}`,
-    })
-  }
 
   if (app.config.features.WebDashboardEnabled) {
     throw new Error('Not implemented')
   }
 
+  sentry.debug(
+    `options: `,
+    Object.entries(settingsOptions({ guild_ranking, ranking })).map(([key, option]) => ({
+      ...option,
+      value: key,
+    })),
+  )
+
   const select_menu_row = new ActionRowBuilder<StringSelectMenuBuilder>().setComponents(
     new StringSelectMenuBuilder({
+      placeholder: 'Select a setting to change',
       custom_id: ctx.state.set.handler(RankingSettingsHandlers.onSettingSelect).cId(),
       options: Object.entries(settingsOptions({ guild_ranking, ranking })).map(([key, option]) => ({
         ...option,
@@ -122,7 +128,7 @@ export async function queue(
   app: App,
   ctx: Context<typeof ranking_settings_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  const { ranking, guild_ranking } = await app.db.guild_rankings.fetchBy({
+  const { ranking, guild_ranking } = await app.db.guild_rankings.fetch({
     guild_id: ctx.interaction.guild_id,
     ranking_id: ctx.state.get.ranking_id(),
   })
@@ -175,7 +181,7 @@ export async function scoringMethod(
   app: App,
   ctx: Context<typeof ranking_settings_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  const { ranking, guild_ranking } = await app.db.guild_rankings.fetchBy({
+  const { ranking, guild_ranking } = await app.db.guild_rankings.fetch({
     guild_id: ctx.interaction.guild_id,
     ranking_id: ctx.state.get.ranking_id(),
   })
@@ -185,7 +191,7 @@ export async function scoringMethod(
       new EmbedBuilder()
         .setTitle(breadcrumbsTitle(`Settings`, `Rankings`, escapeMd(ranking.data.name), `Rating Method`))
         .setDescription(
-          `# Rating Method\nChoose how players' ratings in this ranking are updated as they play games.\nCurrent: **${rating_strategy_desc[ranking.data.rating_settings.rating_strategy]}**`,
+          `# Rating Method\nChoose how players' ratings in this ranking are updated as they play games.\nCurrent: **${rating_strategy_name[ranking.data.rating_settings.rating_strategy]}**`,
         )
         .setColor(guild_ranking.data.display_settings?.color ?? default_leaderboard_color)
         .toJSON(),
@@ -237,9 +243,7 @@ export async function appearance(
   app: App,
   ctx: Context<typeof ranking_settings_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
-  ctx.state.save.page(appearance)
-
-  const { ranking, guild_ranking } = await app.db.guild_rankings.fetchBy({
+  const { ranking, guild_ranking } = await app.db.guild_rankings.fetch({
     guild_id: ctx.interaction.guild_id,
     ranking_id: ctx.state.get.ranking_id(),
   })
@@ -249,8 +253,10 @@ export async function appearance(
       new EmbedBuilder({
         title: breadcrumbsTitle(`Settings`, `Rankings`, escapeMd(ranking.data.name), `Appearance`),
         description: `# Appearance
-Click Edit to customize how the leaderboard looks when it's displayed in Discord:
-- **Color**: A hex code. You can use a [color picker](https://htmlcolorcodes.com/color-picker/) to find a color you like.`,
+Customize how the leaderboard looks when it's displayed in Discord
+
+Options:
+- **Color**: The color of the leaderboard embed. You can use a [color picker](https://htmlcolorcodes.com/color-picker/) to find one. Enter the hex code`,
         color: guild_ranking.data.display_settings?.color ?? default_leaderboard_color,
       }).toJSON(),
     ],
@@ -264,8 +270,8 @@ Click Edit to customize how the leaderboard looks when it's displayed in Discord
             emoji: { name: '⬅️' },
           }),
           new ButtonBuilder({
-            label: `Edit`,
-            custom_id: ctx.state.set.handler(RankingSettingsHandlers.appearanceModal).cId(),
+            label: `Color`,
+            custom_id: ctx.state.set.handler(RankingSettingsHandlers.sendColorModal).cId(),
             style: D.ButtonStyle.Primary,
           }),
         )

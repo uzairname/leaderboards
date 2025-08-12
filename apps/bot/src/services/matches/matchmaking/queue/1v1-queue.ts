@@ -20,7 +20,7 @@ export async function userJoinQueue(
   ctx: AnyDeferredContext,
   p_ranking: PartialRanking,
 ): Promise<{ already_in: boolean; new_match?: Match; expires_at: Date }> {
-  const { guild_ranking, ranking } = await app.db.guild_rankings.fetchBy({
+  const { guild_ranking, ranking } = await app.db.guild_rankings.fetch({
     ranking_id: p_ranking.data.id,
     guild_id: checkGuildInteraction(ctx.interaction).guild_id,
   })
@@ -77,7 +77,9 @@ export async function getPlayersInQueue(app: App, ranking: PartialRanking): Prom
 
   // filter by players who joined recently
   return players.filter(
-    p => p.data.time_joined_queue && p.data.time_joined_queue.getTime() > Date.now() - app.config.QueueJoinTimeoutMs,
+    p =>
+      p.data.time_joined_queue &&
+      p.data.time_joined_queue.getTime() > Date.now() - app.config.QueueJoinTimeoutMinutes * 60 * 1000,
   )
 }
 
@@ -85,7 +87,7 @@ export async function isInQueue(app: App, p: PartialPlayer): Promise<boolean> {
   const player = await p.fetch()
   return (
     null !== player.data.time_joined_queue &&
-    player.data.time_joined_queue.getTime() > Date.now() - app.config.QueueJoinTimeoutMs
+    player.data.time_joined_queue.getTime() > Date.now() - app.config.QueueJoinTimeoutMinutes * 60 * 1000
   )
 }
 
@@ -95,7 +97,8 @@ export async function isInQueue(app: App, p: PartialPlayer): Promise<boolean> {
 export async function addPlayerToQueue(app: App, p: PartialPlayer): Promise<Date> {
   const player = await p.update({ time_joined_queue: new Date(Date.now()) })
   return new Date(
-    nonNullable(player.data.time_joined_queue, 'time_joined_queue').getTime() + app.config.QueueJoinTimeoutMs,
+    nonNullable(player.data.time_joined_queue, 'time_joined_queue').getTime() +
+      app.config.QueueJoinTimeoutMinutes * 60 * 1000,
   )
 }
 

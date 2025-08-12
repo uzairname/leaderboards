@@ -5,7 +5,7 @@ import {
   StateContext,
   ViewSignature,
 } from '@repo/discord'
-import { intOrUndefined, nonNullable, strOrUndefined } from '@repo/utils'
+import { intOrNull, intOrUndefined, nonNullable, strOrUndefined } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { AllRankingsPages } from '.'
 import { App } from '../../../../setup/app'
@@ -23,8 +23,8 @@ export async function onRankingSelect(
   app: App,
   ctx: ComponentContext<typeof all_rankings_view_sig>,
 ): Promise<ChatInteractionResponse> {
-  const ranking_id = intOrUndefined((ctx.interaction.data as D.APIMessageStringSelectInteractionData).values[0])
-  if (!ranking_id) return ctx.defer(async () => void 0)
+  const ranking_id = intOrNull((ctx.interaction.data as D.APIMessageStringSelectInteractionData).values[0])
+  if (null === ranking_id) return ctx.defer(async () => void 0)
   return ctx.defer(
     async ctx =>
       void ctx.edit(
@@ -50,7 +50,7 @@ export function sendCreateRankingModal(
         ph: ctx.state.data.modal_input?.name,
       },
       best_of: {},
-      team_size: app.config.features.AllowNon1v1
+      team_size: app.config.features.AllowNon1v1Rankings
         ? {
             players_per_team: {},
             teams_per_match: {},

@@ -93,7 +93,6 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     direct_response: boolean
     arg: Arg
   }): Promise<Response> {
-
     if (!(await verify(request, bot.public_key))) {
       this.logger?.log({ message: 'Invalid signature' })
       return new Response('Invalid signature', { status: 401 })

@@ -70,7 +70,6 @@ const elo: Scorer = ({ outcome, match_players }) => {
  * If used for a ranking, a player's total rating = wins - losses
  */
 const winsMinusLosses: Scorer = ({ outcome, match_players }) => {
-  
   const { winning_team_indices, is_draw } = getOutcomeWinners(outcome)
   if (is_draw) return match_players.map(team => team.map(player => player.rating))
 
@@ -79,7 +78,7 @@ const winsMinusLosses: Scorer = ({ outcome, match_players }) => {
       return {
         ...player.rating,
         // Add 1 for winning team, subtract 1 for losing team
-        mu: player.rating.mu + (winning_team_indices.includes(i) ? 1 : -1), 
+        mu: player.rating.mu + (winning_team_indices.includes(i) ? 1 : -1),
       }
     })
   })
@@ -90,6 +89,7 @@ export function getScorerFn(type: RatingStrategy): Scorer {
     [RatingStrategy.TrueSkill]: trueskill,
     [RatingStrategy.WinsMinusLosses]: winsMinusLosses,
     [RatingStrategy.Elo]: elo,
+    [RatingStrategy.Glicko]: undefined, // Glicko is not implemented yet
   }[type]
 
   if (!fn) throw new Error(`Unknown rating method ${type}`)

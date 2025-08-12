@@ -5,10 +5,6 @@ import { Settings } from '../schema'
 export type SettingSelect = InferSelectModel<typeof Settings>
 export type SettingUpdate = Partial<Omit<SettingSelect, 'id'>>
 
-export interface Versions {
-  db: number
-}
-
 export class Setting implements DbObject<SettingSelect> {
   constructor(
     public data: SettingSelect,

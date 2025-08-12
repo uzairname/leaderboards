@@ -7,10 +7,11 @@ import { UserError } from '../../../../errors/user-errors'
 import { App } from '../../../../setup/app'
 import { Colors, breadcrumbsTitle, escapeMd, userAvatarUrl } from '../../../../utils'
 import { matches_view_sig } from '../../../matches/ui/matches/matches-view'
-import { rating_strategy_desc } from '../../../rankings/properties'
+import { rating_strategy_name } from '../../../settings/properties'
 import { getOrRefreshPlayerStats } from '../../properties'
 import { ratingTable, wlrTable } from './pieces'
 import { profile_view_sig } from './view'
+import { getApplicableRankRoles } from '../../rank-roles'
 
 function rankingSelectMenu(
   grs: { ranking: Ranking }[],
@@ -55,7 +56,7 @@ export async function main(
   const is_requesting_user = ctx.interaction.member.user.id === target_user_id
 
   const guild_id = ctx.interaction.guild_id
-  const rankings_in_guild = await app.db.guild_rankings.fetchBy({ guild_id })
+  const rankings_in_guild = await app.db.guild_rankings.fetch({ guild_id })
 
   // find every ranking this user is in, in the guild
   const rankings_players = (await target_app_user.players()).filter(p =>
@@ -110,6 +111,9 @@ export async function main(
       )
     }
 
+    const applicable_rank_roles = await getApplicableRankRoles(app, player, gr.guild_ranking)
+    const rank_role_text = Object.entries(applicable_rank_roles).filter(([id, has_role]) => has_role).map(([id, has_role]) => `<@&${id}>`).join(', ')
+
     const stats = await getOrRefreshPlayerStats(app, player)
 
     const wlr_table = wlrTable({ stats })
@@ -118,7 +122,8 @@ export async function main(
     embed.fields = [
       {
         name: `Rank`,
-        value: `**${intToOrdinal(stats.lb_place)}** place out of ${stats.max_lb_place}`,
+        value: `**${intToOrdinal(stats.lb_place)}** place out of ${stats.max_lb_place}` + 
+          (rank_role_text.length > 0 ? `\n${rank_role_text}` : ``),
       },
       {
         name: `Stats`,
@@ -127,7 +132,7 @@ export async function main(
       {
         name: `Notes`,
         value:
-          `-# Ratings in this ranking are calculated using ${rating_strategy_desc[gr.ranking.data.rating_settings.rating_strategy]}` +
+          `-# Ratings in this ranking are calculated using the *${rating_strategy_name[gr.ranking.data.rating_settings.rating_strategy]}* strategy` +
           (stats.display_rating.is_provisional ? `\n-# ? indicates a provisional rating` : ``),
       },
     ]
@@ -135,7 +140,7 @@ export async function main(
     embed.description =
       `${breadcrumbsTitle(`Profiles`, target_user_name, gr.ranking.data.name)}` +
       `\n` +
-      `## <@${target_user_id}> in ${escapeMd(gr.ranking.data.name)}\n`
+      `## <@${target_user_id}>'s stats in ${escapeMd(gr.ranking.data.name)}\n`
   }
 
   return {

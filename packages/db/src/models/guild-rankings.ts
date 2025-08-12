@@ -19,7 +19,7 @@ export class PartialGuildRanking {
   }
 
   async fetch(): Promise<{ guild: Guild; guild_ranking: GuildRanking; ranking: Ranking }> {
-    return this.db.guild_rankings.fetchBy(this.data)
+    return this.db.guild_rankings.fetch(this.data)
   }
 
   get guild(): PartialGuild {
@@ -55,7 +55,6 @@ export class GuildRanking extends PartialGuildRanking {
 }
 
 export class GuildRankingsManager extends DbObjectManager {
-  // when creating, pass in guild and ranking objects instead of ids
   async create(
     guild: Guild,
     ranking: Ranking,
@@ -75,19 +74,7 @@ export class GuildRankingsManager extends DbObjectManager {
     return new_guild_ranking
   }
 
-  async getByName(guild_id: string, name: string) {
-    const data = (
-      await this.db.drizzle
-        .select()
-        .from(GuildRankings)
-        .innerJoin(Rankings, eq(GuildRankings.ranking_id, Rankings.id))
-        .where(and(eq(GuildRankings.guild_id, guild_id), eq(Rankings.name, name)))
-    )[0]
-    if (!data) return null
-    return new GuildRanking(data.GuildRankings, this.db)
-  }
-
-  async fetchBy<By extends { guild_id?: string; ranking_id?: number }>(
+  async fetch<By extends { guild_id?: string; ranking_id?: number }>(
     by: By,
   ): Promise<
     By extends { guild_id: string }
@@ -179,11 +166,12 @@ export type GuildRankingDisplaySettings = {
   color?: number
 }
 
-export const RatingRolesSchema = z.array(
+export const RankRolesSchema = z.array(
   z.object({
-    min_rating: z.number(),
-    role: z.string(),
+    min_rating: z.number().nullable().default(null),
+    max_rating: z.number().nullable().default(null),
+    role_id: z.string(),
   }),
 )
 
-export type RatingRoles = z.infer<typeof RatingRolesSchema>
+export type RankRoles = z.infer<typeof RankRolesSchema>

@@ -4,9 +4,8 @@ import * as D from 'discord-api-types/v10'
 import { APIEmbed } from 'discord-api-types/v10'
 import { Colors, commandMention, escapeMd, relativeTimestamp } from '.'
 import { matches_cmd } from '../../services/matches/ui/matches/matches-cmd'
-import { liveLbMsgLink } from '../../services/rankings/properties'
-import { create_ranking_cmd } from '../../services/rankings/ui/create-ranking-cmd'
-import { setup_cmd } from '../../services/setup-ui/setup-cmd'
+import { liveLbMsgLink } from '../../services/settings/properties'
+import { create_ranking_cmd } from '../../services/settings/ui/create-ranking-cmd'
 import {
   challenge_cmd,
   join_cmd,
@@ -40,7 +39,7 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
         value:
           `There are multiple ways to initiate matches.` +
           `\n- ${await commandMention(app, challenge_cmd, guild_id)} \`opponent\`: Challenge someone to a 1v1 match.` +
-          ` They will have ${app.config.ChallengeTimeoutMs / (1000 * 60)} minutes to accept.` +
+          ` They will have ${app.config.ChallengeTimeoutMinutes} minutes to accept.` +
           `\n- ${await commandMention(app, start_match_cmd, guild_id)}: Admins can start a match between two players.` +
           (record_match_cmd.signature.config.experimental
             ? ``

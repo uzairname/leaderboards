@@ -28,10 +28,11 @@ export const trueskill_default_initial_rating = {
 
 export const default_leaderboard_color = Colors.Primary
 
-export const rating_strategy_desc = {
-  [RatingStrategy.WinsMinusLosses]: `Wins - Losses`,
+export const rating_strategy_name = {
+  [RatingStrategy.WinsMinusLosses]: `Wins minus losses`,
   [RatingStrategy.TrueSkill]: `TrueSkill2`,
   [RatingStrategy.Elo]: `Elo`,
+  [RatingStrategy.Glicko]: `Glicko`,
 }
 
 /**
@@ -47,7 +48,7 @@ export function parseRatingStrategy(value: string): RatingStrategy {
  * Maps rating strategies to their settings. When a ranking is created or updated with
  * a rating method, the settings are filled in with the defaults from this map.
  */
-export const rating_strategy_to_rating_settings: Record<RatingStrategy, RatingSettings> = {
+export const rating_strategy_default_settings: Record<RatingStrategy, RatingSettings> = {
   [RatingStrategy.WinsMinusLosses]: {
     rating_strategy: RatingStrategy.WinsMinusLosses,
     initial_rating: {
@@ -65,6 +66,14 @@ export const rating_strategy_to_rating_settings: Record<RatingStrategy, RatingSe
       rd: 400,
     },
     k_factor: default_k_factor,
+  },
+  [RatingStrategy.Glicko]: {
+    rating_strategy: RatingStrategy.Glicko,
+    initial_rating: {
+      mu: 1500,
+      rd: 350,
+      vol: 0.06,
+    },
   },
 }
 
@@ -210,7 +219,7 @@ export function validateRankingOptions(o: Partial<RankingInsert>): void {
  * Get all of the rankings in the guild that have direct challenges enabled
  */
 export async function getChallengeEnabledRankings(app: App, guild: PartialGuild) {
-  const guild_rankings = await app.db.guild_rankings.fetchBy({ guild_id: guild.data.id })
+  const guild_rankings = await app.db.guild_rankings.fetch({ guild_id: guild.data.id })
 
   const result = guild_rankings.filter(r => {
     return r.ranking.data.matchmaking_settings.direct_challenge_enabled

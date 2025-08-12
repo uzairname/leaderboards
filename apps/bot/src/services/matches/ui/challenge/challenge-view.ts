@@ -11,7 +11,7 @@ import * as D from 'discord-api-types/v10'
 import { App } from '../../../../setup/app'
 import { Colors, relativeTimestamp } from '../../../../utils/ui'
 import { getOrCreatePlayerByUser } from '../../../players/manage'
-import { rankingProperties } from '../../../rankings/properties'
+import { rankingProperties } from '../../../settings/properties'
 import { start1v1SeriesThread } from '../../ongoing-match/manage-ongoing-match'
 
 export const challenge_view_sig = new ViewSignature({
@@ -42,7 +42,7 @@ export async function renderChallengePage(
   const initiator_id = state.get.initiator_id()
   const opponent_id = state.get.opponent_id()
 
-  const expires_at = new Date(state.get.time_sent().getTime() + app.config.ChallengeTimeoutMs)
+  const expires_at = new Date(state.get.time_sent().getTime() + app.config.ChallengeTimeoutMinutes * 60 * 1000)
 
   const ranking = await app.db.rankings.fetch(state.get.ranking_id())
   const best_of = state.get.best_of() ?? rankingProperties(ranking).default_best_of
@@ -57,9 +57,7 @@ export async function renderChallengePage(
         + `\nBest of **${best_of}**`
         + `\n` + ((state.is.opponent_accepted() && state.data.ongoing_match_channel_id)
           ? `Challenge accepted. New match started in <#${state.data.ongoing_match_channel_id}>`
-          : `*Awaiting response*`)
-        + `\n\n-# Expires ${relativeTimestamp(expires_at)}`
-        + ``, // prettier-ignore
+          : `*Awaiting response*\n-# Expires ${relativeTimestamp(expires_at)}`), // prettier-ignore
       color: Colors.Primary,
     },
   ]
@@ -90,7 +88,7 @@ export async function renderChallengePage(
 
 async function accept(app: App, ctx: ComponentContext<typeof challenge_view_sig>): Promise<ChatInteractionResponse> {
   // check expiration
-  const expires_at = new Date(ctx.state.get.time_sent().getTime() + app.config.ChallengeTimeoutMs)
+  const expires_at = new Date(ctx.state.get.time_sent().getTime() + app.config.ChallengeTimeoutMinutes * 60 * 1000)
   if (new Date() > expires_at) {
     await app.discord.deleteMessageIfExists(ctx.interaction.channel?.id, ctx.interaction.message?.id)
     return {
@@ -101,7 +99,7 @@ async function accept(app: App, ctx: ComponentContext<typeof challenge_view_sig>
 
   // Check whether direct challenges are enabled in this ranking
   const interaction = checkGuildInteraction(ctx.interaction)
-  const { guild_ranking, ranking } = await app.db.guild_rankings.fetchBy({
+  const { guild_ranking, ranking } = await app.db.guild_rankings.fetch({
     guild_id: interaction.guild_id,
     ranking_id: ctx.state.get.ranking_id(),
   })

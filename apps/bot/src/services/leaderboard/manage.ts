@@ -10,7 +10,7 @@ import { leaderboardMessage } from './ui/pages'
 
 export async function syncRankingLbMessages(app: App, ranking: PartialRanking): Promise<void> {
   sentry.debug(`syncRankingLbMessages ranking: ${ranking.data.id}`)
-  const guild_rankings = await app.db.guild_rankings.fetchBy({ ranking_id: ranking.data.id })
+  const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
   await Promise.all(guild_rankings.map(guild_ranking => syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)))
 }
 

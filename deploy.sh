@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Deploys to Cloudflare Workers and runs database migrations
+# Deploys bot to Cloudflare Workers and runs database migrations
 # Usage: ./deploy.sh <path_to_env_file>
 
 # Set environment path. Default to .env

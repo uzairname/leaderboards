@@ -50,7 +50,7 @@ export const create_ranking_cmd = create_ranking_cmd_sig.set<App>({
       const tpm = options['teams-per-match'] ?? default_teams_per_match
       const ppt = options['players-per-team'] ?? default_players_per_team
 
-      if (!app.config.features.AllowNon1v1 && (tpm > 2 || ppt > 1))
+      if (!app.config.features.AllowNon1v1Rankings && (tpm > 2 || ppt > 1))
         throw new Error(`Only 1v1 rankings are supported for now`)
 
       const { ranking } = await createNewRankingInGuild(app, ctx.interaction.guild_id, {

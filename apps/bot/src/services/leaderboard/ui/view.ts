@@ -9,7 +9,7 @@ export const leaderboard_view_sig = new ViewSignature({
     ranking_id: field.Int(),
     page: field.Int(),
     max_page: field.Int(),
-    clicked_btn: field.Enum({
+    clicked_nav_btn: field.Enum({
       start: null,
       prev: null,
       next: null,
@@ -28,7 +28,7 @@ export const leaderboard_view = leaderboard_view_sig.set<App>({
         prev: current_page - 1,
         next: current_page + 1,
         end: ctx.state.get.max_page(),
-      }[ctx.state.get.clicked_btn()]
+      }[ctx.state.get.clicked_nav_btn()]
 
       ctx.state.save.page(new_page)
 

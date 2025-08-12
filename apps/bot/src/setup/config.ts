@@ -32,24 +32,23 @@ export class Config {
    * @param ProvisionalRdThreshold - Players with a rating deviatino below this will be hidden.
    * @param defaultScorer - The default scoring function.
    * @param RematchTimeoutMinutes - The default amount of time players have to vote for a rematch.
-   * @param ChallengeTimeoutMs - The default amount of time a user has to accept a challenge.
-   * @param QueueJoinTimeoutMs - The default amount of time before a user is removed from the queue.
+   * @param ChallengeTimeoutMinutes - The default amount of time a user has to accept a challenge.
+   * @param QueueJoinTimeoutMinutes - The default amount of time before a user is removed from the queue.
    */
   constructor(
     readonly env: Env,
+    readonly IsDev = env.ENVIRONMENT === 'development',
     readonly OauthRedirectURI = env.BASE_URL + `/oauth` + this.OauthRoutes.Redirect,
     readonly OauthRoleConnectionsUrl = env.BASE_URL + `/oauth` + this.OauthRoutes.LinkedRoles,
     readonly oauthInviteAndRoleConnectionsUrl = env.BASE_URL + `/oauth` + this.OauthRoutes.BotAndRoleConnections,
-    // readonly WebDashboardURL = env.BASE_URL + `/dashboard`,
-    readonly IsDev = env.ENVIRONMENT === 'development',
-    readonly DirectResponse = IsDev ? true : true,
+    readonly DirectResponse = IsDev ? false : true,
     readonly features = {
       GiveBotInvite: !IsDev,
       HelpReference: IsDev,
       ExperimentalCommands: IsDev,
       QueueMessage: false,
       DisableLogMatchesOption: false,
-      AllowNon1v1: false,
+      AllowNon1v1Rankings: false,
       RatingRoleConnections: false,
       WebDashboardEnabled: false,
     },
@@ -58,7 +57,7 @@ export class Config {
     readonly DisplaySdOffset = IsDev ? -0.6 : -0.6,
     readonly defaultScorer = getScorerFn(RatingStrategy.TrueSkill),
     readonly RematchTimeoutMinutes = 30,
-    readonly ChallengeTimeoutMs = 1000 * 60 * 10,
-    readonly QueueJoinTimeoutMs = IsDev ? 1000 * 60 * 0.2 : 1000 * 60 * 20,
+    readonly ChallengeTimeoutMinutes = 10,
+    readonly QueueJoinTimeoutMinutes = IsDev ? 20 : 20,
   ) {}
 }

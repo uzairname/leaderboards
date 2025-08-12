@@ -1,5 +1,5 @@
 import { ChatInteractionResponse, ComponentContext, Context, getModalSubmitEntries } from '@repo/discord'
-import { intOrUndefined, strOrUndefined } from '@repo/utils'
+import { intOrNull, strOrUndefined } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { RankingSettingsPages } from '.'
 import { UserErrors } from '../../../../errors/user-errors'
@@ -10,8 +10,10 @@ import { escapeMd } from '../../../../utils/ui'
 import { disableGuildRankingLbMessage, syncGuildRankingLbMessage } from '../../../leaderboard/manage'
 import { rescoreAllMatches } from '../../../matches/scoring/score_match'
 import { deleteRanking, updateGuildRanking, updateRanking } from '../../manage'
-import { parseRatingStrategy, rating_strategy_to_rating_settings } from '../../properties'
+import { parseRatingStrategy, rating_strategy_default_settings } from '../../properties'
 import { AllRankingsPages } from '../all-rankings'
+import { RankRolesSettingsPages } from '../rank-roles'
+import { rank_roles_settings_view_sig } from '../rank-roles/view'
 import { settingsOptions } from './common'
 import { rankingSettingsModal } from './modals'
 import { ranking_settings_view_sig } from './view'
@@ -27,7 +29,7 @@ export async function onSettingSelect(
   app: App,
   ctx: ComponentContext<typeof ranking_settings_view_sig>,
 ): Promise<ChatInteractionResponse> {
-  const gr = await app.db.guild_rankings.fetchBy({
+  const gr = await app.db.guild_rankings.fetch({
     guild_id: ctx.interaction.guild_id,
     ranking_id: ctx.state.get.ranking_id(),
   })
@@ -37,7 +39,7 @@ export async function onSettingSelect(
   return setting.handler(app, ctx)
 }
 
-export async function renameModal(
+export async function sendRenameModal(
   app: App,
   ctx: Context<typeof ranking_settings_view_sig>,
 ): Promise<D.APIModalInteractionResponse> {
@@ -65,7 +67,7 @@ export async function onSettingsModalSubmit(
   return ctx.defer(async ctx => {
     await ensureAdminPerms(app, ctx)
 
-    const { guild_ranking, ranking } = await app.db.guild_rankings.fetchBy({
+    const { guild_ranking, ranking } = await app.db.guild_rankings.fetch({
       guild_id: ctx.interaction.guild_id,
       ranking_id: ctx.state.get.ranking_id(),
     })
@@ -73,7 +75,7 @@ export async function onSettingsModalSubmit(
     const modal_input = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
 
     const new_name = strOrUndefined(modal_input['name']?.value)
-    const new_best_of = intOrUndefined(modal_input['best_of']?.value)
+    const new_best_of = intOrNull(modal_input['best_of']?.value)
     const color_input = strOrUndefined(modal_input['color']?.value)
 
     // If any setings that apply to the ranking are specified, update them
@@ -91,8 +93,6 @@ export async function onSettingsModalSubmit(
 
     // If any settings that apply to the guild ranking are specified, update them
     if (color_input) {
-      // Validate color
-
       const valid_color = parseColor(color_input)
       if (!valid_color) throw new UserErrors.ValidationError('Color must contain a hex code, like ff0000')
 
@@ -104,12 +104,7 @@ export async function onSettingsModalSubmit(
       })
     }
 
-    // If we were on a page, go back to it
-    if (ctx.state.data.page) {
-      return void ctx.edit(await ctx.state.data.page(app, ctx))
-    }
-
-    return void (await ctx.edit(await RankingSettingsPages.main(app, ctx)))
+    return void ctx.edit(await RankingSettingsPages.main(app, ctx))
   })
 }
 
@@ -120,7 +115,7 @@ export async function onToggleLiveLeaderboard(
   await ensureAdminPerms(app, ctx)
 
   return ctx.defer(async ctx => {
-    const { guild_ranking } = await app.db.guild_rankings.fetchBy({
+    const { guild_ranking } = await app.db.guild_rankings.fetch({
       guild_id: ctx.interaction.guild_id,
       ranking_id: ctx.state.get.ranking_id(),
     })
@@ -192,6 +187,21 @@ export async function onToggleQueue(
   })
 }
 
+export async function sendRankRolesPage(
+  app: App,
+  ctx: Context<typeof ranking_settings_view_sig>,
+): Promise<ChatInteractionResponse> {
+  return {
+    type: D.InteractionResponseType.UpdateMessage,
+    data: await RankRolesSettingsPages.main(app, {
+      ...ctx,
+      state: rank_roles_settings_view_sig.newState({
+        ranking_id: ctx.state.get.ranking_id(),
+      }),
+    }),
+  }
+}
+
 export async function sendRatingMethodSelectMenu(
   app: App,
   ctx: Context<typeof ranking_settings_view_sig>,
@@ -218,10 +228,10 @@ export async function onRatingMethodSelect(
     await ranking.update({
       rating_settings: {
         ...ranking.data.rating_settings,
-        ...rating_strategy_to_rating_settings[rating_strategy],
+        ...rating_strategy_default_settings[rating_strategy],
       },
     }),
-    await rescoreAllMatches(app, ranking, ctx)
+      await rescoreAllMatches(app, ranking, ctx)
 
     await ctx.edit(await RankingSettingsPages.scoringMethod(app, ctx))
   })
@@ -247,11 +257,11 @@ export async function sendAppearancePage(
   }
 }
 
-export async function appearanceModal(
+export async function sendColorModal(
   app: App,
   ctx: ComponentContext<typeof ranking_settings_view_sig>,
 ): Promise<D.APIModalInteractionResponse> {
-  const { ranking, guild_ranking } = await app.db.guild_rankings.fetchBy({
+  const { ranking, guild_ranking } = await app.db.guild_rankings.fetch({
     guild_id: ctx.interaction.guild_id,
     ranking_id: ctx.state.get.ranking_id(),
   })

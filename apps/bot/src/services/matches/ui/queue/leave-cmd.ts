@@ -1,7 +1,7 @@
 import { CommandSignature } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../../setup/app'
-import { isQueueEnabled } from '../../../rankings/properties'
+import { isQueueEnabled } from '../../../settings/properties'
 
 export const leave_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
@@ -12,7 +12,7 @@ export const leave_cmd_sig = new CommandSignature({
 export const leave_cmd = leave_cmd_sig.set<App>({
   guildSignature: async (app, guild_id) => {
     const guild = app.db.guilds.get(guild_id)
-    const guild_rankings = await app.db.guild_rankings.fetchBy({ guild_id: guild.data.id })
+    const guild_rankings = await app.db.guild_rankings.fetch({ guild_id: guild.data.id })
     const queue_enabled_rankings = guild_rankings.filter(r => isQueueEnabled(r.guild_ranking))
 
     if (queue_enabled_rankings.length == 0) return null

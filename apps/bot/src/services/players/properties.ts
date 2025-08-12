@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { App } from '../../setup/app'
 import { getMatchWinners } from '../matches/management/properties'
 import { scoreMatch } from '../matches/scoring/score_match'
-import { displayRatingFn } from '../rankings/properties'
+import { displayRatingFn } from '../settings/properties'
 
 /**
  * Info about a player in a ranking to display
@@ -145,7 +145,8 @@ export async function getOrRefreshPlayerStats(app: App, player: Player): Promise
     // Check if the stats are new
     const stats = parse_result.data
     const stats_age = new Date().getTime() - stats.stats_last_refreshed.getTime()
-    if (stats_age < 1000 * 10) { // 10 seconds
+    if (stats_age < 1000 * 10) {
+      // 10 seconds
       return stats
     }
   }

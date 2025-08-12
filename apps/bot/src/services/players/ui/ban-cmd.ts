@@ -60,7 +60,7 @@ export const ban_cmd = ban_cmd_sig.set<App>({
             return { players: [player], rankings: [await ranking.fetch()] }
           } else {
             // No ranking was selected. Act on all rankings in the guild.
-            const guild_rankings = await app.db.guild_rankings.fetchBy({
+            const guild_rankings = await app.db.guild_rankings.fetch({
               guild_id: ctx.interaction.guild_id,
             })
             return {

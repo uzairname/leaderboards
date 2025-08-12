@@ -1,7 +1,6 @@
 import { Match, MatchStatus } from '@repo/db/models'
 import { maxIndex } from '@repo/utils'
 
-
 export function getOutcomeWinners(outcome: number[]) {
   const winning_teams = maxIndex(outcome)
   return { winning_team_indices: winning_teams, is_draw: winning_teams.length === outcome.length }

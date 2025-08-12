@@ -3,7 +3,7 @@ import type { AnyAppCommandType, CommandContext, CommandInteractionResponse, Com
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../../errors/user-errors'
 import { sentry } from '../../../logging/sentry'
-import { AllRankingsPages } from '../../../services/rankings/ui/all-rankings'
+import { AllRankingsPages } from '../../../services/settings/ui/all-rankings'
 import type { App } from '../../../setup/app'
 
 export const create_ranking_choice_value = 'create'
@@ -22,7 +22,7 @@ export async function guildRankingsOption(
   description: string = 'Select a ranking',
 ): Promise<D.APIApplicationCommandBasicOption[]> {
   const rankings_choices =
-    options?.available_choices ?? (await app.db.guild_rankings.fetchBy({ guild_id: guild.data.id })).map(i => i.ranking)
+    options?.available_choices ?? (await app.db.guild_rankings.fetch({ guild_id: guild.data.id })).map(i => i.ranking)
 
   if (rankings_choices.length == 1 && !options?.optional) {
     return []
@@ -59,7 +59,7 @@ export async function withOptionalSelectedRanking(
     }[]
     prefer_default?: boolean
   },
-  callback: (ranking: PartialRanking | undefined) => Promise<CommandInteractionResponse>,
+  callback: (ranking: Ranking | undefined) => Promise<CommandInteractionResponse>,
 ): Promise<CommandInteractionResponse> {
   return _withSelectedRanking(options, callback, true)
 }
@@ -74,9 +74,9 @@ export async function withSelectedRanking(
       guild_ranking: GuildRanking
     }[]
   },
-  callback: (ranking: PartialRanking) => Promise<CommandInteractionResponse>,
+  callback: (ranking: Ranking) => Promise<CommandInteractionResponse>,
 ): Promise<CommandInteractionResponse> {
-  return _withSelectedRanking(options, async ranking => callback(ranking!), false)
+  return _withSelectedRanking(options, async ranking => callback(await ranking!.fetch()), false)
 }
 
 /**
@@ -107,7 +107,7 @@ async function _withSelectedRanking(
     }[]
     prefer_default?: boolean
   },
-  callback: (ranking: PartialRanking | undefined) => Promise<CommandInteractionResponse>,
+  callback: (ranking: Ranking | undefined) => Promise<CommandInteractionResponse>,
   optional: boolean,
 ): Promise<CommandInteractionResponse> {
   const { app, ctx, ranking_id, available_guild_rankings, prefer_default } = options
@@ -133,7 +133,7 @@ async function _withSelectedRanking(
     const available_guild_rankings_ =
       undefined !== available_guild_rankings
         ? available_guild_rankings
-        : await app.db.guild_rankings.fetchBy({ guild_id: ctx.interaction.guild_id })
+        : await app.db.guild_rankings.fetch({ guild_id: ctx.interaction.guild_id })
 
     if (optional && available_guild_rankings_.length !== 1) {
       // If there's still not exactly one ranking and its optional, use undefined
@@ -152,5 +152,5 @@ async function _withSelectedRanking(
     }
   }
 
-  return callback(ranking)
+  return callback(await ranking.fetch())
 }

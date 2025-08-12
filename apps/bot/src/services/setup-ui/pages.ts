@@ -3,8 +3,8 @@ import * as D from 'discord-api-types/v10'
 import { SetupHandlers } from '.'
 import { App } from '../../setup/app'
 import { breadcrumbsTitle, Colors } from '../../utils'
-import { AllRankingsHandlers } from '../rankings/ui/all-rankings'
-import { all_rankings_view_sig } from '../rankings/ui/all-rankings/view'
+import { AllRankingsHandlers } from '../settings/ui/all-rankings'
+import { all_rankings_view_sig } from '../settings/ui/all-rankings/view'
 import { admin_role_method_options, setup_view_sig } from './view'
 
 export async function start(app: App): Promise<D.APIInteractionResponseCallbackData> {
@@ -105,11 +105,11 @@ export async function adminRolePage(
 
 Server members with this role will be able to **manage rankings, matches, and players**. 
 
-This is optional. Server members with the Administrator permissions, or anyone who can run this command, will have bot admin access regardless of their role.
+This is optional. Server members with the Administrator permissions, or anyone who can run this command, will have bot admin perms regardless of their role.
 
 With the dropdowns below, you can
 - **Let the bot create** an admin role for you
-- **Select an existing role** to give admin perms to
+- **Select an existing role** to give bot admin perms to
 - **Unset** the current admin role`
 
   if (current_admin_role_id) {

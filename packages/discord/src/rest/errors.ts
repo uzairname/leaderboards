@@ -37,5 +37,5 @@ export namespace DiscordErrors {
     }
   }
 
-  export class GeneralPermissions extends DiscordUserError {}
+  export class RolePermissions extends DiscordUserError {}
 }

@@ -22,7 +22,7 @@ import {
   default_players_per_team,
   default_rating_strategy,
   default_teams_per_match,
-  rating_strategy_to_rating_settings,
+  rating_strategy_default_settings,
   validateRankingOptions,
 } from './properties'
 
@@ -58,7 +58,7 @@ export async function createNewRankingInGuild(
   validateRankingOptions(options)
 
   // make sure there are less than 25 rankings in this guild
-  const guild_rankings = await app.db.guild_rankings.fetchBy({ guild_id: guild.data.id })
+  const guild_rankings = await app.db.guild_rankings.fetch({ guild_id: guild.data.id })
   if (guild_rankings.length >= 25) {
     throw new UserError('This server already has the maximum number of rankings (25)')
   }
@@ -69,7 +69,7 @@ export async function createNewRankingInGuild(
     throw new UserError(`This server already has a ranking called \`${options.name}\``)
   }
 
-  const rating_settings = rating_strategy_to_rating_settings[options.rating_strategy ?? default_rating_strategy]
+  const rating_settings = rating_strategy_default_settings[options.rating_strategy ?? default_rating_strategy]
 
   const new_ranking = await app.db.rankings.create({
     name: options.name,
@@ -94,7 +94,7 @@ export async function createNewRankingInGuild(
 export async function updateRanking(app: App, ranking: PartialRanking, options: RankingUpdate): Promise<void> {
   validateRankingOptions(options)
   await ranking.update(options)
-  const guild_rankings = await app.db.guild_rankings.fetchBy({ ranking_id: ranking.data.id })
+  const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
 
   for (const item of guild_rankings) {
     if (options.name || options.matchmaking_settings) {
@@ -117,7 +117,7 @@ export async function updateGuildRanking(
 }
 
 export async function deleteRanking(app: App, ranking: PartialRanking): Promise<void> {
-  const guild_rankings = await app.db.guild_rankings.fetchBy({ ranking_id: ranking.data.id })
+  const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
   await Promise.all(
     guild_rankings.map(async item => {
       await app.discord.deleteMessageIfExists(

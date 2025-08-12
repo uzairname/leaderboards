@@ -1,7 +1,7 @@
-import { eq, InferInsertModel, InferSelectModel, sql } from 'drizzle-orm'
+import { eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { DbObjectManager } from '../classes'
 import { DbClient } from '../client'
-import { Players, Rankings, TeamPlayers, Users } from '../schema'
+import { Players, Rankings, Users } from '../schema'
 import { Player } from './players'
 import { Ranking } from './rankings'
 

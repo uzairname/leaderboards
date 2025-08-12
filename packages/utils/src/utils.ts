@@ -75,6 +75,14 @@ export function strOrUndefined(value?: string): string | undefined {
 }
 
 /**
+ * Parses a string into an integer. Returns null if the string is not a valid integer.
+ */
+export function intOrNull(value?: string): number | null {
+  const int = parseInt(value ?? '')
+  return isNaN(int) ? null : int
+}
+
+/**
  * Parses a string into an integer. Returns undefined if the string is not a valid integer.
  */
 export function intOrUndefined(value?: string): number | undefined {

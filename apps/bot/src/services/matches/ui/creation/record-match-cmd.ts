@@ -1,5 +1,5 @@
 import { CommandSignature, getOptions } from '@repo/discord'
-import { intOrUndefined, snowflakeToDate } from '@repo/utils'
+import { intOrNull, snowflakeToDate } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../../setup/app'
 import { ensureAdminPerms } from '../../../../utils'
@@ -24,7 +24,7 @@ const optionnames = {
 export const record_match_cmd = record_match_cmd_sig.set<App>({
   guildSignature: async (app, guild_id) => {
     const guild = app.db.guilds.get(guild_id)
-    const rankings = await app.db.guild_rankings.fetchBy({ guild_id: guild.data.id })
+    const rankings = await app.db.guild_rankings.fetch({ guild_id: guild.data.id })
     if (rankings.length == 0) return null
 
     let options = await guildRankingsOption(
@@ -82,9 +82,9 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
     // const state = record_match_view_sig.newState({})
 
     // Save the selected time finished to the state, if specified
-    const selected_time_finished = intOrUndefined(input.time_finished)
+    const selected_time_finished = intOrNull(input.time_finished)
     let selected_time_finished_date: Date | undefined
-    if (undefined !== selected_time_finished) {
+    if (null !== selected_time_finished) {
       if (selected_time_finished.toString().length < 13) {
         // assume it's a unix timestamp
         selected_time_finished_date = new Date(selected_time_finished * 1000)

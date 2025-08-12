@@ -116,17 +116,13 @@ export async function rescoreMatches(
 
   await app.db.matches.updateMatchPlayers(match_players_update)
 
-  const new_players: { player: PartialPlayer; rating: Rating }[] = []
+  const new_player_ratings: { player: PartialPlayer; rating: Rating }[] = []
   for (const [player_id, rating] of affected_ratings) {
-    new_players.push({ player: app.db.players.get(player_id), rating })
+    new_player_ratings.push({ player: app.db.players.get(player_id), rating })
   }
 
   // update all players' ratings
-  await updatePlayerRatings(app, new_players)
+  await updatePlayerRatings(app, ranking, new_player_ratings)
 
-  // await ctx?.edit({
-  //   content: `:white_check_mark: Done. (${matches.length} matches rescored, ${new_players.length} players' ratings updated)`,
-  // }, msg?.id)
-
-  return new_players
+  return new_player_ratings
 }

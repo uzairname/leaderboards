@@ -5,7 +5,7 @@ import { nonNullable } from '@repo/utils'
 import { App } from '../../../setup/app'
 import { Colors } from '../../../utils'
 import { mentionOrName } from '../../players/properties'
-import { rankingProperties } from '../../rankings/properties'
+import { rankingProperties } from '../../settings/properties'
 
 /**
  * Determine the custom description to display at the top of the match thread,
@@ -59,10 +59,10 @@ export async function ongoingMatch1v1Message(
     return (
       mentionOrName(player) +
       {
-        [Vote.Win]: 'claims win**',
-        [Vote.Loss]: 'claims loss**',
-        [Vote.Draw]: 'claims draw**',
-        [Vote.Cancel]: 'wants to cancel**',
+        [Vote.Win]: 'claims win',
+        [Vote.Loss]: 'claims loss',
+        [Vote.Draw]: 'claims draw',
+        [Vote.Cancel]: 'wants to cancel',
       }[vote]
     )
   }

@@ -41,7 +41,10 @@ export async function ongoingMatchPage(
   const match = await app.db.matches.fetch(state.get.match_id())
   const team_players = await match.players()
 
-  if (!app.config.features.AllowNon1v1 && !(team_players.length === 2 && team_players.every(t => t.length === 1))) {
+  if (
+    !app.config.features.AllowNon1v1Rankings &&
+    !(team_players.length === 2 && team_players.every(t => t.length === 1))
+  ) {
     throw new Error(`Invalid match team dimensions ${team_players}`)
   }
 
@@ -185,7 +188,7 @@ async function rematch(app: App, ctx: DeferredComponentContext<typeof ongoing_ma
       (await app.discord.editChannel(old_match.data.ongoing_match_channel_id, { archived: true }))
 
     // start the new match
-    const { guild_ranking } = await app.db.guild_rankings.fetchBy({
+    const { guild_ranking } = await app.db.guild_rankings.fetch({
       guild_id: ctx.interaction.guild_id,
       ranking_id: old_match.data.ranking_id,
     })

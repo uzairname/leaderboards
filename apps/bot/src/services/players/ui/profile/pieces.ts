@@ -27,11 +27,11 @@ export function wlrTable({ stats }: { stats: PlayerStats }): string {
         null !== stats.winrate
           ? stats.winrate >= 1
             ? AnsiColor.Teal
-          : stats.winrate >= 2/3
-            ? AnsiColor.Lime
-            : stats.winrate >= 1/3
-              ? AnsiColor.Gold
-              : AnsiColor.Red
+            : stats.winrate >= 2 / 3
+              ? AnsiColor.Lime
+              : stats.winrate >= 1 / 3
+                ? AnsiColor.Gold
+                : AnsiColor.Red
           : AnsiColor.DarkGray,
       format: AnsiFormat.Bold,
     },
@@ -41,9 +41,7 @@ export function wlrTable({ stats }: { stats: PlayerStats }): string {
 }
 
 export function ratingTable({ stats }: { stats: PlayerStats }): string {
-  const points = stats.display_rating.is_provisional
-    ? `${stats.display_rating.points}?`
-    : `${stats.display_rating.points}`
+  const points = stats.display_rating.points + (stats.display_rating.is_provisional ? `?` : ``)
 
   const peak_rating_idx = maxIndex(stats.rating_history.map(r => r.points))[0]
   let peak_rating: string

@@ -91,11 +91,15 @@ export class DiscordLoggerWrapper extends DiscordLogger {
   }
 
   setUser({ id, username, guild }: { id: string; username: string; guild?: string }): void {
-    this.sentry.setUser({
-      id: id ?? username,
-      user_id: id ?? username,
-      username,
-      guild,
+    this.sentry.addBreadcrumb({
+      message: 'user',
+      level: 'info',
+      data: {
+        id: id ?? username,
+        user_id: id ?? username,
+        username,
+        guild,
+      },
     })
   }
 }

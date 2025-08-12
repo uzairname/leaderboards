@@ -1,5 +1,5 @@
 import { appCommandToJSONBody, isCommandHandler } from '@repo/discord'
-import { intOrUndefined } from '@repo/utils'
+import { intOrNull } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { IttyRouter } from 'itty-router/IttyRouter'
 import { json } from 'itty-router/json'
@@ -69,8 +69,8 @@ export default (app: App) =>
     .get('/invite-url', async () => new Response(inviteUrl(app)))
 
     .all('/rankings/:ranking_id/*', async request => {
-      const ranking_id = intOrUndefined(request.params.ranking_id)
-      if (undefined === ranking_id) {
+      const ranking_id = intOrNull(request.params.ranking_id)
+      if (null === ranking_id) {
         return new Response('Invalid ranking_id', { status: 400 })
       }
       const ranking = await app.db.rankings.fetch(ranking_id)

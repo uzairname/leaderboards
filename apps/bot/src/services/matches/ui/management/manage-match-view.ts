@@ -1,6 +1,6 @@
 import { Match } from '@repo/db/models'
 import { ChatInteractionResponse, ComponentContext, Context, getModalSubmitEntries, ViewSignature } from '@repo/discord'
-import { field, intOrUndefined, nonNullable } from '@repo/utils'
+import { field, intOrNull, nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../../../errors/user-errors'
 import { App } from '../../../../setup/app'
@@ -161,8 +161,8 @@ async function onMatchOutcomeModalSubmit(
 
     for (const [k, v] of Object.entries(modal_inputs)) {
       const team_num = parseInt(k)
-      const score = intOrUndefined(v?.value)
-      if (undefined === score) {
+      const score = intOrNull(v?.value)
+      if (null === score) {
         throw new UserError(`Enter a number for each team's relative score`)
       }
       new_outcome[team_num] = score

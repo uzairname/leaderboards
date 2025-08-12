@@ -275,10 +275,9 @@ export class DiscordAPIClient extends REST {
       await this.fetch(RequestMethod.Put, D.Routes.guildMemberRole(guild_id, user_id, role_id))
     } catch (e) {
       if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.MissingPermissions)
-        // There are cases where this error is thrown other than the Manage Roles permission
-        throw new DiscordErrors.GeneralPermissions(
+        throw new DiscordErrors.RolePermissions(
           `Either the app doesn't have the **Manage Roles** permission, ` +
-            `or the the specified role is reserved or higher than the bot's highest role.`,
+            `or the the role <@&${role_id}> is reserved or higher than the bot's highest role.`,
         )
       throw e
     }

@@ -79,7 +79,7 @@ export class Match implements DbObject<MatchSelect> {
       .where(eq(MatchPlayers.match_id, this.data.id))
       .innerJoin(Players, eq(MatchPlayers.player_id, Players.id))
 
-    const team_players = await this.convertPlayersQueryResult(result)
+    const team_players = await this.playersQueryResultToTeamPlayers(result)
     if (!team_players) throw new DbErrors.NotFound(`Not all players found for match ${this.data.id}`)
 
     return team_players
@@ -139,7 +139,7 @@ export class Match implements DbObject<MatchSelect> {
    * For the result of a select query, returns an array of team players
    * If some match players are missing from the database, returns null
    */
-  async convertPlayersQueryResult(
+  async playersQueryResultToTeamPlayers(
     query_result: { player: PlayerSelect; match_player: MatchPlayerSelect }[],
   ): Promise<MatchPlayer[][] | null> {
     const ranking = await this.db.rankings.fetch(query_result[0].player.ranking_id)
@@ -183,8 +183,6 @@ export class MatchesManager extends DbObjectManager {
     }
 
     data_copy.time_started = data_copy.time_started ?? data_copy.time_finished ?? new Date()
-
-    this.db.debug(`creating match with data: ${Object.keys(data_copy)}`)
 
     const new_match_data = (
       await this.db.drizzle
@@ -297,7 +295,7 @@ export class MatchesManager extends DbObjectManager {
       .offset(filters.offset ?? 0)
       .as('paged')
 
-    const final_query = this.db.drizzle
+    const query = this.db.drizzle
       .select({ player: Players, match: Matches, match_player: MatchPlayers })
       .from(paged_matches)
       .innerJoin(Matches, eq(Matches.id, paged_matches.id))
@@ -305,7 +303,7 @@ export class MatchesManager extends DbObjectManager {
       .innerJoin(Players, eq(MatchPlayers.player_id, Players.id))
       .orderBy(asc(sql`coalesce(${Matches.time_finished}, ${Matches.time_started})`))
 
-    const result = await final_query
+    const result = await query
 
     const match_ids = Array.from(new Set(result.map(r => r.match.id)))
 
@@ -315,7 +313,7 @@ export class MatchesManager extends DbObjectManager {
         const match = new Match(match_players[0].match, this.db)
         try {
           // Save the players in this match. If they don't exist, delete the match later and retry the query
-          const team_players = await match.convertPlayersQueryResult(match_players)
+          const team_players = await match.playersQueryResultToTeamPlayers(match_players)
           return { match, team_players }
         } catch (e) {
           if (e instanceof DbErrors.MissingMatchPlayers) return { match, team_players: null }

@@ -12,14 +12,14 @@ import { all_rankings_view_sig } from './view'
 export async function main(app: App, ctx: AnyGuildInteractionContext): Promise<D.APIInteractionResponseCallbackData> {
   const guild = await getOrAddGuild(app, ctx.interaction.guild_id)
 
-  const grs = await app.db.guild_rankings.fetchBy({ guild_id: guild.data.id })
+  const grs = await app.db.guild_rankings.fetch({ guild_id: guild.data.id })
 
   const embed = {
     title: breadcrumbsTitle(`Settings`, `Rankings`),
     description:
       `# ${escapeMd(guild.data.name)}'s Rankings\n` +
       (grs.length === 0
-        ? `${escapeMd(guild.data.name)} has no rankings set up.
+        ? `${escapeMd(guild.data.name)} has no rankings. Create one below
 
 For more info, use ${await commandMention(app, help_cmd)}`
         : `${escapeMd(guild.data.name)} has **${grs.length}** ranking${grs.length === 1 ? `` : `s`}. Adjust their settings by selecting a ranking below.`),
