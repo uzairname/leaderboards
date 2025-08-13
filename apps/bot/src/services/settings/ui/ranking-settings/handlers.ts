@@ -8,9 +8,9 @@ import { parseColor } from '../../../../utils'
 import { ensureAdminPerms } from '../../../../utils/perms'
 import { escapeMd } from '../../../../utils/ui'
 import { disableGuildRankingLbMessage, syncGuildRankingLbMessage } from '../../../leaderboard/manage'
-import { rescoreAllMatches } from '../../../matches/scoring/score_match'
+import { rescoreAllMatches } from '../../../matches/scoring/score-matches'
 import { deleteRanking, updateGuildRanking, updateRanking } from '../../manage'
-import { parseRatingStrategy, rating_strategy_default_settings } from '../../properties'
+import { getDefaultRatingSettings, parseRatingStrategy } from '../../properties'
 import { AllRankingsPages } from '../all-rankings'
 import { RankRolesSettingsPages } from '../rank-roles'
 import { rank_roles_settings_view_sig } from '../rank-roles/view'
@@ -228,10 +228,11 @@ export async function onRatingMethodSelect(
     await ranking.update({
       rating_settings: {
         ...ranking.data.rating_settings,
-        ...rating_strategy_default_settings[rating_strategy],
+        ...getDefaultRatingSettings(rating_strategy),
       },
-    }),
-      await rescoreAllMatches(app, ranking, ctx)
+    })
+
+    await rescoreAllMatches(app, ranking, ctx)
 
     await ctx.edit(await RankingSettingsPages.scoringMethod(app, ctx))
   })

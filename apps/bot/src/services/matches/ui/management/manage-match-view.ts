@@ -11,7 +11,7 @@ import { cancelMatch, updateMatchOutcome } from '../../management/update-matches
 
 export const manage_match_view_sig = new ViewSignature({
   custom_id_prefix: 'm',
-  name: 'Manage Match Message',
+  name: 'Manage Match View',
   state_schema: {
     on_page: field.Boolean(),
     match_id: field.Int(),

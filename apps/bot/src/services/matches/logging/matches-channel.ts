@@ -40,7 +40,7 @@ async function matchesChannelDescriptionMessageData(app: App, guild: PartialGuil
   const msg = new MessageData({
     embeds: [
       {
-        title: `Matches`,
+        title: `Logs`,
         description:
           `Ranked matches in this server will be recorded in this channel.` +
           `\nTo view or manage a specific match, use ${matches_cmd_mention} \`<id>\``,
@@ -65,7 +65,7 @@ async function matchLogsChannelData(
     data: new GuildChannelData({
       type: D.ChannelType.GuildText,
       parent_id: category.id,
-      name: `games`,
+      name: `Logs`,
       topic: `Ranked matches in this server are recorded here`,
       permission_overwrites: matchLogsChannelPermissionOverwrites(app, guild.data.id),
       default_auto_archive_duration: D.ThreadAutoArchiveDuration.OneHour,

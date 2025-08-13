@@ -43,13 +43,6 @@ export const test_cmd = test_cmd_sig.set<App>({
         content: `You said:\n${input.string ?? 'no input'}`,
       },
     }
-
-    // return ctx.defer(async ctx => {
-    //   throw new Error('test')
-    //   await new Promise(r => setTimeout(r, sentry.timeout_ms + 5000))
-    //   const state = test_view_sig.newState()
-    //   await ctx.edit(testPage({ state }, true))
-    // })
   },
 })
 

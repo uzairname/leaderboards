@@ -19,10 +19,11 @@ import { syncMatchesChannel } from '../matches/logging/matches-channel'
 import {
   default_display_settings,
   default_matchmaking_settings,
-  default_players_per_team,
-  default_rating_strategy,
-  default_teams_per_match,
-  rating_strategy_default_settings,
+  DEFAULT_PLAYERS_PER_TEAM,
+  DEFAULT_RATING_STRATEGY,
+  DEFAULT_TEAMS_PER_MATCH,
+  getDefaultRatingSettings,
+  MAX_GUILD_RANKINGS,
   validateRankingOptions,
 } from './properties'
 
@@ -57,10 +58,10 @@ export async function createNewRankingInGuild(
   await syncMatchesChannel(app, guild)
   validateRankingOptions(options)
 
-  // make sure there are less than 25 rankings in this guild
+  // make sure there are not too many rankings in this guild
   const guild_rankings = await app.db.guild_rankings.fetch({ guild_id: guild.data.id })
-  if (guild_rankings.length >= 25) {
-    throw new UserError('This server already has the maximum number of rankings (25)')
+  if (guild_rankings.length >= MAX_GUILD_RANKINGS) {
+    throw new UserError(`This server already has the maximum number of rankings (${MAX_GUILD_RANKINGS})`)
   }
 
   // make sure a ranking from this guild with the same name doesn't already exist
@@ -69,12 +70,12 @@ export async function createNewRankingInGuild(
     throw new UserError(`This server already has a ranking called \`${options.name}\``)
   }
 
-  const rating_settings = rating_strategy_default_settings[options.rating_strategy ?? default_rating_strategy]
+  const rating_settings = getDefaultRatingSettings(options.rating_strategy ?? DEFAULT_RATING_STRATEGY)
 
   const new_ranking = await app.db.rankings.create({
     name: options.name,
-    players_per_team: options.players_per_team || default_players_per_team,
-    teams_per_match: options.teams_per_match || default_teams_per_match,
+    players_per_team: options.players_per_team || DEFAULT_PLAYERS_PER_TEAM,
+    teams_per_match: options.teams_per_match || DEFAULT_TEAMS_PER_MATCH,
     rating_settings,
     matchmaking_settings: fillDefaults(options.matchmaking_settings, default_matchmaking_settings),
   })

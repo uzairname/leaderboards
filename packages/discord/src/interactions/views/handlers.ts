@@ -79,7 +79,7 @@ export function deferCommandResponse<Sig extends AnyCommandSignature>(
         await discord.createFollowupMessage(interaction.token, onError(e, ctx.setException).data)
       }),
     async timeout_error => {
-      await discord.createFollowupMessage(interaction.token, onError(timeout_error).data)
+      // await discord.createFollowupMessage(interaction.token, onError(timeout_error).data)
     },
     `deferred`,
   )
@@ -122,7 +122,7 @@ export function deferComponentResponse(
         await discord.createFollowupMessage(interaction.token, onError(e, ctx.setException).data)
       }),
     async timeout_error => {
-      await discord.createFollowupMessage(interaction.token, onError(timeout_error).data)
+      // await discord.createFollowupMessage(interaction.token, onError(timeout_error).data)
     },
     `deferred`,
   )

@@ -1,4 +1,4 @@
-import { Match, MatchPlayer, MatchStatus, PartialPlayer, PartialRanking, Rating } from '@repo/db/models'
+import { Match, MatchPlayer, MatchStatus, PartialPlayer, PartialRanking, Rating, RatingSettings } from '@repo/db/models'
 import { AnyDeferredContext } from '@repo/discord'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
@@ -6,26 +6,29 @@ import { updatePlayerRatings } from '../../players/manage'
 import { getScorerFn } from './scorers'
 
 /**
- * Returns the new player ratings based on the match's outcome and rating settings.
+ * Returns player ratings after the match based on
+ * the match's outcome, the players' ratings before the match, and the ranking's rating settings.
+ *
  * If the match is not finished, returns undefined.
  */
-export async function scoreMatch({
+export function scoreMatch({
   match_players,
   match,
+  rating_settings,
 }: {
   match_players: MatchPlayer[][]
   match: Match
-}): Promise<Rating[][] | undefined> {
+  rating_settings: RatingSettings
+}): Rating[][] | undefined {
   // Determine whether the match had an effect on any player ratings
   if (!match.data.outcome || match.data.status !== MatchStatus.Finished) return
-  const ranking = await match.ranking.fetch()
 
-  const scorer = getScorerFn(ranking.data.rating_settings.rating_strategy)
+  const scorer = getScorerFn(rating_settings.rating_strategy)
   const new_ratings = scorer({
     outcome: match.data.outcome,
     match_players,
     best_of: match.data.metadata?.best_of,
-    rating_settings: ranking.data.rating_settings,
+    rating_settings: rating_settings,
   })
 
   return new_ratings
@@ -82,10 +85,10 @@ export async function rescoreMatches(
     const match_players: MatchPlayer[][] = match.team_players.map(team =>
       team.map(mp => {
         /*
-      Determine player ratings before the match.
-      If their rating was recalculated, use that.
-      If not, reset them if specified, otherwise leave them as they were before.
-      */
+        Determine player ratings before the match.
+        If their rating was recalculated, use that.
+        If not, reset them if specified, otherwise leave them as they were before.
+        */
         const rating_before =
           affected_ratings.get(mp.player.data.id) ??
           (reset_rating_to_initial ? ranking.data.rating_settings.initial_rating : mp.rating)
@@ -98,9 +101,10 @@ export async function rescoreMatches(
     )
 
     // Recalculate the player ratings
-    const new_ratings = await scoreMatch({
+    const new_ratings = scoreMatch({
       match: match.match,
       match_players,
+      rating_settings: ranking.data.rating_settings,
     })
 
     if (!new_ratings) continue

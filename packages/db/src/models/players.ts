@@ -1,6 +1,7 @@
 import { and, eq, inArray, InferInsertModel, InferSelectModel, SQL, sql } from 'drizzle-orm'
 import { PgDialect } from 'drizzle-orm/pg-core'
-import { Ranking, Team } from '.'
+import { z } from 'zod'
+import { MatchStatus, Ranking, Team } from '.'
 import { DbObjectManager } from '../classes'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
@@ -12,12 +13,34 @@ export type PlayerSelect = InferSelectModel<typeof Players>
 export type PlayerInsert = Omit<InferInsertModel<typeof Players>, 'id'>
 export type PlayerUpdate = Partial<Omit<PlayerInsert, 'ranking_id' | 'user_id' | 'id'>>
 
-export type PlayerStats = {}
-
 export enum PlayerFlags {
   None = 0,
   Disabled = 1,
 }
+
+export const PlayerStatsSchema = z.object({
+  display_rating: z.object({
+    points: z.number(),
+    rd: z.number().optional(),
+    is_provisional: z.boolean().optional(),
+  }),
+  wins: z.number(),
+  losses: z.number(),
+  draws: z.number(),
+  winrate: z.number().nullable(),
+  lb_place: z.number(),
+  max_lb_place: z.number(),
+  rating_history: z.array(
+    z.object({
+      points: z.number(),
+      is_provisional: z.boolean().optional(),
+      time: z.date(),
+    }),
+  ),
+  stats_last_refreshed: z.date(),
+})
+
+export type PlayerStats = z.infer<typeof PlayerStatsSchema>
 
 export class PartialPlayer {
   constructor(
@@ -42,6 +65,42 @@ export class PartialPlayer {
 
     return data.map(data => new Team(data.team, this.db))
   }
+
+  /**
+   * Returns the last match the player played before the provided time.
+   * If no match is found, returns null.
+   * @param time The time before which to find the last match
+   */
+
+  async getInfoAtTime(time: Date) {
+    const result = await this.db.matches.getMany({
+      player_ids: [this.data.id],
+      finished_before: time,
+      status: MatchStatus.Finished,
+      limit: 1,
+      earliest_first: false,
+    })
+
+    let seconds: number | null = null
+    let rating: Rating | undefined | null = null
+
+    if (result.length !== 0) {
+      const { match, team_players } = result[0]
+      const last_time = match.data.time_finished
+      seconds = last_time ? Math.floor((time.getTime() - last_time.getTime()) / 1000) : null
+      rating = team_players.flat().find(p => p.player.data.id === this.data.id)?.rating
+    }
+
+    return {
+      seconds,
+      rating: rating ?? (await this.ranking()).data.rating_settings.initial_rating,
+    }
+  }
+
+  /**
+   * Determines the next match that the player finished
+   */
+  async(time: Date) {}
 
   async update(data: Partial<Omit<PlayerInsert, 'user_id' | 'ranking_id'>>): Promise<Player> {
     const new_data = (

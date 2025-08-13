@@ -16,7 +16,6 @@ export async function getOrCreatePlayerByUser(
   p_ranking: PartialRanking,
 ): Promise<UserPlayer> {
   const discord_user_id = typeof partial_discord_user === 'string' ? partial_discord_user : partial_discord_user.id
-  sentry.debug(`getOrCreatePlayerByUser: ${discord_user_id} in ${p_ranking}`)
 
   let player = await app.db.players.fetchByUser({ user_id: discord_user_id, ranking: p_ranking })
 
@@ -41,53 +40,40 @@ export async function getOrCreatePlayerByUser(
       },
     })
   }
-
   return player
 }
 
-/**
- * Returns a player associated with the given role and user
- */
-export async function getOrCreatePlayer(options: {
+export async function getOrCreatePlayerByRole({
+  app,
+  p_ranking,
+  role,
+}: {
   app: App
-  ranking: PartialRanking
-  user?: D.APIUser | string
-  role?: {
+  p_ranking: PartialRanking
+  role: {
     id: string
     guild_id: string
   }
-  name?: string
-}): Promise<Player> {
-  sentry.debug(`getOrCreatePlayer: user:${options.user} role:${options.role} in ${options.ranking}`)
-
-  const { app } = options
-
-  if (options.user) return getOrCreatePlayerByUser(options.app, options.user, options.ranking)
-
-  // User is not specified.
-
+}) {
   // Get any existing player based on the role and/or name
   let player = await app.db.players.fetchBy({
-    role_id: typeof options.role === 'string' ? options.role : options.role?.id,
-    name: options.name,
-    ranking: options.ranking,
+    role_id: typeof role === 'string' ? role : role?.id,
+    ranking: p_ranking,
   })
 
   if (!player) {
-    const ranking = await options.ranking.fetch()
-    sentry.debug(`registering user:${options.user} role:${options.role} in ${ranking}`)
+    const ranking = await p_ranking.fetch()
+    sentry.debug(`registering role:${role} in ${ranking}`)
 
     // Determine the name, and optionally the role+guild.
     let name: string
     let role_id: string | undefined
     let guild_id: string | undefined
-    if (options.role) {
-      const role = await app.discord.getRole(options.role.guild_id, options.role.id)
-      name = role.name
+    if (role) {
+      const full_role = await app.discord.getRole(role.guild_id, role.id)
+      name = full_role.name
       role_id = role.id
-      guild_id = options.role.guild_id
-    } else if (options.name) {
-      name = options.name
+      guild_id = role.guild_id
     } else {
       throw new Error('Role or name not provided')
     }
@@ -110,6 +96,29 @@ export async function getOrCreatePlayer(options: {
 }
 
 /**
+ * Returns a player associated with the given role or user
+ */
+export async function getOrCreatePlayer({
+  app,
+  ranking: ranking,
+  user,
+  role,
+}: {
+  app: App
+  ranking: PartialRanking
+  user?: D.APIUser | string
+  role?: {
+    id: string
+    guild_id: string
+  }
+  name?: string
+}): Promise<Player> {
+  if (user) return getOrCreatePlayerByUser(app, user, ranking)
+  else if (role) return getOrCreatePlayerByRole({ app, p_ranking: ranking, role })
+  else throw new Error('Either user or role must be provided to getOrCreatePlayer')
+}
+
+/**
  * Updates the players' ratings
  *
  * Also updates:
@@ -120,24 +129,23 @@ export async function getOrCreatePlayer(options: {
 export async function updatePlayerRatings(
   app: App,
   ranking: Ranking,
-  update: { player: PartialPlayer; rating: Rating }[],
+  update_data: { player: PartialPlayer; rating: Rating }[],
 ) {
-  sentry.debug(`updatePlayerRatings, ${update.map(u => u.player.data.id)}`)
+  sentry.debug(`updatePlayerRatings, ${update_data.map(u => u.player.data.id)}`)
 
+  // Fetch all players in update_data to complete update_data with the full player objects
   const all_players = await app.db.players.fetchMany({
-    player_ids: update.map(u => u.player.data.id),
+    player_ids: update_data.map(u => u.player.data.id),
   })
-
-  // Update, with full player object
-  const update_players = update.map(({ player, rating }) => ({
+  const update_data_complete = update_data.map(({ player, rating }) => ({
     player: all_players.find(p => p.data.id === player.data.id)!,
     rating,
   }))
 
   await Promise.all([
-    await app.db.players.updateRatings(update),
+    await app.db.players.updateRatings(update_data),
     Promise.all(
-      update_players.map(async ({ player, rating }) => {
+      update_data_complete.map(async ({ player, rating }) => {
         // For each player to update, update role connections
 
         if (app.config.features.RatingRoleConnections) {
@@ -166,7 +174,7 @@ export async function updatePlayerRatings(
     guild_rankings.map(async ({ guild, guild_ranking }) => {
       await Promise.all(
         all_players.map(async player => {
-          await updateRankRolesForPlayer(app, player, guild_ranking)
+          await updateRankRolesForPlayer(app, await player.fetch(), guild_ranking)
         }),
       )
     }),

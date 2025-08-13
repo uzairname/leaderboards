@@ -9,9 +9,9 @@ import { Colors, breadcrumbsTitle, escapeMd, userAvatarUrl } from '../../../../u
 import { matches_view_sig } from '../../../matches/ui/matches/matches-view'
 import { rating_strategy_name } from '../../../settings/properties'
 import { getOrRefreshPlayerStats } from '../../properties'
+import { getApplicableRankRoles } from '../../rank-roles'
 import { ratingTable, wlrTable } from './pieces'
 import { profile_view_sig } from './view'
-import { getApplicableRankRoles } from '../../rank-roles'
 
 function rankingSelectMenu(
   grs: { ranking: Ranking }[],
@@ -112,7 +112,10 @@ export async function main(
     }
 
     const applicable_rank_roles = await getApplicableRankRoles(app, player, gr.guild_ranking)
-    const rank_role_text = Object.entries(applicable_rank_roles).filter(([id, has_role]) => has_role).map(([id, has_role]) => `<@&${id}>`).join(', ')
+    const rank_role_text = Object.entries(applicable_rank_roles)
+      .filter(([id, has_role]) => has_role)
+      .map(([id, has_role]) => `<@&${id}>`)
+      .join(', ')
 
     const stats = await getOrRefreshPlayerStats(app, player)
 
@@ -122,7 +125,8 @@ export async function main(
     embed.fields = [
       {
         name: `Rank`,
-        value: `**${intToOrdinal(stats.lb_place)}** place out of ${stats.max_lb_place}` + 
+        value:
+          `**${intToOrdinal(stats.lb_place)}** place out of ${stats.max_lb_place}` +
           (rank_role_text.length > 0 ? `\n${rank_role_text}` : ``),
       },
       {

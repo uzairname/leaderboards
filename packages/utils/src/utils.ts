@@ -112,3 +112,27 @@ export function intToOrdinal(n: number): string {
   const v = n % 100
   return n + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0])
 }
+
+/**
+ * Finds the indices of the first element in a 2D array that satisfies the predicate.
+ * @param {T[][]} array The 2D array to search within.
+ * @param {(element: T, rowIndex: number, colIndex: number) => boolean} predicate A function that returns true for the desired element. It receives the element, its row index, and its column index.
+ * @returns {[number, number] | null} A tuple [rowIndex, colIndex] if found, otherwise null.
+ */
+export function findDoubleIndex<T>(
+  array: T[][],
+  predicate: (element: T, rowIndex: number, colIndex: number) => boolean,
+): [number, number] | null {
+  for (let i = 0; i < array.length; i++) {
+    for (let j = 0; j < array[i].length; j++) {
+      // Execute the callback for the current element
+      if (predicate(array[i][j], i, j)) {
+        // If the predicate returns true, we found our match
+        return [i, j]
+      }
+    }
+  }
+
+  // No element satisfied the predicate
+  return null
+}

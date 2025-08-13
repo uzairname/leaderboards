@@ -134,7 +134,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
   }): Promise<D.APIInteractionResponse> {
     if (interaction.type === D.InteractionType.Ping) return { type: D.InteractionResponseType.Pong }
 
-    logInteraction(interaction)
+    logInteraction(interaction, this.logger)
 
     if (
       interaction.type === D.InteractionType.ApplicationCommand ||
@@ -183,7 +183,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
       const state = ViewStateFactory.fromSignature(handler.signature).parse(encoded_data)
       this.logger?.log({
         message: `Decoded custom_id`,
-        data: { custom_id, prefix, encoded_data, data: state.data },
+        data: { custom_id, prefix, encoded_data, data: state.data, length: custom_id.length },
       })
       return { handler, state }
     } catch (e) {

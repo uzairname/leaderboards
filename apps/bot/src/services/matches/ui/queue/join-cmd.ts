@@ -1,6 +1,5 @@
 import { CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
 import { guildRankingsOption, Messages, withSelectedRanking } from '../../../../utils'
 import { isQueueEnabled } from '../../../settings/properties'
@@ -21,7 +20,7 @@ export const join_cmd = join_cmd_sig.set<App>({
     if (queue_enabled_rankings.length == 0) return null
 
     let options: D.APIApplicationCommandOption[] = []
-    
+
     // Add an option for 'ranking' based on how many rankings there are in the guild
     options = options.concat(
       await guildRankingsOption(app, guild, 'ranking', {

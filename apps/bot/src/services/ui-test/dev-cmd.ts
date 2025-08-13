@@ -2,7 +2,7 @@ import { CommandSignature, getOptions, getSubcommandOption } from '@repo/discord
 import * as D from 'discord-api-types/v10'
 import { App } from '../../setup/app'
 import { guildRankingsOption, withSelectedRanking } from '../../utils/ui/view-helpers/ranking-option'
-import { rescoreMatches } from '../matches/scoring/score_match'
+import { rescoreMatches } from '../matches/scoring/score-matches'
 
 export const dev_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,

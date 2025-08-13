@@ -1,0 +1,1 @@
+ALTER TABLE "MatchPlayers" ADD COLUMN "time_since_last_match" integer;

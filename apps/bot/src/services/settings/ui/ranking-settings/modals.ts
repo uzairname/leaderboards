@@ -1,10 +1,11 @@
 import { ActionRowBuilder, ModalBuilder, TextInputBuilder } from '@discordjs/builders'
 import * as D from 'discord-api-types/v10'
+import { RatingStrategy } from '../../../../../../../packages/db/src/models/rankings'
 import {
   default_best_of,
-  default_leaderboard_color,
-  default_players_per_team,
-  default_teams_per_match,
+  DEFAULT_LB_COLOR,
+  DEFAULT_PLAYERS_PER_TEAM,
+  DEFAULT_TEAMS_PER_MATCH,
   max_ranking_name_length,
 } from '../../properties'
 
@@ -22,7 +23,16 @@ export function rankingSettingsModal(include: {
   }
   color?: { ph?: string }
 }) {
-  const example_names = [`Smash 1v1`, `Boosts Only`, `Ping Pong 2v2`, `Chess`]
+  const example_names = [
+    `Smash 1v1`,
+    `Boosts Only`,
+    `Ping Pong`,
+    `Chess`,
+    `Tic Tac Toe`,
+    `Valorant 5s`,
+    `Halo 8s`,
+    `Hearthstone`,
+  ]
 
   const text_inputs: TextInputBuilder[] = []
 
@@ -48,7 +58,7 @@ export function rankingSettingsModal(include: {
           style: D.TextInputStyle.Short,
           custom_id: 'teams_per_match',
           label: 'Number of teams per match',
-          placeholder: `${include.team_size.teams_per_match.ph ?? default_teams_per_match}`,
+          placeholder: `${include.team_size.teams_per_match.ph ?? DEFAULT_TEAMS_PER_MATCH}`,
           required: false,
         }),
       )
@@ -60,7 +70,7 @@ export function rankingSettingsModal(include: {
           style: D.TextInputStyle.Short,
           custom_id: 'players_per_team',
           label: 'Players per team',
-          placeholder: `${include.team_size.players_per_team.ph ?? default_players_per_team}`,
+          placeholder: `${include.team_size.players_per_team.ph ?? DEFAULT_PLAYERS_PER_TEAM}`,
           required: false,
         }),
       )
@@ -87,7 +97,125 @@ export function rankingSettingsModal(include: {
         style: D.TextInputStyle.Short,
         custom_id: 'color',
         label: 'Color',
-        placeholder: `${include.color.ph ?? default_leaderboard_color}`,
+        placeholder: `${include.color.ph ?? DEFAULT_LB_COLOR}`,
+        required: false,
+      }),
+    )
+  }
+
+  if (text_inputs.length == 0) throw new Error('No text input components in modal')
+
+  const components = text_inputs.map((input, i) =>
+    new ActionRowBuilder<TextInputBuilder>().setComponents(input).toJSON(),
+  )
+
+  return new ModalBuilder({
+    components,
+  })
+}
+
+export async function ratingParametersModal(rating_strategy: RatingStrategy) {
+  const text_inputs: TextInputBuilder[] = []
+  let title = 'Rating Parameters'
+
+  if (rating_strategy === RatingStrategy.TrueSkill) {
+    // Parameters: mu, sigma
+    title = 'TrueSkill Parameters'
+
+    text_inputs.push(
+      new TextInputBuilder({
+        type: D.ComponentType.TextInput,
+        style: D.TextInputStyle.Short,
+        custom_id: 'mu',
+        label: 'Mu (Mean Rating)',
+        placeholder: 'Leave blank for no change',
+        required: false,
+      }),
+    )
+    text_inputs.push(
+      new TextInputBuilder({
+        type: D.ComponentType.TextInput,
+        style: D.TextInputStyle.Short,
+        custom_id: 'sigma',
+        label: 'Sigma (Standard Deviation)',
+        placeholder: 'Leave blank for no change',
+        required: false,
+      }),
+    )
+  }
+
+  if (rating_strategy === RatingStrategy.Glicko) {
+    // Parameters: mu, sigma, tau, volatility
+
+    title = 'Glicko Parameters'
+
+    text_inputs.push(
+      new TextInputBuilder({
+        type: D.ComponentType.TextInput,
+        style: D.TextInputStyle.Short,
+        custom_id: 'mu',
+        label: 'Mu (Mean Rating)',
+        placeholder: 'Leave blank for no change',
+        required: false,
+      }),
+    )
+
+    text_inputs.push(
+      new TextInputBuilder({
+        type: D.ComponentType.TextInput,
+        style: D.TextInputStyle.Short,
+        custom_id: 'sigma',
+        label: 'Sigma (Standard Deviation)',
+        placeholder: 'Leave blank for no change',
+        required: false,
+      }),
+    )
+
+    text_inputs.push(
+      new TextInputBuilder({
+        type: D.ComponentType.TextInput,
+        style: D.TextInputStyle.Short,
+        custom_id: 'tau',
+        label: 'Tau',
+        placeholder: 'Leave blank for no change',
+        required: false,
+      }),
+    )
+    text_inputs.push(
+      new TextInputBuilder({
+        type: D.ComponentType.TextInput,
+        style: D.TextInputStyle.Short,
+        custom_id: 'volatility',
+        label: 'Volatility',
+        placeholder: 'Leave blank for no change',
+        required: false,
+      }),
+    )
+  }
+
+  if (rating_strategy === RatingStrategy.Elo) {
+    // Parameters: mu, k_factor
+
+    title = 'Elo Parameters'
+
+    text_inputs.push(
+      new TextInputBuilder({
+        type: D.ComponentType.TextInput,
+        style: D.TextInputStyle.Short,
+        custom_id: 'mu',
+        label: 'Mu (Mean Rating)',
+        placeholder: 'Leave blank for no change',
+        required: false,
+      }),
+    )
+
+    text_inputs.push(
+      new TextInputBuilder({
+        type: D.ComponentType.TextInput,
+        style: D.TextInputStyle.Short,
+        custom_id: 'k_factor',
+        label: 'K Factor',
+        placeholder: 'Leave blank for no change',
         required: false,
       }),
     )

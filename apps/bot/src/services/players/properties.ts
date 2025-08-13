@@ -1,8 +1,9 @@
-import { Match, PartialRanking, Player } from '@repo/db/models'
-import { z } from 'zod'
+import { Match, MatchStatus, PartialRanking, Player, Rating, RatingStrategy } from '@repo/db/models'
+import { findDoubleIndex } from '@repo/utils'
+import { PlayerStats, PlayerStatsSchema } from '../../../../../packages/db/src/models/players'
 import { App } from '../../setup/app'
 import { getMatchWinners } from '../matches/management/properties'
-import { scoreMatch } from '../matches/scoring/score_match'
+import { scoreMatch } from '../matches/scoring/score-matches'
 import { displayRatingFn } from '../settings/properties'
 
 /**
@@ -35,29 +36,6 @@ export function mentionOrName(player: Player): string {
       : player.data.name
 }
 
-export const PlayerStatsSchema = z.object({
-  display_rating: z.object({
-    points: z.number(),
-    is_provisional: z.boolean().optional(),
-  }),
-  wins: z.number(),
-  losses: z.number(),
-  draws: z.number(),
-  winrate: z.number().nullable(),
-  lb_place: z.number(),
-  max_lb_place: z.number(),
-  rating_history: z.array(
-    z.object({
-      points: z.number(),
-      is_provisional: z.boolean().optional(),
-      time: z.date(),
-    }),
-  ),
-  stats_last_refreshed: z.date(),
-})
-
-export type PlayerStats = z.infer<typeof PlayerStatsSchema>
-
 /**
  * Determine a player's wins, losses, draws, winrate, and place on the leaderboard
  */
@@ -67,7 +45,15 @@ export async function refreshPlayerStats(app: App, player: Player): Promise<Play
   const matches = await app.db.matches.getMany({ player_ids: [player.data.id] })
 
   // Get the display rating
-  const display_rating = displayRatingFn(app, ranking)(player.data.rating)
+  const display_rating: PlayerStats['display_rating'] = displayRatingFn(app, ranking)(player.data.rating)
+
+  // Determine whether the rd should be displayed
+  if (
+    ranking.data.rating_settings.rating_strategy === RatingStrategy.Glicko ||
+    ranking.data.rating_settings.rating_strategy === RatingStrategy.TrueSkill
+  ) {
+    display_rating['rd'] = Math.round(player.data.rating.rd ?? ranking.data.rating_settings.initial_rating.rd)
+  }
 
   // Get the leaderboard place
   const player_index = players.findIndex(p => p.player.data.id === player.data.id)
@@ -175,9 +161,10 @@ export async function matchPlayersDisplayStats(app: App, match: Match): Promise<
   const team_players = await match.players()
   const display = displayRatingFn(app, ranking)
 
-  const new_ratings = await scoreMatch({
+  const new_ratings = scoreMatch({
     match: match,
     match_players: team_players,
+    rating_settings: ranking.data.rating_settings,
   })
 
   const result = team_players.map((team, i) =>
@@ -191,4 +178,54 @@ export async function matchPlayersDisplayStats(app: App, match: Match): Promise<
   )
 
   return result
+}
+
+/**
+ * @returns the player's rating, and time since last match
+ * at the specified time.
+ * If the previous match has no time finished or no information
+ * about the player's rating, returns null for that value
+ */
+export async function getInfoAtTime(app: App, player: Player, time: Date) {
+  // Get the most recent match finished before the specified time
+  const result = await app.db.matches.getMany({
+    player_ids: [player.data.id],
+    finished_before: time,
+    status: MatchStatus.Finished,
+    limit: 1,
+    earliest_first: false,
+  })
+
+  const ranking = await player.ranking()
+
+  let seconds: number | null = null
+  let rating: Rating | undefined | null = null
+
+  if (result.length !== 0) {
+    const { match, team_players } = result[0]
+
+    const last_time = match.data.time_finished
+
+    seconds = last_time ? Math.floor((time.getTime() - last_time.getTime()) / 1000) : null
+
+    // Determine the rating after the match
+    const scores = scoreMatch({
+      match_players: team_players,
+      match: match,
+      rating_settings: ranking.data.rating_settings,
+    })
+
+    // Determine the player's index in team_players
+    const idx = findDoubleIndex(team_players, p => p.player.data.id === player.data.id)
+
+    if (!scores) throw new Error(`No score for player ${player.data.id} in match ${match.data.id}`)
+    if (!idx) throw new Error(`Expected to find match player ${player.data.id} in match ${match.data.id}`)
+
+    rating = scores[idx[0]][idx[1]]
+  }
+
+  return {
+    seconds,
+    rating: rating ?? ranking.data.rating_settings.initial_rating,
+  }
 }

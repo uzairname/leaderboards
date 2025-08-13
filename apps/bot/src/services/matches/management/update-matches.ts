@@ -1,10 +1,10 @@
-import { Match, MatchInsert, MatchMetadata, MatchPlayer, MatchStatus, Player, Rating } from '@repo/db/models'
+import { Match, MatchInsert, MatchMetadata, MatchStatus, Player, Rating } from '@repo/db/models'
 import { UserError } from '../../../errors/user-errors'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { mentionOrName } from '../../players/properties'
 import { syncMatchSummaryMessages } from '../logging/match-summary-message'
-import { rescoreMatches } from '../scoring/score_match'
+import { rescoreMatches } from '../scoring/score-matches'
 
 // The match updating service. Responsible for updating match outcomes, and canceling matches.
 
@@ -91,7 +91,11 @@ export async function updateMatchOutcome(
   await syncMatchSummaryMessages(app, match)
 }
 
-export function validateMatchData(o: Partial<{ players: MatchPlayer[][] } & MatchInsert>): void {
+/**
+ * Ensures that all players are in the same ranking,  teams have consistent sizes, and no duplicate players.
+ * Throws an error if the match data is invalid.
+ */
+export function validateMatchData(o: Partial<{ players: Player[][] } & MatchInsert>): void {
   if (o.outcome) {
     if (o.players) {
       if (o.outcome.length !== o.players.length) throw new Error(`Match outcome and players length must match`)
@@ -99,10 +103,10 @@ export function validateMatchData(o: Partial<{ players: MatchPlayer[][] } & Matc
   }
 
   if (o.players) {
-    const team_player_ids = o.players.map(team => team.map(p => p.player.data.id))
+    const team_player_ids = o.players.map(team => team.map(p => p.data.id))
     if (team_player_ids.flat().length !== new Set(team_player_ids.flat()).size)
       throw new UserError(`Duplicate players in a match`)
-    if (new Set(o.players.flat().map(p => p.player.data.ranking_id)).size !== 1)
+    if (new Set(o.players.flat().map(p => p.data.ranking_id)).size !== 1)
       throw new UserError(`Players must be from the same ranking`)
   }
 }

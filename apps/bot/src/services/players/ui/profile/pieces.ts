@@ -1,6 +1,6 @@
 import { maxIndex } from '@repo/utils'
+import { PlayerStats } from 'packages/db/src/models/players'
 import { AnsiColor, AnsiFormat, formatTable, TableRow } from '../../../../utils/ui/strings'
-import { PlayerStats } from '../../properties'
 
 /**
  * Returns a code block containing a table that displays
@@ -56,13 +56,13 @@ export function ratingTable({ stats }: { stats: PlayerStats }): string {
   }
 
   return formatTable(
-    [`Rating`, `Peak Rating`],
+    [`Rating`, `Peak Rating`].concat(stats.display_rating.rd ? [`RD`] : []),
     [
       {
         text: points,
         format: stats.display_rating.is_provisional ? undefined : AnsiFormat.Bold,
       },
       peak_rating,
-    ],
+    ].concat(stats.display_rating.rd ? [`${stats.display_rating.rd}`] : []),
   )
 }

@@ -71,6 +71,13 @@
       "when": 1754934274253,
       "tag": "0009_flippant_susan_delgado",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1755116935935,
+      "tag": "0010_careless_valkyrie",
+      "breakpoints": true
     }
   ]
 }

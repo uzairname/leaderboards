@@ -5,7 +5,7 @@ import { App } from '../../../setup/app'
 import { Colors, escapeMd } from '../../../utils'
 import { ensureAdminPerms } from '../../../utils/perms'
 import { createNewRankingInGuild } from '../manage'
-import { default_players_per_team, default_teams_per_match } from '../properties'
+import { DEFAULT_PLAYERS_PER_TEAM, DEFAULT_TEAMS_PER_MATCH } from '../properties'
 import { RankingSettingsPages } from './ranking-settings'
 import { ranking_settings_view_sig } from './ranking-settings/view'
 
@@ -23,13 +23,13 @@ export const create_ranking_cmd_sig = new CommandSignature({
     },
     {
       name: 'num-teams',
-      description: `Number of teams per match. Default ${default_teams_per_match}`,
+      description: `Number of teams per match. Default ${DEFAULT_TEAMS_PER_MATCH}`,
       type: D.ApplicationCommandOptionType.Integer,
       required: false,
     },
     {
       name: 'players-per-team',
-      description: `Number of players per team. Default ${default_players_per_team}`,
+      description: `Number of players per team. Default ${DEFAULT_PLAYERS_PER_TEAM}`,
       type: D.ApplicationCommandOptionType.Integer,
       required: false,
     },
@@ -47,8 +47,8 @@ export const create_ranking_cmd = create_ranking_cmd_sig.set<App>({
         'players-per-team': { type: D.ApplicationCommandOptionType.Integer },
       })
 
-      const tpm = options['teams-per-match'] ?? default_teams_per_match
-      const ppt = options['players-per-team'] ?? default_players_per_team
+      const tpm = options['teams-per-match'] ?? DEFAULT_TEAMS_PER_MATCH
+      const ppt = options['players-per-team'] ?? DEFAULT_PLAYERS_PER_TEAM
 
       if (!app.config.features.AllowNon1v1Rankings && (tpm > 2 || ppt > 1))
         throw new Error(`Only 1v1 rankings are supported for now`)

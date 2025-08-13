@@ -6,7 +6,8 @@ import { type App } from '../../../setup/app'
 import { commandMention, escapeMd, relativeTimestamp, space } from '../../../utils/ui'
 import { numRankings } from '../../guilds/properties'
 import { mentionOrName, orderedLeaderboardPlayers } from '../../players/properties'
-import { default_leaderboard_color, rankingProperties } from '../../settings/properties'
+import { getApplicableRankRoles } from '../../players/rank-roles'
+import { DEFAULT_LB_COLOR, rankingProperties } from '../../settings/properties'
 import { leaderboard_cmd } from './cmd'
 import { leaderboard_view_sig } from './view'
 
@@ -28,6 +29,25 @@ export async function leaderboardMessage(
 
   const players = await orderedLeaderboardPlayers(app, ranking)
 
+  const { guild, guild_ranking } = options?.guild_id
+    ? await app.db.guild_rankings.fetch({ guild_id: options.guild_id, ranking_id: ranking.data.id })
+    : {}
+
+  // Determine the rank role for each player to feature
+  if (guild_ranking) {
+    var featured_rank_roles = await Promise.all(
+      players.map(async player => {
+        const rank_roles = await getApplicableRankRoles(app, player.player, guild_ranking)
+        const roles = Object.entries(rank_roles)
+          .filter(([_, has_role]) => has_role)
+          .map(([role_id, _]) => role_id)
+        return roles[roles.length - 1] ?? null
+      }),
+    )
+  } else {
+    featured_rank_roles = []
+  }
+
   let place = 0
   const max_rating_len = players[0]?.points.toFixed(0).length ?? 0
 
@@ -40,14 +60,11 @@ export async function leaderboardMessage(
       } else {
         place++
         return (
-          `### ${(place => {
-            if (place == 1) return `🥇`
-            else if (place == 2) return `🥈`
-            else if (place == 3) return `🥉`
-            else return `${place}. `
-          })(place)}` +
+          `### \`${place}.`.padEnd(3, ' ') +
+          `\`` +
           `${space}${rating_text}` +
-          `${space}${mentionOrName(p.player)} `
+          `${space}${mentionOrName(p.player)}` +
+          (featured_rank_roles[place - 1] ? ` (<@&${featured_rank_roles[place - 1]}>)` : ``) // Add the rank role mention if it exists
         )
       }
     })
@@ -73,12 +90,9 @@ export async function leaderboardMessage(
   }
 
   // Add bottom text
-  const fits_on_one_page = max_page == 1
+  const fits_on_one_page = max_page <= 1
 
-  const { guild, guild_ranking } = options?.guild_id
-    ? await app.db.guild_rankings.fetch({ guild_id: options.guild_id, ranking_id: ranking.data.id })
-    : {}
-  const color = guild_ranking?.data.display_settings?.color ?? default_leaderboard_color
+  const color = guild_ranking?.data.display_settings?.color ?? DEFAULT_LB_COLOR
 
   const bottom_text =
     `-# Last updated ${relativeTimestamp(new Date(Date.now()))}. ` +

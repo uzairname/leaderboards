@@ -12,9 +12,10 @@ import {
 import { UserErrors } from '../../../errors/user-errors'
 import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
+import { getInfoAtTime } from '../../players/properties'
 import { rankingProperties } from '../../settings/properties'
 import { syncMatchSummaryMessages } from '../logging/match-summary-message'
-import { rescoreMatches } from '../scoring/score_match'
+import { rescoreMatches } from '../scoring/score-matches'
 import { validateMatchData } from './update-matches'
 
 /**
@@ -30,32 +31,36 @@ export async function startNewMatch(
 
   const ranking = await p_ranking.fetch()
 
-  const match_players = players.map((team, i) =>
-    team.map((p, i) => ({
-      player: p,
-      ...p.data,
-    })),
-  )
+  validateMatchData({ players })
 
-  validateMatchData({ players: match_players })
+  await ensureNoActiveMatches(app, players.flat())
 
-  await ensureNoActiveMatches(
-    app,
-    match_players.flat().map(p => p.player),
-  )
-
-  await ensurePlayersEnabled(
-    app,
-    match_players.flat().map(p => p.player),
-  )
+  await ensurePlayersEnabled(app, players.flat())
 
   // shuffle teams
-  const shuffled_team_players = match_players.sort(() => Math.random() - 0.5)
+  const shuffled_team_players = players.sort(() => Math.random() - 0.5)
+
+  // This is a new match, so set their ratings to their current ratings
+  const match_players = await Promise.all(
+    shuffled_team_players.map(
+      async team =>
+        await Promise.all(
+          team.map(async p => {
+            return {
+              player: p,
+              rating: p.data.rating,
+              time_since_last_match: (await getInfoAtTime(app, p, new Date())).seconds,
+              flags: p.data.flags ?? PlayerFlags.None,
+            }
+          }),
+        ),
+    ),
+  )
 
   const match = await app.db.matches.create({
     ranking,
-    team_players: shuffled_team_players,
-    team_votes: match_players.map(_ => Vote.Undecided),
+    match_players,
+    team_votes: players.map(_ => Vote.Undecided),
     status: MatchStatus.Ongoing,
     metadata: {
       best_of: best_of ?? rankingProperties(ranking).default_best_of,
@@ -66,14 +71,16 @@ export async function startNewMatch(
 }
 
 /**
- * Creates a new match, and scores it based on the specified players ratings.
+ * Creates a new finished match, and scores it based on the specified players ratings.
  * It could have taken place in the past.
  * @param players players and their ratings before the match
+ * @param time_started The time when the match started. If not provided, uses the current time.
+ * @param time_finished The time when the match finished. If not provided, uses the current time.
  */
 export async function recordAndScoreMatch(
   app: App,
   ranking: PartialRanking,
-  players: MatchPlayer[][],
+  players: Player[][],
   outcome: number[],
   time_started?: Date,
   time_finished?: Date,
@@ -88,21 +95,41 @@ export async function recordAndScoreMatch(
     time_finished,
   })
 
-  await ensurePlayersEnabled(
-    app,
-    players.flat().map(p => p.player),
-  )
+  await ensurePlayersEnabled(app, players.flat())
 
-  // Determine what the players' ratings were at the time of the match
-  const team_players = players.map(team => team.map(p => p))
+  const match_time_started = time_started ?? time_finished ?? new Date()
+  const match_time_finished = time_finished ?? match_time_started
+
+  // Determine if the match finished in the past (more than 1 second ago)
+  const finished_in_past = match_time_finished && match_time_finished.getTime() < new Date().getTime() - 1000
+
+  const match_players: MatchPlayer[][] = await Promise.all(
+    players.map(async team => {
+      return Promise.all(
+        team.map(async p => {
+          // If the match just finished, use current player ratings to save queries
+          const res = finished_in_past ? await getInfoAtTime(app, p, match_time_started) : undefined
+
+          sentry.debug(`.. finished_in_past: ${finished_in_past}, time_started: ${time_started}, res: ${res}`)
+
+          return {
+            player: p,
+            rating: res?.rating ?? p.data.rating,
+            time_since_last_match: res?.seconds,
+            flags: p.data.flags ?? PlayerFlags.None, // Use the player's flags at time of insertion, or default to None
+          }
+        }),
+      )
+    }),
+  )
 
   const match = await app.db.matches.create({
     ranking,
-    team_players,
+    match_players,
     outcome,
     metadata,
-    time_started,
-    time_finished,
+    time_started: match_time_started,
+    time_finished: match_time_finished,
     status: MatchStatus.Finished,
   })
 

@@ -1,5 +1,5 @@
 import { sequential } from '@repo/utils'
-import { InferInsertModel, InferSelectModel, SQL, and, asc, desc, eq, gte, inArray, sql } from 'drizzle-orm'
+import { InferInsertModel, InferSelectModel, SQL, and, asc, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm'
 import { PgDialect } from 'drizzle-orm/pg-core'
 import { Player } from '.'
 import { DbObject, DbObjectManager } from '../classes'
@@ -46,7 +46,13 @@ export type MatchPlayer = {
    * The player's rating before playing the match.
    */
   rating: Rating
-  flags: PlayerFlags
+
+  /**
+   * The time in seconds since the last match this player finished.
+   */
+  time_since_last_match?: number | null
+
+  flags?: PlayerFlags
 }
 
 export class Match implements DbObject<MatchSelect> {
@@ -170,8 +176,13 @@ export class Match implements DbObject<MatchSelect> {
 }
 
 export class MatchesManager extends DbObjectManager {
+  /**
+   * Inserts a match into the database, and its associated MatchPlayers.
+   * @param data
+   * @returns
+   */
   async create(
-    data: Readonly<{ ranking: PartialRanking; team_players: MatchPlayer[][] } & Omit<MatchInsert, 'ranking_id'>>,
+    data: Readonly<{ ranking: PartialRanking; match_players: MatchPlayer[][] } & Omit<MatchInsert, 'ranking_id'>>,
   ): Promise<Match> {
     const data_copy = { ...data }
 
@@ -184,6 +195,7 @@ export class MatchesManager extends DbObjectManager {
 
     data_copy.time_started = data_copy.time_started ?? data_copy.time_finished ?? new Date()
 
+    // Insert the match
     const new_match_data = (
       await this.db.drizzle
         .insert(Matches)
@@ -196,24 +208,40 @@ export class MatchesManager extends DbObjectManager {
 
     const new_match = new Match(new_match_data, this.db)
 
-    const match_players_data = data_copy.team_players
-      .map((team, team_num) => {
-        return team.map(p => {
-          return {
-            match_id: new_match_data.id,
-            player_id: p.player.data.id,
-            team_num,
-            ...p,
-          }
-        })
-      })
-      .flat()
+    /**
+     * Set the match_id and player_id for each MatchPlayer, and flatten the array to be inserted
+     */
+    const match_players_data = (
+      await Promise.all(
+        data_copy.match_players.map(async (team, team_num) => {
+          return Promise.all(
+            team.map(async mp => {
+              return {
+                match_id: new_match.data.id,
+                player_id: mp.player.data.id,
+                team_num,
+                rating: mp.rating,
+                time_since_last_match: mp.time_since_last_match,
+                flags: mp.flags, // Use the player's flags at time of insertion, or default to None
+              }
+            }),
+          )
+        }),
+      )
+    ).flat()
 
-    // insert new MatchPlayers
-    await this.db.drizzle.insert(MatchPlayers).values(match_players_data).returning()
+    // Insert the match players
+    await this.db.drizzle.insert(MatchPlayers).values(match_players_data)
 
     return new_match
   }
+
+  /**
+   * Inserts a match player.
+   * If there was a previous match for this player, sets the time_since_last_match,
+   * and sets the rating to the
+   */
+  async insertMatchPlayer(match: Match, player: Player) {}
 
   // returns matches that are from a ranking in this guild.
   async fetch(id: number, limit_to_guild?: string): Promise<Match> {
@@ -242,12 +270,13 @@ export class MatchesManager extends DbObjectManager {
   /**
    * Retrieves multiple matches based on the provided filters.
    *
-   * @param filters.player_ids: If specified, only matches with at least one
+   * @param filters.player_ids: If specified, each match returned has at least one player in this list.
    * @param filters.earlient_first: Determines the order to use when applying limit and offset.
    *  Final result is always ascending by time_finished, time_started.
    */
   async getMany(filters: {
     finished_at_or_after?: Date | null
+    finished_before?: Date | null
     status?: MatchStatus
     ranking_ids?: number[]
     player_ids?: number[]
@@ -264,6 +293,12 @@ export class MatchesManager extends DbObjectManager {
       const finished_at_or_after = new Date(filters.finished_at_or_after)
       finished_at_or_after.setSeconds(finished_at_or_after.getSeconds() - 1)
       conditions.push(gte(Matches.time_finished, finished_at_or_after))
+    }
+
+    if (filters.finished_before) {
+      const finished_before = new Date(filters.finished_before)
+      finished_before.setSeconds(finished_before.getSeconds())
+      conditions.push(lt(Matches.time_finished, finished_before))
     }
 
     if (filters.status) conditions.push(eq(Matches.status, filters.status))

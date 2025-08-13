@@ -135,12 +135,7 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
               const match = await recordAndScoreMatch(
                 app,
                 ranking,
-                [[winner], [loser]].map(team =>
-                  team.map(p => ({
-                    player: p,
-                    ...p.data,
-                  })),
-                ),
+                [[winner], [loser]].map(team => team),
                 [1, 0],
                 undefined,
                 selected_time_finished_date,

@@ -49,7 +49,6 @@ export function sendCreateRankingModal(
       name: {
         ph: ctx.state.data.modal_input?.name,
       },
-      best_of: {},
       team_size: app.config.features.AllowNon1v1Rankings
         ? {
             players_per_team: {},

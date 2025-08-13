@@ -142,6 +142,7 @@ export const MatchPlayers = pgTable('MatchPlayers', {
   team_num: integer('team_num').notNull(),
   rating: jsonb('rating').notNull().$type<Rating>(),
   flags: integer('flags').notNull().$type<PlayerFlags>().default(0),
+  time_since_last_match: integer('time_since_last_match')
 }, (table) => [
   primaryKey({ columns: [table.match_id, table.player_id] }),
 ])

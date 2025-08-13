@@ -4,7 +4,7 @@ import { IttyRouter } from 'itty-router/IttyRouter'
 import { json } from 'itty-router/json'
 import { syncRankingLbMessages } from '../../services/leaderboard/manage'
 import { leaderboardMessage } from '../../services/leaderboard/ui/pages'
-import { rescoreAllMatches } from '../../services/matches/scoring/score_match'
+import { rescoreAllMatches } from '../../services/matches/scoring/score-matches'
 import { App } from '../../setup/app'
 
 export default (app: App, ranking: Ranking) =>

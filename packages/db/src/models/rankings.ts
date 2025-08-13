@@ -10,6 +10,9 @@ export type RankingSelect = InferSelectModel<typeof Rankings>
 export type RankingInsert = Omit<InferInsertModel<typeof Rankings>, 'id'>
 export type RankingUpdate = Partial<RankingInsert>
 
+/**
+ * Represents a player's rating
+ */
 export type Rating = {
   mu: number
   rd?: number
@@ -25,8 +28,13 @@ export enum RatingStrategy {
 
 export type RatingSettings = {
   rating_strategy: RatingStrategy
-  initial_rating: Rating
-  k_factor?: number
+  initial_rating: {
+    mu: number
+    rd: number
+    vol: number
+  }
+  k_factor: number
+  tau: number
 }
 
 export type MatchmakingSettings = {

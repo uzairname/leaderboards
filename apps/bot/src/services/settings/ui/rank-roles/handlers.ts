@@ -51,7 +51,6 @@ export async function onUnsetRankRole(
   ctx: ComponentContext<typeof rank_roles_settings_view_sig>,
 ): Promise<ChatInteractionResponse> {
   return ctx.defer(async ctx => {
-
     const original_msg_id = ctx.interaction.message?.id
     const followup = await ctx.followup({
       content: `Removing role from members...`,
@@ -59,16 +58,16 @@ export async function onUnsetRankRole(
     })
 
     const selected_role_id = ctx.state.get.selected_role_id()
-  
+
     const { guild_ranking } = await app.db.guild_rankings.fetch({
       guild_id: ctx.interaction.guild_id,
       ranking_id: ctx.state.get.ranking_id(),
     })
-  
+
     // Unset the rank role
     await unsetRankRole(selected_role_id, guild_ranking)
     await updateRankRolesForGuildRanking(app, guild_ranking)
-  
+
     await ctx.delete(followup.id)
     return void ctx.edit(await RankRolesSettingsPages.main(app, ctx), original_msg_id)
   })
@@ -119,21 +118,19 @@ export async function onEditRangeModalSubmit(
   app: App,
   ctx: ComponentContext<typeof rank_roles_settings_view_sig>,
 ): Promise<ChatInteractionResponse> {
-
   return ctx.defer(async ctx => {
-
     const original_msg_id = ctx.interaction.message?.id
     const followup = await ctx.followup({
       content: `Updating role assignment...`,
       flags: D.MessageFlags.Ephemeral,
     })
-    
+
     const entries = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
     const selected_role_id = ctx.state.get.selected_role_id()
-  
+
     const min_rating = intOrNull(entries['min_rating']?.value)
     const max_rating = intOrNull(entries['max_rating']?.value)
-  
+
     // Update the rank role with the new range
     const { guild_ranking } = await app.db.guild_rankings.fetch({
       guild_id: ctx.interaction.guild_id,
@@ -142,9 +139,8 @@ export async function onEditRangeModalSubmit(
 
     await setRankRole(selected_role_id, min_rating, max_rating, guild_ranking)
     await updateRankRolesForGuildRanking(app, guild_ranking)
-  
+
     await ctx.delete(followup.id)
     return void ctx.edit(await RankRolesSettingsPages.main(app, ctx), original_msg_id)
-
   })
 }

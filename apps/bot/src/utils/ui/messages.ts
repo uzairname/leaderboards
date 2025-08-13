@@ -55,7 +55,7 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
         value:
           `View or manage matches with the following commands:` +
           `\n- ${await commandMention(app, matches_cmd, guild_id)} \`player\`: View the match history for this server.` +
-          `\n  ${await commandMention(app, settle_match_cmd)}: Revert or set the outcome of a specific match. The \`match-id\` parameter is optional, and defaults to the last match that the selected player was in.` +
+          `\n- ${await commandMention(app, settle_match_cmd)}: Revert or set the outcome of a specific match. The \`match-id\` parameter is optional, and defaults to the last match that the selected player was in.` +
           ` Reverting a match undoes the effect it had on the players' ratings.` +
           `\n> -# Note: changing the outcome of an old match may have a cascading effect on the ratings of players who were in subsequent matches, because of the way ratings are calculated.`,
       },
@@ -68,9 +68,11 @@ export async function guide(app: App, guild?: Guild): Promise<APIEmbed> {
       {
         name: `Player Ratings`,
         value: `The bot tracks every player's **estimated skill level** (Also known as their rating, elo, score, number of points, etc.) as they play matches. For each ranking, you can choose any of the following rating methods that the bot can use to calculate ratings:
-- **Wins - Losses**: The simplest method. Awards one point to a player for winning a game, and takes away one point for losing.
-- **TrueSkill2**: Skill ratings are based on the [TrueSkill2](https://en.wikipedia.org/wiki/TrueSkill) algorithm developed my Microsoft. At first, your skill will be uncertain and you will be hidden from the leaderboard. Winning against opponents comparatively better than you will award more points. Playing more games makes your rating more certain, and thus it will change more slowly.
-- **Chess Elo**: The classic chess rating system. Winning against an opponent with a higher rating will award more points. Losing against an opponent with a lower rating will take away more points. Comes with a k-factor setting.`,
+        - **Glicko**: Skill ratings are based on the [Glicko](https://en.wikipedia.org/wiki/Glicko_rating_system) algorithm. It is similar to Elo, but it also tracks the uncertainty of a player's skill and the time since the last match. The more games you play, the more certain your rating becomes, taking a break will make your rating more volatile.
+        - **TrueSkill2**: Skill ratings are based on the [TrueSkill2](https://en.wikipedia.org/wiki/TrueSkill) algorithm developed my Microsoft. At first, your skill will be uncertain and you will be hidden from the leaderboard. Winning against opponents comparatively better than you will award more points. Playing more games makes your rating more certain, and thus it will change more slowly.
+        - **Elo**: The standard chess [Elo rating system](https://en.wikipedia.org/wiki/Elo_rating_system). Winning against an opponent with a higher rating will award more points. Losing against an opponent with a lower rating will take away more points. Comes with a k-factor setting.
+        - **Wins - Losses**: The simplest method. Awards one point to a player for winning a game, and takes away one point for losing.
+`,
       },
     ],
     color: Colors.EmbedBackground,

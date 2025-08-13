@@ -8,12 +8,7 @@ import { challenge_cmd, join_cmd, leaderboard_cmd } from '../../../../setup/all-
 import { App } from '../../../../setup/app'
 import { breadcrumbsTitle, Colors, commandMention, dateTimestamp, escapeMd } from '../../../../utils'
 import { syncMatchesChannel } from '../../../matches/logging/matches-channel'
-import {
-  default_leaderboard_color,
-  default_matchmaking_settings,
-  liveLbMsgLink,
-  rating_strategy_name,
-} from '../../properties'
+import { DEFAULT_LB_COLOR, default_matchmaking_settings, liveLbMsgLink, rating_strategy_name } from '../../properties'
 import { AllRankingsHandlers } from '../all-rankings'
 import { all_rankings_view_sig } from '../all-rankings/view'
 import { settingsOptions } from './common'
@@ -50,7 +45,7 @@ export async function main(
   const embed = new EmbedBuilder({
     title: breadcrumbsTitle(`Settings`, `Rankings`, escapeMd(ranking.data.name)),
     description,
-    color: guild_ranking.data.display_settings?.color ?? default_leaderboard_color,
+    color: guild_ranking.data.display_settings?.color ?? DEFAULT_LB_COLOR,
     fields: [
       {
         name: `General`,
@@ -142,7 +137,7 @@ export async function queue(
   If enabled, players can join the matchmaking queue by using ${await commandMention(app, join_cmd, ctx.interaction.guild_id)} \`${ranking.data.name}\` to start games ranking.
   
   The queue is currently **${queue_enabled ? `enabled` : `disabled`}.**`,
-        color: guild_ranking.data.display_settings?.color ?? default_leaderboard_color,
+        color: guild_ranking.data.display_settings?.color ?? DEFAULT_LB_COLOR,
       },
     ],
     components: [
@@ -193,7 +188,7 @@ export async function scoringMethod(
         .setDescription(
           `# Rating Method\nChoose how players' ratings in this ranking are updated as they play games.\nCurrent: **${rating_strategy_name[ranking.data.rating_settings.rating_strategy]}**`,
         )
-        .setColor(guild_ranking.data.display_settings?.color ?? default_leaderboard_color)
+        .setColor(guild_ranking.data.display_settings?.color ?? DEFAULT_LB_COLOR)
         .toJSON(),
     ],
     components: [
@@ -204,6 +199,11 @@ export async function scoringMethod(
             placeholder: 'Select a rating method',
             options: [
               {
+                label: 'Glicko',
+                value: RatingStrategy.Glicko.toString(),
+                description: `A widely used Bayesian rating system`,
+              },
+              {
                 label: 'Trueskill2',
                 value: RatingStrategy.TrueSkill.toString(),
                 description: `Microsoft's TrueSkill2 rating algorithm`,
@@ -211,12 +211,12 @@ export async function scoringMethod(
               {
                 label: 'Elo',
                 value: RatingStrategy.Elo.toString(),
-                description: `Standard Elo rating system used in Chess`,
+                description: `The standard Elo rating system used in Chess`,
               },
               {
-                label: 'Wins - Losses',
+                label: 'Wins Minus Losses',
                 value: RatingStrategy.WinsMinusLosses.toString(),
-                description: `1 point for a win, lose a point for a loss`,
+                description: `Gain 1 point for winning, lose 1 point for losing`,
               },
             ],
           }),
@@ -257,7 +257,7 @@ Customize how the leaderboard looks when it's displayed in Discord
 
 Options:
 - **Color**: The color of the leaderboard embed. You can use a [color picker](https://htmlcolorcodes.com/color-picker/) to find one. Enter the hex code`,
-        color: guild_ranking.data.display_settings?.color ?? default_leaderboard_color,
+        color: guild_ranking.data.display_settings?.color ?? DEFAULT_LB_COLOR,
       }).toJSON(),
     ],
     components: [

@@ -13,20 +13,27 @@ import { UserError, UserErrors } from '../../errors/user-errors'
 import { App } from '../../setup/app'
 import { Colors, messageLink, randomColor } from '../../utils'
 import { syncGuildRankingLbMessage } from '../leaderboard/manage'
+import {
+  ELO_DEFAULT_K,
+  ELO_DEFAULT_MU,
+  ELO_DEFAULT_RD,
+  GLICKO_DEFAULT_MU,
+  GLICKO_DEFAULT_RD,
+  GLICKO_DEFAULT_TAU,
+  GLICKO_DEFAULT_VOL,
+  TRUESKILL_DEFAULT,
+} from '../matches/scoring/scorers'
+
+// Ranking Config
+export const MAX_GUILD_RANKINGS = 24
 
 // General Defaults
-export const default_teams_per_match = 2
-export const default_players_per_team = 1
+export const DEFAULT_TEAMS_PER_MATCH = 2
+export const DEFAULT_PLAYERS_PER_TEAM = 1
 
 // Rating Settings
-export const default_rating_strategy = RatingStrategy.TrueSkill
-export const default_k_factor = 32
-export const trueskill_default_initial_rating = {
-  mu: 50,
-  rd: 50 / 3,
-}
-
-export const default_leaderboard_color = Colors.Primary
+export const DEFAULT_RATING_STRATEGY = RatingStrategy.Glicko
+export const DEFAULT_LB_COLOR = Colors.Primary
 
 export const rating_strategy_name = {
   [RatingStrategy.WinsMinusLosses]: `Wins minus losses`,
@@ -48,33 +55,46 @@ export function parseRatingStrategy(value: string): RatingStrategy {
  * Maps rating strategies to their settings. When a ranking is created or updated with
  * a rating method, the settings are filled in with the defaults from this map.
  */
-export const rating_strategy_default_settings: Record<RatingStrategy, RatingSettings> = {
-  [RatingStrategy.WinsMinusLosses]: {
-    rating_strategy: RatingStrategy.WinsMinusLosses,
-    initial_rating: {
-      mu: 0,
+export function getDefaultRatingSettings(strategy: RatingStrategy): RatingSettings {
+  const defaults = {
+    [RatingStrategy.TrueSkill]: {
+      initial_rating: {
+        mu: TRUESKILL_DEFAULT.MU,
+        rd: TRUESKILL_DEFAULT.RD,
+      },
+      tau: TRUESKILL_DEFAULT.TAU,
     },
-  },
-  [RatingStrategy.TrueSkill]: {
-    rating_strategy: RatingStrategy.TrueSkill,
-    initial_rating: trueskill_default_initial_rating,
-  },
-  [RatingStrategy.Elo]: {
-    rating_strategy: RatingStrategy.Elo,
-    initial_rating: {
-      mu: 1500,
-      rd: 400,
+    [RatingStrategy.Glicko]: {
+      initial_rating: {
+        mu: GLICKO_DEFAULT_MU,
+        rd: GLICKO_DEFAULT_RD,
+        vol: GLICKO_DEFAULT_VOL,
+      },
+      tau: GLICKO_DEFAULT_TAU,
     },
-    k_factor: default_k_factor,
-  },
-  [RatingStrategy.Glicko]: {
-    rating_strategy: RatingStrategy.Glicko,
-    initial_rating: {
-      mu: 1500,
-      rd: 350,
-      vol: 0.06,
+    [RatingStrategy.Elo]: {
+      initial_rating: {
+        mu: ELO_DEFAULT_MU,
+        rd: ELO_DEFAULT_RD,
+      },
     },
-  },
+    [RatingStrategy.WinsMinusLosses]: {
+      initial_rating: {
+        mu: 0,
+      },
+    },
+  }[strategy]
+
+  return {
+    rating_strategy: strategy,
+    initial_rating: {
+      mu: defaults.initial_rating.mu,
+      rd: defaults.initial_rating.rd ?? TRUESKILL_DEFAULT.RD, // TrueSkill default
+      vol: defaults.initial_rating.vol ?? GLICKO_DEFAULT_VOL, // Glicko default
+    },
+    k_factor: ELO_DEFAULT_K,
+    tau: defaults.tau ?? GLICKO_DEFAULT_TAU, // Glicko default
+  }
 }
 
 // Display Settings
@@ -137,24 +157,26 @@ export function displayRatingFn(
       }
     } else if (rating_settings.rating_strategy === RatingStrategy.Elo) {
       return {
-        points: Math.max(0, Math.round(rating.mu * (app.config.DisplayMeanRating / rating_settings.initial_rating.mu))),
+        points: Math.max(0, Math.round(rating.mu)),
       }
     } else if (rating_settings.rating_strategy === RatingStrategy.TrueSkill) {
-      const initial_rating = rating_settings.initial_rating.rd ?? trueskill_default_initial_rating.rd
-      const player_rd = rating.rd ?? initial_rating
+      const initial_rd = rating_settings.initial_rating.rd ?? TRUESKILL_DEFAULT.RD
+      const player_rd = rating.rd ?? initial_rd
 
       return {
-        points: Math.max(
-          0,
-          Math.round(
-            (rating.mu + app.config.DisplaySdOffset * player_rd) *
-              (app.config.DisplayMeanRating / rating_settings.initial_rating.mu),
-          ),
-        ),
-        is_provisional: player_rd > initial_rating * app.config.ProvisionalRdThreshold,
+        points: Math.max(0, Math.round(rating.mu + app.config.DisplaySdOffset * player_rd)),
+        is_provisional: player_rd > initial_rd * app.config.TrueSkillProvisionalRdThreshold,
+      }
+    } else if (rating_settings.rating_strategy === RatingStrategy.Glicko) {
+      const initial_rd = rating_settings.initial_rating.rd ?? GLICKO_DEFAULT_RD
+      const player_rd = rating.rd ?? initial_rd
+
+      return {
+        points: Math.max(0, Math.round(rating.mu)),
+        is_provisional: player_rd > initial_rd * app.config.GlickoProvisionalRdThreshold,
       }
     } else {
-      throw new Error(`Unexpected rating method: ${rating_settings.rating_strategy}`)
+      throw new Error(`Don't know how to display rating of type ${rating_settings.rating_strategy}`)
     }
   }
 }

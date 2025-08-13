@@ -19,9 +19,11 @@ export async function main(app: App, ctx: AnyGuildInteractionContext): Promise<D
     description:
       `# ${escapeMd(guild.data.name)}'s Rankings\n` +
       (grs.length === 0
-        ? `${escapeMd(guild.data.name)} has no rankings. Create one below
+        ? `${escapeMd(guild.data.name)} has no rankings. Create one by clicking the button below.
 
-For more info, use ${await commandMention(app, help_cmd)}`
+:warning: The bot will create a **publicly visible category** for all ranking-related messages. Make sure this is okay before continuing.
+:information_source: You may rename and rearrange any roles or channels that the bot creates.
+:question: For more info, use ${await commandMention(app, help_cmd)}`
         : `${escapeMd(guild.data.name)} has **${grs.length}** ranking${grs.length === 1 ? `` : `s`}. Adjust their settings by selecting a ranking below.`),
     fields: await Promise.all(grs.map(async gr => await guildRankingDescriptionField(app, gr.guild_ranking))),
     color: Colors.Primary,

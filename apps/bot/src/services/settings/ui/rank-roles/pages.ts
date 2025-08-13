@@ -4,7 +4,7 @@ import * as D from 'discord-api-types/v10'
 import { RankRolesSettingsHandlers } from '.'
 import { App } from '../../../../setup/app'
 import { breadcrumbsTitle, escapeMd } from '../../../../utils'
-import { default_leaderboard_color } from '../../properties'
+import { DEFAULT_LB_COLOR } from '../../properties'
 import { RankingSettingsHandlers } from '../ranking-settings'
 import { ranking_settings_view_sig } from '../ranking-settings/view'
 import { rank_roles_settings_view_sig } from './view'
@@ -44,7 +44,7 @@ export async function main(
             inline: false,
           },
         ],
-        color: guild_ranking.data.display_settings?.color ?? default_leaderboard_color,
+        color: guild_ranking.data.display_settings?.color ?? DEFAULT_LB_COLOR,
       }).toJSON(),
     ],
     components: [
@@ -112,7 +112,7 @@ export async function rankRoleSettings(
           `# Settings for role <@&${role.id}>` +
           `\n - Minimum Rating: ${existing_role.min_rating ?? '-∞'}` +
           `\n - Maximum Rating: ${existing_role.max_rating ?? '∞'}`,
-        color: guild_ranking.data.display_settings?.color ?? default_leaderboard_color,
+        color: guild_ranking.data.display_settings?.color ?? DEFAULT_LB_COLOR,
       }).toJSON(),
     ],
     components: [
