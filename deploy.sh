@@ -13,7 +13,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Run TypeScript compiler
-npx tsc --p apps/bot/tsconfig.json
+npx tsc --p apps/bot
 if [ $? -ne 0 ]; then
   exit 1
 fi

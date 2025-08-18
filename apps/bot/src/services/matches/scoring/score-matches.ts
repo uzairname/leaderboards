@@ -1,6 +1,5 @@
-import { Match, MatchPlayer, MatchStatus, PartialPlayer, PartialRanking, Rating, RatingSettings } from '@repo/db/models'
+import { Match, MatchPlayer, MatchStatus, PartialPlayer, PartialRanking, Ranking, Rating, RatingSettings } from '@repo/db/models'
 import { AnyDeferredContext } from '@repo/discord'
-import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { updatePlayerRatings } from '../../players/manage'
 import { getScorerFn } from './scorers'
@@ -34,12 +33,13 @@ export function scoreMatch({
   return new_ratings
 }
 
-export async function rescoreAllMatches(app: App, p_ranking: PartialRanking, ctx?: AnyDeferredContext) {
-  const ranking = await p_ranking.fetch()
+export async function rescoreAllMatches(app: App, ranking: Ranking, ctx?: AnyDeferredContext) {
   const affected_ratings = new Map<number, Rating>()
 
   const players = await ranking.players()
   players.forEach(p => affected_ratings.set(p.data.id, ranking.data.rating_settings.initial_rating))
+
+  app.logger.debug(`rescoreAllMatches. player ratings: ${players.map(p => p.data.rating.mu).join(', ')}`)
 
   return await rescoreMatches(app, ranking, { affected_ratings, reset_rating_to_initial: true, ctx })
 }
@@ -67,8 +67,6 @@ export async function rescoreMatches(
     ctx?: AnyDeferredContext
   } = {},
 ) {
-  // const msg = await ctx?.followup({ content: `Recalculating ratings, and updating matches, players, and leaderboard. Please wait...`, flags: D.MessageFlags.Ephemeral})
-
   const ranking = await p_ranking.fetch()
 
   const matches = await app.db.matches.getMany({
@@ -76,7 +74,9 @@ export async function rescoreMatches(
     finished_at_or_after: finished_on_or_after,
   })
 
-  sentry.debug(`rescoreMatches(${ranking}, on_or_after ${finished_on_or_after}). rescoring ${matches.length} matches`)
+  app.logger.debug(
+    `rescoreMatches(${ranking}, on_or_after ${finished_on_or_after}). rescoring ${matches.length} matches`,
+  )
 
   // List of match players that need to be updated. Indicates ratings for each player before each match
   const match_players_update: { match_id: number; update: MatchPlayer }[] = []
@@ -118,15 +118,16 @@ export async function rescoreMatches(
     )
   }
 
+  // Update the match players in the databaase
   await app.db.matches.updateMatchPlayers(match_players_update)
 
+  // Update the players in the database
   const new_player_ratings: { player: PartialPlayer; rating: Rating }[] = []
   for (const [player_id, rating] of affected_ratings) {
     new_player_ratings.push({ player: app.db.players.get(player_id), rating })
   }
 
-  // update all players' ratings
-  await updatePlayerRatings(app, ranking, new_player_ratings)
+  await updatePlayerRatings(app, ranking, new_player_ratings, ctx)
 
   return new_player_ratings
 }

@@ -1,6 +1,5 @@
 import { Match, MatchInsert, MatchMetadata, MatchStatus, Player, Rating } from '@repo/db/models'
 import { UserError } from '../../../errors/user-errors'
-import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { mentionOrName } from '../../players/properties'
 import { syncMatchSummaryMessages } from '../logging/match-summary-message'
@@ -13,8 +12,6 @@ import { rescoreMatches } from '../scoring/score-matches'
  * Archives the ongoing match channel, if it exists.
  */
 export async function cancelMatch(app: App, match: Match): Promise<void> {
-  sentry.debug(`cancelMatch: ${match}`)
-
   // Update the match status and time finished
   await match.update({
     status: MatchStatus.Canceled,
@@ -59,6 +56,15 @@ export async function setMatchWinner(app: App, match: Match, player: Player) {
 }
 
 /**
+ * Sets the match outcome to a draw (all teams have the same score)
+ */
+export async function setMatchDraw(app: App, match: Match) {
+  const team_players = await match.players()
+  const outcome = team_players.map(() => 0.5)
+  await updateMatchOutcome(app, match, outcome)
+}
+
+/**
  * Updates a match's outcome and recalculates player ratings. Sets its status to finished.
  * If it wasn't finished yet, sets time finished to now.
  */
@@ -72,7 +78,7 @@ export async function updateMatchOutcome(
     metadata?: MatchMetadata | null
   } = {},
 ) {
-  sentry.debug(`updateMatchOutcome: ${match} outcome ${outcome}`)
+  app.logger.debug(`updateMatchOutcome: ${match} outcome ${outcome}`)
 
   validateMatchData({
     ...match.data,
@@ -105,7 +111,7 @@ export function validateMatchData(o: Partial<{ players: Player[][] } & MatchInse
   if (o.players) {
     const team_player_ids = o.players.map(team => team.map(p => p.data.id))
     if (team_player_ids.flat().length !== new Set(team_player_ids.flat()).size)
-      throw new UserError(`Duplicate players in a match`)
+      throw new UserError(`Cannot have duplicate players in a match`)
     if (new Set(o.players.flat().map(p => p.data.ranking_id)).size !== 1)
       throw new UserError(`Players must be from the same ranking`)
   }

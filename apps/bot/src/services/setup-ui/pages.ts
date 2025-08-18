@@ -3,8 +3,7 @@ import * as D from 'discord-api-types/v10'
 import { SetupHandlers } from '.'
 import { App } from '../../setup/app'
 import { breadcrumbsTitle, Colors } from '../../utils'
-import { AllRankingsHandlers } from '../settings/ui/all-rankings'
-import { all_rankings_view_sig } from '../settings/ui/all-rankings/view'
+import { settings_view_sig } from '../settings-ui/settings/view'
 import { admin_role_method_options, setup_view_sig } from './view'
 
 export async function start(app: App): Promise<D.APIInteractionResponseCallbackData> {
@@ -32,13 +31,14 @@ export async function start(app: App): Promise<D.APIInteractionResponseCallbackD
     flags: D.MessageFlags.Ephemeral,
   }
 }
+
 export async function adminRolePage(
   app: App,
   ctx: Context<typeof setup_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const current_admin_role_id = (await app.db.guilds.fetch(ctx.interaction.guild_id))?.data.admin_role_id
 
-  const components: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = [
+  const components: D.APIActionRowComponent<D.APIComponentInMessageActionRow>[] = [
     {
       type: D.ComponentType.ActionRow,
       components: [
@@ -92,11 +92,7 @@ export async function adminRolePage(
         type: D.ComponentType.Button,
         label: current_admin_role_id ? 'Next' : 'Skip',
         style: D.ButtonStyle.Primary,
-        custom_id: all_rankings_view_sig
-          .newState({
-            handler: AllRankingsHandlers.sendMainPage,
-          })
-          .cId(),
+        custom_id: settings_view_sig.newState().cId(),
       },
     ],
   })

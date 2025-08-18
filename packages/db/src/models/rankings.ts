@@ -24,6 +24,7 @@ export enum RatingStrategy {
   WinsMinusLosses = 1,
   Elo = 2,
   Glicko = 3,
+  Bayesian = 4,
 }
 
 export type RatingSettings = {
@@ -49,6 +50,7 @@ export const MatchSettingsSchema = z.object({
       random_items_each_team_choices: z.record(z.array(z.string())).optional(),
     })
     .optional(),
+  draws_allowed: z.boolean().default(true),
 })
 
 export type MatchSettings = z.infer<typeof MatchSettingsSchema>

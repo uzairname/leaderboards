@@ -11,16 +11,19 @@ export function wlrTable({ stats }: { stats: PlayerStats }): string {
 
   const winrate_percent = null !== stats.winrate ? `${(stats.winrate * 100).toFixed(1)}%` : `N/A`
 
-  let keys: TableRow = [{ text: `Wins` }, { text: `Losses` }]
-
-  keys = keys.concat(draws_enabled ? [`Draws`] : []).concat([`Winrate`])
-
-  let values: TableRow = [
-    { text: `${stats.wins}`, color: AnsiColor.Lime, format: AnsiFormat.Bold },
-    { text: `${stats.losses}`, color: AnsiColor.Red, format: AnsiFormat.Bold },
+  let cells: TableRow[] = [
+    [{ text: `Wins` }, { text: `${stats.wins}`, color: AnsiColor.Lime, format: AnsiFormat.Bold }],
+    [{ text: `Losses` }, { text: `${stats.losses}`, color: AnsiColor.Red, format: AnsiFormat.Bold }],
   ]
 
-  values = values.concat(draws_enabled ? [`${stats.draws}`] : []).concat([
+  if (draws_enabled) {
+    cells.push([{ text: `Draws` }, { text: `${stats.draws}`, color: AnsiColor.Gold, format: AnsiFormat.Bold }])
+  }
+
+  cells.push([
+    {
+      text: `Winrate`,
+    },
     {
       text: `${winrate_percent}`,
       color:
@@ -37,11 +40,13 @@ export function wlrTable({ stats }: { stats: PlayerStats }): string {
     },
   ])
 
-  return formatTable(keys, values)
+  return formatTable(...cells)
 }
 
 export function ratingTable({ stats }: { stats: PlayerStats }): string {
   const points = stats.display_rating.points + (stats.display_rating.is_provisional ? `?` : ``)
+
+  const rd_text = stats.display_rating.rd ? ` ±${stats.display_rating.rd}` : ``
 
   const peak_rating_idx = maxIndex(stats.rating_history.map(r => r.points))[0]
   let peak_rating: string
@@ -55,14 +60,29 @@ export function ratingTable({ stats }: { stats: PlayerStats }): string {
     }
   }
 
+  const avg_opponent_rating = null === stats.avg_opponent_rating ? `N/A` : `${stats.avg_opponent_rating.toFixed(0)}`
+
   return formatTable(
-    [`Rating`, `Peak Rating`].concat(stats.display_rating.rd ? [`RD`] : []),
     [
       {
-        text: points,
-        format: stats.display_rating.is_provisional ? undefined : AnsiFormat.Bold,
+        text: `Rating`,
+      },
+      {
+        text: points + rd_text,
+        format: AnsiFormat.Bold,
+      },
+    ],
+    [
+      {
+        text: `Peak Rating`,
       },
       peak_rating,
-    ].concat(stats.display_rating.rd ? [`${stats.display_rating.rd}`] : []),
+    ],
+    [
+      {
+        text: `Avg Opponent Rating`,
+      },
+      avg_opponent_rating,
+    ],
   )
 }

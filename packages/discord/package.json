@@ -9,7 +9,7 @@
   "dependencies": {
     "@discordjs/rest": "^2.4.3",
     "@repo/typescript-config": "*",
-    "discord-api-types": "^0.37.119",
+    "discord-api-types": "^0.38.20",
     "itty-router": "^5.0.18",
     "typescript": "^5.7.3"
   }

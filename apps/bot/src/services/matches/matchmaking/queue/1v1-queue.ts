@@ -2,7 +2,6 @@ import { Match, PartialGuildRanking, PartialPlayer, PartialRanking, Player } fro
 import { AnyDeferredContext, checkGuildInteraction } from '@repo/discord'
 import { nonNullable, unflatten } from '@repo/utils'
 import { UserError } from '../../../../errors/user-errors'
-import { sentry } from '../../../../logging/sentry'
 import { App } from '../../../../setup/app'
 import { getOrCreatePlayerByUser } from '../../../players/manage'
 import { ensureNoActiveMatches, ensurePlayersEnabled } from '../../management/create-matches'
@@ -53,7 +52,7 @@ export async function findMatchFromQueue(app: App, gr: PartialGuildRanking): Pro
 
   const players_in_q = await getPlayersInQueue(app, ranking)
 
-  sentry.debug(`findMatchFromQueue: Found ${players_in_q.length} players in queue for ${ranking}`)
+  app.logger.debug(`findMatchFromQueue: Found ${players_in_q.length} players in queue for ${ranking}`)
 
   if (players_in_q.length < ranking.data.teams_per_match * ranking.data.players_per_team) {
     return

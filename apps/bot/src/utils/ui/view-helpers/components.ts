@@ -7,7 +7,7 @@ import * as D from 'discord-api-types/v10'
 export function rankingSelectMenu(
   grs: { ranking: Ranking }[],
   custom_id: string,
-): D.APIActionRowComponent<D.APIMessageActionRowComponent> {
+): D.APIActionRowComponent<D.APIComponentInMessageActionRow> {
   const ranking_select_menu_options: D.APISelectMenuOption[] = grs.map(gr => {
     return {
       label: gr.ranking.data.name,

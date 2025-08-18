@@ -45,7 +45,7 @@ export const start_match_cmd = start_match_cmd_sig.set<App>({
     })
   },
   onCommand: (ctx, app) => {
-    const input = getOptions(ctx.interaction, {
+    const { options } = getOptions(ctx.interaction, {
       ranking: { type: D.ApplicationCommandOptionType.Integer, name: optionnames.ranking },
       p1_id: { type: D.ApplicationCommandOptionType.User, name: optionnames.player1 },
       p2_id: { type: D.ApplicationCommandOptionType.User, name: optionnames.player2 },
@@ -55,7 +55,7 @@ export const start_match_cmd = start_match_cmd_sig.set<App>({
       {
         app,
         ctx,
-        ranking_id: input.ranking,
+        ranking_id: options.ranking,
       },
       async p_ranking =>
         ctx.defer(async ctx => {

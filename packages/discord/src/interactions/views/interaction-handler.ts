@@ -33,9 +33,10 @@ import { verify } from './verify'
 export class InteractionHandler<Arg extends unknown = undefined> {
   public all_handlers: (ViewHandler<any, Arg> | CommandHandler<any, Arg>)[] = []
 
-  logger?: DiscordLogger
-
-  constructor(public handlers: (ViewHandler<any, Arg> | CommandHandler<any, Arg> | InteractionHandler<Arg>)[]) {
+  constructor(
+    public handlers: (ViewHandler<any, Arg> | CommandHandler<any, Arg> | InteractionHandler<Arg>)[],
+    public logger?: DiscordLogger,
+  ) {
     this.all_handlers = handlers.flatMap(v => (v instanceof InteractionHandler ? v.all_handlers : [v]))
 
     // Identify duplicate custom_id_prefixes
@@ -73,9 +74,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
   }
 
   /**
-   * @param direct_response -
-   *  - true: Return a value directly.
-   *  - false: Call respond endpoint. Will log interaction response errors in sentry, but successful requests will get canceled.
+   * @param direct_response - If true, the response will be sent directly to the interaction.
    * @returns
    */
   async respond({
@@ -93,7 +92,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     direct_response: boolean
     arg: Arg
   }): Promise<Response> {
-    if (!(await verify(request, bot.public_key))) {
+    if (!(await verify(request, bot.publicKey))) {
       this.logger?.log({ message: 'Invalid signature' })
       return new Response('Invalid signature', { status: 401 })
     }
@@ -102,7 +101,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
 
     this.logger?.log({ message: 'Received interaction' })
 
-    const response = await this._respond({ interaction, bot, onError, offload, arg })
+    const response = await this.getResponse({ interaction, bot, onError, offload, arg })
       .then(res => res)
       .catch(e => onError(e))
 
@@ -115,11 +114,11 @@ export class InteractionHandler<Arg extends unknown = undefined> {
       return json(response)
     }
 
-    await bot.createInteractionResponse(interaction.id, interaction.token, response)
+    await bot.createInteractionResponse(interaction.id, interaction.token, response as any)
     return new Response('OK', { status: 200 })
   }
 
-  private async _respond({
+  private async getResponse({
     interaction,
     bot: discord,
     onError,
@@ -132,6 +131,8 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     offload: OffloadCallback
     arg: Arg
   }): Promise<D.APIInteractionResponse> {
+
+
     if (interaction.type === D.InteractionType.Ping) return { type: D.InteractionResponseType.Pong }
 
     logInteraction(interaction, this.logger)
@@ -191,6 +192,12 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     }
   }
 
+  /**
+   * Returns either global or guild command signatures for this handler
+   * @param guild_id - If provided, returns only guild-specific command signatures. If not, returns only global commands
+   * @param include_experimental - If true, includes experimental commands in the result
+   * @param arg - Dependency for the command signature getters
+   */
   async getCommandSignatures({
     guild_id,
     include_experimental = false,
@@ -209,7 +216,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
         // If its a guild command and we're filtering by guild, return the guild-specific signature
         if (guild_id && c.guildSignature) return c.guildSignature(arg, guild_id)
         // If its a global command and we're not filtering by guild, return the global signature
-        else if (!c.guildSignature) return c.signature
+        else if (!guild_id && !c.guildSignature) return c.signature
       }),
     )
 
@@ -234,7 +241,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     offload: OffloadCallback
     logger?: DiscordLogger
   }): Promise<CommandInteractionResponse> {
-    logger?.setInteractionType(`${handler.signature.config.name} Command`)
+    logger?.setRequestName(`${handler.signature.config.name} Command`)
 
     let valid_interaction = validateInteraction<Sig, CommandTypeToInteraction<Sig['config']['type']>>(
       handler.signature,
@@ -253,7 +260,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
           return response ?? default_response
         },
         send: async data =>
-          discord.createMessage(interaction.channel.id, data instanceof MessageData ? data.as_post : data),
+          discord.createMessage(interaction.channel.id, data instanceof MessageData ? data.post_data : data),
       },
       arg,
     )
@@ -265,7 +272,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     arg: Arg,
     logger?: DiscordLogger,
   ): Promise<D.APIApplicationCommandAutocompleteResponse> {
-    logger?.setInteractionType(`${handler.signature.name} Autocomplete`)
+    logger?.setRequestName(`${handler.signature.name} Autocomplete`)
     if (!handler.onAutocomplete) {
       throw new InteractionErrors.CallbackNotImplemented(`onAutocomplete`)
     }
@@ -297,7 +304,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     offload: OffloadCallback
     logger?: DiscordLogger
   }): Promise<ChatInteractionResponse> {
-    logger?.setInteractionType(`${handler.signature.name} Component`)
+    logger?.setRequestName(`${handler.signature.name} Component`)
 
     let valid_interaction = validateInteraction(handler.signature, interaction)
 
@@ -315,7 +322,10 @@ export class InteractionHandler<Arg extends unknown = undefined> {
         },
         send: async data => {
           const _interaction = checkGuildMessageComponentInteraction(interaction)
-          return await discord.createMessage(_interaction.channel.id, data instanceof MessageData ? data.as_post : data)
+          return await discord.createMessage(
+            _interaction.channel.id,
+            data instanceof MessageData ? data.post_data : data,
+          )
         },
       },
       arg,

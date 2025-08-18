@@ -25,10 +25,11 @@ const test_cmd_sig = new CommandSignature({
 })
 
 export const test_cmd = test_cmd_sig.set<App>({
-  onCommand: async ctx => {
+  onCommand: async (ctx, app) => {
+    throw new Error('test')
     const user_id = ctx.interaction.member.user.id
 
-    const input = getOptions(ctx.interaction, {
+    const { options } = getOptions(ctx.interaction, {
       user: { type: D.ApplicationCommandOptionType.User, required: false },
       string: { type: D.ApplicationCommandOptionType.String, required: false },
     })
@@ -39,9 +40,13 @@ export const test_cmd = test_cmd_sig.set<App>({
 
     return {
       type: D.InteractionResponseType.ChannelMessageWithSource,
-      data: {
-        content: `You said:\n${input.string ?? 'no input'}`,
-      },
+      data: testPage(
+        {
+          ...ctx,
+          state: test_view_sig.newState(),
+        },
+        true,
+      ),
     }
   },
 })
@@ -49,7 +54,12 @@ export const test_cmd = test_cmd_sig.set<App>({
 const test_view_sig = new ViewSignature({
   custom_id_prefix: 'test',
   state_schema: {
-    clicked_btn: field.Enum({ wait: null, increment: null, one: null, input: null }),
+    clicked_btn: field.Choice({
+      wait: 'wait',
+      increment: 'increment',
+      one: 'one',
+      input: 'input',
+    }),
     counter: field.Int(),
     original_user: field.String(),
     input_date: field.Date(),
@@ -75,10 +85,10 @@ export const test_view = test_view_sig.set<App>({
 
           await new Promise(r => setTimeout(r, seconds * 1000))
 
-          return void ctx.followup({
+          return void (await ctx.followup({
             content: `waited ${seconds} seconds.`,
             flags: D.MessageFlags.Ephemeral,
-          })
+          }))
         },
         {
           type: D.InteractionResponseType.ChannelMessageWithSource,

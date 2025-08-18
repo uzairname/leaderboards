@@ -6,8 +6,9 @@ import { guildRankingsOption, withOptionalSelectedRanking } from '../../../../ut
 import { profile_view_sig } from './view'
 
 const optionnames = {
-  user: 'user',
+  user: 'player',
   ranking: 'ranking',
+  ephemeral: 'hidden',
 }
 
 export const profile_cmd_sig = new CommandSignature({
@@ -20,6 +21,11 @@ export const profile_cmd_sig = new CommandSignature({
 export const profile_cmd = profile_cmd_sig.set<App>({
   guildSignature: async (app, guild_id) => {
     const guild = app.db.guilds.get(guild_id)
+
+    const rankings = await app.db.guild_rankings.fetch({ guild_id })
+
+    if (rankings.length === 0) return null // If no rankings in this guild, no profile command
+
     let options: D.APIApplicationCommandOption[] = [
       {
         name: optionnames.user,
@@ -35,7 +41,7 @@ export const profile_cmd = profile_cmd_sig.set<App>({
     )
 
     options.push({
-      name: 'ephemeral',
+      name: optionnames.ephemeral,
       description: 'Make the message only visible to you',
       type: D.ApplicationCommandOptionType.Boolean,
       required: false,
@@ -47,10 +53,10 @@ export const profile_cmd = profile_cmd_sig.set<App>({
     })
   },
   onCommand: async (ctx, app) => {
-    const options = getOptions(ctx.interaction, {
-      user: { type: D.ApplicationCommandOptionType.User },
+    const { options } = getOptions(ctx.interaction, {
+      user: { type: D.ApplicationCommandOptionType.User, name: optionnames.user },
       ranking: { type: D.ApplicationCommandOptionType.Integer, name: optionnames.ranking },
-      ephemeral: { type: D.ApplicationCommandOptionType.Boolean, default: false },
+      ephemeral: { type: D.ApplicationCommandOptionType.Boolean, default: false, name: optionnames.ephemeral },
     })
 
     return withOptionalSelectedRanking(

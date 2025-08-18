@@ -1,11 +1,10 @@
 import { Guild, PartialGuild } from '@repo/db/models'
 import { GuildChannelData, MessageData } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { Colors, commandMention } from '../../../utils/ui'
 import { syncRankedCategory } from '../../guilds/manage-guilds'
-import { matches_cmd } from '../ui/matches/matches-cmd'
+import { matches_cmd } from '../ui/matches/cmd'
 
 export async function syncMatchesChannel(
   app: App,
@@ -13,7 +12,7 @@ export async function syncMatchesChannel(
   force_create?: boolean,
 ): Promise<D.APIChannel> {
   const guild = await p_guild.fetch()
-  sentry.debug(`syncMatchesChannel (${guild})`)
+  app.logger.debug(`syncMatchesChannel (${guild})`)
 
   const sync_channel_result = await app.discord.utils.syncGuildChannel({
     target_channel_id: force_create ? null : guild.data.matches_channel_id,
@@ -24,7 +23,7 @@ export async function syncMatchesChannel(
     await Promise.all([
       app.discord.createMessage(
         sync_channel_result.channel.id,
-        (await matchesChannelDescriptionMessageData(app, guild)).as_post,
+        (await matchesChannelDescriptionMessageData(app, guild)).post_data,
       ),
       guild.update({
         matches_channel_id: sync_channel_result.channel.id,
@@ -85,7 +84,7 @@ function matchLogsChannelPermissionOverwrites(app: App, guild_id: string): D.RES
       ).toString(),
     },
     {
-      id: app.discord.application_id, // bot
+      id: app.discord.applicationId, // bot
       type: 1, // user
       allow: (
         D.PermissionFlagsBits.SendMessages |

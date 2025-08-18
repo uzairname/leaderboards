@@ -67,7 +67,10 @@ export function deferCommandResponse<Sig extends AnyCommandSignature>(
             message_id,
           ),
         send: async data => {
-          return await discord.createMessage(interaction.channel!.id, data instanceof MessageData ? data.as_post : data)
+          return await discord.createMessage(
+            interaction.channel!.id,
+            data instanceof MessageData ? data.post_data : data,
+          )
         },
         delete: async (message_id?: string) => {
           await discord.deleteInteractionResponse(interaction.token, message_id)
@@ -116,7 +119,10 @@ export function deferComponentResponse(
           await discord.deleteInteractionResponse(interaction.token, message_id)
         },
         send: async data => {
-          return await discord.createMessage(interaction.channel!.id, data instanceof MessageData ? data.as_post : data)
+          return await discord.createMessage(
+            interaction.channel!.id,
+            data instanceof MessageData ? data.post_data : data,
+          )
         },
       }).catch(async e => {
         await discord.createFollowupMessage(interaction.token, onError(e, ctx.setException).data)

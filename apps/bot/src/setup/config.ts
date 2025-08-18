@@ -28,7 +28,10 @@ export class Config {
 
   /**
    * Configuration class for the bot application.
-   * @param DirectResponse - Return a value directly for interactions
+   * @param DirectResponse - Return a value directly for interactions.
+   *  - true: Return a value directly.
+   *  - false: Call respond endpoint. Will log uncaught interaction response errors in sentry, but successful (non-deferred) direct responses will get canceled. might be some delay
+   *  and not logged.
    * @param TrueSkillProvisionalRdThreshold - Players with a rating deviatino below this will be hidden.
    * @param defaultScorer - The default scoring function.
    * @param RematchTimeoutMinutes - The default amount of time players have to vote for a rematch.
@@ -38,23 +41,24 @@ export class Config {
   constructor(
     readonly env: Env,
     readonly IsDev = env.ENVIRONMENT === 'development',
+
+    readonly DirectResponse = IsDev ? false : true,
+
     readonly OauthRedirectURI = env.BASE_URL + `/oauth` + this.OauthRoutes.Redirect,
     readonly OauthRoleConnectionsUrl = env.BASE_URL + `/oauth` + this.OauthRoutes.LinkedRoles,
     readonly oauthInviteAndRoleConnectionsUrl = env.BASE_URL + `/oauth` + this.OauthRoutes.BotAndRoleConnections,
-    readonly DirectResponse = IsDev ? true : true,
+
     readonly features = {
       GiveBotInvite: !IsDev,
-      HelpReference: IsDev,
       ExperimentalCommands: IsDev,
-      QueueMessage: false,
-      DisableLogMatchesOption: false,
+      AllowNonUserPlayers: false,
       AllowNon1v1Rankings: false,
-      RatingRoleConnections: false,
+      RoleConnections: false,
       WebDashboardEnabled: false,
     },
     // General rating configuration
     readonly TrueSkillProvisionalRdThreshold = IsDev ? 0.85 : 0.85,
-    readonly GlickoProvisionalRdThreshold = IsDev ? 0.5 : 0.5,
+    readonly GlickoProvisionalRdThreshold = IsDev ? 0.9 : 0.9,
     readonly defaultScorer = getScorerFn(RatingStrategy.TrueSkill),
 
     // TrueSkill parameters

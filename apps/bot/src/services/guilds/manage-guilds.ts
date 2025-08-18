@@ -1,10 +1,11 @@
 import { Guild } from '@repo/db/models'
 import { GuildChannelData, RoleData } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { App } from '../../setup/app'
+import { App, syncDiscordCommands } from '../../setup/app'
 import { Colors } from '../../utils/ui'
 
 export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> {
+  
   let app_guild = await app.db.guilds.fetch(guild_id)
   if (!app_guild) {
     app_guild = await registerGuild(app, guild_id)
@@ -19,7 +20,7 @@ async function registerGuild(app: App, guild_id: string): Promise<Guild> {
     id: discord_guild.id,
     name: discord_guild.name,
   })
-  await app.syncDiscordCommands(app_guild)
+  await syncDiscordCommands(app, app_guild)
 
   await syncGuildAdminRole(app, app_guild)
   return app_guild

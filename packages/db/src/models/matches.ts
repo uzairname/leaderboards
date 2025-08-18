@@ -301,7 +301,7 @@ export class MatchesManager extends DbObjectManager {
       conditions.push(lt(Matches.time_finished, finished_before))
     }
 
-    if (filters.status) conditions.push(eq(Matches.status, filters.status))
+    if (filters.status !== undefined) conditions.push(eq(Matches.status, filters.status))
 
     if (filters.ranking_ids) conditions.push(inArray(Matches.ranking_id, filters.ranking_ids))
 
@@ -373,7 +373,7 @@ export class MatchesManager extends DbObjectManager {
    */
   async updateMatchPlayers(match_players: { match_id: number; update: MatchPlayer }[]): Promise<void> {
     this.db.debug(`updating ${match_players.length} match players`)
-    // match_players.map(mp => console.log(mp.player.rating.mu, mp.player.player.data.name))
+
     if (match_players.length === 0) return
 
     const match_ids = match_players.map(mp => mp.match_id)

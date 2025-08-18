@@ -1,8 +1,8 @@
 import { DiscordAPIError, RateLimitError } from '@discordjs/rest'
-import { DiscordErrors, DiscordUserError, InteractionUserError } from '@repo/discord'
+import { DiscordErrors, DiscordUserError, InteractionError, InteractionErrors } from '@repo/discord'
+import * as sentry from '@sentry/cloudflare'
 import * as D from 'discord-api-types/v10'
 import { DbErrors } from '../../../../packages/db/src/errors'
-import { sentry } from '../logging/sentry'
 import { App } from '../setup/app'
 import { Colors } from '../utils/ui'
 import { UserError, UserErrors } from './user-errors'
@@ -13,11 +13,10 @@ export function onViewError(app: App) {
     setSentryException?: (e: unknown) => void,
   ): D.APIInteractionResponseChannelMessageWithSource {
     // Convert the e to a UserError or Error object
-
     if (e instanceof UserError) {
       var _e = e
     } else if (e instanceof DiscordAPIError) {
-      _e = new UserErrors.DiscordError(e)
+      _e = e
     } else if (e instanceof DiscordUserError) {
       if (e instanceof DiscordErrors.BotPermissions) {
         _e = new UserErrors.BotPermissions(app, e)
@@ -26,18 +25,25 @@ export function onViewError(app: App) {
       }
     } else if (e instanceof RateLimitError) {
       _e = new UserErrors.DiscordRateLimit(e.timeToReset)
-    } else if (e instanceof InteractionUserError) {
-      _e = new UserError(e.message)
+    } else if (e instanceof InteractionError) {
+      if (
+        e instanceof InteractionErrors.CustomIdParseError ||
+        e instanceof InteractionErrors.UnknownView ||
+        e instanceof InteractionErrors.UnknownCommand
+      ) {
+        _e = new UserErrors.UnknownView()
+      } else {
+        _e = e
+      }
     } else if (e instanceof DbErrors.NotFound) {
       _e = new UserError(e.message)
     } else if (e instanceof Error) {
       _e = e
     } else {
-      _e = new Error(e instanceof Error ? e.message : `${e}`)
+      _e = new Error(`${e}`)
     }
 
     return _onViewError(app, _e, setSentryException)
-    // Log the error
   }
 }
 
@@ -59,17 +65,18 @@ function _onViewError(
     })
 
     embed = {
-      title: e.title,
+      title: e.title ?? `Error`,
       description: e.message,
       color: Colors.EmbedBackground,
     }
   } else {
     // If not a user error, it is unexpected
-    setSentryException ? setSentryException(e) : sentry.setException(e)
+    sentry.captureException(e)
 
-    let description = `\`${e.name}: ${e.message}\`
+    let title = `Error`
+    let description = `A bug occurred. A report has been sent to the developers.
 
-If this is a bug, please report it in the [support server](${app.config.SupportServerInvite})`
+If this persists, please report it in the [support server](${app.config.SupportServerInvite})`
 
     if (app.config.IsDev) {
       // If in dev, add the error to the description
@@ -95,6 +102,7 @@ ${
     }
 
     embed = {
+      title,
       description,
       color: Colors.Error,
     }

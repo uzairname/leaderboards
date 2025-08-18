@@ -5,18 +5,11 @@ export class InteractionError extends Error {
   }
 }
 
-export class InteractionUserError extends InteractionError {
-  constructor(message?: string) {
-    super(message)
-    this.name = `${InteractionUserError.name}.${this.constructor.name}`
-  }
-}
-
 export namespace InteractionErrors {
   /**
    * No unique command matches the command name and type
    */
-  export class UnknownCommand extends InteractionUserError {
+  export class UnknownCommand extends InteractionError {
     constructor() {
       super(`Unrecognized command`)
     }
@@ -25,16 +18,12 @@ export namespace InteractionErrors {
   /**
    * No unique view matches the custom id
    */
-  export class UnknownView extends InteractionUserError {
-    constructor() {
-      super(`Unrecognized component. It may be outdated`)
-    }
-  }
+  export class UnknownView extends InteractionError {}
 
   /**
    * LZstring fails to decompress the encoded part of the custom id
    */
-  export class DecompressError extends InteractionUserError {
+  export class DecompressError extends InteractionError {
     constructor(encoded_data: string) {
       super(`Unable to decompress from UTF 16: '${encoded_data}'`)
     }
@@ -43,7 +32,7 @@ export namespace InteractionErrors {
   /**
    * Any error while parsing the custom id into a state and view
    */
-  export class CustomIdParseError extends InteractionUserError {
+  export class CustomIdParseError extends InteractionError {
     constructor(custom_id: string, cause: unknown) {
       if (cause instanceof Error) {
         super(`Unable to parse custom id '${custom_id}'. ${cause.name}: ${cause.message}`)
@@ -76,5 +65,5 @@ export namespace InteractionErrors {
   /**
    * For validating the context of an interaction. eg, DM or a guild
    */
-  export class WrongContext extends InteractionUserError {}
+  export class WrongContext extends InteractionError {}
 }

@@ -6,24 +6,49 @@ import * as D from 'discord-api-types/v10'
  * @param body
  */
 export class MessageData {
-  constructor(body: D.RESTPatchAPIChannelMessageJSONBody) {
-    this.as_patch = {
-      content: body.content ?? null,
-      embeds: body.embeds ?? null,
-      components: body.components ?? null,
-      ...body,
-    }
-    this.as_post = body as D.RESTPostAPIChannelMessageJSONBody
-    this.as_response = {
-      content: body.content ?? undefined,
-      embeds: body.embeds ?? undefined,
-      components: body.components ?? undefined,
+  constructor(public body: D.RESTPatchAPIChannelMessageJSONBody) {
+    // this.patch_data =
+    // this.post_data = body as D.RESTPostAPIChannelMessageJSONBody
+    // this.response_data = {
+    //   content: body.content ?? undefined,
+    //   embeds: body.embeds ?? undefined,
+    //   components: body.components ?? undefined,
+    // }
+  }
+
+  addFlags(flags: D.MessageFlags) {
+    this.body.flags = (this.body.flags ?? 0) | flags
+    return this
+  }
+
+  ephemeral() {
+    return this.addFlags(D.MessageFlags.Ephemeral)
+  }
+
+  // post_data: D.RESTPostAPIChannelMessageJSONBody
+  // response_data: D.APIInteractionResponseCallbackData
+
+  get patch_data(): D.RESTPatchAPIChannelMessageJSONBody {
+    return {
+      content: this.body.content ?? null,
+      embeds: this.body.embeds ?? null,
+      components: this.body.components ?? null,
+      ...this.body,
     }
   }
 
-  as_patch: D.RESTPatchAPIChannelMessageJSONBody
-  as_post: D.RESTPostAPIChannelMessageJSONBody
-  as_response: D.APIInteractionResponseCallbackData
+  get post_data(): D.RESTPostAPIChannelMessageJSONBody {
+    return this.body as D.RESTPostAPIChannelMessageJSONBody
+  }
+
+  get response_data(): D.APIInteractionResponseCallbackData {
+    return {
+      content: this.body.content ?? undefined,
+      embeds: this.body.embeds ?? [],
+      components: this.body.components ?? [],
+      flags: this.body.flags ?? undefined,
+    }
+  }
 }
 
 export class RoleData {
@@ -54,24 +79,4 @@ export class GuildChannelData {
 
   patchdata: D.RESTPatchAPIChannelJSONBody
   postdata: D.RESTPostAPIGuildChannelJSONBody
-}
-
-export class MessageBuilder {
-  content?: string
-  embeds?: D.APIEmbed[]
-  components?: []
-
-  constructor(params?: { content: string; embeds: D.APIEmbed[]; components: [] }) {
-    this.content = params?.content
-    this.embeds = params?.embeds
-    this.components = params?.components
-  }
-
-  message() {
-    return new MessageData({
-      content: this.content,
-      embeds: this.embeds,
-      components: this.components,
-    })
-  }
 }

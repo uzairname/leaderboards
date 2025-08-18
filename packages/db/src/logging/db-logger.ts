@@ -1,3 +1,7 @@
+
+/**
+ * Not initialized every request. It is stored in the global context with the drizzle client.
+ */
 export abstract class DbLogger {
   request_data: Record<string, unknown> = {}
 
@@ -6,6 +10,4 @@ export abstract class DbLogger {
   abstract debug(...message: unknown[]): void
 
   abstract logQuery(query: string, params?: unknown[], is_readonly?: boolean): void
-
-  abstract resetCounter(is_readonly?: boolean): void
 }

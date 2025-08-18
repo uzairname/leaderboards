@@ -10,10 +10,9 @@ import {
   Vote,
 } from '@repo/db/models'
 import { UserErrors } from '../../../errors/user-errors'
-import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { getInfoAtTime } from '../../players/properties'
-import { rankingProperties } from '../../settings/properties'
+import { rankingProperties } from '../../rankings/properties'
 import { syncMatchSummaryMessages } from '../logging/match-summary-message'
 import { rescoreMatches } from '../scoring/score-matches'
 import { validateMatchData } from './update-matches'
@@ -27,7 +26,7 @@ export async function startNewMatch(
   players: Player[][],
   best_of?: number,
 ): Promise<Match> {
-  sentry.debug(`startNewMatch: ranking_id=${p_ranking.data.id} players=${players.length}`)
+  app.logger.debug(`startNewMatch: ranking_id=${p_ranking.data.id} players=${players.length}`)
 
   const ranking = await p_ranking.fetch()
 
@@ -110,7 +109,7 @@ export async function recordAndScoreMatch(
           // If the match just finished, use current player ratings to save queries
           const res = finished_in_past ? await getInfoAtTime(app, p, match_time_started) : undefined
 
-          sentry.debug(`.. finished_in_past: ${finished_in_past}, time_started: ${time_started}, res: ${res}`)
+          app.logger.debug(`.. finished_in_past: ${finished_in_past}, time_started: ${time_started}, res: ${res}`)
 
           return {
             player: p,
@@ -142,7 +141,7 @@ export async function recordAndScoreMatch(
 
 // Ensures that the players are not in an active match in their ranking
 export async function ensureNoActiveMatches(app: App, players: PartialPlayer[]): Promise<void> {
-  sentry.debug(`ensureNoActiveMatches: players ${players}`)
+  app.logger.debug(`ensureNoActiveMatches: players ${players}`)
   // check if players are already in an active match
   const active_matches = await app.db.matches.getMany({
     player_ids: players.map(p => p.data.id),
@@ -168,7 +167,7 @@ export async function ensureNoActiveMatches(app: App, players: PartialPlayer[]):
 }
 
 export async function ensurePlayersEnabled(app: App, p_players: PartialPlayer[]): Promise<void> {
-  sentry.debug(`ensurePlayersEnabled: players ${p_players}`)
+  app.logger.debug(`ensurePlayersEnabled: players ${p_players}`)
   const players = await Promise.all(p_players.map(p => p.fetch()))
   const disabled_players = players.filter(p => p.data.flags & PlayerFlags.Disabled)
   if (disabled_players.length > 0) {

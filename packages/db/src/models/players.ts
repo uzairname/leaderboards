@@ -7,7 +7,7 @@ import { DbClient } from '../client'
 import { DbErrors } from '../errors'
 import { Players, TeamPlayers, Teams } from '../schema'
 import { PartialRanking, Rating } from './rankings'
-import { PartialUser } from './users'
+import { PartialUser, User } from './users'
 
 export type PlayerSelect = InferSelectModel<typeof Players>
 export type PlayerInsert = Omit<InferInsertModel<typeof Players>, 'id'>
@@ -28,16 +28,18 @@ export const PlayerStatsSchema = z.object({
   losses: z.number(),
   draws: z.number(),
   winrate: z.number().nullable(),
-  lb_place: z.number(),
-  max_lb_place: z.number(),
+  avg_opponent_rating: z.number().nullable(),
+  lb_place: z.number().nullable(),
+  max_lb_place: z.number().nullable(),
   rating_history: z.array(
     z.object({
       points: z.number(),
       is_provisional: z.boolean().optional(),
-      time: z.date(),
+      time: z.number(),
     }),
   ),
-  stats_last_refreshed: z.date(),
+  rank_roles: z.record(z.string(), z.array(z.string())).optional(), // Mapping from guild id to role id
+  stats_last_refreshed: z.number(),
 })
 
 export type PlayerStats = z.infer<typeof PlayerStatsSchema>
@@ -55,6 +57,12 @@ export class PartialPlayer {
   async ranking(): Promise<Ranking> {
     const ranking_id = (await this.fetch()).data.ranking_id
     return this.db.rankings.fetch(ranking_id)
+  }
+
+  async user(): Promise<User | undefined> {
+    const player = await this.fetch()
+    if (!player.data.user_id) return undefined
+    return this.db.users.fetch(player.data.user_id)
   }
 
   async teams(): Promise<Team[]> {

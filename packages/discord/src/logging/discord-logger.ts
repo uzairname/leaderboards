@@ -16,12 +16,12 @@ export abstract class DiscordLogger {
     options?: RequestData
     response?: unknown
     error?: unknown
-    time_ms: number
+    timeMs: number
   }): void
 
-  abstract setInteractionType(type: string): void
+  abstract setRequestName(type: string): void
 
-  abstract setUser(user: { id?: string; username?: string; guild?: string }): void
+  abstract setUser(user: { id?: string; username?: string; guild_id?: string }): void
 }
 
 export type LogLevel = 'error' | 'warning' | 'info' | 'debug'

@@ -9,7 +9,8 @@ export const emojis = {
 }
 
 export enum Colors {
-  Primary = 0xa1ffda,
+  Primary = 0x24d1ce,
+  Secondary = 0x69fabb,
   Success = 0x5fde70,
   Pending = 0xdee887,
   DiscordBackground = 0x313338,
@@ -65,7 +66,6 @@ export function escapeMd(str: string | undefined | null): string {
     .replace(/#/g, '\\#')
 }
 
-// export const space = `⠀` // U+2800: Braille Pattern Blank
 export const space = ` ` // U+2003: Em Space
 
 export function spaces(n: number): string {

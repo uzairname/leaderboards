@@ -1,7 +1,7 @@
 import { CommandSignature } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../../setup/app'
-import { isQueueEnabled } from '../../../settings/properties'
+import { isQueueEnabled } from '../../../rankings/properties'
 
 export const leave_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,

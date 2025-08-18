@@ -4,14 +4,18 @@ minify = false
 
 name = "leaderboards-dev"
 vars = { ENVIRONMENT = "development", BASE_URL = "https://leaderboards-dev.5r.workers.dev" }
+compatibility_flags = ["nodejs_als"]
+version_metadata = { binding = "CF_VERSION_METADATA" }
 
 [env.staging]
 name = "leaderboards-staging"
 vars = { ENVIRONMENT = "staging", BASE_URL = "https://leaderboards-staging.5r.workers.dev"}
+version_metadata = { binding = "CF_VERSION_METADATA" }
 
 [env.production]
 name = "leaderboards"
 vars = { ENVIRONMENT = "production", BASE_URL = "https://leaderboards.5r.workers.dev" }
+version_metadata = { binding = "CF_VERSION_METADATA" }
 
 # wrangler.toml (wrangler v3.79.0^)
 [observability]

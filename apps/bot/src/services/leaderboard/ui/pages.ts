@@ -1,13 +1,13 @@
 import { EmbedBuilder } from '@discordjs/builders'
 import { Ranking } from '@repo/db/models'
-import { Context } from '@repo/discord'
+import { Context, MessageData } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { type App } from '../../../setup/app'
 import { commandMention, escapeMd, relativeTimestamp, space } from '../../../utils/ui'
 import { numRankings } from '../../guilds/properties'
 import { mentionOrName, orderedLeaderboardPlayers } from '../../players/properties'
-import { getApplicableRankRoles } from '../../players/rank-roles'
-import { DEFAULT_LB_COLOR, rankingProperties } from '../../settings/properties'
+import { calculateRankRolesForRating } from '../../players/rank-roles'
+import { DEFAULT_LB_COLOR, rankingProperties } from '../../rankings/properties'
 import { leaderboard_cmd } from './cmd'
 import { leaderboard_view_sig } from './view'
 
@@ -23,8 +23,8 @@ export async function leaderboardMessage(
     show_provisional?: boolean
     page?: number
   },
-): Promise<{ embeds: D.APIEmbed[]; max_page: number }> {
-  const lines_per_page = 25
+): Promise<{ message: MessageData; max_page: number }> {
+  const lines_per_page = 50
   const page = options?.page ?? 1
 
   const players = await orderedLeaderboardPlayers(app, ranking)
@@ -33,54 +33,60 @@ export async function leaderboardMessage(
     ? await app.db.guild_rankings.fetch({ guild_id: options.guild_id, ranking_id: ranking.data.id })
     : {}
 
-  // Determine the rank role for each player to feature
-  if (guild_ranking) {
-    var featured_rank_roles = await Promise.all(
-      players.map(async player => {
-        const rank_roles = await getApplicableRankRoles(app, player.player, guild_ranking)
-        const roles = Object.entries(rank_roles)
-          .filter(([_, has_role]) => has_role)
-          .map(([role_id, _]) => role_id)
-        return roles[roles.length - 1] ?? null
-      }),
-    )
-  } else {
-    featured_rank_roles = []
-  }
-
   let place = 0
   const max_rating_len = players[0]?.points.toFixed(0).length ?? 0
 
   // List of strings for each player on the leaderboard
   const players_lines = players
     .map(p => {
-      const rating_text = `\`${p.points.toFixed(0)}\``.padStart(max_rating_len + 2 - `${place}`.length)
       if (p.is_provisional) {
+        if (options?.show_provisional) {
+          return (
+            `> ${space}` +
+            `\`` +
+            `${p.points.toFixed(0)}`.padStart(max_rating_len) +
+            `\`` +
+            `${space}${mentionOrName(p.player)} ` +
+            `*Unranked*`
+          )
+        }
         return null
       } else {
         place++
+
+        let rank_role_id: string | undefined = undefined
+
+        if (guild_ranking) {
+          const rank_roles = calculateRankRolesForRating(app, guild_ranking, p)
+          if (rank_roles.length > 0) {
+            rank_role_id = rank_roles[rank_roles.length - 1] // Get the last role in the list, which is the highest rank
+          }
+        }
+
         return (
-          `### \`${place}.`.padEnd(3, ' ') +
           `\`` +
-          `${space}${rating_text}` +
+          `${place}.`.padEnd(3, ' ') +
+          `\`  **\`${p.points.toFixed(0).padStart(max_rating_len)}\`**` +
           `${space}${mentionOrName(p.player)}` +
-          (featured_rank_roles[place - 1] ? ` (<@&${featured_rank_roles[place - 1]}>)` : ``) // Add the rank role mention if it exists
+          // `` +
+          (rank_role_id ? ` (<@&${rank_role_id}>)` : ``) // Add the rank role mention if it exists
         )
       }
     })
     .filter(Boolean) as string[]
 
   // Add provisional players at the end, if specified
-  const provisional_players_lines = options?.show_provisional
-    ? players
-        .filter(p => p.is_provisional)
-        .map(p => {
-          return `### -# ${space + space}\`${p.points.toFixed(0)}?\`${space}${mentionOrName(p.player)} `
-        })
-    : []
+  // const provisional_players_lines = options?.show_provisional
+  //   ? players
+  //       .filter(p => p.is_provisional)
+  //       .map(p => {
+  //         return `-# ${space + space}\`${p.points.toFixed(0)}?\`${space}${mentionOrName(p.player)} `
+  //       })
+  //   : []
 
   // Combine to get all lines
-  let all_lines = players_lines.concat(provisional_players_lines)
+  // let all_lines = players_lines.concat(provisional_players_lines)
+  const all_lines = players_lines
   const max_page = Math.ceil(all_lines.length / lines_per_page)
 
   // Determine the lines to show on the current page
@@ -104,25 +110,24 @@ export async function leaderboardMessage(
       ? `\nUse ${await commandMention(app, leaderboard_cmd, options?.guild_id)}${guild && (await numRankings(app, guild)) > 1 ? ` \`${ranking.data.name}\`` : ``} to see the full leaderboard.`
       : ``)
 
-  // const embed: D.APIEmbed = {
-  //   title: `${escapeMd(ranking.data.name)} Leaderboard`,
-  //   description: current_page_lines.join('\n') + '\n' + bottom_text,
-  //   color: Colors.Primary,
-  // }
-
   const embed = new EmbedBuilder()
     .setTitle(`${escapeMd(ranking.data.name)} Leaderboard`)
     .setDescription(current_page_lines.join('\n') + '\n' + bottom_text)
     .setColor(color)
 
-  const embeds = [embed.toJSON()]
+  const message = new MessageData({
+    embeds: [embed.toJSON()],
+  })
 
   return {
-    embeds,
+    message,
     max_page,
   }
 }
 
+/**
+ * A leaderboard message with pagination components
+ */
 export async function leaderboardPage(
   app: App,
   ctx: Context<typeof leaderboard_view_sig>,
@@ -130,7 +135,7 @@ export async function leaderboardPage(
   const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
   const page = ctx.state.get.page()
 
-  const { embeds, max_page } = await leaderboardMessage(app, ranking, {
+  const { message, max_page } = await leaderboardMessage(app, ranking, {
     guild_id: ctx.interaction.guild_id,
     show_provisional: true,
     page,
@@ -138,7 +143,7 @@ export async function leaderboardPage(
 
   ctx.state.save.max_page(max_page)
 
-  const components: D.APIActionRowComponent<D.APIMessageActionRowComponent>[] = [
+  const components: D.APIActionRowComponent<D.APIComponentInMessageActionRow>[] = [
     {
       type: D.ComponentType.ActionRow,
       components: [
@@ -174,8 +179,7 @@ export async function leaderboardPage(
     },
   ]
 
-  return {
-    embeds,
-    components,
-  }
+  message.body.components = components
+
+  return message.response_data
 }

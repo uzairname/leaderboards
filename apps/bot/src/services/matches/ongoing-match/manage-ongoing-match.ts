@@ -1,13 +1,12 @@
 import { Match, PartialGuildRanking, Player, Vote } from '@repo/db/models'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../../errors/user-errors'
-import { sentry } from '../../../logging/sentry'
 import { App } from '../../../setup/app'
 import { Colors } from '../../../utils'
 import { syncMatchSummaryMessage } from '../logging/match-summary-message'
 import { startNewMatch } from '../management/create-matches'
 import { cancelMatch, updateMatchOutcome } from '../management/update-matches'
-import { ongoing_match_view_sig, ongoingMatchPage } from '../ui/ongoing-match/ongoing-match-view'
+import { ongoing_match_view_sig, ongoingMatchPage } from '../ui/ongoing-match/view'
 import { generateCustomMatchDesc } from './ongoing-1v1-match-message'
 
 /**
@@ -48,7 +47,7 @@ export async function start1v1SeriesThread(
               match_id: match.data.id,
             }),
           )
-        ).as_post,
+        ).post_data,
       )
       .then(message => {
         app.discord.pinMessage(thread.id, message.id)
@@ -87,7 +86,7 @@ export async function castPlayerVote(app: App, match: Match, voting_user_id: str
   await match.update({ team_votes: team_votes })
 
   // act on voting results if it is ongoing
-  sentry.debug(`Casted votes. Match:${match}`)
+  app.logger.debug(`Casted votes. Match:${match}`)
 
   // if all votes are cancel, revert the match
   const all_cancel_votes = team_votes.every(v => v === Vote.Cancel)

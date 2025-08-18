@@ -5,7 +5,7 @@ export function logInteraction(interaction: D.APIInteraction, logger?: DiscordLo
   logger?.setUser({
     id: interaction.user?.id ?? interaction.member?.user.id,
     username: interaction.user?.username ?? interaction.member?.user.username,
-    guild: interaction.guild_id,
+    guild_id: interaction.guild_id,
   })
 
   const data: Record<string, unknown> = {}

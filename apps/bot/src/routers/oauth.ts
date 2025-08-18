@@ -1,6 +1,6 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import { AccessToken } from '@repo/db/models'
-import { DiscordAPIClient } from '@repo/discord'
+import { DiscordAPIClient, DiscordErrors } from '@repo/discord'
 import { nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { IttyRouter } from 'itty-router/IttyRouter'
@@ -54,6 +54,7 @@ async function oauthCallback(app: App, request: Request): Promise<Response> {
     )
   } catch (e) {
     if (e instanceof DiscordAPIError) {
+      app.logger.debug(`Error: ${e.name} ${e.message}`)
       return new Response('Invalid code', { status: 400 })
     }
     throw e
@@ -88,6 +89,8 @@ export async function getUserAccessToken(
   user_id: string,
   scopes?: D.OAuth2Scopes[],
 ): Promise<string | undefined> {
+  app.logger.debug(`Getting user access token for ${user_id}`)
+
   const all_tokens = await app.db.access_tokens.get(user_id)
 
   const scope_tokens = scopes
@@ -99,13 +102,25 @@ export async function getUserAccessToken(
 
   if (scope_tokens.length == 0) return undefined
 
-  // get the most recent token
+  // Get the most recent token
   const token = scope_tokens.sort((a, b) => b.data.expires_at.getTime() - a.data.expires_at.getTime())[0]
-  return refreshAccessTokenIfExpired(app.discord, token.data)
+
+  try {
+    return await refreshAccessTokenIfExpired(app.discord, token.data)
+  } catch (e) {
+    if (e instanceof DiscordErrors.InvalidGrant) {
+      // The token is invalid. Delete it
+      await token.delete()
+      return
+    }
+    throw e
+  }
 }
 
 async function refreshAccessTokenIfExpired(bot: DiscordAPIClient, token: AccessToken['data']): Promise<string> {
-  return token.expires_at.getTime() > Date.now()
-    ? token.data.access_token
-    : (await bot.refreshOauthToken(token.data.refresh_token)).access_token
+  if (token.expires_at.getTime() > Date.now()) {
+    return token.data.access_token
+  } else {
+    return (await bot.refreshOauthToken(token.data.refresh_token)).access_token
+  }
 }

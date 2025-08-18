@@ -1,7 +1,6 @@
 import { CommandSignature, getOptions } from '@repo/discord'
 import { nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../../logging/sentry'
 import { getUserAccessToken } from '../../../routers/oauth'
 import { App } from '../../../setup/app'
 import { getOrCreatePlayerByUser } from '../../players/manage'
@@ -27,21 +26,23 @@ export const connect_cmd_sig = new CommandSignature({
 export const connect_cmd = connect_cmd_sig.set<App>({
   onCommand: async (ctx, app) => {
     return ctx.defer(async ctx => {
-      const input = getOptions(ctx.interaction, {
+      const { options } = getOptions(ctx.interaction, {
         ranking: { type: D.ApplicationCommandOptionType.Integer, required: true },
       })
 
       const user_id = nonNullable(ctx.interaction.member?.user.id ?? ctx.interaction.user?.id, 'user/member id')
 
       const access_token = await getUserAccessToken(app, user_id, [D.OAuth2Scopes.RoleConnectionsWrite])
+
       if (!access_token) {
-        return void ctx.edit({
+        return void (await ctx.edit({
           content: `You need to authorize the bot to connect your account to a ranking. Please follow these steps:
 1. Go to any server where the bot is present and a linked role is available.
 2. Click on the server settings dropdown and select "Linked Roles"
 3. Click on a role associated with this bot
 4. Follow the steps given to verify your account. This will ask you to authorize the bot to update your role connection metadata.
-5. Come back here and run the command again.`,
+5. Click Authorize below.
+6. Run this command again to connect your linked role to the ranking.`,
           components: [
             {
               type: D.ComponentType.ActionRow,
@@ -55,10 +56,10 @@ export const connect_cmd = connect_cmd_sig.set<App>({
               ],
             },
           ],
-        })
+        }))
       }
 
-      const player = await getOrCreatePlayerByUser(app, user_id, app.db.rankings.get(input.ranking))
+      const player = await getOrCreatePlayerByUser(app, user_id, app.db.rankings.get(options.ranking))
 
       const result = await updateUserRoleConnectionData(app, access_token, player)
 
@@ -67,6 +68,7 @@ export const connect_cmd = connect_cmd_sig.set<App>({
       })
     })
   },
+
   onAutocomplete: async (ctx, app) => {
     // Get the user's rankings
     const user_id = nonNullable(ctx.interaction.member?.user.id ?? ctx.interaction.user?.id, 'user/member id')
@@ -78,7 +80,7 @@ export const connect_cmd = connect_cmd_sig.set<App>({
       value: p.ranking.data.id,
     }))
 
-    sentry.debug(`autocomplete`, { choices })
+    app.logger.debug(`autocomplete`, { choices })
 
     return {
       choices,

@@ -1,11 +1,12 @@
 import { PartialPlayer, PartialRanking, Player, PlayerFlags, Ranking, Rating, UserPlayer } from '@repo/db/models'
+import { AnyDeferredContext } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../logging/sentry'
+import { UserError } from '../../errors/user-errors'
 import { getUserAccessToken } from '../../routers/oauth'
 import { App } from '../../setup/app'
 import { syncRankingLbMessages } from '../leaderboard/manage'
 import { updateUserRoleConnectionData } from '../role-connections/role-connections'
-import { updateRankRolesForPlayer } from './rank-roles'
+import { assignRankRolesForUser } from './rank-roles'
 
 /**
  * Gets a player by user and ranking, or registers a new player associated with the user in that ranking.
@@ -21,7 +22,7 @@ export async function getOrCreatePlayerByUser(
 
   if (!player) {
     const ranking = await p_ranking.fetch()
-    sentry.debug(`registering ${discord_user_id} in ${ranking}`)
+    app.logger.debug(`registering ${discord_user_id} in ${ranking}`)
 
     const discord_user =
       typeof partial_discord_user === 'string' ? await app.discord.getUser(partial_discord_user) : partial_discord_user
@@ -55,6 +56,10 @@ export async function getOrCreatePlayerByRole({
     guild_id: string
   }
 }) {
+  if (!app.config.features.AllowNonUserPlayers) {
+    throw new UserError(`Cannot register role <@&${role.id}> as a player. Non-user players are not yet supported`)
+  }
+
   // Get any existing player based on the role and/or name
   let player = await app.db.players.fetchBy({
     role_id: typeof role === 'string' ? role : role?.id,
@@ -63,7 +68,7 @@ export async function getOrCreatePlayerByRole({
 
   if (!player) {
     const ranking = await p_ranking.fetch()
-    sentry.debug(`registering role:${role} in ${ranking}`)
+    app.logger.debug(`registering role:${role} in ${ranking}`)
 
     // Determine the name, and optionally the role+guild.
     let name: string
@@ -119,7 +124,7 @@ export async function getOrCreatePlayer({
 }
 
 /**
- * Updates the players' ratings
+ * Updates the players' ratings in the database
  *
  * Also updates:
  * - their role connections
@@ -130,31 +135,30 @@ export async function updatePlayerRatings(
   app: App,
   ranking: Ranking,
   update_data: { player: PartialPlayer; rating: Rating }[],
+  ctx?: AnyDeferredContext,
 ) {
-  sentry.debug(`updatePlayerRatings, ${update_data.map(u => u.player.data.id)}`)
+  await app.db.players.updateRatings(update_data)
 
-  // Fetch all players in update_data to complete update_data with the full player objects
+  // Fetch all players again to get the updated data
   const all_players = await app.db.players.fetchMany({
     player_ids: update_data.map(u => u.player.data.id),
   })
-  const update_data_complete = update_data.map(({ player, rating }) => ({
-    player: all_players.find(p => p.data.id === player.data.id)!,
-    rating,
-  }))
 
   await Promise.all([
-    await app.db.players.updateRatings(update_data),
     Promise.all(
-      update_data_complete.map(async ({ player, rating }) => {
+      all_players.map(async player => {
         // For each player to update, update role connections
 
-        if (app.config.features.RatingRoleConnections) {
+        if (app.config.features.RoleConnections) {
           // Update role connections if player associated with a user
           if (player.data.user_id) {
+            app.logger.debug(`Updating role connections for ${player.data.user_id}`)
             const access_token = await getUserAccessToken(app, player.data.user_id, [
               D.OAuth2Scopes.RoleConnectionsWrite,
             ])
+
             if (access_token) {
+              app.logger.debug(`Found access token for ${player.data.user_id}. Updating role connections.`)
               await updateUserRoleConnectionData(app, access_token, player)
             }
           }
@@ -166,23 +170,29 @@ export async function updatePlayerRatings(
   // update ranking leaderboards
   await syncRankingLbMessages(app, ranking)
 
-  // update rank roles
+  // assign rank roles if there are less than 10 players to update
 
-  const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
+  if (all_players.length >= 10) {
+    app.logger.debug(`Skipping rank role assignment for ${all_players.length} players (too many)`)
+  } else {
+    const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
 
-  await Promise.all(
-    guild_rankings.map(async ({ guild, guild_ranking }) => {
-      await Promise.all(
-        all_players.map(async player => {
-          await updateRankRolesForPlayer(app, await player.fetch(), guild_ranking)
-        }),
-      )
-    }),
-  )
+    await Promise.all(
+      guild_rankings.map(async ({ guild_ranking }) => {
+        await Promise.all(
+          all_players.map(async player => {
+            const user = await player.user()
+            if (!user) return // player is not associated with a Discord user
+            await assignRankRolesForUser(app, user, guild_ranking)
+          }),
+        )
+      }),
+    )
+  }
 }
 
 export async function setPlayerDisabled(app: App, player: Player, disabled: boolean) {
-  sentry.debug(
+  app.logger.debug(
     `setPlayerDisabled ${disabled} ${player.data.flags}, ${player.data.flags | PlayerFlags.Disabled}, ${player.data.flags & ~PlayerFlags.Disabled}`,
   )
   await player.update({

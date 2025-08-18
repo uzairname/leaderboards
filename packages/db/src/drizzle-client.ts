@@ -1,18 +1,22 @@
 import { neon } from '@neondatabase/serverless'
 import { drizzle as drizzle_http } from 'drizzle-orm/neon-http'
-import { drizzle as drizzle_ws } from 'drizzle-orm/neon-serverless'
+import { drizzle as drizzle_ws, NeonDatabase } from 'drizzle-orm/neon-serverless'
 import { withReplicas } from 'drizzle-orm/pg-core'
 import { DbLogger } from './logging/db-logger'
 import { DrizzleLogger } from './logging/drizzle-logger'
-// import { Logger as RequestLogger } from '../logging/Logger'
 
-export function getNeonDrizzleWsClient(postgres_url: string, postgres_read_url?: string, logger?: DbLogger) {
-  const db = drizzle_ws(postgres_url, { logger: new DrizzleLogger(logger) })
+export function getNeonDrizzleWsClient(postgres_url: string, postgres_read_url?: string, logger?: DbLogger): NeonDatabase {
+
+  // main_pool = main_pool ?? new Pool({connectionString: postgres_url})
+  const main_db = drizzle_ws(postgres_url, { logger: new DrizzleLogger(logger) })
+  
   if (postgres_read_url) {
-    const read_db = drizzle_ws(postgres_read_url, { logger: new DrizzleLogger(logger, true) })
-    return withReplicas(db, [read_db])
+    // readonly_pool = readonly_pool ?? new Pool({connectionString: postgres_read_url})
+    const readonly_db = drizzle_ws(postgres_read_url, { logger: new DrizzleLogger(logger, true) }) 
+    return withReplicas(main_db, [readonly_db])
   }
-  return db
+
+  return main_db
 }
 
 export function getNeonDrizzleClient(postgres_url: string, postgres_read_url?: string, logger?: DbLogger) {

@@ -38,4 +38,6 @@ export namespace DiscordErrors {
   }
 
   export class RolePermissions extends DiscordUserError {}
+
+  export class InvalidGrant extends DiscordError {}
 }

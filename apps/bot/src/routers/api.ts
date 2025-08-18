@@ -1,11 +1,11 @@
-import { appCommandToJSONBody, isCommandHandler } from '@repo/discord'
+import { isCommandHandler } from '@repo/discord'
 import { intOrNull } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { IttyRouter } from 'itty-router/IttyRouter'
 import { json } from 'itty-router/json'
 import { App } from '../setup/app'
-import { initInteractionHandler } from '../setup/interaction-handler'
 import { inviteUrl } from '../utils/'
+import commandsRouter from './api/commands'
 import rankingsRouter from './api/rankings'
 import { authorize } from './base'
 import { getUserAccessToken, saveUserAccessToken } from './oauth'
@@ -27,10 +27,47 @@ export default (app: App) =>
       return json(result)
     })
 
+    .get('/endpoints', async request => {
+      const result = {
+        interactions: app.config.env.BASE_URL + '/interactions',
+        linked_roles: app.config.env.BASE_URL + '/oauth' + app.config.OauthRoutes.LinkedRoles,
+        oauth_redirect: app.config.env.BASE_URL + '/oauth' + app.config.OauthRoutes.Redirect,
+      }
+      return json(result)
+    })
+
+    .get('/debug/env', async () => {
+      const result = {
+        hasEnvironment: !!app.env.ENVIRONMENT,
+        environment: app.env.ENVIRONMENT,
+        hasBaseUrl: !!app.env.BASE_URL,
+        baseUrl: app.env.BASE_URL,
+        hasDiscordToken: !!app.env.DISCORD_TOKEN,
+        hasApplicationId: !!app.env.APPLICATION_ID,
+        applicationId: app.env.APPLICATION_ID,
+        hasClientSecret: !!app.env.CLIENT_SECRET,
+        hasPublicKey: !!app.env.PUBLIC_KEY,
+        configEnv: {
+          hasDiscordToken: !!app.config.env.DISCORD_TOKEN,
+          hasApplicationId: !!app.config.env.APPLICATION_ID,
+          applicationId: app.config.env.APPLICATION_ID,
+          hasClientSecret: !!app.config.env.CLIENT_SECRET,
+          hasPublicKey: !!app.config.env.PUBLIC_KEY,
+        },
+        discordClient: {
+          hasClientId: !!app.discord.clientId,
+          clientId: app.discord.clientId,
+          hasApplicationId: !!app.discord.applicationId,
+          applicationId: app.discord.applicationId,
+        },
+      }
+      return json(result)
+    })
+
     .get('/handlers', async () => {
       const result = {
-        'defined view and command handlers': initInteractionHandler()
-          .all_handlers.map(c => {
+        'defined view and command handlers': app.interactionHandler.all_handlers
+          .map(c => {
             return {
               cid_prefix: `${c.signature.config.custom_id_prefix}`,
               name: `${c.signature.config.name}`,
@@ -47,23 +84,8 @@ export default (app: App) =>
       return json(result)
     })
 
-    .get('/commands/:guild_id', async request => {
-      app.db.cache.clear()
-      const guild_id = request.params.guild_id
-
-      const commands = await app.view_manager.getCommandSignatures({
-        arg: app,
-        guild_id: guild_id,
-        include_experimental: app.config.features.ExperimentalCommands,
-      })
-
-      const commands_data = commands.map(appCommandToJSONBody)
-      const query = {
-        route: D.Routes.applicationGuildCommands(app.discord.application_id, guild_id),
-        body: commands_data,
-      }
-
-      return json(query)
+    .all('/commands/*', async request => {
+      return commandsRouter(app).fetch(request)
     })
 
     .get('/invite-url', async () => new Response(inviteUrl(app)))
@@ -101,7 +123,7 @@ export default (app: App) =>
 
       const bearer_token = await getUserAccessToken(app, user_id)
 
-      return json(bearer_token, { status: 200 }) // string | undefined
+      return json(!!bearer_token, { status: 200 }) // string | undefined
     })
 
     .all('*', () => new Response('Not found', { status: 404 }))

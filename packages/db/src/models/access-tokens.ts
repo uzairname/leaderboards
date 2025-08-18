@@ -24,6 +24,10 @@ export class AccessToken implements DbObject<AccessTokenSelect> {
     )[0]
     return this
   }
+
+  async delete() {
+    await this.db.drizzle.delete(AccessTokens).where(eq(AccessTokens.id, this.data.id))
+  }
 }
 
 export class AccessTokensManager extends DbObjectManager {

@@ -5,7 +5,7 @@ import { nonNullable } from '@repo/utils'
 import { App } from '../../../setup/app'
 import { Colors } from '../../../utils'
 import { mentionOrName } from '../../players/properties'
-import { rankingProperties } from '../../settings/properties'
+import { rankingProperties } from '../../rankings/properties'
 
 /**
  * Determine the custom description to display at the top of the match thread,
@@ -58,6 +58,7 @@ export async function ongoingMatch1v1Message(
 
     return (
       mentionOrName(player) +
+      ' ' +
       {
         [Vote.Win]: 'claims win',
         [Vote.Loss]: 'claims loss',
@@ -94,7 +95,7 @@ export async function ongoingMatch1v1Message(
   // Votes and match concluded text
   if (match.data.status === MatchStatus.Finished || match.data.status === MatchStatus.Canceled) {
     embeds.push({
-      description: `Match concluded. To start another best of ${best_of}, both players must agree to rematch within ${Math.round(app.config.RematchTimeoutMinutes)} minutes.`,
+      description: `Match concluded. To start another match, both players must agree to rematch within ${Math.round(app.config.RematchTimeoutMinutes)} minutes.`,
       color: Colors.Primary,
     })
   } else if (votes_str) {

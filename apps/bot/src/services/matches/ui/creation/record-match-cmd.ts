@@ -72,7 +72,7 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
      * If the user is admin, skip the confirmation step
      */
 
-    const input = getOptions(ctx.interaction, {
+    const { options } = getOptions(ctx.interaction, {
       ranking: { type: D.ApplicationCommandOptionType.Integer, name: optionnames.ranking },
       winner: { type: D.ApplicationCommandOptionType.Mentionable, name: optionnames.winner },
       loser: { type: D.ApplicationCommandOptionType.Mentionable, name: optionnames.loser },
@@ -82,7 +82,7 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
     // const state = record_match_view_sig.newState({})
 
     // Save the selected time finished to the state, if specified
-    const selected_time_finished = intOrNull(input.time_finished)
+    const selected_time_finished = intOrNull(options.time_finished)
     let selected_time_finished_date: Date | undefined
     if (null !== selected_time_finished) {
       if (selected_time_finished.toString().length < 13) {
@@ -98,7 +98,7 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
       {
         app,
         ctx,
-        ranking_id: input.ranking,
+        ranking_id: options.ranking,
       },
       async p_ranking =>
         ctx.defer(async ctx => {
@@ -106,13 +106,13 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
 
           // If this is a 1v1 ranking, check if the winner and loser were specified
           if (ranking.data.players_per_team == 1 && ranking.data.teams_per_match == 2) {
-            if (input.winner && input.loser) {
+            if (options.winner && options.loser) {
               const winner = await getOrCreatePlayer({
                 app,
-                user: input.winner.user,
-                role: input.winner.role
+                user: options.winner.user,
+                role: options.winner.role
                   ? {
-                      id: input.winner.role?.id,
+                      id: options.winner.role?.id,
                       guild_id: ctx.interaction.guild_id,
                     }
                   : undefined,
@@ -120,10 +120,10 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
               })
               const loser = await getOrCreatePlayer({
                 app,
-                user: input.loser.user,
-                role: input.loser.role
+                user: options.loser.user,
+                role: options.loser.role
                   ? {
-                      id: input.loser.role?.id,
+                      id: options.loser.role?.id,
                       guild_id: ctx.interaction.guild_id,
                     }
                   : undefined,
@@ -143,7 +143,7 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
 
               const match_summary_message = await match.summaryMessage(ctx.interaction.guild_id)
 
-              return void ctx.edit({
+              return void (await ctx.edit({
                 content:
                   `Match #${match.data.number} in ${ranking.data.name} recorded.` +
                   (match_summary_message
@@ -154,7 +154,12 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
                       )}`
                     : ``),
                 flags: D.MessageFlags.Ephemeral,
-              })
+              }))
+            } else {
+              return void (await ctx.edit({
+                content: `Please specify both the winner and loser of the match.`,
+                flags: D.MessageFlags.Ephemeral,
+              }))
             }
           }
         }),

@@ -6,16 +6,15 @@
     "migrate": "npx tsx scripts/migrate.ts"
   },
   "dependencies": {
-    "@discordjs/builders": "^1.10.1",
+    "@discordjs/builders": "^1.11.3",
     "@discordjs/rest": "^2.4.3",
     "@repo/database": "*",
     "@repo/discord": "*",
     "@repo/utils": "*",
-    "discord-api-types": "^0.37.102",
+    "@sentry/cloudflare": "^10.5.0",
+    "discord-api-types": "^0.38.20",
     "dotenv": "^16.4.5",
-    "glicko2-lite": "^4.0.0",
     "itty-router": "^5.0.18",
-    "toucan-js": "^3.4.0",
     "ts-trueskill": "^5.0.1"
   },
   "devDependencies": {

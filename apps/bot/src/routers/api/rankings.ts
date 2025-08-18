@@ -3,16 +3,15 @@ import { strOrUndefined } from '@repo/utils'
 import { IttyRouter } from 'itty-router/IttyRouter'
 import { json } from 'itty-router/json'
 import { syncRankingLbMessages } from '../../services/leaderboard/manage'
-import { leaderboardMessage } from '../../services/leaderboard/ui/pages'
 import { rescoreAllMatches } from '../../services/matches/scoring/score-matches'
 import { App } from '../../setup/app'
 
 export default (app: App, ranking: Ranking) =>
   IttyRouter({ base: `/api/rankings/${ranking.data.id}` })
-    .get('/lb-message', async request => {
-      const str = (await leaderboardMessage(app, ranking)).embeds![0].description
-      return new Response(str)
-    })
+    // .get('/lb-message', async request => {
+    //   const str = (await leaderboardMessage(app, ranking)).components[0]
+    //   return new Response(str)
+    // })
 
     .post('/refresh-lb', async request => {
       await syncRankingLbMessages(app, ranking)

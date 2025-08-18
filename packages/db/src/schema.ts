@@ -87,6 +87,7 @@ export const Players = pgTable('Players', {
 }, (table) => [
   uniqueIndex('player_user_id_ranking_id_unique').on(table.user_id, table.ranking_id),
   index('player_time_joined_queue_index').on(table.time_joined_queue),
+  index('player_name_index').on(table.name),
 ])
 
 

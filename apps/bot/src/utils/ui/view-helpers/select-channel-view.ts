@@ -31,7 +31,7 @@ export const select_channel_view = select_channel_view_sig.set<App>({
     if (ctx.state.data.callback) return ctx.state.data.callback(app, ctx)
 
     return ctx.defer(async ctx => {
-      return void ctx.edit(await selectChannelPage(app, ctx))
+      return void (await ctx.edit(await selectChannelPage(app, ctx)))
     })
   },
 })
@@ -64,7 +64,7 @@ async function selectChannelPage(
   let btns: D.APIButtonComponent[] = [
     {
       type: D.ComponentType.Button,
-      custom_id: app.view_manager
+      custom_id: app.interactionHandler
         .fromCustomId(ctx.state.get.origin_cid())
         .state.set[ctx.state.get.channel_id_field()](undefined)
         .cId(),
@@ -77,7 +77,7 @@ async function selectChannelPage(
     btns = [
       {
         type: D.ComponentType.Button,
-        custom_id: app.view_manager
+        custom_id: app.interactionHandler
           .fromCustomId(ctx.state.get.origin_cid())
           .state.set[ctx.state.get.channel_id_field()](ctx.state.data.selected_channel_id)
           .cId(),
@@ -124,5 +124,5 @@ async function selectChannelPage(
 function onSelectChannel(app: App, ctx: ComponentContext<typeof select_channel_view_sig>): ChatInteractionResponse {
   ctx.state.save.selected_channel_id((ctx.interaction.data as D.APIMessageStringSelectInteractionData).values?.[0])
 
-  return ctx.defer(async ctx => void ctx.edit(await selectChannelPage(app, ctx)))
+  return ctx.defer(async ctx => void (await ctx.edit(await selectChannelPage(app, ctx))))
 }

@@ -12,12 +12,12 @@
 // export async function findMatchFromTeamQueue(app: App, gr: PartialGuildRanking): Promise<Match | undefined> {
 //   const { ranking, guild_ranking } = await gr.fetch()
 
-//   sentry.debug(`findMatchFromQueue: ${ranking} in ${guild_ranking}`)
+//   debug(`findMatchFromQueue: ${ranking} in ${guild_ranking}`)
 
 //   const queue_teams = await ranking.popTeamsFromQueue(ranking.data.teams_per_match)
 //   if (!queue_teams) return
 
-//   sentry.debug(`Creating a match thread for ${queue_teams.length} teams`)
+//   debug(`Creating a match thread for ${queue_teams.length} teams`)
 
 //   const {match} = await start1v1SeriesThread(
 //     app,
@@ -39,7 +39,7 @@
 //   rejoined: boolean
 // }> {
 //   const ranking = await p_ranking.fetch()
-//   sentry.debug(`userJoinQueue: ${user.id} in ${ranking}`)
+//   debug(`userJoinQueue: ${user.id} in ${ranking}`)
 
 //   if (!ranking.data.matchmaking_settings.queue_enabled) {
 //     throw new UserError(`The queue is not enabled for ${ranking.data.name}`)
@@ -53,16 +53,16 @@
 //   const player_teams = await player.teams()
 //   // Ensure that the player is in at most one team.
 
-//   sentry.debug(`got ${player}'s teams: ${player_teams[0]?.team}`)
+//   debug(`got ${player}'s teams: ${player_teams[0]?.team}`)
 
 //   if (player_teams.length == 0) {
-//     sentry.debug(`player ${player} is not in a team`)
+//     debug(`player ${player} is not in a team`)
 //     // the player is not in a team. create a new team with the player and add it to the queue
 //     const new_team = await app.db.teams.create(ranking, {}, [player])
 //     await new_team.addToQueue()
 //     return { rejoined: false }
 //   } else if (player_teams.every(team => !team.in_queue)) {
-//     sentry.debug(`player ${player} is in a team, but it's not in the queue`)
+//     debug(`player ${player} is in a team, but it's not in the queue`)
 //     // The player is in at least one team, but none are in the queue.
 //     if (player_teams.length == 1) {
 //       // The player is in a team. Add the team to the queue
@@ -73,7 +73,7 @@
 //       throw new Error('Player is in multiple teams')
 //     }
 //   } else if (player_teams.length == 1) {
-//     sentry.debug(`player ${player} is in a team, and it's already in the queue`)
+//     debug(`player ${player} is in a team, and it's already in the queue`)
 //     // The player is in one team, and it's in the queue. Reqoin.
 //     await player_teams[0].team.addToQueue()
 //     return { rejoined: true }
@@ -92,6 +92,6 @@
 //   ranking: PartialRanking,
 //   user: D.APIUser,
 // ): Promise<number | undefined> {
-//   sentry.debug(`playerLeaveQueue: ${user.id} in ${ranking}`)
+//   debug(`playerLeaveQueue: ${user.id} in ${ranking}`)
 //   return (await app.db.players.fetchByUserRanking(user.id, ranking))?.removeTeamsFromQueue()
 // }

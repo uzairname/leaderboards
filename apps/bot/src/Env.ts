@@ -9,4 +9,7 @@ export interface Env {
   APP_KEY: string
   POSTGRES_URL: string
   POSTGRES_READ_URL: string
+  CF_VERSION_METADATA: {
+    id: string
+  }
 }

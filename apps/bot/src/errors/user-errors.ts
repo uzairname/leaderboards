@@ -14,7 +14,7 @@ export class UserError extends Error {
    */
 
   constructor(
-    message?: string,
+    message: string,
     public title?: string,
   ) {
     super(message)
@@ -27,6 +27,12 @@ export namespace UserErrors {
   export class NotComponentOwner extends UserError {
     constructor(owner_id?: string) {
       super(owner_id ? `This message belongs to <@${owner_id}>` : `This message belongs to someone else`)
+    }
+  }
+
+  export class UnknownView extends UserError {
+    constructor() {
+      super(`Unrecognized command or component. It may be outdated`)
     }
   }
 

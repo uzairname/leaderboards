@@ -6,7 +6,6 @@ export class DrizzleLogger implements Logger {
     private logger?: DbLogger,
     private is_readonly?: boolean,
   ) {
-    logger?.resetCounter(is_readonly)
   }
 
   logQuery(query: string, params?: unknown[]): void {

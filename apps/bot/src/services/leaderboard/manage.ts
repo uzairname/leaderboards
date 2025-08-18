@@ -1,15 +1,12 @@
 import { Guild, GuildRanking, PartialGuildRanking, PartialRanking, Ranking } from '@repo/db/models'
-import { MessageData } from '@repo/discord'
 import { nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../logging/sentry'
 import type { App } from '../../setup/app'
 import { escapeMd } from '../../utils'
 import { syncRankedCategory } from '../guilds/manage-guilds'
 import { leaderboardMessage } from './ui/pages'
 
 export async function syncRankingLbMessages(app: App, ranking: PartialRanking): Promise<void> {
-  sentry.debug(`syncRankingLbMessages ranking: ${ranking.data.id}`)
   const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
   await Promise.all(guild_rankings.map(guild_ranking => syncGuildRankingLbMessage(app, guild_ranking.guild_ranking)))
 }
@@ -25,19 +22,17 @@ export async function syncGuildRankingLbMessage(
   p_guild_ranking: PartialGuildRanking,
   { enable_if_disabled = false, no_edit = false } = {},
 ): Promise<{ message: D.APIMessage; channel_id: string } | undefined> {
-  sentry.debug(`syncGuildRankingLbMessage ${p_guild_ranking}`)
+  app.logger.debug(`syncGuildRankingLbMessage ${p_guild_ranking}`)
 
   const { guild, ranking, guild_ranking } = await p_guild_ranking.fetch()
 
   if (!guild_ranking.data.display_settings?.leaderboard_message && !enable_if_disabled) return
 
-  const message_data = new MessageData({
-    embeds: (
-      await leaderboardMessage(app, ranking, {
-        guild_id: guild.data.id,
-      })
-    ).embeds,
-  })
+  const message_data = (
+    await leaderboardMessage(app, ranking, {
+      guild_id: guild.data.id,
+    })
+  ).message
 
   const result = await app.discord.utils.syncChannelMessage({
     target_channel_id: guild_ranking.data.leaderboard_channel_id,
@@ -84,7 +79,7 @@ async function sendLbChannel(app: App, guild: Guild, ranking: Ranking): Promise<
     parent_id: category.id,
     name: `${escapeMd(ranking.data.name)} Leaderboard`,
     topic: 'This leaderboard is displayed and updated live here',
-    permission_overwrites: leaderboardChannelPermissionOverwrites(guild.data.id, app.discord.application_id),
+    permission_overwrites: leaderboardChannelPermissionOverwrites(guild.data.id, app.discord.applicationId),
   })
 }
 

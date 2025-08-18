@@ -1,6 +1,5 @@
 import { ChatInteractionResponse, ComponentContext, Context } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { sentry } from '../../logging/sentry'
 import { App } from '../../setup/app'
 import { ensureAdminPerms } from '../../utils'
 import { getOrAddGuild, syncGuildAdminRole } from '../guilds/manage-guilds'
@@ -32,15 +31,12 @@ export async function onAdminRoleMethodSelect(
   const guild = await getOrAddGuild(app, ctx.interaction.guild_id)
 
   if (method === admin_role_method_options.new) {
-    sentry.debug(`new`)
     ctx.state.save.admin_role_method('new')
     const role_result = await syncGuildAdminRole(app, guild)
     await app.discord.addRoleToMember(ctx.interaction.guild_id, ctx.interaction.member.user.id, role_result.role.id)
   } else if (method === admin_role_method_options.choose) {
-    sentry.debug(`choose`)
     ctx.state.save.admin_role_method('choose')
   } else if (method === admin_role_method_options.unset) {
-    sentry.debug(`unset`)
     ctx.state.save.admin_role_method('unset')
     await app.db.guilds.get(ctx.interaction.guild_id).update({ admin_role_id: null })
   }

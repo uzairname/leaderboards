@@ -21,5 +21,5 @@ export async function onRankingSelect(
 ): Promise<ChatInteractionResponse> {
   const ranking_id = intOrNull((ctx.interaction.data as D.APIMessageStringSelectInteractionData).values[0])
   ctx.state.save.ranking_id(ranking_id)
-  return ctx.defer(async ctx => void ctx.edit(await ProfilePages.main(app, ctx)))
+  return ctx.defer(async ctx => void (await ctx.edit(await ProfilePages.main(app, ctx))))
 }

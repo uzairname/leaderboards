@@ -1,82 +1,96 @@
-import { DbClient, getNeonDrizzleClient } from '@repo/db'
+import { DbClient, getNeonDrizzleClient, getNeonDrizzleWsClient } from '@repo/db'
 import { PartialGuild } from '@repo/db/models'
-import { DiscordAPIClient, InteractionHandler, putDiscordCommands } from '@repo/discord'
+import { DiscordAPIClient, DiscordLogger, InteractionHandler, putDiscordCommands } from '@repo/discord'
 import { Env } from '../Env'
 import { onViewError } from '../errors/on-view-error'
-import { sentry } from '../logging/sentry'
-import { DbLoggerWrapper, DiscordLoggerWrapper } from '../logging/wrappers'
+// import * as sentry from '@sentry/cloudflare'
+import { Logger } from '../logging/logger'
+import { AppDbLogger, AppDiscordLogger } from '../logging/wrappers'
+import * as views from './all-interaction-handlers'
 import { Config } from './config'
 import { AppEvents, getAppEvents } from './events'
 
-export class App {
-  public config: Config
-  public discord: DiscordAPIClient
-  public db: DbClient
-  public events: AppEvents
+/**
+ * Common dependencies used throughout the application.
+ */
+export interface App {
+  env: Env
+  config: Config
+  logger: Logger
+  db: DbClient
+  discord: DiscordAPIClient
+  interactionHandler: InteractionHandler<App>
+  events?: AppEvents
+}
 
-  private discord_logger: DiscordLoggerWrapper
+/**
+ * Initializes the interaction handler with all views
+ */
+export const getInteractionHandler = (logger?: DiscordLogger) =>
+  new InteractionHandler<App>(Object.values(views), logger)
 
-  constructor(
-    public env: Env,
-    public view_manager: InteractionHandler<App>,
-    public all_event_listeners: ((events: AppEvents) => void)[],
-    {
-      db,
-      config,
-    }: {
-      db?: DbClient
-      config?: Config
-    } = {},
-  ) {
-    this.config = config ?? new Config(env)
+/**
+ * Initializes the application with dependencies. Called at the start of every request
+ */
+export function initApp(env: Env, logger: Logger): App {
+  const config = new Config(env)
 
-    if (db) {
-      this.db = db
-    } else {
-      const logger = new DbLoggerWrapper(sentry)
-      const drizzle = getNeonDrizzleClient(this.config.env.POSTGRES_URL, this.config.env.POSTGRES_READ_URL, logger)
-      this.db = new DbClient(drizzle, logger)
-    }
-    this.db.cache.clear()
+  const dbLogger = new AppDbLogger(logger)
+  const drizzle = getNeonDrizzleWsClient(env.POSTGRES_URL, env.POSTGRES_READ_URL, dbLogger)
+  const db = new DbClient(drizzle, dbLogger)
+  db.cache.clear()
 
-    this.discord_logger = new DiscordLoggerWrapper(sentry)
+  const discordLogger = new AppDiscordLogger(logger)
+  const interactionHandler = getInteractionHandler(discordLogger)
+  const discord = new DiscordAPIClient({
+    token: config.env.DISCORD_TOKEN,
+    applicationId: env.APPLICATION_ID,
+    clientSecret: env.CLIENT_SECRET,
+    publicKey: env.PUBLIC_KEY,
+    logger: discordLogger,
+  })
 
-    this.discord = new DiscordAPIClient({
-      token: this.config.env.DISCORD_TOKEN,
-      application_id: this.config.env.APPLICATION_ID,
-      client_secret: this.config.env.CLIENT_SECRET,
-      public_key: this.config.env.PUBLIC_KEY,
-      logger: this.discord_logger,
-    })
-
-    this.events = getAppEvents(this, all_event_listeners)
-
-    this.view_manager.logger = this.discord_logger
+  const app: App = {
+    env,
+    config,
+    interactionHandler,
+    logger,
+    db,
+    discord,
   }
 
-  handleInteractionRequest(request: Request) {
-    return this.view_manager.respond({
-      bot: this.discord,
-      request,
-      onError: onViewError(this),
-      offload: sentry.offload.bind(sentry),
-      direct_response: this.config.DirectResponse,
-      arg: this,
-    })
-  }
+  const eventListeners: ((events: AppEvents) => void)[] = []
+  const events = getAppEvents(app, eventListeners)
+  app.events = events
 
-  /**
-   * Syncs either global or guild-specific app commands on Discord.
-   */
-  async syncDiscordCommands(guild?: PartialGuild) {
-    await putDiscordCommands(
-      this.discord,
-      await this.view_manager.getCommandSignatures({
-        guild_id: guild?.data.id,
-        include_experimental: this.config.features.ExperimentalCommands,
-        arg: this,
-      }),
-      guild?.data.id,
-    )
-  }
+  return app
+}
+
+/**
+ * Syncs either global or guild-specific app commands on Discord.
+ */
+export async function syncDiscordCommands(app: App, guild?: PartialGuild) {
+  return putDiscordCommands(
+    app.discord,
+    await app.interactionHandler.getCommandSignatures({
+      guild_id: guild?.data.id,
+      include_experimental: app.config.features.ExperimentalCommands,
+      arg: app,
+    }),
+    guild?.data.id,
+  )
+}
+
+/**
+ * Responds to a Discord interaction request
+ */
+export function handleInteractionRequest(app: App, request: Request): Promise<Response> {
+  return app.interactionHandler.respond({
+    bot: app.discord,
+    request,
+    onError: onViewError(app),
+    offload: app.logger.offload.bind(app.logger),
+    direct_response: app.config.DirectResponse,
+    arg: app,
+  })
 }

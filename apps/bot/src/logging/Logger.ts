@@ -1,15 +1,17 @@
 import { isInt } from '@repo/utils'
 import { cache } from '@repo/utils/cache'
-import { Breadcrumb, BreadcrumbHint, EventHint } from '@sentry/types'
-import { Toucan } from 'toucan-js'
+// import { Breadcrumb, BreadcrumbHint, EventHint } from '@sentry/types'
+// import { Toucan } from 'toucan-js'
+import * as sentry from '@sentry/cloudflare'
 import { Env } from '../Env'
-import { RequestTimeoutError } from '../errors/errors'
+import { AppErrors } from '../errors/app-errors'
 
-export class Logger extends Toucan {
+export class Logger {
   private time_received = Date.now()
   private caught_exception: unknown
 
   request_data: Record<string, unknown> = {}
+  discord_user: Record<string, unknown> = {}
   request_name: string
 
   constructor(
@@ -18,22 +20,15 @@ export class Logger extends Toucan {
     private execution_context: ExecutionContext,
     public timeout_ms: number = 20000,
   ) {
-    super({
-      dsn: env.SENTRY_DSN,
-      release: '1.0.0',
-      environment: env.ENVIRONMENT,
-      context: execution_context,
-      request: request,
-    })
-
     this.request_name = 'Request'
     cache.request_num = isInt(cache.request_num) ? cache.request_num + 1 : 1
     this.request = request
   }
 
   async withLogging(handler: (request: Request) => Promise<Response>): Promise<Response> {
-    super.setTag('cold-start', cache.request_num == 1)
-    super.setTag('request_num', `${cache.request_num}`)
+    sentry.setTag('cold-start', cache.request_num == 1)
+    sentry.setTag('request_num', `${cache.request_num}`)
+
     this.request_name = `${this.request.method} ${new URL(this.request.url).pathname}`
 
     return handler(this.request)
@@ -53,9 +48,11 @@ export class Logger extends Toucan {
 
   public offload(
     callback: (ctx: { setException: (e: unknown) => void; setRequestName: (name: string) => void }) => Promise<void>,
-    onTimeout?: (e: RequestTimeoutError) => Promise<void>,
+    onTimeout?: (e: AppErrors.RequestTimeoutError) => Promise<void>,
     name?: string,
   ): void {
+    const timeout_ms = 20000
+
     let offload_caught_exception: unknown
     let request_name = `${this.request_name}${name ? `/${name}` : '/followup'}`
 
@@ -72,16 +69,16 @@ export class Logger extends Toucan {
     let timeout: NodeJS.Timeout
     const timeout_promise = new Promise<void>(() => {
       timeout = setTimeout(() => {
-        const e = new RequestTimeoutError(request_name, this.timeout_ms)
-        super.captureMessage(`${request_name} taking longer than ${this.timeout_ms / 1000}s`, 'warning')
+        const e = new AppErrors.RequestTimeoutError(request_name, this.timeout_ms)
+        sentry.captureMessage(`${request_name} taking longer than ${this.timeout_ms / 1000}s`, 'warning')
         onTimeout?.(e)
-      }, this.timeout_ms)
+      }, timeout_ms)
     })
 
     const callback_promise = callback(ctx)
       .then(() => {
         if (offload_caught_exception) {
-          this.captureException(offload_caught_exception)
+          sentry.captureException(offload_caught_exception)
         } else {
           this.logResult(request_name)
         }
@@ -98,17 +95,17 @@ export class Logger extends Toucan {
     this.execution_context.waitUntil(result)
   }
 
-  addBreadcrumb(breadcrumb: Breadcrumb, hint?: BreadcrumbHint): void {
-    super.addBreadcrumb(breadcrumb, hint)
+  addBreadcrumb(breadcrumb: sentry.Breadcrumb, hint?: sentry.BreadcrumbHint): void {
+    sentry.addBreadcrumb(breadcrumb, hint)
   }
 
-  captureException(exception: unknown, hint?: EventHint): string {
+  captureException(exception: unknown, hint?: sentry.EventHint): string {
     this.addBreadcrumb({
       message: `Exception`,
       level: 'error',
       data: { exception },
     })
-    return super.captureException(exception, hint)
+    return sentry.captureException(exception, hint)
   }
 
   setException(exception: unknown): void {
@@ -121,7 +118,6 @@ export class Logger extends Toucan {
   }
 
   debug(...message: unknown[]): void {
-    console.log(...message)
     this.addBreadcrumb({
       message: message.map(m => `${m}`).join(' '),
       level: 'debug',
@@ -129,11 +125,21 @@ export class Logger extends Toucan {
   }
 
   private logResult(request_name?: string) {
-    super.setExtra('time taken', `${Date.now() - this.time_received} ms`)
-    super.setExtra('data', this.request_data)
-    super.captureEvent({
+    sentry.setExtras({
+      'time taken': `${Date.now() - this.time_received} ms`,
+      data: this.request_data,
+      user: this.discord_user,
+    })
+    sentry.captureEvent({
       message: request_name ?? this.request_name,
       level: 'info',
     })
   }
 }
+
+// export function debug(...message: unknown[]): void {
+//   sentry.addBreadcrumb({
+//     message: message.map(m => `${m}`).join(' '),
+//     level: 'debug',
+//   })
+// }

@@ -1,9 +1,9 @@
 import { GuildRanking, PartialGuild, PartialRanking, Ranking } from '@repo/db/models'
 import type { AnyAppCommandType, CommandContext, CommandInteractionResponse, CommandSignature } from '@repo/discord'
+import * as sentry from '@sentry/cloudflare'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../../errors/user-errors'
-import { sentry } from '../../../logging/sentry'
-import { AllRankingsPages } from '../../../services/settings/ui/all-rankings'
+import { SettingsPages } from '../../../services/settings-ui/settings'
 import type { App } from '../../../setup/app'
 
 export const create_ranking_choice_value = 'create'
@@ -145,7 +145,7 @@ async function _withSelectedRanking(
     } else if (available_guild_rankings_.length == 0) {
       return {
         type: D.InteractionResponseType.ChannelMessageWithSource,
-        data: await AllRankingsPages.main(app, ctx),
+        data: await SettingsPages.main(app, ctx),
       }
     } else {
       throw new UserError('Please specify a ranking')

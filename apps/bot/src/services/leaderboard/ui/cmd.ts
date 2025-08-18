@@ -32,7 +32,7 @@ export const leaderboard_cmd = leaderboard_cmd_sig.set<App>({
         ctx,
         ranking_id: getOptions(ctx.interaction, {
           ranking: { type: D.ApplicationCommandOptionType.Integer },
-        }).ranking,
+        }).options.ranking,
       },
       async ranking => {
         const state = leaderboard_view_sig.newState({

@@ -1,6 +1,8 @@
 import { MatchPlayer, Rating, RatingSettings, RatingStrategy } from '@repo/db/models'
+import { addBreadcrumb } from '@sentry/cloudflare'
 import { TrueSkill, Rating as TrueskillRating } from 'ts-trueskill'
 import { getOutcomeWinners } from '../management/properties'
+import { posteriorLaplaceApproximation } from './calculate-posterior'
 import { calculateNewGlickoRatings } from './glicko2'
 
 /**
@@ -109,7 +111,7 @@ const winsMinusLosses: Scorer = ({ outcome, match_players }) => {
 }
 
 export const GLICKO_DEFAULT_MU = 1000
-export const GLICKO_DEFAULT_RD = 350
+export const GLICKO_DEFAULT_RD = 200
 export const GLICKO_DEFAULT_VOL = 0.06
 export const GLICKO_DEFAULT_TAU = 0.5
 const GLICKO_SCALE = 173.7178
@@ -163,12 +165,77 @@ const glicko2: Scorer = ({ outcome, match_players, rating_settings, time_since_l
   ]
 }
 
+const DEFAULT_DISPLAY_STDDEV = 200 // One standard deviation in display units
+const DRAW_LIKELIHOOD_VARIANCE = 3 // Higher variance = draws have smaller effect on ratings
+
+const bayesian: Scorer = ({ outcome, match_players, rating_settings }) => {
+  // Standardize display values to internal values for computation
+  const convert_mu_to_internal = (mu: number) => (mu - rating_settings.initial_rating.mu) / DEFAULT_DISPLAY_STDDEV
+  const convert_mu_to_display = (mu: number) => mu * DEFAULT_DISPLAY_STDDEV + rating_settings.initial_rating.mu
+  const convert_rd_to_internal = (rd: number) => rd / DEFAULT_DISPLAY_STDDEV
+  const convert_rd_to_display = (rd: number) => rd * DEFAULT_DISPLAY_STDDEV
+
+  const new_ratings: Rating[][] = []
+
+  outcome.forEach((team_outcome, team_idx) => {
+    new_ratings.push([])
+
+    // Calculate the score for this team. Their score minus the maximum of all other teams' score
+    const max_other_outcome = Math.max(...outcome.filter((_, i) => team_idx !== i))
+
+    const team_score = team_outcome - max_other_outcome
+
+    // Calculate the rating for opponent: average of ratings of all other players
+    let other_team_players = match_players.filter((_, i) => team_idx !== i).flat()
+
+    const sum = other_team_players.reduce((acc, player) => {
+      const mu = convert_mu_to_internal(player.rating.mu)
+      return acc + mu
+    }, 0)
+
+    const opponent_rating = sum / other_team_players.length
+
+    addBreadcrumb({
+      message: `Bayesian scorer: team ${team_idx} score ${team_score}, opponent rating ${opponent_rating}`,
+    })
+
+    match_players[team_idx].forEach(player => {
+      const mu = convert_mu_to_internal(player.rating.mu)
+      const rd = convert_rd_to_internal(player.rating.rd ?? rating_settings.initial_rating.rd)
+
+      const result = posteriorLaplaceApproximation(
+        opponent_rating,
+        team_score,
+        {
+          mean: mu,
+          variance: rd ** 2,
+        },
+        {
+          betaZeroGaussianVariance: DRAW_LIKELIHOOD_VARIANCE,
+        },
+      )
+
+      addBreadcrumb({
+        message: `Player ${player.player.data.id} posterior: mu ${result.posterior.mean}, rd ${Math.sqrt(result.posterior.variance)}`,
+      })
+
+      new_ratings[team_idx].push({
+        mu: convert_mu_to_display(result.posterior.mean),
+        rd: convert_rd_to_display(Math.sqrt(result.posterior.variance)),
+      })
+    })
+  })
+
+  return new_ratings
+}
+
 export function getScorerFn(type: RatingStrategy): Scorer {
   const fn = {
     [RatingStrategy.TrueSkill]: trueskill,
     [RatingStrategy.WinsMinusLosses]: winsMinusLosses,
     [RatingStrategy.Elo]: elo,
     [RatingStrategy.Glicko]: glicko2,
+    [RatingStrategy.Bayesian]: bayesian,
   }[type]
 
   if (!fn) throw new Error(`Unknown rating method ${type}`)

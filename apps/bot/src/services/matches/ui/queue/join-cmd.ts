@@ -2,7 +2,7 @@ import { CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../../../setup/app'
 import { guildRankingsOption, Messages, withSelectedRanking } from '../../../../utils'
-import { isQueueEnabled } from '../../../settings/properties'
+import { isQueueEnabled } from '../../../rankings/properties'
 import { userJoinQueue } from '../../matchmaking/queue/1v1-queue'
 
 export const join_cmd_sig = new CommandSignature({
@@ -38,11 +38,11 @@ export const join_cmd = join_cmd_sig.set<App>({
     })
   },
   onCommand: async (ctx, app) => {
-    const input = getOptions(ctx.interaction, {
+    const { options } = getOptions(ctx.interaction, {
       ranking: { type: D.ApplicationCommandOptionType.Integer },
     })
 
-    return await withSelectedRanking({ app, ctx, ranking_id: input.ranking }, async p_ranking =>
+    return await withSelectedRanking({ app, ctx, ranking_id: options.ranking }, async p_ranking =>
       ctx.defer(async ctx => {
         const ranking = await p_ranking.fetch()
 

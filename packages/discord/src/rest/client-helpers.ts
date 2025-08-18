@@ -74,7 +74,6 @@ export class DiscordAPIUtils {
     channel: D.APIChannel
     is_new_channel: boolean
   }> {
-    this.discord.logger?.debug(`syncGuildChannel ${params.target_channel_id}`)
     try {
       if (params.target_channel_id) {
         // try to edit the channel
@@ -138,7 +137,6 @@ export class DiscordAPIUtils {
     channel_id: string
     new_channel?: D.APIChannel
   }> {
-    this.discord.logger?.debug(`syncChannelMessage ${params.target_channel_id} ${params.target_message_id}`)
     let new_channel: D.APIChannel | undefined = undefined
     try {
       let existing_message: D.APIMessage
@@ -151,7 +149,7 @@ export class DiscordAPIUtils {
         existing_message = await this.discord.editMessage(
           params.target_channel_id || '0',
           params.target_message_id || '0',
-          (await params.messageData()).as_patch,
+          (await params.messageData()).patch_data,
         )
       }
       return {
@@ -171,7 +169,7 @@ export class DiscordAPIUtils {
 
     // channel exists, but message doesn't
     const channel_id = new_channel?.id || params.target_channel_id!
-    const new_message = await this.discord.createMessage(channel_id, (await params.messageData()).as_post)
+    const new_message = await this.discord.createMessage(channel_id, (await params.messageData()).post_data)
     return {
       message: new_message,
       is_new_message: true,

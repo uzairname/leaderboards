@@ -64,7 +64,7 @@ export const dev_cmd = dev_cmd_sig.set<App>({
               ranking: {
                 type: D.ApplicationCommandOptionType.Integer,
               },
-            }).ranking,
+            }).options.ranking,
           },
           async ranking => {
             return ctx.defer(async ctx => {

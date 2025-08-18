@@ -36,9 +36,13 @@ export function getOptions<
   interaction: D.APIChatInputApplicationCommandInteraction,
   schema: T,
 ): {
-  [key in keyof T]: T[key]['required'] extends true
-    ? OptionValueType<T[key]['type']>
-    : OptionValueType<T[key]['type']> | undefined
+  options: {
+    [key in keyof T]: T[key]['required'] extends true
+      ? OptionValueType<T[key]['type']>
+      : OptionValueType<T[key]['type']> | undefined
+  }
+  subcommand?: string
+  subcommand_group?: string
 } {
   const result = {} as any
 
@@ -46,21 +50,26 @@ export function getOptions<
     result[key] = getPossiblyNestedBasicOptionValue(interaction, name ?? key, type, required)
   }
 
-  return result
+  return {
+    options: result,
+    ...getSubCommand(interaction.data.options),
+  }
 }
 
-export function getBasicOptionValue<T extends D.ApplicationCommandOptionType, Required extends boolean>(
-  interaction: D.APIChatInputApplicationCommandInteraction,
-  options: D.APIApplicationCommandInteractionDataBasicOption[] | undefined,
-  option_name: string,
-  type: T,
-  required: Required = false as Required,
-): Required extends true ? OptionValueType<T> : OptionValueType<T> | undefined {
-  const result = _getBasicOptionValue(interaction, options, option_name, type)
-  if (required && undefined === result) {
-    throw new InteractionError(`Missing required option '${option_name}'`)
+/**
+ * If applicable, returns the subcommand and subcommand group of the options
+ */
+function getSubCommand(
+  options: D.APIApplicationCommandInteractionDataOption[] | undefined,
+): { subcommand?: string; subcommand_group?: string } | undefined {
+  if (!options || options.length === 0) return
+  const first = options[0]
+  if (first.type === D.ApplicationCommandOptionType.Subcommand) {
+    return { subcommand: first.name }
+  } else if (first.type === D.ApplicationCommandOptionType.SubcommandGroup) {
+    return { subcommand_group: first.name, subcommand: first.options?.[0]?.name }
   }
-  return result as OptionValueType<T>
+  return
 }
 
 function getPossiblyNestedBasicOptionValue<T extends D.ApplicationCommandOptionType, Required extends boolean>(
@@ -116,12 +125,13 @@ function _getBasicOptionValue<T extends D.ApplicationCommandOptionType>(
     ) {
       return o.value as OptionValueType<T>
     } else {
-      return getResolvedOptionValue(interaction, option_name, o.type) as OptionValueType<T>
+      return getResolvedOptionValue(options, interaction, option_name, o.type) as OptionValueType<T>
     }
   }
 }
 
 export function getResolvedOptionValue(
+  options: D.APIApplicationCommandInteractionDataBasicOption[],
   interaction: D.APIChatInputApplicationCommandInteraction,
   option_name: string,
   type:
@@ -131,23 +141,23 @@ export function getResolvedOptionValue(
     | D.ApplicationCommandOptionType.Mentionable
     | D.ApplicationCommandOptionType.Attachment,
 ): OptionValueType<typeof type> | undefined {
-  const o = interaction.data.options?.find(o => o.name === option_name)
-  const data = interaction.data
+  const o = options?.find(o => o.name === option_name)
+  const resolved = interaction.data.resolved
   if (o) {
     if (o.type !== type)
       throw new InteractionErrors.InvalidOptionType(`Option '${option_name}' is of type ${o.type} (Expected: ${type})`)
     if (o.type === D.ApplicationCommandOptionType.User) {
-      const user = nonNullable(data.resolved?.users?.[o.value], `interaction data resolved user`)
+      const user = nonNullable(resolved?.users?.[o.value], `interaction data resolved user`)
       return user
     } else if (o.type === D.ApplicationCommandOptionType.Role) {
-      const role = nonNullable(data.resolved?.roles?.[o.value], `interaction data resolved role`)
+      const role = nonNullable(resolved?.roles?.[o.value], `interaction data resolved role`)
       return role
     } else if (o.type === D.ApplicationCommandOptionType.Channel) {
-      const channel = nonNullable(data.resolved?.channels?.[o.value], `interaction data resolved channel`)
+      const channel = nonNullable(resolved?.channels?.[o.value], `interaction data resolved channel`)
       return channel
     } else if (o.type === D.ApplicationCommandOptionType.Mentionable) {
-      const user = data.resolved?.users?.[o.value]
-      const role = data.resolved?.roles?.[o.value]
+      const user = resolved?.users?.[o.value]
+      const role = resolved?.roles?.[o.value]
       return { user, role }
     }
   }

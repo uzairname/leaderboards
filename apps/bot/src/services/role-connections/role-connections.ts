@@ -1,9 +1,12 @@
 import { PartialPlayer } from '@repo/db/models'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../setup/app'
-import { displayRatingFn } from '../settings/properties'
+import { displayRatingFn } from '../rankings/properties'
 
 export function getAppRoleConnectionsMetadata(app: App): D.RESTPutAPIApplicationRoleConnectionMetadataJSONBody {
+  if (!app.config.features.RoleConnections) {
+    return []
+  }
   return [
     {
       type: D.ApplicationRoleConnectionMetadataType.IntegerGreaterThanOrEqual,

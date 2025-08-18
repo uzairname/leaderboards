@@ -4,13 +4,13 @@ import { App } from './app'
 
 export class AppEvent<EventData> extends Event<App, EventData> {}
 
-export function getAppEvents(app: App, all_event_listeners: ((events: AppEvents) => void)[]) {
+export function getAppEvents(app: App, registerEventListeners: ((events: AppEvents) => void)[]) {
   const events = {
     // An event associated with a match
     Placeholder: new AppEvent<Match>(app),
   }
 
-  all_event_listeners.forEach(register => register(events))
+  registerEventListeners.forEach(register => register(events))
 
   return events
 }

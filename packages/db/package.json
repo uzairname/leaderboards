@@ -11,11 +11,12 @@
     "@neondatabase/serverless": "^0.10.4",
     "@repo/typescript-config": "*",
     "@repo/utils": "*",
-    "discord-api-types": "^0.37.119",
+    "discord-api-types": "^0.38.20",
     "drizzle-orm": "0.39.3",
+    "next": "15.4.6",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.28.1"
+    "drizzle-kit": "^0.31.4"
   }
 }

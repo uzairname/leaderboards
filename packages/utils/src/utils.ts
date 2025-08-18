@@ -136,3 +136,54 @@ export function findDoubleIndex<T>(
   // No element satisfied the predicate
   return null
 }
+
+/**
+ * Converts an HSV color to a hexadecimal string.
+ * @param h - The hue of the color (0-360 degrees).
+ * @param s - The saturation of the color (0-1).
+ * @param v - The value (brightness) of the color (0-1).
+ */
+export function colorHSVToHex(h: number, s: number, v: number): string {
+  const r = Math.round(v * (1 + s * (Math.cos((h * Math.PI) / 180) - 1)))
+  const g = Math.round(v * (1 + s * (Math.cos(((h + 120) * Math.PI) / 180) - 1)))
+  const b = Math.round(v * (1 + s * (Math.cos(((h + 240) * Math.PI) / 180) - 1)))
+
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
+}
+
+/**
+ * Sorts two arrays based on the values of the first array. The second array
+ * is rearranged to maintain the correspondence of elements with the first array.
+ *
+ * @template T - The type of elements in the first array.
+ * @template U - The type of elements in the second array.
+ * @param arrayA - The array whose values determine the sorting order.
+ * @param arrayB - The array to be rearranged to match the sorted order of `arrayA`.
+ * @returns A tuple containing the sorted versions of `arrayA` and `arrayB`.
+ *
+ * @example
+ * ```typescript
+ * const arrayA = [3, 1, 2];
+ * const arrayB = ['three', 'one', 'two'];
+ * const [sortedA, sortedB] = sortArraysByFirst(arrayA, arrayB);
+ * console.log(sortedA); // [1, 2, 3]
+ * console.log(sortedB); // ['one', 'two', 'three']
+ * ```
+ */
+export function sortArraysByFirst<T, U>(arrayA: T[], arrayB: U[]): [T[], U[]] {
+  // Create array of indices [0, 1, 2, ...]
+  const indices = arrayA.map((_, index) => index)
+
+  // Sort indices based on arrayA values
+  indices.sort((i, j) => {
+    if (arrayA[i] < arrayA[j]) return -1
+    if (arrayA[i] > arrayA[j]) return 1
+    return 0
+  })
+
+  // Apply the permutation to both arrays
+  const sortedA = indices.map(i => arrayA[i])
+  const sortedB = indices.map(i => arrayB[i])
+
+  return [sortedA, sortedB]
+}
