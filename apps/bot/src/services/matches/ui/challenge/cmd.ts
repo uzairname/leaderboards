@@ -6,7 +6,7 @@ import { getOrAddGuild } from '../../../guilds/manage-guilds'
 import { getOrCreatePlayerByUser } from '../../../players/manage'
 import { getChallengeEnabledRankings } from '../../../rankings/properties'
 import { ensurePlayersEnabled } from '../../management/create-matches'
-import { renderChallengePage } from './view'
+import { challengePage } from './view'
 
 const optionnames = {
   opponent: 'opponent',
@@ -85,7 +85,7 @@ export const challenge_1v1_cmd = challenge_1v1_cmd_sig.set<App>({
           await ensurePlayersEnabled(app, [initiator, opponent])
 
           await ctx.send(
-            await renderChallengePage(app, {
+            await challengePage(app, {
               time_sent: new Date(),
               initiator_id: initiator.data.user_id,
               opponent_id,

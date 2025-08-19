@@ -5,7 +5,7 @@ import { App, syncDiscordCommands } from '../../setup/app'
 import { Colors } from '../../utils/ui'
 
 export async function getOrAddGuild(app: App, guild_id: string): Promise<Guild> {
-  
+  app.logger.debug(`getOrAddGuild`)
   let app_guild = await app.db.guilds.fetch(guild_id)
   if (!app_guild) {
     app_guild = await registerGuild(app, guild_id)

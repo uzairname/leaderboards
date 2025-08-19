@@ -2,12 +2,13 @@ import { and, eq, inArray, InferInsertModel, InferSelectModel, SQL, sql } from '
 import { PgDialect } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 import { MatchStatus, Ranking, Team } from '.'
-import { DbObjectManager } from '../classes'
+import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
 import { Players, TeamPlayers, Teams } from '../schema'
 import { PartialRanking, Rating } from './rankings'
 import { PartialUser, User } from './users'
+import { logDbMethods } from '../logging'
 
 export type PlayerSelect = InferSelectModel<typeof Players>
 export type PlayerInsert = Omit<InferInsertModel<typeof Players>, 'id'>
@@ -44,11 +45,11 @@ export const PlayerStatsSchema = z.object({
 
 export type PlayerStats = z.infer<typeof PlayerStatsSchema>
 
-export class PartialPlayer {
-  constructor(
-    public data: { id: number },
-    public db: DbClient,
-  ) {}
+@logDbMethods
+export class PartialPlayer extends DbObject<{ id: number }> {
+  toString() {
+    return `[PartialPlayer ${this.data.id}]`
+  }
 
   async fetch(): Promise<Player> {
     return this.db.players.fetch(this.data.id)
@@ -129,6 +130,7 @@ export class PartialPlayer {
   }
 }
 
+@logDbMethods
 export class Player extends PartialPlayer {
   constructor(
     public data: PlayerSelect,
@@ -143,6 +145,8 @@ export class Player extends PartialPlayer {
   }
 }
 
+
+@logDbMethods
 export class UserPlayer extends Player {
   constructor(
     public data: PlayerSelect & { user_id: string },
@@ -153,7 +157,13 @@ export class UserPlayer extends Player {
   }
 }
 
+@logDbMethods
 export class PlayersManager extends DbObjectManager {
+
+  toString() {
+    return `[PlayersManager]`
+  }
+
   async create(
     data: {
       ranking: PartialRanking

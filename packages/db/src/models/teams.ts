@@ -4,17 +4,24 @@ import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
 import { Players, TeamPlayers, Teams } from '../schema'
 import { PartialRanking } from './rankings'
+import { logDbMethods } from '../logging'
 
 export type TeamSelect = InferSelectModel<typeof Teams>
 export type TeamInsert = Omit<InferInsertModel<typeof Teams>, 'id'>
 export type TeamUpdate = Partial<Omit<TeamInsert, 'ranking_id'>>
 
-export class Team implements DbObject<TeamSelect> {
+@logDbMethods
+export class Team extends DbObject<TeamSelect> {
   constructor(
     public data: TeamSelect,
     public db: DbClient,
   ) {
+    super(data, db)
     db.cache.teams.set(data.id, this)
+  }
+
+  toString() {
+    return `[Team ${this.data.id}: ${this.data.name || 'unnamed'}]`
   }
 
   get ranking(): PartialRanking {
@@ -22,6 +29,8 @@ export class Team implements DbObject<TeamSelect> {
   }
 
   async players(): Promise<Player[]> {
+    this.db.logger?.debug('players')
+
     const data = await this.db.drizzle
       .select({ player: Players })
       .from(TeamPlayers)
@@ -71,7 +80,13 @@ export class Team implements DbObject<TeamSelect> {
   }
 }
 
+@logDbMethods
 export class TeamsManager extends DbObjectManager {
+
+  toString() {
+    return `[TeamsManager]`
+  }
+
   async create(ranking: PartialRanking, players: Player[], data: Omit<TeamInsert, 'ranking_id'>): Promise<Team> {
     const new_data = (
       await this.db.drizzle

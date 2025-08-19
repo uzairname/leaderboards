@@ -31,6 +31,7 @@ export default class DbCache {
   private newMap<K, V, K2 extends string | number | undefined = undefined>(name?: string): CacheMap<K, V, K2> {
     const map = new CacheMap<K, V, K2>(name, (msg) => {
       this.logger?.debug(msg)
+      console.log(msg)
     })
     this.maps.push(map)
     return map

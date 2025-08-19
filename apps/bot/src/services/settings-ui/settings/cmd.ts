@@ -78,7 +78,7 @@ export const settings_cmd = settings_cmd_sig.set<App>({
           const setting_option_value = options.setting
           return await sendSettingsPage(app, ctx, ranking, setting_option_value)
         } else {
-          return ctx.defer(async ctx => void await ctx.edit(await SettingsPages.main(app, ctx)))
+          return ctx.defer(async ctx => void (await ctx.edit(await SettingsPages.main(app, ctx))))
         }
       },
     )
@@ -94,7 +94,6 @@ async function sendSettingsPage(
   ranking: PartialRanking,
   setting?: string,
 ): Promise<CommandInteractionResponse> {
-
   const new_ctx = {
     ...ctx,
     state: ranking_settings_view_sig.newState({
@@ -105,14 +104,14 @@ async function sendSettingsPage(
   if (!setting) {
     return ctx.defer(
       async ctx =>
-        void await ctx.edit(
+        void (await ctx.edit(
           await RankingSettingsPages.main(app, {
             ...ctx,
             state: ranking_settings_view_sig.newState({
               ranking_id: ranking.data.id,
             }),
           }),
-        ),
+        )),
     )
   }
 
@@ -120,23 +119,23 @@ async function sendSettingsPage(
     case 'rename':
       return await RankingSettingsHandlers.sendRenameModal(app, new_ctx)
     case 'rating':
-      return ctx.defer(async ctx => void await ctx.edit(await RankingSettingsPages.ratingSettings(app, new_ctx)))
+      return ctx.defer(async ctx => void (await ctx.edit(await RankingSettingsPages.ratingSettings(app, new_ctx))))
     case 'delete':
-      return ctx.defer(async ctx => void await ctx.edit(await RankingSettingsPages.deleteConfirm(app, new_ctx)))
+      return ctx.defer(async ctx => void (await ctx.edit(await RankingSettingsPages.deleteConfirm(app, new_ctx))))
     case 'rank-roles':
       return ctx.defer(
         async ctx =>
-          void await ctx.edit(
+          void (await ctx.edit(
             await RankRolesSettingsPages.main(app, {
               ...ctx,
               state: rank_roles_settings_view_sig.newState({
                 ranking_id: ranking.data.id,
               }),
             }),
-          ),
+          )),
       )
     case 'match':
-      return ctx.defer(async ctx => void await ctx.edit(await RankingSettingsPages.matchSettings(app, new_ctx)))
+      return ctx.defer(async ctx => void (await ctx.edit(await RankingSettingsPages.matchSettings(app, new_ctx))))
   }
 
   throw new Error(`Unknwn setting ${setting}`)

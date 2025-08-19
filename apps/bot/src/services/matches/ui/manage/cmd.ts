@@ -1,18 +1,13 @@
-import { AnyAppCommandType, ChatInteractionResponse, CommandHandler, CommandSignature, getOptions, InteractionErrors } from '@repo/discord'
-import { StringDataSchema } from '@repo/utils'
+import { CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { UserError, UserErrors } from '../../../../errors/user-errors'
+import { AppErrors } from '../../../../errors/app-errors'
+import { UserError } from '../../../../errors/user-errors'
 import { App } from '../../../../setup/app'
-import { commandMention, ensureAdminPerms } from '../../../../utils'
+import { ensureAdminPerms } from '../../../../utils'
 import { numRankings } from '../../../guilds/properties'
 import { getOrCreatePlayerByUser } from '../../../players/manage'
 import { cancelMatch, setMatchDraw, setMatchWinner } from '../../management/update-matches'
-import { matches_cmd } from '../matches/cmd'
-import { matches_view_sig, matchesPage } from '../matches/view'
 import { manage_match_view_sig, manageMatchPage } from './view'
-import { SlashCommandBuilder } from '@discordjs/builders'
-import { Match } from '../../../../../../../packages/db/src/models/matches'
-import { AppErrors } from '../../../../errors/app-errors'
 
 const optionnames = {
   match_id: `match_id`,
@@ -67,56 +62,61 @@ export const match_cmd_sig = new CommandSignature({
       type: D.ApplicationCommandOptionType.Subcommand,
       name: subcommandnames.manage,
       description: `Edit a match`,
-      options: [{
-        type: D.ApplicationCommandOptionType.Integer,
-        name: optionnames.match_id,
-        description: `The ID of the match (optional). Defaults to the selected player's last match.`,
-        required: false,
-        autocomplete: true,
-      },
-      {
-        type: D.ApplicationCommandOptionType.User,
-        name: optionnames.user,
-        description: `The player whose most recent match to manage`,
-        required: false,
-      }]
+      options: [
+        {
+          type: D.ApplicationCommandOptionType.Integer,
+          name: optionnames.match_id,
+          description: `The ID of the match (optional). Defaults to the selected player's last match.`,
+          required: false,
+          autocomplete: true,
+        },
+        {
+          type: D.ApplicationCommandOptionType.User,
+          name: optionnames.user,
+          description: `The player whose most recent match to manage`,
+          required: false,
+        },
+      ],
     },
     {
       type: D.ApplicationCommandOptionType.Subcommand,
       name: `revert`,
       description: `Revert or cancel a match`,
-      options: [{
-        type: D.ApplicationCommandOptionType.Integer,
-        name: optionnames.match_id,
-        description: `The ID of the match (optional). Defaults to the selected player's last match.`,
-        required: false,
-        autocomplete: true,
-      },
-      {
-        type: D.ApplicationCommandOptionType.User,
-        name: optionnames.user,
-        description: `The player whose most recent match to revert`,
-        required: false,
-      }]
+      options: [
+        {
+          type: D.ApplicationCommandOptionType.Integer,
+          name: optionnames.match_id,
+          description: `The ID of the match (optional). Defaults to the selected player's last match.`,
+          required: false,
+          autocomplete: true,
+        },
+        {
+          type: D.ApplicationCommandOptionType.User,
+          name: optionnames.user,
+          description: `The player whose most recent match to revert`,
+          required: false,
+        },
+      ],
     },
     {
       type: D.ApplicationCommandOptionType.Subcommand,
       name: `setdraw`,
       description: `Set a match as a draw`,
-      options: [{
-        type: D.ApplicationCommandOptionType.Integer,
-        name: optionnames.match_id,
-        description: `The ID of the match (optional). Defaults to the selected player's last match.`,
-        required: false,
-        autocomplete: true,
-      },
-      {
-        type: D.ApplicationCommandOptionType.User,
-        name: optionnames.user,
-        description: `The player whose most recent match to set as draw`,
-        required: false,
-      }
-    ]
+      options: [
+        {
+          type: D.ApplicationCommandOptionType.Integer,
+          name: optionnames.match_id,
+          description: `The ID of the match (optional). Defaults to the selected player's last match.`,
+          required: false,
+          autocomplete: true,
+        },
+        {
+          type: D.ApplicationCommandOptionType.User,
+          name: optionnames.user,
+          description: `The player whose most recent match to set as draw`,
+          required: false,
+        },
+      ],
     },
     {
       type: D.ApplicationCommandOptionType.Subcommand,
@@ -136,8 +136,8 @@ export const match_cmd_sig = new CommandSignature({
           required: false,
           autocomplete: true,
         },
-      ]
-    }
+      ],
+    },
   ],
 })
 
@@ -192,29 +192,29 @@ export const match_cmd = match_cmd_sig.set<App>({
       if (subcommand) {
         if (subcommand === subcommandnames.revert) {
           await cancelMatch(app, match)
-          return void await ctx.edit({
+          return void (await ctx.edit({
             content: `Match ${match.data.id} has been reverted`,
-        })
+          }))
         } else if (subcommand === subcommandnames.set_draw) {
           await setMatchDraw(app, match)
-          return void await ctx.edit({
+          return void (await ctx.edit({
             content: `Match ${match.data.id} has been set as a draw`,
-        })
+          }))
         } else if (subcommand === subcommandnames.set_winner) {
           if (!options.user?.id) {
             throw new UserError(`Please specify the player to set as winner`)
           }
           const winner = await getOrCreatePlayerByUser(app, options.user.id, match.ranking)
           await setMatchWinner(app, match, winner)
-          return void await ctx.edit({
-              content: `<@${options.user.id}> has been set as the winner of match ${match.data.id}`,
-          })
+          return void (await ctx.edit({
+            content: `<@${options.user.id}> has been set as the winner of match ${match.data.id}`,
+          }))
         } else if (subcommand === subcommandnames.manage) {
           // Show the match settings page
           const state = manage_match_view_sig.newState({
             match_id: match.data.id,
           })
-          return void await ctx.edit(await manageMatchPage(app, { ...ctx, state }))
+          return void (await ctx.edit(await manageMatchPage(app, { ...ctx, state })))
         } else {
           throw new AppErrors.UnhandledState(`/match subcommand: ${subcommand}`)
         }

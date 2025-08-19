@@ -15,19 +15,17 @@ export class AppError extends Error {
 }
 
 export namespace AppErrors {
-
   export class RequestTimeoutError extends AppError {
     constructor(request_name: string, timeout_ms: number) {
       super(`"${request_name}" timed out after ${timeout_ms} ms`)
       this.name = RequestTimeoutError.name
     }
   }
-  
+
   export class UnhandledState extends AppError {
     constructor(state: string) {
       super(`Unhandled state: ${state}`)
       this.name = UnhandledState.name
     }
   }
-
 }

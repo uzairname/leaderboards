@@ -7,8 +7,6 @@ import { App } from '../../setup/app'
 export default (app: App) =>
   IttyRouter({ base: '/api/commands' })
     .get('/', async request => {
-      app.db.cache.clear()
-
       const global_commands = await app.interactionHandler.getCommandSignatures({
         arg: app,
         include_experimental: app.config.features.ExperimentalCommands,
@@ -24,7 +22,6 @@ export default (app: App) =>
     })
 
     .get('/:guild_id', async request => {
-      app.db.cache.clear()
       const guild_id = request.params.guild_id
 
       const commands = await app.interactionHandler.getCommandSignatures({

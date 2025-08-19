@@ -8,6 +8,7 @@ import { DbErrors } from '../errors'
 import { GuildRankings, MatchPlayers, MatchSummaryMessages, Matches, Players } from '../schema'
 import { PlayerFlags, PlayerSelect } from './players'
 import { PartialRanking, Rating } from './rankings'
+import { logDbMethods } from '../logging'
 
 export type MatchMetadata = {
   best_of: number
@@ -55,11 +56,14 @@ export type MatchPlayer = {
   flags?: PlayerFlags
 }
 
-export class Match implements DbObject<MatchSelect> {
+@logDbMethods
+export class Match extends DbObject<MatchSelect> {
+
   constructor(
     public data: MatchSelect,
     public db: DbClient,
   ) {
+    super(data, db)
     this.db.cache.matches.set(this.data.id, this)
   }
 
@@ -175,7 +179,14 @@ export class Match implements DbObject<MatchSelect> {
   }
 }
 
+@logDbMethods
 export class MatchesManager extends DbObjectManager {
+
+  toString() {
+    return `[MatchesManager]`
+  }
+
+
   /**
    * Inserts a match into the database, and its associated MatchPlayers.
    * @param data

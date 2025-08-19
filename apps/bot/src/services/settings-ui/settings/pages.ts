@@ -13,7 +13,6 @@ import { SettingsHandlers } from '.'
 import { App } from '../../../setup/app'
 import { Colors, commandMention, escapeMd } from '../../../utils'
 import { getOrAddGuild } from '../../guilds/manage-guilds'
-import { HelpPages } from '../../help/ui/'
 import { help_view_sig } from '../../help/ui/view'
 import { liveLbMsgLink } from '../../rankings/properties'
 import { RankingSettingsHandlers } from '../ranking-settings'
@@ -22,25 +21,25 @@ import { settings_cmd } from './cmd'
 import { settings_view_sig } from './view'
 
 export async function main(app: App, ctx: AnyGuildInteractionContext): Promise<D.APIInteractionResponseCallbackData> {
-  
+  app.logger.debug(`SettingsPages.main`)
+
   const guild = await getOrAddGuild(app, ctx.interaction.guild_id)
-  
   const grs = await app.db.guild_rankings.fetch({ guild_id: guild.data.id })
-  
+
   const rankings_desc = new TextDisplayBuilder({
     content:
-    `\n## Rankings` +
-    `\n` +
-    (grs.length === 0
-      ? `${escapeMd(guild.data.name)} has no rankings. Get started by clicking the button below.
+      `\n## Rankings` +
+      `\n` +
+      (grs.length === 0
+        ? `${escapeMd(guild.data.name)} has no rankings. Get started by clicking the button below.
       
       **When you create a ranking:** 
       - The bot will create a publicly visible category for all ranking-related messages.
       - You may rename and rearrange any roles or channels that the bot creates.
       - You can disable any of these features later in the ranking settings.`
-      : `${escapeMd(guild.data.name)} has **${grs.length}** ranking${grs.length === 1 ? `` : `s`}. Adjust their settings by clicking a gear icon below.`),
-    })
-    
+        : `${escapeMd(guild.data.name)} has **${grs.length}** ranking${grs.length === 1 ? `` : `s`}. Adjust their settings by clicking a gear icon below.`),
+  })
+
   // Choose the first 5 rankings to show.
   const grs_limited = grs.slice(0, 5)
 
@@ -101,14 +100,13 @@ export async function main(app: App, ctx: AnyGuildInteractionContext): Promise<D
         custom_id: settings_view_sig.newState({ handler: SettingsHandlers.sendCreateRankingModal }).cId(),
         label: 'New Ranking',
         emoji: { name: '➕' },
-      })
+      }),
     ]),
   )
 
   const current_admin_role_id = (await app.db.guilds.fetch(ctx.interaction.guild_id))?.data.admin_role_id
 
   // General server settings
-
   const general_settings_container = new ContainerBuilder({
     accent_color: Colors.Secondary,
   })
@@ -137,19 +135,18 @@ export async function main(app: App, ctx: AnyGuildInteractionContext): Promise<D
     )
     .addActionRowComponents(
       new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents([
-        
-      new ButtonBuilder({
-        style: D.ButtonStyle.Secondary,
-        custom_id: help_view_sig.newState({ followup: true }).cId(),
-        label: 'Help',
-      }),
-      new ButtonBuilder({
-        style: D.ButtonStyle.Secondary,
-        custom_id: settings_view_sig.newState({ handler: SettingsHandlers.refreshCommands }).cId(),
-        label: 'Refresh Commands',
-      }),
-      ]
-    ))
+        new ButtonBuilder({
+          style: D.ButtonStyle.Secondary,
+          custom_id: help_view_sig.newState({ followup: true }).cId(),
+          label: 'Help',
+        }),
+        new ButtonBuilder({
+          style: D.ButtonStyle.Secondary,
+          custom_id: settings_view_sig.newState({ handler: SettingsHandlers.refreshCommands }).cId(),
+          label: 'Refresh Commands',
+        }),
+      ]),
+    )
 
   const message = new MessageData({
     flags: D.MessageFlags.Ephemeral | D.MessageFlags.IsComponentsV2,

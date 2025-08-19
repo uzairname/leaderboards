@@ -5,14 +5,17 @@ import { withReplicas } from 'drizzle-orm/pg-core'
 import { DbLogger } from './logging/db-logger'
 import { DrizzleLogger } from './logging/drizzle-logger'
 
-export function getNeonDrizzleWsClient(postgres_url: string, postgres_read_url?: string, logger?: DbLogger): NeonDatabase {
-
+export function getNeonDrizzleWsClient(
+  postgres_url: string,
+  postgres_read_url?: string,
+  logger?: DbLogger,
+): NeonDatabase {
   // main_pool = main_pool ?? new Pool({connectionString: postgres_url})
   const main_db = drizzle_ws(postgres_url, { logger: new DrizzleLogger(logger) })
-  
+
   if (postgres_read_url) {
     // readonly_pool = readonly_pool ?? new Pool({connectionString: postgres_read_url})
-    const readonly_db = drizzle_ws(postgres_read_url, { logger: new DrizzleLogger(logger, true) }) 
+    const readonly_db = drizzle_ws(postgres_read_url, { logger: new DrizzleLogger(logger, true) })
     return withReplicas(main_db, [readonly_db])
   }
 

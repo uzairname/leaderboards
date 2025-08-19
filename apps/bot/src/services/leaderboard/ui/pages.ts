@@ -11,10 +11,7 @@ import { DEFAULT_LB_COLOR, rankingProperties } from '../../rankings/properties'
 import { leaderboard_cmd } from './cmd'
 import { leaderboard_view_sig } from './view'
 
-/**
- * Returns the embeds and max page for the leaderboard
- */
-export async function leaderboardMessage(
+export async function leaderboardText(
   app: App,
   ranking: Ranking,
   options?: {
@@ -23,7 +20,10 @@ export async function leaderboardMessage(
     show_provisional?: boolean
     page?: number
   },
-): Promise<{ message: MessageData; max_page: number }> {
+): Promise<{
+  text: string
+  max_page: number
+}> {
   const lines_per_page = 50
   const page = options?.page ?? 1
 
@@ -75,15 +75,6 @@ export async function leaderboardMessage(
     })
     .filter(Boolean) as string[]
 
-  // Add provisional players at the end, if specified
-  // const provisional_players_lines = options?.show_provisional
-  //   ? players
-  //       .filter(p => p.is_provisional)
-  //       .map(p => {
-  //         return `-# ${space + space}\`${p.points.toFixed(0)}?\`${space}${mentionOrName(p.player)} `
-  //       })
-  //   : []
-
   // Combine to get all lines
   // let all_lines = players_lines.concat(provisional_players_lines)
   const all_lines = players_lines
@@ -98,8 +89,6 @@ export async function leaderboardMessage(
   // Add bottom text
   const fits_on_one_page = max_page <= 1
 
-  const color = guild_ranking?.data.display_settings?.color ?? DEFAULT_LB_COLOR
-
   const bottom_text =
     `-# Last updated ${relativeTimestamp(new Date(Date.now()))}. ` +
     (rankingProperties(ranking).uses_provisional_ratings
@@ -110,9 +99,36 @@ export async function leaderboardMessage(
       ? `\nUse ${await commandMention(app, leaderboard_cmd, options?.guild_id)}${guild && (await numRankings(app, guild)) > 1 ? ` \`${ranking.data.name}\`` : ``} to see the full leaderboard.`
       : ``)
 
+  return {
+    text: current_page_lines.join('\n') + '\n' + bottom_text,
+    max_page,
+  }
+}
+
+/**
+ * Returns the embeds and max page for the leaderboard
+ */
+export async function leaderboardMessage(
+  app: App,
+  ranking: Ranking,
+  options?: {
+    guild_id?: string
+    show_lb_cmd_tip?: boolean
+    show_provisional?: boolean
+    page?: number
+  },
+): Promise<{ message: MessageData; max_page: number }> {
+  const { guild_ranking } = options?.guild_id
+    ? await app.db.guild_rankings.fetch({ guild_id: options.guild_id, ranking_id: ranking.data.id })
+    : {}
+
+  const color = guild_ranking?.data.display_settings?.color ?? DEFAULT_LB_COLOR
+
+  const { text, max_page } = await leaderboardText(app, ranking, options)
+
   const embed = new EmbedBuilder()
     .setTitle(`${escapeMd(ranking.data.name)} Leaderboard`)
-    .setDescription(current_page_lines.join('\n') + '\n' + bottom_text)
+    .setDescription(text)
     .setColor(color)
 
   const message = new MessageData({

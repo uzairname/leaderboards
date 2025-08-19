@@ -1,4 +1,11 @@
 import {
+  ButtonBuilder,
+  ContainerBuilder,
+  SectionBuilder,
+  SeparatorBuilder,
+  TextDisplayBuilder,
+} from '@discordjs/builders'
+import {
   ChatInteractionResponse,
   checkGuildInteraction,
   ComponentContext,
@@ -33,7 +40,7 @@ export const challenge_view = challenge_view_sig.set<App>({
   onComponent: async (ctx, app) => ctx.state.get.callback()(app, ctx),
 })
 
-export async function renderChallengePage(
+export async function challengePage(
   app: App,
   data: ViewState<typeof challenge_view_sig.state_schema>['data'],
 ): Promise<MessageData> {
@@ -48,42 +55,40 @@ export async function renderChallengePage(
 
   const best_of = state.data.best_of ?? rankingProperties(ranking).default_best_of
 
-  const content = `### <@${initiator_id}> challenges <@${opponent_id}> to a 1v1`
-
-  const embeds: D.APIEmbed[] = [
-    {
-      title: ``,
-      description: ``
-        + `Ranking: **${ranking.data.name}**`
-        + `\nBest of **${best_of}**`
-        + `\n` + ((state.is.opponent_accepted() && state.data.ongoing_match_channel_id)
-          ? `Challenge accepted. New match started in <#${state.data.ongoing_match_channel_id}>`
-          : `*Awaiting response*\n-# Expires ${relativeTimestamp(expires_at)}`), // prettier-ignore
-      color: Colors.Primary,
-    },
-  ]
-
-  const components: D.APIActionRowComponent<D.APIComponentInMessageActionRow>[] = !state.is.opponent_accepted()
-    ? [
-        {
-          type: D.ComponentType.ActionRow,
-          components: [
-            {
-              type: D.ComponentType.Button,
-              style: D.ButtonStyle.Primary,
-              custom_id: state.set.callback(accept).cId(),
-              label: 'Accept',
-            },
-          ],
-        },
-      ]
-    : []
+  const container = new ContainerBuilder()
+    .addTextDisplayComponents(
+      new TextDisplayBuilder({
+        content: `### <@${initiator_id}> challenges <@${opponent_id}> to a 1v1`,
+      }),
+    )
+    .addSeparatorComponents(new SeparatorBuilder({ spacing: D.SeparatorSpacingSize.Small }))
+    .addSectionComponents(
+      new SectionBuilder()
+        .addTextDisplayComponents(
+          new TextDisplayBuilder({
+            content:
+              `Ranking: **${ranking.data.name}**` +
+              `\nBest of **${best_of}**` +
+              `\n` +
+              (state.is.opponent_accepted() && state.data.ongoing_match_channel_id
+                ? `Challenge accepted. New match started in <#${state.data.ongoing_match_channel_id}>`
+                : `*Awaiting response*\n-# Expires ${relativeTimestamp(expires_at)}`),
+          }),
+        )
+        .setButtonAccessory(
+          new ButtonBuilder({
+            style: D.ButtonStyle.Primary,
+            custom_id: state.set.callback(accept).cId(),
+            label: 'Accept',
+          }),
+        ),
+    )
+    .setAccentColor(Colors.Primary)
 
   return new MessageData({
-    content,
-    embeds,
-    components,
+    components: [container.toJSON()],
     allowed_mentions: { users: [opponent_id] },
+    flags: D.MessageFlags.IsComponentsV2,
   })
 }
 
@@ -137,6 +142,6 @@ async function accept(app: App, ctx: ComponentContext<typeof challenge_view_sig>
 
     // Update the challenge message
     ctx.state.save.ongoing_match_channel_id(thread.id)
-    await ctx.edit((await renderChallengePage(app, ctx.state.data)).response_data)
+    await ctx.edit((await challengePage(app, ctx.state.data)).response_data)
   })
 }

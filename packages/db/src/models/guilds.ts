@@ -1,18 +1,15 @@
 import { eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
-import { DbObjectManager } from '../classes'
+import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
+import { logDbMethods } from '../logging'
 import { Guilds } from '../schema'
 
 export type GuildSelect = InferSelectModel<typeof Guilds>
 export type GuildInsert = InferInsertModel<typeof Guilds>
 
-export class PartialGuild {
-  constructor(
-    public data: { id: string },
-    public db: DbClient,
-  ) {}
-
+@logDbMethods
+export class PartialGuild extends DbObject<{ id: string }> {
   toString() {
     return `[Guild ${this.data.id}]`
   }
@@ -28,6 +25,7 @@ export class PartialGuild {
   }
 }
 
+@logDbMethods
 export class Guild extends PartialGuild {
   constructor(
     public data: GuildSelect,
@@ -42,7 +40,13 @@ export class Guild extends PartialGuild {
   }
 }
 
+@logDbMethods
 export class GuildsManager extends DbObjectManager {
+
+  toString() {
+    return `[GuildsManager]`
+  }
+
   async create(data: GuildInsert): Promise<Guild> {
     const new_db_data = (
       await this.db.drizzle

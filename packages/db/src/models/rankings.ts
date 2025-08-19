@@ -1,10 +1,11 @@
 import { eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { z } from 'zod'
 import { Player } from '.'
-import { DbObjectManager } from '../classes'
+import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
 import { Players, Rankings } from '../schema'
+import { logDbMethods } from '../logging'
 
 export type RankingSelect = InferSelectModel<typeof Rankings>
 export type RankingInsert = Omit<InferInsertModel<typeof Rankings>, 'id'>
@@ -55,14 +56,10 @@ export const MatchSettingsSchema = z.object({
 
 export type MatchSettings = z.infer<typeof MatchSettingsSchema>
 
-export class PartialRanking {
-  constructor(
-    public data: { id: number },
-    public db: DbClient,
-  ) {}
-
+@logDbMethods
+export class PartialRanking extends DbObject<{ id: number }> {
   toString() {
-    return `[Ranking ${this.data.id}]`
+    return `[PartialRanking ${this.data.id}]`
   }
 
   async fetch(): Promise<Ranking> {
@@ -108,6 +105,7 @@ export class PartialRanking {
   }
 }
 
+@logDbMethods
 export class Ranking extends PartialRanking {
   constructor(
     public data: RankingSelect,
@@ -122,7 +120,13 @@ export class Ranking extends PartialRanking {
   }
 }
 
+@logDbMethods
 export class RankingsManager extends DbObjectManager {
+
+  toString() {
+    return `[RankingsManager]`
+  }
+
   async create(data: RankingInsert): Promise<Ranking> {
     const new_data = (await this.db.drizzle.insert(Rankings).values(data).returning())[0]
     return new Ranking(new_data, this.db)

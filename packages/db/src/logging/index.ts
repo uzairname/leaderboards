@@ -1,2 +1,3 @@
 export * from './db-logger'
 export * from './drizzle-logger'
+export * from './method-logger'

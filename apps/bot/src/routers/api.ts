@@ -84,6 +84,24 @@ export default (app: App) =>
       return json(result)
     })
 
+    .get('/guilds/:guild_id/rankings', async request => {
+      const rankings = await app.db.guild_rankings.fetch({
+        guild_id: request.params.guild_id,
+      })
+
+      if (!rankings) {
+        return new Response('No rankings found for this guild', { status: 404 })
+      }
+
+      return json(
+        rankings.map(r => ({
+          ranking: r.ranking.data,
+          guild_ranking: r.guild_ranking.data,
+        })),
+        { status: 200 },
+      )
+    })
+
     .all('/commands/*', async request => {
       return commandsRouter(app).fetch(request)
     })

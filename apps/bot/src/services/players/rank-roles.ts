@@ -68,8 +68,7 @@ export async function setRankRole(
   }
 }
 
-export async function unsetRankRole(role_id: string, p_guild_ranking: PartialGuildRanking) {
-  const { guild_ranking } = await p_guild_ranking.fetch()
+export async function unsetRankRole(role_id: string, guild_ranking: GuildRanking) {
   const current_rank_roles = guild_ranking.data.rank_roles ?? []
 
   const updated_roles = current_rank_roles.filter(role => role.role_id !== role_id)

@@ -1,4 +1,4 @@
-import { DbClient, getNeonDrizzleClient, getNeonDrizzleWsClient } from '@repo/db'
+import { DbClient, getNeonDrizzleWsClient } from '@repo/db'
 import { PartialGuild } from '@repo/db/models'
 import { DiscordAPIClient, DiscordLogger, InteractionHandler, putDiscordCommands } from '@repo/discord'
 import { Env } from '../Env'
@@ -38,7 +38,6 @@ export function initApp(env: Env, logger: Logger): App {
   const dbLogger = new AppDbLogger(logger)
   const drizzle = getNeonDrizzleWsClient(env.POSTGRES_URL, env.POSTGRES_READ_URL, dbLogger)
   const db = new DbClient(drizzle, dbLogger)
-  db.cache.clear()
 
   const discordLogger = new AppDiscordLogger(logger)
   const interactionHandler = getInteractionHandler(discordLogger)

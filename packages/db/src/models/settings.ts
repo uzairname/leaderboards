@@ -1,20 +1,33 @@
 import { eq, InferSelectModel } from 'drizzle-orm'
 import { DbObject, DbObjectManager } from '../classes'
+import { DbClient } from '../client'
 import { Settings } from '../schema'
+import { logDbMethods } from '../logging'
 
 export type SettingSelect = InferSelectModel<typeof Settings>
 export type SettingUpdate = Partial<Omit<SettingSelect, 'id'>>
 
-export class Setting implements DbObject<SettingSelect> {
+@logDbMethods
+export class Setting extends DbObject<SettingSelect> {
   constructor(
     public data: SettingSelect,
-    public db: any,
+    public db: DbClient,
   ) {
+    super(data, db)
     db.cache.setting = this
+  }
+  toString() {
+    return `[Setting]`
   }
 }
 
+@logDbMethods
 export class SettingsManager extends DbObjectManager {
+
+  toString() {
+    return `[SettingsManager]`
+  }
+
   async get(): Promise<Setting> {
     return this.getOrUpdate()
   }

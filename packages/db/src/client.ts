@@ -69,4 +69,8 @@ export class DbClient {
   players = new PlayersManager(this)
   teams = new TeamsManager(this)
   matches = new MatchesManager(this)
+
+  toJSON() {
+    return "[DbClient]"
+  }
 }

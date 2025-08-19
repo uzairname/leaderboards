@@ -9,6 +9,7 @@ import { AppErrors } from '../errors/app-errors'
 export class Logger {
   private time_received = Date.now()
   private caught_exception: unknown
+  private active_offloads = new Map<string, { startTime: number; name: string }>()
 
   request_data: Record<string, unknown> = {}
   discord_user: Record<string, unknown> = {}
@@ -51,28 +52,36 @@ export class Logger {
     onTimeout?: (e: AppErrors.RequestTimeoutError) => Promise<void>,
     name?: string,
   ): void {
-    const timeout_ms = 20000
+    const request_name = `${this.request_name}${name ? `/${name}` : '/followup'}`
+    const startTime = Date.now()
+
+    // Track this offload
+    const offloadId = `${Date.now()}-${Math.random()}`
+    this.active_offloads.set(offloadId, { startTime, name: request_name })
 
     let offload_caught_exception: unknown
-    let request_name = `${this.request_name}${name ? `/${name}` : '/followup'}`
 
     const ctx = {
       setException: (e: unknown) => {
         offload_caught_exception = e
       },
       setRequestName: (name: string) => {
-        request_name = name
+        // Update the tracked name
+        const tracked = this.active_offloads.get(offloadId)
+        if (tracked) {
+          tracked.name = name
+        }
       },
     }
 
-    // try executing callback. If it takes too long, log a timeout error. If not, cancel the timeout and log the result
-    let timeout: NodeJS.Timeout
-    const timeout_promise = new Promise<void>(() => {
-      timeout = setTimeout(() => {
+    // Create a proper timeout promise that resolves after timeout
+    const timeout_promise = new Promise<void>((_, reject) => {
+      setTimeout(() => {
         const e = new AppErrors.RequestTimeoutError(request_name, this.timeout_ms)
         sentry.captureMessage(`${request_name} taking longer than ${this.timeout_ms / 1000}s`, 'warning')
         onTimeout?.(e)
-      }, timeout_ms)
+        reject(e)
+      }, this.timeout_ms) // Use instance timeout instead of hardcoded value
     })
 
     const callback_promise = callback(ctx)
@@ -86,13 +95,45 @@ export class Logger {
       .catch(e => {
         this.captureException(e)
       })
+      .finally(() => {
+        // Clean up tracking
+        this.active_offloads.delete(offloadId)
+      })
 
-    const result = Promise.race([timeout_promise, callback_promise]).finally(() => {
-      this.debug(`Finished offload ${request_name}. Clearing timeout.`)
-      clearTimeout(timeout)
+    const result = Promise.race([timeout_promise, callback_promise]).catch(e => {
+      // Handle timeout errors gracefully
+      if (e instanceof AppErrors.RequestTimeoutError) {
+        this.debug(`Offload ${request_name} timed out after ${this.timeout_ms}ms`)
+      }
     })
 
     this.execution_context.waitUntil(result)
+  }
+
+  // Add method to get active offloads for monitoring
+  public getActiveOffloads(): Array<{ id: string; name: string; duration: number }> {
+    const now = Date.now()
+    return Array.from(this.active_offloads.entries()).map(([id, { startTime, name }]) => ({
+      id,
+      name,
+      duration: now - startTime,
+    }))
+  }
+
+  // Add method to log stuck requests
+  public logStuckRequests(): void {
+    const stuckRequests = this.getActiveOffloads().filter(req => req.duration > this.timeout_ms * 2) // Log requests that are 2x timeout
+
+    if (stuckRequests.length > 0) {
+      sentry.captureMessage(`Found ${stuckRequests.length} potentially stuck requests`, {
+        extra: {
+          stuck_requests: stuckRequests,
+          request_name: this.request_name,
+          total_duration: Date.now() - this.time_received,
+        },
+        level: 'warning',
+      })
+    }
   }
 
   addBreadcrumb(breadcrumb: sentry.Breadcrumb, hint?: sentry.BreadcrumbHint): void {

@@ -2,11 +2,10 @@ import { ChatInteractionResponse, ComponentContext, Context, getModalSubmitEntri
 import { intOrNull, strOrUndefined } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { RankingSettingsPages } from '.'
-import { UserError, UserErrors } from '../../../errors/user-errors'
+import { UserErrors } from '../../../errors/user-errors'
 import { App } from '../../../setup/app'
 import { ensureAdminPerms, escapeMd, parseColor } from '../../../utils'
 import { disableGuildRankingLbMessage, syncGuildRankingLbMessage } from '../../leaderboard/manage'
-import { rescoreAllMatches } from '../../matches/scoring/score-matches'
 import { deleteRanking, updateGuildRanking, updateRanking } from '../../rankings/manage'
 import { getDefaultRatingSettings, parseRatingStrategy, rating_strategy_name } from '../../rankings/properties'
 import { RankRolesSettingsPages } from '../rank-roles'
@@ -15,7 +14,6 @@ import { SettingsPages } from '../settings'
 import { settingsOptions } from './common'
 import { rankingSettingsModal, ratingParametersModal } from './modals'
 import { ranking_settings_view_sig } from './view'
-import { RatingStrategy } from '@repo/db/models'
 
 /**
  * Go to the ranking settings page
@@ -124,15 +122,13 @@ export async function sendRatingParamsModal(
       data: {
         content: `There are no applicable parameters to update for the \`${rating_strategy_name[ranking.data.rating_settings.rating_strategy]}\` strategy.`,
         flags: D.MessageFlags.Ephemeral,
-      }
+      },
     }
   }
 
   return {
     type: D.InteractionResponseType.Modal,
-    data: modal
-      .setCustomId(ctx.state.set.handler(onRatingParamsModalSubmit).cId())
-      .toJSON(),
+    data: modal.setCustomId(ctx.state.set.handler(onRatingParamsModalSubmit).cId()).toJSON(),
   }
 }
 
@@ -328,12 +324,17 @@ export async function onRatingMethodSelect(
 
     const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
 
-    await updateRanking(app, ranking, {
-      rating_settings: {
-        ...ranking.data.rating_settings,
-        ...getDefaultRatingSettings(rating_strategy),
+    await updateRanking(
+      app,
+      ranking,
+      {
+        rating_settings: {
+          ...ranking.data.rating_settings,
+          ...getDefaultRatingSettings(rating_strategy),
+        },
       },
-    }, ctx)
+      ctx,
+    )
 
     await ctx.edit(await RankingSettingsPages.ratingSettings(app, ctx))
   })

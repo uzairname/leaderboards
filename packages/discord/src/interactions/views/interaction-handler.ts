@@ -131,8 +131,6 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     offload: OffloadCallback
     arg: Arg
   }): Promise<D.APIInteractionResponse> {
-
-
     if (interaction.type === D.InteractionType.Ping) return { type: D.InteractionResponseType.Pong }
 
     logInteraction(interaction, this.logger)

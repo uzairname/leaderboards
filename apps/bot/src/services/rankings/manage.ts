@@ -9,9 +9,9 @@ import {
   RatingSettings,
   RatingStrategy,
 } from '@repo/db/models'
-import * as D from 'discord-api-types/v10'
 import { AnyDeferredContext } from '@repo/discord'
 import { fillDefaults } from '@repo/utils'
+import * as D from 'discord-api-types/v10'
 import { UserError } from '../../errors/user-errors'
 import { App, syncDiscordCommands } from '../../setup/app'
 import { getOrAddGuild } from '../guilds/manage-guilds'
@@ -28,8 +28,6 @@ import {
   MAX_GUILD_RANKINGS,
   validateRankingOptions,
 } from './properties'
-import { escapeMarkdown } from '@discordjs/builders'
-import { escapeMd } from '../../utils'
 
 /**
  * Creates a new ranking and adds it to the guild
@@ -109,24 +107,29 @@ export async function updateRanking(
   ctx?: AnyDeferredContext,
 ): Promise<void> {
   validateRankingOptions(update)
-  const followup_id = (await ctx?.followup({
-    content: `Updating ranking. Please wait...`,
-    flags: D.MessageFlags.Ephemeral,
-  }))?.id
+  const followup_id = (
+    await ctx?.followup({
+      content: `Updating ranking. Please wait...`,
+      flags: D.MessageFlags.Ephemeral,
+    })
+  )?.id
 
   await ranking.update(update)
-  
+
   // Queue and challenge commands are affected my matchmaking_setting
   const need_update_commands = update.name || update.matchmaking_settings
-  
+
   // Rescore matches if the rating settings were changed
   const need_rescore_matches = update.rating_settings
-  
+
   if (need_update_commands) {
-    await ctx?.edit({
-      content: `Updating commands...`,
-      flags: D.MessageFlags.Ephemeral,
-    }, followup_id)
+    await ctx?.edit(
+      {
+        content: `Updating commands...`,
+        flags: D.MessageFlags.Ephemeral,
+      },
+      followup_id,
+    )
 
     const guild_rankings = await app.db.guild_rankings.fetch({ ranking_id: ranking.data.id })
     for (const item of guild_rankings) {
@@ -137,10 +140,13 @@ export async function updateRanking(
   }
 
   if (need_rescore_matches) {
-    await ctx?.edit({
-      content: `Rescoring all matches and updating leaderboard messages...`,
-      flags: D.MessageFlags.Ephemeral,
-    }, followup_id)
+    await ctx?.edit(
+      {
+        content: `Rescoring all matches and updating leaderboard messages...`,
+        flags: D.MessageFlags.Ephemeral,
+      },
+      followup_id,
+    )
 
     const full_ranking = await ranking.fetch()
     await rescoreAllMatches(app, full_ranking, ctx) // This also syncs the leaderboard messages
@@ -148,10 +154,13 @@ export async function updateRanking(
     syncRankingLbMessages(app, ranking)
   }
 
-  await ctx?.edit({
-    content: `Done!`,
-    flags: D.MessageFlags.Ephemeral,
-  }, followup_id)
+  await ctx?.edit(
+    {
+      content: `Done!`,
+      flags: D.MessageFlags.Ephemeral,
+    },
+    followup_id,
+  )
 }
 
 export async function updateGuildRanking(

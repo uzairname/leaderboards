@@ -1,4 +1,3 @@
-
 /**
  * Not initialized every request. It is stored in the global context with the drizzle client.
  */

@@ -19,7 +19,6 @@ import { setup_cmd } from '../../setup-ui/setup-cmd'
 import { helpComponents } from './components'
 import { help_view_sig } from './view'
 
-
 type Page = (app: App, ctx: Context<typeof help_view_sig>) => Promise<MessageData>
 
 export const overviewPage: Page = async (app, ctx) => {

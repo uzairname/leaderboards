@@ -3,7 +3,6 @@ import { Context } from '@repo/discord'
 import { intToOrdinal, nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { ProfileHandlers } from '.'
-import { UserError } from '../../../../errors/user-errors'
 import { App } from '../../../../setup/app'
 import { Colors, breadcrumbsTitle, escapeMd, userAvatarUrl } from '../../../../utils'
 import { getOrAddGuild } from '../../../guilds/manage-guilds'
@@ -82,37 +81,16 @@ export async function main(
     color: Colors.EmbedBackground,
   }
 
-  // if (undefined === ctx.state.data.ranking_id) {
-  //   embed.description =
-  //     `${breadcrumbsTitle(`Profiles`, target_user_name)}\n` +
-  //     `## Overview\n` +
-  //     `${is_requesting_user ? `You have` : `<@${target_disc_user.id}> has`}${rankings_players.length === 0 ? ` not participated in any` : ` participated in ${rankings_players.length}`} ranking${rankings_players.length === 1 ? `` : `s`} in this server.\n`
-
-  // embed.fields =
-  //   (await Promise.all(
-  //     rankings_players.map(async p => {
-  //       const stats = await getPlayerStats(app, p.player)
-
-  //       const place_text = (stats.lb_place ? `**${intToOrdinal(stats.lb_place)}** place out of ${stats.max_lb_place}` : `Unranked`)
-
-  //       return {
-  //         name: escapeMd(p.ranking.data.name),
-  //         value: `${place_text}`,
-  //       }
-  //     }),
-  //   )) ?? []
-
-  // } else {
-
   const gr = nonNullable(
     rankings_in_guild.find(r => r.ranking.data.id === ctx.state.data.ranking_id),
     `ranking`,
   )
   const player = rankings_players.find(p => p.ranking.data.id === gr.ranking.data.id)?.player
   if (!player) {
-    throw new UserError(
-      `${is_requesting_user ? `You have` : `<@${target_disc_user.id}> has`} not participated in ${gr.ranking.data.name}`,
-    )
+    return {
+      content: `${is_requesting_user ? `You have` : `<@${target_disc_user.id}> has`} not participated in ${gr.ranking.data.name}`,
+      flags: D.MessageFlags.Ephemeral,
+    }
   }
 
   const applicable_rank_roles = await calculateRankRolesForPlayer(app, player, gr.guild_ranking)

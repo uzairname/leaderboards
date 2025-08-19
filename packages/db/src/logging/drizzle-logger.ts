@@ -5,8 +5,7 @@ export class DrizzleLogger implements Logger {
   constructor(
     private logger?: DbLogger,
     private is_readonly?: boolean,
-  ) {
-  }
+  ) {}
 
   logQuery(query: string, params?: unknown[]): void {
     if (this.logger) {

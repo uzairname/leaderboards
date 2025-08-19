@@ -39,9 +39,10 @@ export async function onRankRoleSelect(
     return sendEditRangeModal(app, ctx)
   } else {
     // If set, send settings page
+    ctx.state.save.selected_role_id(selected_role_id)
     return {
       type: D.InteractionResponseType.UpdateMessage,
-      data: await RankRolesSettingsPages.rankRoleSettings(app, ctx, selected_role_id),
+      data: await RankRolesSettingsPages.main(app, ctx),
     }
   }
 }
@@ -52,11 +53,6 @@ export async function onUnsetRankRole(
 ): Promise<ChatInteractionResponse> {
   return ctx.defer(async ctx => {
     const original_msg_id = ctx.interaction.message?.id
-    const followup = await ctx.followup({
-      content: `Removing role from members...`,
-      flags: D.MessageFlags.Ephemeral,
-    })
-
     const selected_role_id = ctx.state.get.selected_role_id()
 
     const { guild_ranking } = await app.db.guild_rankings.fetch({
@@ -67,8 +63,6 @@ export async function onUnsetRankRole(
     // Unset the rank role
     await unsetRankRole(selected_role_id, guild_ranking)
     await updateRankRolesForGuildRanking(app, guild_ranking)
-
-    await ctx.delete(followup.id)
     return void (await ctx.edit(await RankRolesSettingsPages.main(app, ctx), original_msg_id))
   })
 }

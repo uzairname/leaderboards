@@ -1,20 +1,17 @@
 import { eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
-import { DbObjectManager } from '../classes'
+import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
 import { Players, Rankings, Users } from '../schema'
 import { Player } from './players'
 import { Ranking } from './rankings'
+import { logDbMethods } from '../logging'
 
 export type UserSelect = InferSelectModel<typeof Users>
 export type UserInsert = InferInsertModel<typeof Users>
 export type UserUpdate = Partial<Omit<UserInsert, 'id'>>
 
-export class PartialUser {
-  constructor(
-    public data: { id: string },
-    public db: DbClient,
-  ) {}
-
+@logDbMethods
+export class PartialUser extends DbObject<{ id: string }> {
   toString() {
     return `[User ${this.data.id}]`
   }
@@ -63,20 +60,27 @@ export class PartialUser {
   }
 }
 
+@logDbMethods
 export class User extends PartialUser {
   constructor(
     public data: UserSelect,
     public db: DbClient,
   ) {
     super({ id: data.id }, db)
-    this.db.cache.users.set(data.id, this)
+    db.cache.users.set(data.id, this)
   }
   toString() {
     return `[User ${this.data.id}: ${this.data.name}]`
   }
 }
 
+@logDbMethods
 export class UsersManager extends DbObjectManager {
+
+  toString() {
+    return `[UsersManager]`
+  }
+
   get(id: string): PartialUser {
     return new PartialUser({ id }, this.db)
   }

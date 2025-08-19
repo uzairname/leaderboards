@@ -1,19 +1,16 @@
 import { and, eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { z } from 'zod'
 import { Guild, Ranking } from '.'
-import { DbObjectManager } from '../classes'
+import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
+import { logDbMethods } from '../logging'
 import { GuildRankings, Guilds, Rankings } from '../schema'
 import { PartialGuild } from './guilds'
 import { PartialRanking } from './rankings'
 
-export class PartialGuildRanking {
-  constructor(
-    public data: { guild_id: string; ranking_id: number },
-    public db: DbClient,
-  ) {}
-
+@logDbMethods
+export class PartialGuildRanking extends DbObject<{ guild_id: string; ranking_id: number }> {
   toString() {
     return `[GuildRanking ${this.data.guild_id}, ${this.data.ranking_id}]`
   }
@@ -43,6 +40,7 @@ export class PartialGuildRanking {
   }
 }
 
+@logDbMethods
 export class GuildRanking extends PartialGuildRanking {
   constructor(
     public data: GuildRankingSelect,
@@ -52,9 +50,19 @@ export class GuildRanking extends PartialGuildRanking {
     this.db.cache.guild_rankings.set(this.data.guild_id, this, this.data.ranking_id)
     this.db.cache.guild_rankings_by_guild.delete(this.data.guild_id)
   }
+
+  toString() {
+    return `[GuildRanking ${this.data.guild_id}, ${this.data.ranking_id}]`
+  }
 }
 
+@logDbMethods
 export class GuildRankingsManager extends DbObjectManager {
+
+  toString() {
+    return `[GuildRankingsManager]`
+  }
+
   async create(
     guild: Guild,
     ranking: Ranking,

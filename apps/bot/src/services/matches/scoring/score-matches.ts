@@ -1,4 +1,13 @@
-import { Match, MatchPlayer, MatchStatus, PartialPlayer, PartialRanking, Ranking, Rating, RatingSettings } from '@repo/db/models'
+import {
+  Match,
+  MatchPlayer,
+  MatchStatus,
+  PartialPlayer,
+  PartialRanking,
+  Ranking,
+  Rating,
+  RatingSettings,
+} from '@repo/db/models'
 import { AnyDeferredContext } from '@repo/discord'
 import { App } from '../../../setup/app'
 import { updatePlayerRatings } from '../../players/manage'

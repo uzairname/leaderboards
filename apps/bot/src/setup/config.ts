@@ -42,7 +42,7 @@ export class Config {
     readonly env: Env,
     readonly IsDev = env.ENVIRONMENT === 'development',
 
-    readonly DirectResponse = IsDev ? false : true,
+    readonly DirectResponse = IsDev ? true : true,
 
     readonly OauthRedirectURI = env.BASE_URL + `/oauth` + this.OauthRoutes.Redirect,
     readonly OauthRoleConnectionsUrl = env.BASE_URL + `/oauth` + this.OauthRoutes.LinkedRoles,

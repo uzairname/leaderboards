@@ -9,7 +9,7 @@ export const setup_cmd = new CommandSignature({
   name: 'setup',
   description: 'Set up the bot in this server',
   guild_only: true,
-  experimental: true
+  experimental: true,
 }).set<App>({
   onCommand: async (ctx, app) => {
     ensureAdminPerms(app, ctx)
