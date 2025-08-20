@@ -10,11 +10,9 @@ export function getNeonDrizzleWsClient(
   postgres_read_url?: string,
   logger?: DbLogger,
 ): NeonDatabase {
-  // main_pool = main_pool ?? new Pool({connectionString: postgres_url})
   const main_db = drizzle_ws(postgres_url, { logger: new DrizzleLogger(logger) })
 
   if (postgres_read_url) {
-    // readonly_pool = readonly_pool ?? new Pool({connectionString: postgres_read_url})
     const readonly_db = drizzle_ws(postgres_read_url, { logger: new DrizzleLogger(logger, true) })
     return withReplicas(main_db, [readonly_db])
   }

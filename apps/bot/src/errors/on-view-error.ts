@@ -4,8 +4,8 @@ import * as sentry from '@sentry/cloudflare'
 import * as D from 'discord-api-types/v10'
 import { DbErrors } from '../../../../packages/db/src/errors'
 import { App } from '../setup/app'
-import { Colors } from '../utils/ui'
 import { UserError, UserErrors } from './user-errors'
+import { Colors } from '../api/utils'
 
 export function onViewError(app: App) {
   return function (
@@ -20,8 +20,10 @@ export function onViewError(app: App) {
     } else if (e instanceof DiscordUserError) {
       if (e instanceof DiscordErrors.BotPermissions) {
         _e = new UserErrors.BotPermissions(app, e)
+      } else if (e instanceof DiscordErrors.RolePermissions) {
+        _e = new UserErrors.RolePermissions(app, e.role_id)
       } else {
-        _e = new UserError(e.message)
+        _e = e
       }
     } else if (e instanceof RateLimitError) {
       _e = new UserErrors.DiscordRateLimit(e.timeToReset)

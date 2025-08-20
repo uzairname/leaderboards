@@ -5,8 +5,7 @@
   "exports": {
     ".": {
       "import": "./src/index.ts"
-    },
-    "./cache": "./src/cache.ts"
+    }
   },
   "scripts": {},
   "dependencies": {}

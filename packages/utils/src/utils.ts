@@ -187,3 +187,74 @@ export function sortArraysByFirst<T, U>(arrayA: T[], arrayB: U[]): [T[], U[]] {
 
   return [sortedA, sortedB]
 }
+
+
+
+export async function awaitWithTimeout<T>(
+  promise: Promise<T>,
+  callback: () => void,
+  timeoutMs: number
+): Promise<T> {
+  let timeoutId: NodeJS.Timeout | number | undefined;
+  let callbackExecuted = false;
+  
+  // Create a timeout promise that executes the callback
+  const timeoutPromise = new Promise<never>((resolve, reject) => {
+    timeoutId = setTimeout(() => {
+      if (!callbackExecuted) {
+        callbackExecuted = true;
+        callback();
+      }
+      // Don't resolve or reject - we want to continue waiting for the original promise
+    }, timeoutMs);
+  });
+  
+  try {
+    // Race between the timeout and the original promise
+    await Promise.race([promise, timeoutPromise]);
+  } catch {
+    // If promise rejects before timeout, we still want to clear timeout
+    // and not execute callback
+  }
+  
+  // Clear the timeout if promise resolved/rejected before timeout
+  if (timeoutId !== undefined) {
+    clearTimeout(timeoutId);
+  }
+  
+  // Always return the result of the original promise
+  return promise;
+}
+
+
+export const ansicolors = {
+  reset: "\x1b[0m",
+  red: "\x1b[31m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  blue: "\x1b[34m",
+  magenta: "\x1b[35m",
+  cyan: "\x1b[36m",
+  white: "\x1b[37m",
+};
+
+export function log(color: keyof typeof ansicolors, message: string) {
+  // Use colors[color] to get the ANSI code, then the message, then the reset code
+  console.log(`${ansicolors[color]}%s${ansicolors.reset}`, message);
+}
+/**
+ * Parses any hex code contained in the string and returns it as a number.
+ * Returns null if no valid hex code is found.
+ */
+export function parseColor(str: string): number | null {
+  const match = str.match(/#?([0-9a-f]{6})/i)
+  if (!match) return null
+  if (match[1].length !== 6) return null
+  return parseInt(match[1], 16)
+}export function listToString(list: string[], conjunction: 'and' | 'or' = 'and') {
+  if (list.length === 0) return ''
+  if (list.length === 1) return list[0]
+  if (list.length === 2) return `${list[0]} ${conjunction} ${list[1]}`
+  return `${list.slice(0, -1).join(', ')}, ${conjunction} ${list[list.length - 1]}`
+}
+

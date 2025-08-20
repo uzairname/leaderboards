@@ -6,8 +6,8 @@ import { DbClient } from '../client'
 import { DbErrors } from '../errors'
 import { logDbMethods } from '../logging'
 import { GuildRankings, Guilds, Rankings } from '../schema'
-import { PartialGuild } from './guilds'
-import { PartialRanking } from './rankings'
+import { GuildSelect, PartialGuild } from './guilds'
+import { PartialRanking, RankingSelect } from './rankings'
 
 @logDbMethods
 export class PartialGuildRanking extends DbObject<{ guild_id: string; ranking_id: number }> {
@@ -36,6 +36,11 @@ export class PartialGuildRanking extends DbObject<{ guild_id: string; ranking_id
         .returning()
     )[0]
     this.data = new_data
+    
+    // Invalidate relevant caches
+    this.db.cache.guild_rankings_by_guild.delete(new_data.guild_id)
+    this.db.cache.guild_rankings_by_ranking.delete(new_data.ranking_id)
+
     return new GuildRanking(new_data, this.db)
   }
 }
@@ -48,7 +53,6 @@ export class GuildRanking extends PartialGuildRanking {
   ) {
     super(data, db)
     this.db.cache.guild_rankings.set(this.data.guild_id, this, this.data.ranking_id)
-    this.db.cache.guild_rankings_by_guild.delete(this.data.guild_id)
   }
 
   toString() {
@@ -58,7 +62,6 @@ export class GuildRanking extends PartialGuildRanking {
 
 @logDbMethods
 export class GuildRankingsManager extends DbObjectManager {
-
   toString() {
     return `[GuildRankingsManager]`
   }
@@ -79,6 +82,11 @@ export class GuildRankingsManager extends DbObjectManager {
         .returning()
     )[0]
     const new_guild_ranking = new GuildRanking(new_data, this.db)
+
+    // Invalidate relevant caches
+    this.db.cache.guild_rankings_by_guild.delete(guild.data.id)
+    this.db.cache.guild_rankings_by_ranking.delete(ranking.data.id)
+
     return new_guild_ranking
   }
 
@@ -93,10 +101,11 @@ export class GuildRankingsManager extends DbObjectManager {
         ? { guild: Guild; guild_ranking: GuildRanking }[]
         : never
   > {
+
     if (by.guild_id && by.ranking_id) {
       if (
-        this.db.cache.guild_rankings.has(by.guild_id, by.ranking_id) &&
         this.db.cache.guilds.has(by.guild_id) &&
+        this.db.cache.guild_rankings.has(by.guild_id, by.ranking_id) &&
         this.db.cache.rankings.has(by.ranking_id)
       ) {
         return {
@@ -124,9 +133,8 @@ export class GuildRankingsManager extends DbObjectManager {
       }
       return result as any
     } else if (by.guild_id) {
-      if (this.db.cache.guild_rankings_by_guild.has(by.guild_id)) {
-        return this.db.cache.guild_rankings_by_guild.get(by.guild_id)! as any
-      }
+      const cached = this.db.cache.guild_rankings_by_guild.get(by.guild_id)
+      if (cached) return cached as any
 
       const data = await this.db.drizzle
         .select()
@@ -134,17 +142,21 @@ export class GuildRankingsManager extends DbObjectManager {
         .where(eq(GuildRankings.guild_id, by.guild_id))
         .innerJoin(Rankings, eq(GuildRankings.ranking_id, Rankings.id))
 
-      const result: { guild_ranking: GuildRanking; ranking: Ranking }[] = data.map(d => ({
-        guild_ranking: new GuildRanking(d.GuildRankings, this.db),
-        ranking: new Ranking(d.Rankings, this.db),
+      const result: { guild_ranking: GuildRankingSelect; ranking: RankingSelect }[] = data.map(d => ({
+        guild_ranking: d.GuildRankings,
+        ranking: d.Rankings,
       }))
 
-      this.db.cache.guild_rankings_by_guild.set(by.guild_id, result)
-      return result as any
+      this.db.cache.guild_rankings_by_guild.setSerialized(by.guild_id, result)
+      
+      return result.map(item => ({
+        guild_ranking: new GuildRanking(item.guild_ranking, this.db),
+        ranking: new Ranking(item.ranking, this.db),
+      })) as any
+
     } else if (by.ranking_id) {
-      if (this.db.cache.guild_rankings_by_ranking.has(by.ranking_id)) {
-        return this.db.cache.guild_rankings_by_ranking.get(by.ranking_id)! as any
-      }
+      const cached = this.db.cache.guild_rankings_by_ranking.get(by.ranking_id)
+      if (cached) return cached as any
 
       const data = await this.db.drizzle
         .select()
@@ -152,12 +164,15 @@ export class GuildRankingsManager extends DbObjectManager {
         .where(eq(GuildRankings.ranking_id, by.ranking_id))
         .innerJoin(Guilds, eq(GuildRankings.guild_id, Guilds.id))
 
-      const result: { guild: Guild; guild_ranking: GuildRanking }[] = data.map(d => ({
-        guild: new Guild(d.Guilds, this.db),
-        guild_ranking: new GuildRanking(d.GuildRankings, this.db),
+      const result: { guild: GuildSelect; guild_ranking: GuildRankingSelect }[] = data.map(d => ({
+        guild: d.Guilds,
+        guild_ranking: d.GuildRankings,
       }))
-      this.db.cache.guild_rankings_by_ranking.set(by.ranking_id, result)
-      return result as any
+      this.db.cache.guild_rankings_by_ranking.setSerialized(by.ranking_id, result)
+      return result.map(item => ({
+        guild: new Guild(item.guild, this.db),
+        guild_ranking: new GuildRanking(item.guild_ranking, this.db),
+      })) as any
     } else {
       throw new DbErrors.ValueError(`Must specify guild_id or ranking_id`)
     }

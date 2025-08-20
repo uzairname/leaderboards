@@ -1,7 +1,7 @@
 import { RatingStrategy } from '@repo/db/models'
 import * as D from 'discord-api-types/v10'
 import { Env } from '../Env'
-import { getScorerFn } from '../services/matches/scoring/scorers'
+import { getScorerFn } from '../api/matches/scoring/scorers'
 
 export class Config {
   readonly OauthRoutes = {
@@ -63,7 +63,7 @@ export class Config {
 
     // TrueSkill parameters
     readonly TrueSkillDisplayMeanRating = IsDev ? 1000 : 1000,
-    readonly DisplaySdOffset = IsDev ? -0.6 : -0.6,
+    readonly DisplaySdOffset = 0,
 
     // Match management timeouts
     readonly RematchTimeoutMinutes = 30,

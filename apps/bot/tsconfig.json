@@ -4,5 +4,5 @@
     "types": ["@cloudflare/workers-types"],
     "baseUrl": "../.."
   },
-  "include": ["src/index.ts", "scripts/*.ts"]
+  "include": ["src/index.ts", "scripts/*.ts", "scripts/test.js"]
 }

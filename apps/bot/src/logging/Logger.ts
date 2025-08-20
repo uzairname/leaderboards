@@ -1,15 +1,16 @@
-import { isInt } from '@repo/utils'
-import { cache } from '@repo/utils/cache'
+import { ansicolors, isInt, log } from '@repo/utils'
 // import { Breadcrumb, BreadcrumbHint, EventHint } from '@sentry/types'
 // import { Toucan } from 'toucan-js'
 import * as sentry from '@sentry/cloudflare'
-import { Env } from '../Env'
 import { AppErrors } from '../errors/app-errors'
 
+export let request_num: number | undefined = undefined
+
 export class Logger {
-  private time_received = Date.now()
+  public time_received = Date.now()
   private caught_exception: unknown
   private active_offloads = new Map<string, { startTime: number; name: string }>()
+  public timeout_ms: number = 20000
 
   request_data: Record<string, unknown> = {}
   discord_user: Record<string, unknown> = {}
@@ -17,24 +18,27 @@ export class Logger {
 
   constructor(
     private request: Request,
-    env: Env,
     private execution_context: ExecutionContext,
-    public timeout_ms: number = 20000,
+    public log_to_console: boolean = false,
   ) {
+    this.log({
+      message: `Logger initialized`
+    })
     this.request_name = 'Request'
-    cache.request_num = isInt(cache.request_num) ? cache.request_num + 1 : 1
+    request_num = isInt(request_num) ? request_num + 1 : 1
     this.request = request
   }
 
   async withLogging(handler: (request: Request) => Promise<Response>): Promise<Response> {
-    sentry.setTag('cold-start', cache.request_num == 1)
-    sentry.setTag('request_num', `${cache.request_num}`)
+    sentry.setTag('cold-start', request_num == 1)
+    sentry.setTag('request_num', request_num)
 
     this.request_name = `${this.request.method} ${new URL(this.request.url).pathname}`
 
     return handler(this.request)
       .then(res => {
         if (this.caught_exception) {
+          if (this.log_to_console) console.error(this.caught_exception)
           this.captureException(this.caught_exception)
         } else {
           this.logResult()
@@ -43,10 +47,20 @@ export class Logger {
       })
       .catch(e => {
         this.captureException(e)
+        if (this.log_to_console) console.error(e)
         return new Response(`Internal Server Error: ${e}`, { status: 500 })
       })
   }
 
+  /**
+   * Offload a task to be run asynchronously, with proper error handling and timeout.
+   * @param callback The async function to run. Receives a context object with these methods:
+   * - setException(e: unknown): void - Call this to log an exception when the callback finishes,
+   *   without throwing it.
+   * - setRequestName(name: string): void - Call this to set a custom name to log the offloaded request.
+   * @param onTimeout Optional function to call if the task times out.
+   * @param name Optional name to append to the request name for logging.
+   */
   public offload(
     callback: (ctx: { setException: (e: unknown) => void; setRequestName: (name: string) => void }) => Promise<void>,
     onTimeout?: (e: AppErrors.RequestTimeoutError) => Promise<void>,
@@ -87,12 +101,14 @@ export class Logger {
     const callback_promise = callback(ctx)
       .then(() => {
         if (offload_caught_exception) {
-          sentry.captureException(offload_caught_exception)
+          this.captureException(offload_caught_exception)
+          if (this.log_to_console) console.error(offload_caught_exception)
         } else {
           this.logResult(request_name)
         }
       })
       .catch(e => {
+        if (this.log_to_console) console.error(e)
         this.captureException(e)
       })
       .finally(() => {
@@ -103,7 +119,7 @@ export class Logger {
     const result = Promise.race([timeout_promise, callback_promise]).catch(e => {
       // Handle timeout errors gracefully
       if (e instanceof AppErrors.RequestTimeoutError) {
-        this.debug(`Offload ${request_name} timed out after ${this.timeout_ms}ms`)
+        this.log({message: e.message, level: 'error'})
       }
     })
 
@@ -136,12 +152,27 @@ export class Logger {
     }
   }
 
-  addBreadcrumb(breadcrumb: sentry.Breadcrumb, hint?: sentry.BreadcrumbHint): void {
-    sentry.addBreadcrumb(breadcrumb, hint)
+  log(breadcrumb: sentry.Breadcrumb, hint?: sentry.BreadcrumbHint): void {
+
+    if (breadcrumb.level !== 'debug') {
+      // Dont log debug breadcrumbs to Sentry
+      sentry.addBreadcrumb(breadcrumb, hint)
+    }
+    if (this.log_to_console && breadcrumb.message) {
+      if (breadcrumb.level === 'warning' || breadcrumb.level === 'error') {
+        log('red', `[${breadcrumb.level}] ${breadcrumb.message}`)
+      } else if (breadcrumb.category === 'dbmethod') {
+        log('blue', `[dbmethod] ${breadcrumb.message}`)
+      } else if (breadcrumb.category === 'appmethod') {
+        log('magenta', `[appmethod] ${breadcrumb.message}`)
+      } else {
+        console.log(breadcrumb.message)
+      }
+    }
   }
 
   captureException(exception: unknown, hint?: sentry.EventHint): string {
-    this.addBreadcrumb({
+    this.log({
       message: `Exception`,
       level: 'error',
       data: { exception },
@@ -150,7 +181,7 @@ export class Logger {
   }
 
   setException(exception: unknown): void {
-    this.addBreadcrumb({
+    this.log({
       message: `Caught exception`,
       level: 'error',
       data: { exception },
@@ -159,10 +190,13 @@ export class Logger {
   }
 
   debug(...message: unknown[]): void {
-    this.addBreadcrumb({
+    this.log({
       message: message.map(m => `${m}`).join(' '),
       level: 'debug',
     })
+    if (this.log_to_console) {
+      console.debug('[debug]', ...message)
+    }
   }
 
   private logResult(request_name?: string) {
@@ -175,6 +209,9 @@ export class Logger {
       message: request_name ?? this.request_name,
       level: 'info',
     })
+    if (this.log_to_console) {
+      console.log(`Request completed: ${request_name ?? this.request_name} in ${Date.now() - this.time_received} ms`)
+    }
   }
 }
 

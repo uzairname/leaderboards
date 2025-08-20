@@ -1,10 +1,10 @@
 import { DiscordAPIError } from '@discordjs/rest'
 import { Player } from '@repo/db/models'
 import { DiscordErrors } from '@repo/discord'
-import { truncateString } from '@repo/utils'
+import { listToString, truncateString } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { App } from '../setup/app'
-import { inviteUrl, listToString, permsToString } from '../utils/ui'
+import { inviteUrl, permsToString } from '../api/utils'
 
 export class UserError extends Error {
   /**
@@ -40,9 +40,9 @@ export namespace UserErrors {
     constructor(app: App, e: DiscordErrors.BotPermissions) {
       const missing_perms = e.missingPermissionsNames
 
-      const title = `Missing Permissions${missing_perms.length > 0 ? `: ${truncateString(permsToString(missing_perms), 60)}` : ``}`
+      const title = `The Bot is Missing Permissions${missing_perms.length > 0 ? `: ${truncateString(permsToString(missing_perms), 60)}` : ``}`
 
-      const msg = `[Click here](${inviteUrl(app)}) to re-invite the bot with the required permissions, then ensure that no roles or channels are restricting its permissions. If this doesn't work, then this action is not allowed.`
+      const msg = `**[Click here](${inviteUrl(app)}) to re-invite the bot with the required permissions**, then ensure that no roles or channels are overriding them.`
 
       super(msg, title)
     }
@@ -73,6 +73,17 @@ export namespace UserErrors {
   export class PlayersDisabled extends UserError {
     constructor(disabled_players: Player[]) {
       super(listToString(disabled_players.map(p => `<@${p.data.user_id}>`)) + ` cannot participate in this ranking`)
+    }
+  }
+
+  export class RolePermissions extends UserError {
+    constructor(app: App, role_id: string) {
+      const msg = `The bot is attempting to manage the <@&${role_id}> role.
+- If the app doesn't have the **Manage Roles** permission, [Click here](${inviteUrl(app)}) to re-invite the bot with the required permissions
+- If the role is reserved or higher than the bot's highest role, then ensure that the bot has access to all roles you want it to manage.`
+      const title = `Missing Role Permissions`
+      super(msg, title)
+      this.name = `${UserErrors.RolePermissions.name}.${this.constructor.name}`
     }
   }
 }

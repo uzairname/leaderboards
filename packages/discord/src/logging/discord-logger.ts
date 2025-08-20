@@ -8,6 +8,8 @@ export abstract class DiscordLogger {
     category?: LogCategory
   }): void
 
+  abstract error({ message, error, data }: { message: string; error?: unknown; data?: { [key: string]: any } }): void
+
   abstract debug(...messages: unknown[]): void
 
   abstract logDiscordRequest(params: {

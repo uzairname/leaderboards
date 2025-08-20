@@ -1,4 +1,5 @@
 
+.dev.vars.*
 .env.*
 env.js
 

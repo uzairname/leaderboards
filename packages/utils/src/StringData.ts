@@ -117,7 +117,7 @@ export class StringField extends Field<string | undefined> {
 }
 
 class IntegerField extends Field<number | undefined> {
-  compress = (value: number) => value.toString(36)
+  compress = (value: number) => Math.round(value).toString(36)
   decompress = (value: string) => parseInt(value, 36)
 }
 

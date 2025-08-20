@@ -5,10 +5,10 @@ import { Player } from '.'
 import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
+import { logDbMethods } from '../logging'
 import { GuildRankings, MatchPlayers, MatchSummaryMessages, Matches, Players } from '../schema'
 import { PlayerFlags, PlayerSelect } from './players'
 import { PartialRanking, Rating } from './rankings'
-import { logDbMethods } from '../logging'
 
 export type MatchMetadata = {
   best_of: number
@@ -58,7 +58,6 @@ export type MatchPlayer = {
 
 @logDbMethods
 export class Match extends DbObject<MatchSelect> {
-
   constructor(
     public data: MatchSelect,
     public db: DbClient,
@@ -181,11 +180,9 @@ export class Match extends DbObject<MatchSelect> {
 
 @logDbMethods
 export class MatchesManager extends DbObjectManager {
-
   toString() {
     return `[MatchesManager]`
   }
-
 
   /**
    * Inserts a match into the database, and its associated MatchPlayers.
@@ -257,7 +254,9 @@ export class MatchesManager extends DbObjectManager {
   // returns matches that are from a ranking in this guild.
   async fetch(id: number, limit_to_guild?: string): Promise<Match> {
     const cached = this.db.cache.matches.get(id)
-    if (cached && !limit_to_guild) return cached
+    if (cached && !limit_to_guild) {
+      return cached
+    }
 
     const query = this.db.drizzle.select({ match: Matches }).from(Matches)
 
@@ -383,7 +382,7 @@ export class MatchesManager extends DbObjectManager {
    * and values: ratings and flags
    */
   async updateMatchPlayers(match_players: { match_id: number; update: MatchPlayer }[]): Promise<void> {
-    this.db.debug(`updating ${match_players.length} match players`)
+    this.db.logger?.debug(`updating ${match_players.length} match players`)
 
     if (match_players.length === 0) return
 

@@ -37,7 +37,14 @@ export namespace DiscordErrors {
     }
   }
 
-  export class RolePermissions extends DiscordUserError {}
+  export class RolePermissions extends DiscordUserError {
+    constructor(public role_id: string) {
+      super(
+        `Either the app doesn't have the **Manage Roles** permission, ` +
+          `or the the role <@&${role_id}> is reserved or higher than the bot's highest role.`,
+      )
+    }
+  }
 
   export class InvalidGrant extends DiscordError {}
 }

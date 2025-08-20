@@ -66,4 +66,10 @@ export namespace InteractionErrors {
    * For validating the context of an interaction. eg, DM or a guild
    */
   export class WrongContext extends InteractionError {}
+
+  export class ResponseTimeExceeded extends InteractionError {
+    constructor(time_ms: number, limit: number) {
+      super(`Initial interaction response time ${time_ms}ms exceeded limit of ${limit}ms`)
+    }
+  }
 }

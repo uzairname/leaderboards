@@ -42,7 +42,6 @@ export class Guild extends PartialGuild {
 
 @logDbMethods
 export class GuildsManager extends DbObjectManager {
-
   toString() {
     return `[GuildsManager]`
   }
@@ -65,15 +64,16 @@ export class GuildsManager extends DbObjectManager {
     guild_id: string,
     must_exist?: Required,
   ): Promise<Required extends true ? Guild : Guild | null> {
-    if (this.db.cache.guilds.has(guild_id)) return this.db.cache.guilds.get(guild_id)!
 
+    const cached = this.db.cache.guilds.get(guild_id)
+    if (cached) return cached
+    
     const db_data = (await this.db.drizzle.select().from(Guilds).where(eq(Guilds.id, guild_id)))[0]
 
     if (!db_data) {
       if (must_exist) throw new DbErrors.NotFound(`Guild ${guild_id} not found`)
       return null as any
     }
-
     return new Guild(db_data, this.db)
   }
 

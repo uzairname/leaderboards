@@ -4,8 +4,8 @@ import { Player } from '.'
 import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
-import { Players, Rankings } from '../schema'
 import { logDbMethods } from '../logging'
+import { Players, Rankings } from '../schema'
 
 export type RankingSelect = InferSelectModel<typeof Rankings>
 export type RankingInsert = Omit<InferInsertModel<typeof Rankings>, 'id'>
@@ -97,7 +97,7 @@ export class PartialRanking extends DbObject<{ id: number }> {
     await this.db.drizzle.delete(Rankings).where(eq(Rankings.id, this.data.id))
     this.db.cache.rankings.delete(this.data.id)
     this.db.cache.guild_rankings.clear()
-    this.db.cache.user_players.delete(this.data.id)
+    this.db.cache.players_by_ranking_user.delete(this.data.id)
     this.db.cache.players.clear()
     this.db.cache.teams.clear()
     this.db.cache.matches.clear()
@@ -122,7 +122,6 @@ export class Ranking extends PartialRanking {
 
 @logDbMethods
 export class RankingsManager extends DbObjectManager {
-
   toString() {
     return `[RankingsManager]`
   }
@@ -137,7 +136,8 @@ export class RankingsManager extends DbObjectManager {
   }
 
   async fetch(id: number): Promise<Ranking> {
-    if (this.db.cache.rankings.has(id)) return this.db.cache.rankings.get(id)!
+    const cached = this.db.cache.rankings.get(id)
+    if (cached) return cached
     const data = (await this.db.drizzle.select().from(Rankings).where(eq(Rankings.id, id)))[0]
     if (!data) throw new DbErrors.NotFound(`Ranking ${id} not found`)
     return new Ranking(data, this.db)

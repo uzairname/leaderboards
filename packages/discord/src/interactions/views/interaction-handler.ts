@@ -101,8 +101,22 @@ export class InteractionHandler<Arg extends unknown = undefined> {
 
     this.logger?.log({ message: 'Received interaction' })
 
+    const start = performance.now()
+
+    // return json({
+    //   type: D.InteractionResponseType.ChannelMessageWithSource,
+    //   data: {
+    //     content: 'a'
+    //   }
+    // })
+
     const response = await this.getResponse({ interaction, bot, onError, offload, arg })
-      .then(res => res)
+      .then(res => {
+        const time_taken = performance.now() - start
+        const limit = 2900
+        if (time_taken >= limit) throw new InteractionErrors.ResponseTimeExceeded(time_taken, limit)
+        return res
+      })
       .catch(e => onError(e))
 
     this.logger?.log({
@@ -207,16 +221,16 @@ export class InteractionHandler<Arg extends unknown = undefined> {
   }): Promise<AnyCommandSignature[]> {
     const all_commands = this.all_handlers.filter(h => isCommandHandler(h))
 
-    const cmds = await sequential(
-      all_commands.map(c => async () => {
-        // Ignore experimental commands
-        if (c.signature.config.experimental && !include_experimental) return null
-        // If its a guild command and we're filtering by guild, return the guild-specific signature
-        if (guild_id && c.guildSignature) return c.guildSignature(arg, guild_id)
-        // If its a global command and we're not filtering by guild, return the global signature
-        else if (!guild_id && !c.guildSignature) return c.signature
-      }),
-    )
+    const cmds = []
+
+    for (const c of all_commands) {
+      // Ignore experimental commands
+      if (c.signature.config.experimental && !include_experimental) continue
+      // If its a guild command and we're filtering by guild, return the guild-specific signature
+      if (guild_id && c.guildSignature) cmds.push(await c.guildSignature(arg, guild_id))
+      // If its a global command and we're not filtering by guild, return the global signature
+      else if (!guild_id && !c.guildSignature) cmds.push(c.signature)
+    }
 
     const filtered = cmds.filter(v => !!v)
     return filtered

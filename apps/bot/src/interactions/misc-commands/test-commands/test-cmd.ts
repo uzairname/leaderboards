@@ -1,0 +1,159 @@
+import { CommandSignature, getOptions, StateContext, ViewSignature } from '@repo/discord'
+import { field } from '@repo/utils'
+import * as D from 'discord-api-types/v10'
+import { test_helper_view_config } from './test-helper-view'
+import { UserErrors } from '../../../errors/user-errors'
+import { App } from '../../../setup/app'
+
+const test_cmd_sig = new CommandSignature({
+  type: D.ApplicationCommandType.ChatInput,
+  name: 'test',
+  description: 'Test command',
+  options: [
+    {
+      type: D.ApplicationCommandOptionType.User,
+      name: 'user',
+      description: 'The user to test',
+    },
+    {
+      type: D.ApplicationCommandOptionType.String,
+      name: 'string',
+      description: 'A string to test',
+    },
+    {
+      type: D.ApplicationCommandOptionType.Number,
+      name: 'time',
+      description: 'Time in ms to wait',
+    },
+  ],
+  experimental: true,
+})
+
+export const test_cmd = test_cmd_sig.set<App>({
+  onCommand: async (ctx, app) => {
+    const user_id = ctx.interaction.member.user.id
+
+    const { options } = getOptions(ctx.interaction, {
+      user: { type: D.ApplicationCommandOptionType.User, required: false },
+      string: { type: D.ApplicationCommandOptionType.String, required: false },
+      time: { type: D.ApplicationCommandOptionType.Number },
+    })
+
+    const state = test_view_sig.newState()
+    state.save.original_user(user_id)
+    state.save.counter(0)
+
+    const time = options.time ?? 0
+
+    await new Promise(r => setTimeout(r, time)) // simulate some processing delay
+
+    return {
+      type: D.InteractionResponseType.ChannelMessageWithSource,
+      data: testPage(
+        {
+          ...ctx,
+          state: test_view_sig.newState(),
+        },
+        true,
+      ),
+    }
+  },
+})
+
+const test_view_sig = new ViewSignature({
+  custom_id_prefix: 'test',
+  state_schema: {
+    clicked_btn: field.Choice({
+      wait: 'wait',
+      increment: 'increment',
+      one: 'one',
+      input: 'input',
+    }),
+    counter: field.Int(),
+    original_user: field.String(),
+    input_date: field.Date(),
+  },
+})
+
+export const test_view = test_view_sig.set<App>({
+  onComponent: async ctx => {
+    const user_id = ctx.interaction.member.user.id
+
+    if (ctx.state.data.original_user !== user_id) {
+      throw new UserErrors.NotComponentOwner(ctx.state.data.original_user)
+    }
+
+    if (ctx.state.is.clicked_btn('wait')) {
+      return ctx.defer(
+        async ctx => {
+          const seconds = ctx.state.data.counter ?? 0
+
+          await ctx.edit({
+            content: `waiting....`,
+          })
+
+          await new Promise(r => setTimeout(r, seconds * 1000))
+
+          await ctx.followup({
+            content: `waited ${seconds} seconds.`,
+            flags: D.MessageFlags.Ephemeral,
+          })
+        },
+        {
+          type: D.InteractionResponseType.ChannelMessageWithSource,
+          data: {
+            content: `waiting`,
+            flags: D.MessageFlags.Ephemeral,
+          },
+        },
+      )
+    } else if (ctx.state.is.clicked_btn('increment')) {
+      ctx.state.save.counter((ctx.state.data.counter ?? 0) + 1)
+    }
+
+    return {
+      type: D.InteractionResponseType.UpdateMessage,
+      data: testPage(ctx),
+    }
+  },
+})
+
+function testPage(
+  ctx: StateContext<typeof test_view_sig>,
+  ephemeral: boolean = false,
+): D.APIInteractionResponseCallbackData {
+  return {
+    components: [
+      {
+        type: D.ComponentType.ActionRow,
+        components: [
+          {
+            type: D.ComponentType.Button,
+            label: `Wait ${ctx.state.data.counter} seconds`,
+            custom_id: ctx.state.set.clicked_btn('wait').cId(),
+            style: D.ButtonStyle.Primary,
+          },
+          {
+            type: D.ComponentType.Button,
+            label: 'Increment',
+            custom_id: ctx.state.set.clicked_btn('increment').cId(),
+            style: D.ButtonStyle.Primary,
+          },
+          {
+            type: D.ComponentType.Button,
+            label: 'Input',
+            custom_id: test_helper_view_config
+              .newState({
+                back_cid: ctx.state.set.clicked_btn('one').cId(),
+                back_counter_field: 'counter',
+                counter: ctx.state.data.counter ?? 0,
+              })
+              .cId(),
+            style: D.ButtonStyle.Primary,
+          },
+        ],
+      },
+    ],
+    flags: ephemeral ? D.MessageFlags.Ephemeral : undefined,
+  }
+}

@@ -1,8 +1,8 @@
 import { eq, InferSelectModel } from 'drizzle-orm'
 import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
-import { Settings } from '../schema'
 import { logDbMethods } from '../logging'
+import { Settings } from '../schema'
 
 export type SettingSelect = InferSelectModel<typeof Settings>
 export type SettingUpdate = Partial<Omit<SettingSelect, 'id'>>
@@ -14,7 +14,6 @@ export class Setting extends DbObject<SettingSelect> {
     public db: DbClient,
   ) {
     super(data, db)
-    db.cache.setting = this
   }
   toString() {
     return `[Setting]`
@@ -23,7 +22,6 @@ export class Setting extends DbObject<SettingSelect> {
 
 @logDbMethods
 export class SettingsManager extends DbObjectManager {
-
   toString() {
     return `[SettingsManager]`
   }
@@ -40,8 +38,6 @@ export class SettingsManager extends DbObjectManager {
     if (update) {
       data = (await this.db.drizzle.update(Settings).set(update).where(eq(Settings.id, id)).returning())[0]
     } else {
-      if (this.db.cache.setting) return this.db.cache.setting
-
       // No guarantee that the versions field will be of the correct type in the database
       const result = (await this.db.drizzle.select().from(Settings).where(eq(Settings.id, id)))[0]
 

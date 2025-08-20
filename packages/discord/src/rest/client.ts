@@ -1,15 +1,15 @@
 import { DiscordAPIError, InternalRequest, REST, RequestData, RequestMethod } from '@discordjs/rest'
-import { cache } from '@repo/utils/cache'
 import * as D from 'discord-api-types/v10'
 import { DiscordLogger } from '../logging'
 import { DiscordAPIUtils } from './client-helpers'
 import { DiscordErrors } from './errors'
 import { DiscordCache, RESTPostAPIGuildForumThreadsResult } from './types'
+import { awaitWithTimeout, cache } from '@repo/utils'
 
 export class DiscordAPIClient extends REST {
   readonly token: string
   readonly applicationId: string
-  readonly clientId: string
+  readonly client_id: string
   readonly clientSecret: string
   readonly publicKey: string
 
@@ -28,7 +28,7 @@ export class DiscordAPIClient extends REST {
     this.setToken(params.token)
     this.token = params.token
     this.applicationId = params.applicationId
-    this.clientId = this.applicationId
+    this.client_id = this.applicationId
     this.clientSecret = params.clientSecret
     this.publicKey = params.publicKey
 
@@ -275,10 +275,7 @@ export class DiscordAPIClient extends REST {
       await this.fetch(RequestMethod.Put, D.Routes.guildMemberRole(guild_id, user_id, role_id))
     } catch (e) {
       if (e instanceof DiscordAPIError && e.code === D.RESTJSONErrorCodes.MissingPermissions)
-        throw new DiscordErrors.RolePermissions(
-          `Either the app doesn't have the **Manage Roles** permission, ` +
-            `or the the role <@&${role_id}> is reserved or higher than the bot's highest role.`,
-        )
+        throw new DiscordErrors.RolePermissions(role_id)
       throw e
     }
   }
@@ -361,7 +358,7 @@ export class DiscordAPIClient extends REST {
 
   botInviteURL(permissions?: bigint): URL {
     const params = new URLSearchParams({
-      clientId: this.clientId,
+      client_id: this.client_id,
       permissions: permissions?.toString() ?? '',
       scope: 'bot',
     })
@@ -372,7 +369,7 @@ export class DiscordAPIClient extends REST {
 
   oauthURL(redirect_uri: string, scopes: D.OAuth2Scopes[], state: string, permissions?: bigint): URL {
     const params = new URLSearchParams({
-      client_id: this.clientId,
+      client_id: this.client_id,
       response_type: 'code',
       scope: scopes.join(' '),
       redirect_uri,
@@ -386,7 +383,7 @@ export class DiscordAPIClient extends REST {
 
   async getOauthToken(code: string, redirect_uri: string) {
     const body = new URLSearchParams({
-      client_id: this.clientId,
+      client_id: this.client_id,
       client_secret: this.clientSecret,
       grant_type: 'authorization_code',
       code,
@@ -406,7 +403,7 @@ export class DiscordAPIClient extends REST {
 
   async refreshOauthToken(refresh_token: string) {
     const body = new URLSearchParams({
-      client_id: this.clientId,
+      client_id: this.client_id,
       client_secret: this.clientSecret,
       grant_type: 'refresh_token',
       refresh_token,
@@ -440,6 +437,22 @@ export class DiscordAPIClient extends REST {
     )) as D.RESTGetAPIOAuth2CurrentAuthorizationResult
   }
 
+  // MISC
+  /**
+   * Measures REST API round-trip latency to Discord in milliseconds.
+   * Uses a lightweight authenticated endpoint, with a public fallback.
+   */
+  async measureApiLatency(): Promise<number> {
+    const start = performance.now()
+    try {
+      await this.fetch(RequestMethod.Get, D.Routes.gatewayBot())
+    } catch (e) {
+      // Fallback to public gateway route if bot route fails for any reason
+      await this.fetch(RequestMethod.Get, D.Routes.gateway())
+    }
+    return performance.now() - start
+  }
+
   async fetch(
     method: RequestMethod,
     route: `/${string}`,
@@ -448,13 +461,18 @@ export class DiscordAPIClient extends REST {
   ): Promise<unknown> {
     const startTime = Date.now()
     try {
-      var response = await this.request(
-        {
-          ...options,
-          fullRoute: route,
-          method: method,
-        },
-        bearer_token,
+      const timeout_s = 10
+      var response = await awaitWithTimeout(
+        this.request(
+          {
+            ...options,
+            fullRoute: route,
+            method: method,
+          },
+          bearer_token,
+        ), 
+        () => this.logger?.log({message: `Discord request ${method} ${route} taking longer than ${timeout_s}s`, level: 'warning'}),
+        timeout_s * 1000,
       )
       return response
     } catch (e) {

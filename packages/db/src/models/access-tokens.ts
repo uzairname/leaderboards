@@ -40,7 +40,6 @@ export class AccessToken extends DbObject<AccessTokenSelect> {
 
 @logDbMethods
 export class AccessTokensManager extends DbObjectManager {
-
   toString() {
     return `[AccessTokensManager]`
   }

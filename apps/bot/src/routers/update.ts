@@ -1,7 +1,7 @@
 import * as sentry from '@sentry/cloudflare'
 import { IttyRouter } from 'itty-router/IttyRouter'
-import { getOrAddGuild } from '../services/guilds/manage-guilds'
-import { getAppRoleConnectionsMetadata } from '../services/role-connections/role-connections'
+import { getOrAddGuild } from '../api/guilds/manage'
+import { getAppRoleConnectionsMetadata } from '../api/role-connections/role-connections'
 import { App, syncDiscordCommands } from '../setup/app'
 
 export default (app: App) =>

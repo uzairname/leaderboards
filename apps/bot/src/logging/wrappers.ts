@@ -12,14 +12,17 @@ export class AppDbLogger extends DbLogger {
     super()
   }
 
-  log({ data, category, type }: { data?: Record<string, unknown>; category?: string; type?: string }) {
-    if (data) {
-      this.logger.addBreadcrumb({ data, category, type })
-    }
+  log(options: { message?: string, data?: Record<string, unknown>; category?: string; type?: string }) {
+    const { message, data, category, type } = options
+    this.logger.log({ message, data, category, type })
   }
 
   debug(...message: unknown[]) {
     this.logger.debug(...message)
+  }
+
+  error(...message: unknown[]) {
+    this.logger.captureException(new Error(message.map(m => (typeof m === 'string' ? m : JSON.stringify(m))).join(' ')))
   }
 
   logQuery(query: string, params?: unknown[], is_readonly?: boolean): void {
@@ -29,7 +32,7 @@ export class AppDbLogger extends DbLogger {
       this.logger.request_data['queries'] = ((this.logger.request_data['queries'] as number) || 0) + 1
     }
 
-    this.logger.addBreadcrumb({
+    this.logger.log({
       data: {
         query: query,
         params: params,
@@ -53,10 +56,16 @@ export class AppDiscordLogger extends DiscordLogger {
   }
 
   log(data: { message: string; data?: Record<string, unknown>; level?: LogLevel }) {
-    this.logger.addBreadcrumb({
+    this.logger.log({
       ...data,
       level: data.level ?? 'info',
     })
+  }
+
+  error(...messages: unknown[]): void {
+    this.logger.captureException(
+      new Error(messages.map(m => (typeof m === 'string' ? m : JSON.stringify(m))).join(' ')),
+    )
   }
 
   debug(...messages: unknown[]): void {
@@ -78,7 +87,7 @@ export class AppDiscordLogger extends DiscordLogger {
     error?: unknown
     timeMs: number
   }) {
-    this.logger.addBreadcrumb({
+    this.logger.log({
       type: 'http',
       level: error ? 'error' : 'info',
       message: `Fetched Discord ${method} ${route}`,

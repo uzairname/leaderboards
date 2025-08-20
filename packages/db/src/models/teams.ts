@@ -2,9 +2,9 @@ import { and, eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { Player } from '.'
 import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
+import { logDbMethods } from '../logging'
 import { Players, TeamPlayers, Teams } from '../schema'
 import { PartialRanking } from './rankings'
-import { logDbMethods } from '../logging'
 
 export type TeamSelect = InferSelectModel<typeof Teams>
 export type TeamInsert = Omit<InferInsertModel<typeof Teams>, 'id'>
@@ -82,7 +82,6 @@ export class Team extends DbObject<TeamSelect> {
 
 @logDbMethods
 export class TeamsManager extends DbObjectManager {
-
   toString() {
     return `[TeamsManager]`
   }
@@ -106,6 +105,7 @@ export class TeamsManager extends DbObjectManager {
 
   async fetch(id: number): Promise<Team | undefined> {
     if (this.db.cache.teams.has(id)) return this.db.cache.teams.get(id)!
+
     const data = (await this.db.drizzle.select().from(Teams).where(eq(Teams.id, id)))[0]
     if (data) {
       return new Team(data, this.db)

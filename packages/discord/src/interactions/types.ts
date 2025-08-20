@@ -189,3 +189,6 @@ export type InteractionErrorCallback = (
   e: unknown,
   setException?: (e: unknown) => void,
 ) => D.APIInteractionResponseChannelMessageWithSource
+
+// Interactions
+export type GuildInteraction = D.APIGuildInteractionWrapper<AnyChatInteraction>

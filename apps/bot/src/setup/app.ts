@@ -6,7 +6,7 @@ import { onViewError } from '../errors/on-view-error'
 // import * as sentry from '@sentry/cloudflare'
 import { Logger } from '../logging/logger'
 import { AppDbLogger, AppDiscordLogger } from '../logging/wrappers'
-import * as views from './all-interaction-handlers'
+import * as views from '../interactions/all-interaction-handlers'
 import { Config } from './config'
 import { AppEvents, getAppEvents } from './events'
 

@@ -1,8 +1,8 @@
 import { hash } from '@repo/utils'
-import { cache } from '@repo/utils/cache'
 import { NeonHttpDatabase } from 'drizzle-orm/neon-http'
 import { NeonDatabase } from 'drizzle-orm/neon-serverless'
-import DbCache from './cache'
+import { DbCache} from './cache'
+import { logDbMethods } from './logging'
 import { DbLogger } from './logging/db-logger'
 import {
   AccessTokensManager,
@@ -16,6 +16,7 @@ import {
   UsersManager,
 } from './models'
 
+@logDbMethods
 export class DbClient {
   public readonly cache: DbCache
 
@@ -23,30 +24,7 @@ export class DbClient {
     readonly drizzle: NeonDatabase | NeonHttpDatabase,
     readonly logger?: DbLogger,
   ) {
-    if (cache.db && cache.db instanceof DbCache) {
-      this.cache = cache.db
-
-      logger?.log({
-        data: {
-          cache: `${this.cache}`,
-          rankings: `${this.cache.rankings.size}`,
-        },
-      })
-    } else {
-      logger?.log({
-        data: {
-          cache: 'cache miss',
-        },
-      })
-      this.cache = new DbCache(logger)
-    }
-    cache.db = this.cache
-
-    this.logger && (this.debug = this.logger.debug.bind(this.logger))
-  }
-
-  debug: (...message: unknown[]) => void = (...message) => {
-    console.log(message)
+    this.cache = DbCache.getInstance(this, logger)
   }
 
   async withCache<K extends object, T>(fn: (arg: K) => T, arg: K, key: string) {
@@ -70,7 +48,14 @@ export class DbClient {
   teams = new TeamsManager(this)
   matches = new MatchesManager(this)
 
+  async measureLatency(): Promise<number> {
+    const start = performance.now()
+    await this.drizzle.execute('SELECT 1')
+    const latency = performance.now() - start
+    return latency
+  }
+
   toJSON() {
-    return "[DbClient]"
+    return '[DbClient]'
   }
 }

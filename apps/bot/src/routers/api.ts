@@ -3,12 +3,13 @@ import { intOrNull } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { IttyRouter } from 'itty-router/IttyRouter'
 import { json } from 'itty-router/json'
+import { request_num } from '../logging/logger'
 import { App } from '../setup/app'
-import { inviteUrl } from '../utils/'
 import commandsRouter from './api/commands'
 import rankingsRouter from './api/rankings'
 import { authorize } from './base'
 import { getUserAccessToken, saveUserAccessToken } from './oauth'
+import { inviteUrl } from '../api/utils'
 
 export default (app: App) =>
   IttyRouter({ base: '/api' })
@@ -17,6 +18,16 @@ export default (app: App) =>
     })
 
     .post('*', authorize(app.env))
+
+    .get('/ping/db', async request => {
+      const database_ping = await app.db.measureLatency()
+
+      return json({
+        request_num: request_num,
+        database_ping,
+        timestamp: new Date().toISOString(),
+      })
+    })
 
     .get('/endpoints', async request => {
       const result = {
@@ -55,8 +66,8 @@ export default (app: App) =>
           hasPublicKey: !!app.config.env.PUBLIC_KEY,
         },
         discordClient: {
-          hasClientId: !!app.discord.clientId,
-          clientId: app.discord.clientId,
+          hasClientId: !!app.discord.client_id,
+          clientId: app.discord.client_id,
           hasApplicationId: !!app.discord.applicationId,
           applicationId: app.discord.applicationId,
         },

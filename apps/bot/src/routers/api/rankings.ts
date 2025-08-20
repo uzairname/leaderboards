@@ -2,10 +2,10 @@ import { MatchSettingsSchema, Ranking, RankRolesSchema } from '@repo/db/models'
 import { strOrUndefined } from '@repo/utils'
 import { IttyRouter } from 'itty-router/IttyRouter'
 import { json } from 'itty-router/json'
-import { syncRankingLbMessages } from '../../services/leaderboard/manage'
-import { leaderboardText } from '../../services/leaderboard/ui/pages'
-import { rescoreAllMatches } from '../../services/matches/scoring/score-matches'
+import { syncRankingLbMessages } from '../../api/leaderboard/manage'
+import { rescoreAllMatches } from '../../api/matches/scoring/score-matches'
 import { App } from '../../setup/app'
+import { leaderboardText } from '../../interactions/leaderboard/pages'
 
 export default (app: App, ranking: Ranking) =>
   IttyRouter({ base: `/api/rankings/${ranking.data.id}` })

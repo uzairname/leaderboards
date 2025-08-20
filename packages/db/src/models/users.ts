@@ -1,10 +1,10 @@
 import { eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
+import { logDbMethods } from '../logging'
 import { Players, Rankings, Users } from '../schema'
 import { Player } from './players'
 import { Ranking } from './rankings'
-import { logDbMethods } from '../logging'
 
 export type UserSelect = InferSelectModel<typeof Users>
 export type UserInsert = InferInsertModel<typeof Users>
@@ -76,7 +76,6 @@ export class User extends PartialUser {
 
 @logDbMethods
 export class UsersManager extends DbObjectManager {
-
   toString() {
     return `[UsersManager]`
   }

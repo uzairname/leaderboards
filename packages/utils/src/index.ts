@@ -1,4 +1,4 @@
-export * from './cache-map'
+export * from './cache'
 export * from './Event'
 export * from './lzstring'
 export * from './StringData'

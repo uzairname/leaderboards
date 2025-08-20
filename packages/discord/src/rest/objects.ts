@@ -43,7 +43,7 @@ export class MessageData {
 
   get response_data(): D.APIInteractionResponseCallbackData {
     return {
-      content: this.body.content ?? undefined,
+      content: this.body.content ?? ``,
       embeds: this.body.embeds ?? [],
       components: this.body.components ?? [],
       flags: this.body.flags ?? undefined,
