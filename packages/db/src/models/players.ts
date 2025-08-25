@@ -29,6 +29,8 @@ export const PlayerStatsSchema = z.object({
   losses: z.number(),
   draws: z.number(),
   winrate: z.number().nullable(),
+  current_winstreak: z.number().nullable(),
+  longest_winstreak: z.number().nullable(),
   avg_opponent_rating: z.number().nullable(),
   lb_place: z.number().nullable(),
   max_lb_place: z.number().nullable(),

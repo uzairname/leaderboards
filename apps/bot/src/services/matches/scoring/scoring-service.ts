@@ -1,0 +1,146 @@
+import {
+  Match,
+  MatchPlayer,
+  MatchStatus,
+  PartialPlayer,
+  PartialRanking,
+  Ranking,
+  Rating,
+  RatingParameters,
+} from '@repo/db/models'
+import { AnyDeferredContext } from '@repo/discord'
+import { App } from '../../../setup/app'
+import { AppService, LogMethods } from '../../service'
+import { ratingStrategyToScorer } from './scorer'
+
+/**
+ * Service for scoring matches and recalculating player ratings.
+ */
+@LogMethods
+export class ScoringService extends AppService {
+  /**
+   * Returns player ratings after the match based on
+   * the match's outcome, the players' ratings before the match, and the
+   * ranking's rating settings.
+   *
+   * If the match is not finished, returns undefined.
+   */
+  scoreMatch(options: {
+    app: App
+    players: MatchPlayer[][]
+    match: Match
+    rating_settings: RatingParameters
+  }): Rating[][] | undefined {
+    const { app, players, match, rating_settings } = options
+    // Determine whether the match had an effect on any player ratings
+    if (!match.data.outcome || match.data.status !== MatchStatus.Finished) return
+
+    const scorer = ratingStrategyToScorer(rating_settings.rating_strategy).score
+    const new_ratings = scorer({
+      app,
+      outcome: match.data.outcome,
+      players: players,
+      best_of: match.data.metadata?.best_of,
+      rating_settings,
+    })
+
+    app.logger.debug(`new ratings: ${new_ratings.map(team => team.map(player => player.mu))}`)
+
+    return new_ratings
+  }
+
+  async rescoreAllMatches(app: App, ranking: Ranking, ctx?: AnyDeferredContext) {
+    const affected_ratings = new Map<number, Rating>()
+
+    const players = await ranking.players()
+    players.forEach(p => affected_ratings.set(p.data.id, ranking.data.rating_settings.initial_rating))
+
+    app.logger.debug(`rescoreAllMatches for ${ranking} with ${players.length} players`)
+
+    return await this.rescoreMatches(app, ranking, { affected_ratings, reset_rating_to_initial: true, ctx })
+  }
+
+  /**
+   * Recalculate ratings in the ranking based on all matches after the specified date, using the ranking's scorer.
+   * @param affected_ratings A map of player IDs to their ratings before any of these matches were scored
+   *  The running recalculation of player ratings.
+   *  This object is updated as matches are processed
+   *  Ends up being the updated player ratings after the latest match
+   * @param reset_rating_to_initial If provided, all players not in affected_ratings will be reset to the initial rating.
+   */
+  async rescoreMatches(
+    app: App,
+    p_ranking: PartialRanking,
+    {
+      finished_on_or_after,
+      affected_ratings = new Map(),
+      reset_rating_to_initial,
+    }: {
+      finished_on_or_after?: Date | null
+      affected_ratings?: Readonly<Map<number, Rating>>
+      reset_rating_to_initial?: boolean
+      ctx?: AnyDeferredContext
+    } = {},
+  ) {
+    const ranking = await p_ranking.fetch()
+
+    const matches = await app.db.matches.getMany({
+      ranking_ids: [ranking.data.id],
+      finished_at_or_after: finished_on_or_after,
+    })
+
+    // List of match players that need to be updated. Indicates ratings for each player before each match
+    const match_players_update: { match_id: number; update: MatchPlayer }[] = []
+
+    for (const match of matches) {
+      const match_players: MatchPlayer[][] = match.team_players.map(team =>
+        team.map(mp => {
+          /*
+        Determine player ratings before the match.
+        If their rating was recalculated, use that.
+        If not, reset them if specified, otherwise leave them as they were before.
+        */
+          const rating_before =
+            affected_ratings.get(mp.player.data.id) ??
+            (reset_rating_to_initial ? ranking.data.rating_settings.initial_rating : mp.rating)
+
+          const new_match_player = { ...mp, rating: rating_before }
+          match_players_update.push({ match_id: match.match.data.id, update: new_match_player })
+          affected_ratings.set(mp.player.data.id, rating_before)
+          return new_match_player
+        }),
+      )
+
+      // Recalculate the player ratings
+      const new_ratings = this.scoreMatch({
+        app,
+        match: match.match,
+        players: match_players,
+        rating_settings: ranking.data.rating_settings,
+      })
+
+      if (!new_ratings) continue
+
+      // Update recalculated_player_ratings
+      new_ratings.forEach((team, i) =>
+        team.forEach((recalculated_rating, j) => {
+          const player_id = match_players[i][j].player.data.id
+          affected_ratings.set(player_id, recalculated_rating)
+        }),
+      )
+    }
+
+    // Update the match players in the databaase
+    await app.db.matches.updateMatchPlayers(match_players_update)
+
+    // Update the players in the database
+    const new_player_ratings: { player: PartialPlayer; rating: Rating }[] = []
+    for (const [player_id, rating] of affected_ratings) {
+      new_player_ratings.push({ player: app.db.players.get(player_id), rating })
+    }
+
+    await app.players.updatePlayerRatings(app, 'rescored matches', ranking, new_player_ratings)
+
+    return new_player_ratings
+  }
+}

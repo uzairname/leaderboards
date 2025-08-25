@@ -1,7 +1,7 @@
 import { ViewSignature } from '@repo/discord'
 import { field } from '@repo/utils'
-import { leaderboardPage } from './pages'
 import { App } from '../../setup/app'
+import { leaderboardPage } from './pages'
 
 export const leaderboard_view_sig = new ViewSignature({
   custom_id_prefix: 'lb',

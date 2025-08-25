@@ -7,10 +7,12 @@ import {
 } from '@repo/discord'
 import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { userJoinQueue } from '../../api/matchmaking/queue/1v1-queue'
+import { userJoinQueue } from '../../services/matchmaking/queue/solo-queue'
+import { Colors, escapeMd } from '../../services/utils/strings'
 import { App } from '../../setup/app'
-import { queueJoinMessage } from '../../api/utils/messages'
-import { Colors, escapeMd } from '../../api/utils'
+
+import { userJoinedQueueMessage } from '../../services/matchmaking/queue/message'
+
 export const queue_view_sig = new ViewSignature({
   name: 'Queue Message',
   custom_id_prefix: 'q',
@@ -39,14 +41,14 @@ export async function queueMessage(
   state: ViewState<typeof queue_view_sig.state_schema>,
 ): Promise<MessageData> {
   const ranking = await app.db.rankings.fetch(state.get.ranking_id())
+  const props = app.rankings.getProperties(ranking)
 
   return new MessageData({
     embeds: [
       {
         title: `${escapeMd(ranking.data.name)} Queue`,
         description:
-          `Join or leave the ${new Array(ranking.data.teams_per_match).fill(ranking.data.players_per_team).join('v')}` +
-          ` matchmaking queue for ${escapeMd(ranking.data.name)}`,
+          `Join or leave the ${props.match_type_name}` + ` matchmaking queue for ${escapeMd(ranking.data.name)}`,
         color: Colors.EmbedBackground,
       },
     ],
@@ -76,16 +78,14 @@ async function join(app: App, ctx: DeferredComponentContext<typeof queue_view_si
   const msg_id = ctx.interaction.message?.id
 
   const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
-  const { already_in, new_match } = await userJoinQueue(app, ctx, ranking)
-  await ctx.followup({
-    content: queueJoinMessage({
+  const { already_in } = await userJoinQueue(app, ctx.interaction.member.user.id, ctx.interaction.guild_id, ranking)
+  await ctx.followup(
+    userJoinedQueueMessage({
       app,
-      match: new_match,
       already_in,
       ranking,
-    }),
-    flags: D.MessageFlags.Ephemeral,
-  })
+    }).response_data,
+  )
 
   await ctx.edit((await queueMessage(app, ctx.state)).response_data, msg_id)
 }

@@ -1,10 +1,10 @@
 import { DiscordAPIError, InternalRequest, REST, RequestData, RequestMethod } from '@discordjs/rest'
+import { awaitWithTimeout, cache } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { DiscordLogger } from '../logging'
 import { DiscordAPIUtils } from './client-helpers'
 import { DiscordErrors } from './errors'
 import { DiscordCache, RESTPostAPIGuildForumThreadsResult } from './types'
-import { awaitWithTimeout, cache } from '@repo/utils'
 
 export class DiscordAPIClient extends REST {
   readonly token: string
@@ -470,8 +470,12 @@ export class DiscordAPIClient extends REST {
             method: method,
           },
           bearer_token,
-        ), 
-        () => this.logger?.log({message: `Discord request ${method} ${route} taking longer than ${timeout_s}s`, level: 'warning'}),
+        ),
+        () =>
+          this.logger?.log({
+            message: `Discord request ${method} ${route} taking longer than ${timeout_s}s`,
+            level: 'warning',
+          }),
         timeout_s * 1000,
       )
       return response

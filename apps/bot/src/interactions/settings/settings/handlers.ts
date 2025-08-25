@@ -8,13 +8,12 @@ import {
 import { intOrNull, intOrUndefined, nonNullable, strOrUndefined } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { SettingsPages } from '.'
+import { DEFAULT_PLAYERS_PER_TEAM, DEFAULT_TEAMS_PER_MATCH } from '../../../services/rankings/properties'
 import { App, syncDiscordCommands } from '../../../setup/app'
 import { RankingSettingsPages } from '../ranking-settings'
 import { rankingSettingsModal } from '../ranking-settings/modals'
 import { ranking_settings_view_sig } from '../ranking-settings/view'
 import { settings_view_sig } from './view'
-import { getOrAddGuild, syncGuildAdminRole } from '../../../api/guilds/manage'
-import { createNewRankingInGuild } from '../../../api/rankings/manage'
 
 /**
  * A ranking is selected throuh the select menu
@@ -55,9 +54,8 @@ export async function syncAdminRole(
   ctx: ComponentContext<typeof settings_view_sig>,
 ): Promise<ChatInteractionResponse> {
   return ctx.defer(async ctx => {
-    const guild = await getOrAddGuild(app, ctx.interaction.guild_id)
-    await syncGuildAdminRole(app, guild)
-
+    const guild = await app.guilds.get(app, ctx.interaction.guild_id)
+    await app.guilds.syncAdminRole(app, guild)
     await ctx.edit(await SettingsPages.main(app, ctx))
   })
 }
@@ -77,8 +75,8 @@ export function sendCreateRankingModal(
       },
       team_size: app.config.features.AllowNon1v1Rankings
         ? {
-            players_per_team: {},
-            teams_per_match: {},
+            players_per_team: { ph: DEFAULT_PLAYERS_PER_TEAM },
+            teams_per_match: { ph: DEFAULT_TEAMS_PER_MATCH },
           }
         : undefined,
     })
@@ -103,7 +101,7 @@ export async function onCreateRankingModalSubmit(
     async ctx => {
       const modal_input = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
 
-      const { ranking } = await createNewRankingInGuild(app, ctx.interaction, ctx.interaction.guild_id, {
+      const { ranking } = await app.rankings.createInGuild(app, ctx.interaction, ctx.interaction.guild_id, {
         name: nonNullable(strOrUndefined(modal_input['name']?.value), 'input name'),
         teams_per_match: intOrUndefined(modal_input['teams_per_match']?.value),
         players_per_team: intOrUndefined(modal_input['players_per_team']?.value),

@@ -1,9 +1,9 @@
 import { Context } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { HelpPages } from '.'
+import { inviteUrl } from '../../services/utils/strings'
 import { App } from '../../setup/app'
 import { help_view_sig } from './view'
-import { inviteUrl } from '../../api/utils'
 
 // Nav buttons
 export async function helpComponents(

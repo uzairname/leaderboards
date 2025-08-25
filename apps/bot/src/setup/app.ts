@@ -4,23 +4,36 @@ import { DiscordAPIClient, DiscordLogger, InteractionHandler, putDiscordCommands
 import { Env } from '../Env'
 import { onViewError } from '../errors/on-view-error'
 // import * as sentry from '@sentry/cloudflare'
+import * as views from '../interactions/all-interaction-handlers'
 import { Logger } from '../logging/logger'
 import { AppDbLogger, AppDiscordLogger } from '../logging/wrappers'
-import * as views from '../interactions/all-interaction-handlers'
+import { GuildsService } from '../services/guilds/guilds-service'
+import { MatchesService } from '../services/matches/matches-service'
+import { ScoringService } from '../services/matches/scoring/scoring-service'
+import { PlayersService } from '../services/players/players-service'
+import { LeaderboardService } from '../services/rankings/leaderboard-service'
+import { RankingsService } from '../services/rankings/rankings-service'
 import { Config } from './config'
-import { AppEvents, getAppEvents } from './events'
+
+export interface AppServices {
+  guilds: GuildsService
+  rankings: RankingsService
+  players: PlayersService
+  matches: MatchesService
+  scoring: ScoringService
+  lbs: LeaderboardService
+}
 
 /**
  * Common dependencies used throughout the application.
  */
-export interface App {
-  env: Env
-  config: Config
-  logger: Logger
-  db: DbClient
-  discord: DiscordAPIClient
-  interactionHandler: InteractionHandler<App>
-  events?: AppEvents
+export interface App extends AppServices {
+  readonly env: Env
+  readonly config: Config
+  readonly logger: Logger
+  readonly db: DbClient
+  readonly discord: DiscordAPIClient
+  readonly interactionHandler: InteractionHandler<App>
 }
 
 /**
@@ -49,6 +62,15 @@ export function initApp(env: Env, logger: Logger): App {
     logger: discordLogger,
   })
 
+  const services: AppServices = {
+    guilds: new GuildsService({ logger }),
+    rankings: new RankingsService({ logger }),
+    players: new PlayersService({ logger }),
+    matches: new MatchesService({ logger }),
+    scoring: new ScoringService({ logger }),
+    lbs: new LeaderboardService({ logger }),
+  }
+
   const app: App = {
     env,
     config,
@@ -56,13 +78,21 @@ export function initApp(env: Env, logger: Logger): App {
     logger,
     db,
     discord,
+    ...services,
   }
 
-  const eventListeners: ((events: AppEvents) => void)[] = []
-  const events = getAppEvents(app, eventListeners)
-  app.events = events
-
   return app
+}
+
+/**
+ * Offloads the execution of a callback to a new app instance, allowing for
+ * isolated non-blocking operations
+ */
+export function offload(app: App, callback: (app: App) => Promise<void>, name?: string) {
+  return app.logger.offload(async ({ logger }) => {
+    const new_app: App = initApp(app.config.env, logger)
+    await callback(new_app)
+  }, name)
 }
 
 /**
@@ -84,11 +114,21 @@ export async function syncDiscordCommands(app: App, guild?: PartialGuild) {
  * Responds to a Discord interaction request
  */
 export function handleInteractionRequest(app: App, request: Request): Promise<Response> {
+  function offload(
+    callback: (ctx: { setException: (e: unknown) => void }, app: App) => Promise<void>,
+    setException: any,
+  ) {
+    return app.logger.offload(async ({ logger }) => {
+      const new_app: App = initApp(app.config.env, logger)
+      await callback({ setException }, new_app)
+    }, setException)
+  }
+
   return app.interactionHandler.respond({
     bot: app.discord,
     request,
     onError: onViewError(app),
-    offload: app.logger.offload.bind(app.logger),
+    offload,
     direct_response: app.config.DirectResponse,
     arg: app,
   })

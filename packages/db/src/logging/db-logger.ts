@@ -4,7 +4,7 @@
 export abstract class DbLogger {
   request_data: Record<string, unknown> = {}
 
-  abstract log(options: { message?: string, data?: Record<string, unknown>; category?: string; type?: string }): void
+  abstract log(options: { message?: string; data?: Record<string, unknown>; category?: string; type?: string }): void
 
   abstract error(...message: unknown[]): void
 

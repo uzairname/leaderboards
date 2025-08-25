@@ -1,6 +1,5 @@
 import { CommandSignature, getOptions, getSubcommandOption } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { rescoreMatches } from '../../../api/matches/scoring/score-matches'
 import { App } from '../../../setup/app'
 import { guildRankingsOption, withSelectedRanking } from '../../utils'
 
@@ -68,7 +67,7 @@ export const dev_cmd = dev_cmd_sig.set<App>({
           },
           async ranking => {
             return ctx.defer(async ctx => {
-              await rescoreMatches(app, ranking, { reset_rating_to_initial: true, ctx })
+              await app.scoring.rescoreMatches(app, ranking, { reset_rating_to_initial: true, ctx })
             })
           },
         )

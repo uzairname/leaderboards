@@ -3,13 +3,14 @@ import type { AnyAppCommandType, CommandContext, CommandInteractionResponse, Com
 import * as sentry from '@sentry/cloudflare'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../errors/user-errors'
-import { SettingsPages } from '../settings/settings'
 import type { App } from '../../setup/app'
+import { SettingsPages } from '../settings/settings'
 
 export const create_ranking_choice_value = 'create'
 
 /**
- * Returns a slash command option, wich thoices for each ranking in the guild.
+ * Returns a slash command option, with choices for each ranking in the guild.
+ * If there are no rankings in the guild, returns an empty array.
  */
 export async function guildRankingsOption(
   app: App,
@@ -51,7 +52,7 @@ export async function guildRankingsOption(
 export async function withOptionalSelectedRanking(
   options: {
     app: App
-    ctx: CommandContext<CommandSignature<any, AnyAppCommandType, true>>
+    ctx: CommandContext<CommandSignature<any, AnyAppCommandType, true>, App>
     ranking_id: number | undefined
     available_guild_rankings?: {
       ranking: PartialRanking
@@ -67,7 +68,7 @@ export async function withOptionalSelectedRanking(
 export async function withSelectedRanking(
   options: {
     app: App
-    ctx: CommandContext<CommandSignature<any, AnyAppCommandType, true>>
+    ctx: CommandContext<CommandSignature<any, AnyAppCommandType, true>, App>
     ranking_id: number | undefined
     available_guild_rankings?: {
       ranking: PartialRanking
@@ -99,7 +100,7 @@ export async function withSelectedRanking(
 async function _withSelectedRanking(
   options: {
     app: App
-    ctx: CommandContext<CommandSignature<any, AnyAppCommandType, true>>
+    ctx: CommandContext<CommandSignature<any, AnyAppCommandType, true>, App>
     ranking_id: number | undefined
     available_guild_rankings?: {
       ranking: PartialRanking

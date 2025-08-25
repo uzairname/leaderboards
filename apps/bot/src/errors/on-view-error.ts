@@ -1,11 +1,12 @@
 import { DiscordAPIError, RateLimitError } from '@discordjs/rest'
+import { DbErrors } from '@repo/db'
 import { DiscordErrors, DiscordUserError, InteractionError, InteractionErrors } from '@repo/discord'
+import { truncateString } from '@repo/utils'
 import * as sentry from '@sentry/cloudflare'
 import * as D from 'discord-api-types/v10'
-import { DbErrors } from '../../../../packages/db/src/errors'
+import { Colors } from '../services/utils/strings'
 import { App } from '../setup/app'
 import { UserError, UserErrors } from './user-errors'
-import { Colors } from '../api/utils'
 
 export function onViewError(app: App) {
   return function (
@@ -88,15 +89,18 @@ If this persists, please report it in the [support server](${app.config.SupportS
 \`\`\`json
 ${
   e instanceof Error
-    ? JSON.stringify(
-        {
-          name: e.name,
-          message: e.message,
-          stack: e.stack?.split('\n') ?? undefined,
-          error: e,
-        },
-        null,
-        2,
+    ? truncateString(
+        JSON.stringify(
+          {
+            name: e.name,
+            message: e.message,
+            stack: e.stack?.split('\n') ?? undefined,
+            error: e,
+          },
+          null,
+          2,
+        ),
+        2048,
       )
     : e
 }

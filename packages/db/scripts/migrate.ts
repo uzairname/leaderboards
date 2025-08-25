@@ -1,13 +1,14 @@
 import { isInt, nonNullable } from '@repo/utils'
 import { config } from 'dotenv'
-import { sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { NeonDatabase } from 'drizzle-orm/neon-serverless'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import postgres from 'postgres'
 import { DbClient, getNeonDrizzleWsClient } from '../src'
 import { matches_trigger_query } from '../src/migration-utils/queries'
-import { RatingStrategy } from '../src/models'
+import { MatchOutcome, MatchUpdate, OldVote, OutcomeType, RatingStrategy, WLDVote } from '../src/models'
+import { Matches } from '../src/schema'
 
 // Run this script from the directory database/
 
@@ -115,5 +116,61 @@ custom_migrations.push(async (tx, db) => {
     }
     delete rating_settings.scoring_method
     await db.rankings.get(ranking.id as number).update({ rating_settings })
+  }
+})
+
+custom_migrations.push(async (tx, db) => {
+  // Convert old match results to new type
+  // Convert old voting type to new type
+  const matches = await db.drizzle
+    .select({
+      id: Matches.id,
+      outcome: Matches.outcome,
+      outcome_old: Matches.outcome_old,
+      team_votes: Matches.team_votes,
+      team_votes_old: Matches.team_votes_old,
+    })
+    .from(Matches)
+  console.log(matches.length)
+
+  for (const match of matches) {
+    const update: MatchUpdate = {}
+
+    if (match.outcome === null && match.outcome_old !== null) {
+      const new_outcome: MatchOutcome = {
+        type: OutcomeType.WinLossDraw,
+        team_scores: match.outcome_old,
+      }
+      console.log(`Updating match ${match.id} outcome from ${match.outcome_old} to ${JSON.stringify(new_outcome)}`)
+      update.outcome = new_outcome
+    }
+
+    if (match.team_votes === null && match.team_votes_old !== null) {
+      const new_votes = match.team_votes_old.map((vote, team_num) => {
+        return Object.fromEntries([
+          [
+            team_num,
+            {
+              cancel: vote === OldVote.Cancel,
+              own_wld:
+                vote === OldVote.Draw
+                  ? WLDVote.Draw
+                  : vote === OldVote.Win
+                    ? WLDVote.Win
+                    : vote === OldVote.Loss
+                      ? WLDVote.Loss
+                      : undefined,
+              team_scores: undefined,
+            },
+          ],
+        ])
+      })
+
+      update.team_votes = new_votes
+      console.log(`Updating match ${match.id} team_votes from ${match.team_votes_old} to ${JSON.stringify(new_votes)}`)
+    }
+
+    if (Object.keys(update).length === 0) continue
+    await db.drizzle.update(Matches).set(update).where(eq(Matches.id, match.id)).execute()
   }
 })

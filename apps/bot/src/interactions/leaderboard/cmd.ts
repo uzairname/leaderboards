@@ -2,9 +2,9 @@ import { PartialGuild } from '@repo/db/models'
 import { CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../setup/app'
+import { guildRankingsOption, withSelectedRanking } from '../utils'
 import { leaderboardPage } from './pages'
 import { leaderboard_view_sig } from './view'
-import { guildRankingsOption, withSelectedRanking } from '../utils'
 
 const leaderboard_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,

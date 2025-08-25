@@ -1,7 +1,7 @@
-import { sequential } from '@repo/utils'
+import { snowflakeToDate } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { json } from 'itty-router/json'
-import { StringDataSchema } from '../../../../utils/src/StringData'
+import { StateSchema } from '../../../../utils/src/StringData'
 import { DiscordLogger } from '../../logging'
 import { DiscordAPIClient, MessageData } from '../../rest'
 import { checkGuildMessageComponentInteraction, isCommandInteraction } from '../checks'
@@ -15,17 +15,13 @@ import {
   CommandInteractionResponse,
   CommandTypeToInteraction,
   ComponentInteraction,
+  DeferredCommandContext,
+  DeferredComponentContext,
   InteractionResponse,
   type InteractionErrorCallback,
-  type OffloadCallback,
+  type Offloader,
 } from '../types'
-import {
-  CommandHandler,
-  ViewHandler,
-  deferCommandResponse,
-  deferComponentResponse,
-  validateInteraction,
-} from './handlers'
+import { CommandHandler, ViewHandler, validateInteraction } from './handlers'
 import { logInteraction } from './log-interaction'
 import { ViewState, ViewStateFactory } from './state'
 import { verify } from './verify'
@@ -88,7 +84,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     bot: DiscordAPIClient
     request: Request
     onError: InteractionErrorCallback
-    offload: OffloadCallback
+    offload: Offloader<Arg>
     direct_response: boolean
     arg: Arg
   }): Promise<Response> {
@@ -99,16 +95,9 @@ export class InteractionHandler<Arg extends unknown = undefined> {
 
     const interaction = (await request.json()) as D.APIInteraction
 
-    this.logger?.log({ message: 'Received interaction' })
-
+    const time_created = snowflakeToDate(BigInt(interaction.id)).getTime()
     const start = performance.now()
-
-    // return json({
-    //   type: D.InteractionResponseType.ChannelMessageWithSource,
-    //   data: {
-    //     content: 'a'
-    //   }
-    // })
+    this.logger?.log({ message: `Received interaction after ${start - time_created}ms` })
 
     const response = await this.getResponse({ interaction, bot, onError, offload, arg })
       .then(res => {
@@ -142,7 +131,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     interaction: D.APIInteraction
     bot: DiscordAPIClient
     onError: InteractionErrorCallback
-    offload: OffloadCallback
+    offload: Offloader<Arg>
     arg: Arg
   }): Promise<D.APIInteractionResponse> {
     if (interaction.type === D.InteractionType.Ping) return { type: D.InteractionResponseType.Pong }
@@ -189,7 +178,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     })
   }
 
-  fromCustomId(custom_id: string): { handler: AnyViewHandler; state: ViewState<StringDataSchema> } {
+  fromCustomId(custom_id: string): { handler: AnyViewHandler; state: ViewState<StateSchema> } {
     try {
       const { prefix, encoded_data } = ViewStateFactory.splitCustomId(custom_id)
       const handler = this.findViewHandler(prefix)
@@ -250,7 +239,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     interaction: CommandTypeToInteraction<Sig['config']['type']>
     discord: DiscordAPIClient
     onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource
-    offload: OffloadCallback
+    offload: Offloader<Arg>
     logger?: DiscordLogger
   }): Promise<CommandInteractionResponse> {
     logger?.setRequestName(`${handler.signature.config.name} Command`)
@@ -264,7 +253,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
       {
         interaction: valid_interaction,
         defer: (callback, response) => {
-          deferCommandResponse<Sig>(callback, valid_interaction, discord, onError, offload)
+          this.deferCommandResponse<Sig>(callback, valid_interaction, discord, onError, offload)
           const default_response = {
             type: D.InteractionResponseType.DeferredChannelMessageWithSource,
             data: { flags: D.MessageFlags.Ephemeral },
@@ -310,10 +299,10 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     arg: Arg
     handler: ViewHandler<AnyViewSignature, Arg>
     interaction: ComponentInteraction
-    state: ViewState<StringDataSchema>
+    state: ViewState<StateSchema>
     discord: DiscordAPIClient
     onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource
-    offload: OffloadCallback
+    offload: Offloader<Arg>
     logger?: DiscordLogger
   }): Promise<ChatInteractionResponse> {
     logger?.setRequestName(`${handler.signature.name} Component`)
@@ -329,7 +318,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
         interaction: valid_interaction,
         state,
         defer: (callback, response) => {
-          deferComponentResponse(callback, interaction, state, discord, onError, offload)
+          this.deferComponentResponse(callback, interaction, state, discord, onError, offload)
           return response ?? { type: D.InteractionResponseType.DeferredMessageUpdate }
         },
         send: async data => {
@@ -341,6 +330,98 @@ export class InteractionHandler<Arg extends unknown = undefined> {
         },
       },
       arg,
+    )
+  }
+
+  deferCommandResponse<Sig extends AnyCommandSignature>(
+    callback: (ctx: DeferredCommandContext<Sig>, arg: Arg) => Promise<void>,
+    interaction: Sig['config']['guild_only'] extends true
+      ? D.APIGuildInteractionWrapper<CommandTypeToInteraction<Sig['config']['type']>>
+      : CommandTypeToInteraction<Sig['config']['type']>,
+    discord: DiscordAPIClient,
+    onError: InteractionErrorCallback,
+    offload: Offloader<Arg>,
+  ): void {
+    offload(
+      async (ctx, arg) =>
+        await callback(
+          {
+            interaction,
+            edit: async (data: D.RESTPatchAPIWebhookWithTokenMessageJSONBody, message_id?: string) =>
+              discord.editInteractionResponse(
+                interaction.token,
+                {
+                  content: null,
+                  embeds: null,
+                  components: null,
+                  ...data,
+                },
+                message_id,
+              ),
+            send: async data => {
+              return await discord.createMessage(
+                interaction.channel!.id,
+                data instanceof MessageData ? data.post_data : data,
+              )
+            },
+            delete: async (message_id?: string) => {
+              await discord.deleteInteractionResponse(interaction.token, message_id)
+            },
+            followup: async (response_data: D.APIInteractionResponseCallbackData) => {
+              return discord.createFollowupMessage(interaction.token, response_data)
+            },
+          },
+          arg,
+        ).catch(async e => {
+          await discord.createFollowupMessage(interaction.token, onError(e, ctx.setException).data)
+        }),
+      `deferred`,
+    )
+  }
+
+  deferComponentResponse(
+    callback: (ctx: DeferredComponentContext<AnyViewSignature>, arg: Arg) => Promise<void>,
+    interaction: ComponentInteraction,
+    state: ViewState<StateSchema>,
+    discord: DiscordAPIClient,
+    onError: InteractionErrorCallback,
+    offload: Offloader<Arg>,
+  ): void {
+    offload(
+      async (ctx, arg) =>
+        await callback(
+          {
+            interaction,
+            state,
+            followup: async (response_data: D.APIInteractionResponseCallbackData) => {
+              return discord.createFollowupMessage(interaction.token, response_data)
+            },
+            edit: async (data: D.RESTPatchAPIWebhookWithTokenMessageJSONBody, message_id?: string) =>
+              discord.editInteractionResponse(
+                interaction.token,
+                {
+                  content: null,
+                  embeds: null,
+                  components: null,
+                  ...data,
+                },
+                message_id,
+              ),
+            delete: async (message_id?: string) => {
+              await discord.deleteInteractionResponse(interaction.token, message_id)
+            },
+            send: async data => {
+              return await discord.createMessage(
+                interaction.channel!.id,
+                data instanceof MessageData ? data.post_data : data,
+              )
+            },
+          },
+          arg,
+        ).catch(async e => {
+          await discord.createFollowupMessage(interaction.token, onError(e, ctx.setException).data)
+        }),
+      `deferred`,
     )
   }
 }

@@ -2,10 +2,9 @@ import { messageLink } from '@discordjs/builders'
 import { CommandSignature, getOptions } from '@repo/discord'
 import { intOrNull, snowflakeToDate } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
+import { OutcomeType } from '../../../../../packages/db/src/models/matches'
 import { App } from '../../setup/app'
 import { guildRankingsOption, withSelectedRanking } from '../utils'
-import { recordAndScoreMatch } from '../../api/matches/management/create-matches'
-import { getOrCreatePlayer } from '../../api/players/manage'
 
 export const record_match_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
@@ -106,7 +105,7 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
           // If this is a 1v1 ranking, check if the winner and loser were specified
           if (ranking.data.players_per_team == 1 && ranking.data.teams_per_match == 2) {
             if (options.winner && options.loser) {
-              const winner = await getOrCreatePlayer({
+              const winner = await app.players.getOrCreatePlayer({
                 app,
                 auth: ctx.interaction,
                 user: options.winner.user,
@@ -118,7 +117,7 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
                   : undefined,
                 ranking,
               })
-              const loser = await getOrCreatePlayer({
+              const loser = await app.players.getOrCreatePlayer({
                 app,
                 auth: ctx.interaction,
                 user: options.loser.user,
@@ -131,11 +130,11 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
                 ranking,
               })
 
-              const match = await recordAndScoreMatch(
+              const match = await app.matches.createFinished(
                 app,
                 ranking,
                 [[winner], [loser]].map(team => team),
-                [1, 0],
+                { type: OutcomeType.WinLossDraw, team_scores: [1, 0] },
                 undefined,
                 selected_time_finished_date,
               )
@@ -147,9 +146,9 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
                   `Match #${match.data.number} in ${ranking.data.name} recorded.` +
                   (match_summary_message
                     ? ` ${messageLink(
-                        match_summary_message.guild_id,
                         match_summary_message.channel_id,
                         match_summary_message.message_id,
+                        match_summary_message.guild_id,
                       )}`
                     : ``),
                 flags: D.MessageFlags.Ephemeral,

@@ -89,7 +89,7 @@ export const settings_cmd = settings_cmd_sig.set<App>({
  */
 async function sendSettingsPage(
   app: App,
-  ctx: CommandContext<typeof settings_cmd_sig>,
+  ctx: CommandContext<typeof settings_cmd_sig, App>,
   ranking: PartialRanking,
   setting?: string,
 ): Promise<CommandInteractionResponse> {
@@ -118,7 +118,7 @@ async function sendSettingsPage(
     case 'rename':
       return await RankingSettingsHandlers.sendRenameModal(app, new_ctx)
     case 'rating':
-      return ctx.defer(async ctx => void (await ctx.edit(await RankingSettingsPages.ratingSettings(app, new_ctx))))
+      return ctx.defer(async ctx => void (await ctx.edit(await RankingSettingsPages.scoringSettings(app, new_ctx))))
     case 'delete':
       return ctx.defer(async ctx => void (await ctx.edit(await RankingSettingsPages.deleteConfirm(app, new_ctx))))
     case 'rank-roles':

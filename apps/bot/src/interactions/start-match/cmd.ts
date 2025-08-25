@@ -1,10 +1,8 @@
 import { CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../errors/user-errors'
+import { ensureGuildAdminPerms } from '../../services/perms'
 import { App } from '../../setup/app'
-import { ensureGuildAdminPerms } from '../../api/perms'
-import { start1v1SeriesThread } from '../../api/matches/ongoing-match/manage-ongoing-match'
-import { getOrCreatePlayerByUser } from '../../api/players/manage'
 import { guildRankingsOption, withSelectedRanking } from '../utils'
 
 export const start_match_cmd_sig = new CommandSignature({
@@ -84,7 +82,7 @@ export const start_match_cmd = start_match_cmd_sig.set<App>({
 
               const team_players = await Promise.all(
                 [[p1_id], [p2_id]].map(async team => {
-                  return Promise.all(team.map(id => getOrCreatePlayerByUser(app, id, ranking)))
+                  return Promise.all(team.map(id => app.players.getOrCreatePlayerByUser(app, id, ranking)))
                 }),
               )
               const { guild_ranking } = await app.db.guild_rankings.fetch({
@@ -92,7 +90,7 @@ export const start_match_cmd = start_match_cmd_sig.set<App>({
                 ranking_id: ranking.data.id,
               })
 
-              const { thread } = await start1v1SeriesThread(app, guild_ranking, team_players)
+              const { thread } = await app.matches.ongoing.startWithThread(app, guild_ranking, team_players)
 
               await ctx.edit({
                 content: `Match started. A thread has been created: <#${thread.id}>`,

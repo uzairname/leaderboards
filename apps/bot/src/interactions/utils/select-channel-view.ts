@@ -17,7 +17,7 @@ export const select_channel_view_sig = new ViewSignature({
     origin_cid: field.String(),
     channel_id_field: field.String(),
 
-    text_only: field.Boolean(),
+    text_only: field.Bool(),
 
     selected_channel_id: field.String(),
     callback: field.Choice({

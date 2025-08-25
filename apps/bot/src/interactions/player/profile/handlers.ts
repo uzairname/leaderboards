@@ -2,8 +2,8 @@ import { ChatInteractionResponse, ComponentContext, Context } from '@repo/discor
 import { intOrNull } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { ProfilePages } from '.'
-import { profile_view_sig } from './view'
 import { App } from '../../../setup/app'
+import { profile_view_sig } from './view'
 
 export async function main(app: App, ctx: Context<typeof profile_view_sig>): Promise<ChatInteractionResponse> {
   return {

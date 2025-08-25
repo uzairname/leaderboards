@@ -1,11 +1,11 @@
-import type { StringDataSchema } from '@repo/utils'
+import type { StateSchema } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { ViewState, ViewStateFactory } from '.'
 import { InteractionError } from '../errors'
 import { AnyAppCommandType } from '../types'
 import { CommandHandler, ViewHandler } from './handlers'
 
-export type ViewSignatureConfig<TSchema extends StringDataSchema, Guild extends boolean> = {
+export type ViewSignatureConfig<TSchema extends StateSchema, Guild extends boolean> = {
   name?: string
   state_schema: TSchema
   custom_id_prefix: string
@@ -13,7 +13,7 @@ export type ViewSignatureConfig<TSchema extends StringDataSchema, Guild extends 
   experimental?: boolean
 }
 
-export class ViewSignature<TSchema extends StringDataSchema = {}, Guild extends boolean = true> {
+export class ViewSignature<TSchema extends StateSchema = {}, Guild extends boolean = true> {
   name: string
   state_schema: TSchema
   guild_only: Guild
@@ -40,7 +40,7 @@ export class ViewSignature<TSchema extends StringDataSchema = {}, Guild extends 
 }
 
 export type CommandSignatureConfig<
-  TSchema extends StringDataSchema,
+  TSchema extends StateSchema,
   CommandType extends AnyAppCommandType,
   Guild extends boolean,
 > = (CommandType extends D.ApplicationCommandType.ChatInput
@@ -52,7 +52,7 @@ export type CommandSignatureConfig<
 }
 
 export class CommandSignature<
-  TSchema extends StringDataSchema,
+  TSchema extends StateSchema,
   CommandType extends AnyAppCommandType,
   Guild extends boolean = true,
 > {

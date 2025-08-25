@@ -1,10 +1,9 @@
 import { RESTPostOAuth2AccessTokenResult } from 'discord-api-types/v10'
 import { pgTable, serial, text, integer, timestamp, boolean, real, primaryKey, index, jsonb, uniqueIndex } from 'drizzle-orm/pg-core'
-import { MatchStatus } from './models/matches'
-import { Vote } from './models/matches'
+import { MatchOutcome, MatchStatus, OldVote, Vote, TeamVotes } from './models/matches'
 import { MatchMetadata } from './models/matches'
 import { PlayerFlags, PlayerStats } from './models/players'
-import { Rating, MatchmakingSettings, MatchSettings, RatingSettings } from './models/rankings'
+import { Rating, MatchmakingSettings, MatchSettings, RatingParameters, SharigSettingsSchema, SharingSettings } from './models/rankings'
 import { GuildRankingDisplaySettings, RankRoles } from './models/guild-rankings'
 
 export const Settings = pgTable('Settings', {
@@ -40,6 +39,7 @@ export const Guilds = pgTable('Guilds', {
   time_created: timestamp('time_created').notNull().defaultNow(),
   admin_role_id: text('admin_role_id'),
   category_id: text('category_id'),
+  admin_channel_id: text('admin_channel_id'),
   matches_channel_id: text('matches_channel_id'),
   epmemeral_commands: boolean('ephemeral_commands').notNull().default(false),
 })
@@ -51,9 +51,10 @@ export const Rankings = pgTable('Rankings', {
   time_created: timestamp('time_created').notNull().defaultNow(),
   players_per_team: integer('players_per_team').notNull(),
   teams_per_match: integer('teams_per_match').notNull(),
-  rating_settings: jsonb('rating_settings').notNull().$type<RatingSettings>(),
-  matchmaking_settings: jsonb('matchmaking_settings').notNull().$type<MatchmakingSettings>(),
+  rating_settings: jsonb('rating_parameters').notNull().$type<RatingParameters>(),
+  matchmaking_settings: jsonb('matchmaking_settings').$type<MatchmakingSettings>(),
   match_settings: jsonb('match_settings').$type<MatchSettings>(),
+  sharing_settings: jsonb('sharing_settings').$type<SharingSettings>(),
 })
 
 
@@ -65,7 +66,7 @@ export const GuildRankings = pgTable('GuildRankings', {
   leaderboard_channel_id: text('leaderboard_channel_id'),
   leaderboard_message_id: text('leaderboard_message_id'),
   display_settings: jsonb('display_settings').$type<GuildRankingDisplaySettings>(),
-  matchmaking_setings: jsonb('matchmaking_settings').$type<MatchmakingSettings>(),
+  matchmaking_settings: jsonb('matchmaking_settings').$type<MatchmakingSettings>(),
   rank_roles: jsonb('rank_roles').$type<RankRoles>(),
 },(table) => [
   primaryKey({ columns: [table.guild_id, table.ranking_id] })
@@ -115,10 +116,12 @@ export const Matches = pgTable('Matches', {
   number: integer('number'),
   time_started: timestamp('time_started'),
   time_finished: timestamp('time_finished'),
-  status: integer('status').notNull().$type<MatchStatus>(),
-  team_votes: jsonb('team_votes').$type<Vote[]>(),
   ongoing_match_channel_id: text('ongoing_match_channel_id'),
-  outcome: jsonb('outcome').$type<number[]>(),
+  status: integer('status').notNull().$type<MatchStatus>(),
+  team_votes_old: jsonb('team_votes').$type<OldVote[]>(),
+  outcome_old: jsonb('outcome').$type<number[]>(),
+  team_votes: jsonb('team_votes_new').$type<TeamVotes>(),
+  outcome: jsonb('outcome_new').$type<MatchOutcome>(),
   metadata: jsonb('metadata').$type<MatchMetadata>(),
 }, (table) => [
   index('match_ranking_id_index').on(table.ranking_id),

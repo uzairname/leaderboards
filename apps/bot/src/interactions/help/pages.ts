@@ -1,5 +1,7 @@
 import { Context, MessageData } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
+import { Colors, breadcrumbsTitle, commandMention, dateTimestamp } from '../../services/utils/strings'
+import { App } from '../../setup/app'
 import {
   challenge_1v1_cmd,
   join_cmd,
@@ -11,13 +13,10 @@ import {
   settings_cmd,
   start_match_cmd,
 } from '../all-interaction-handlers'
-import { App } from '../../setup/app'
-import { getOrAddGuild } from '../../api/guilds/manage'
 import { helpComponents } from './components'
 import { help_view_sig } from './view'
-import { dateTimestamp, Messages, commandMention, Colors, breadcrumbsTitle } from '../../api/utils'
 
-type Page = (app: App, ctx: Context<typeof help_view_sig>) => Promise<MessageData>
+type Page = (app: App, ctx: Context<typeof help_view_sig, App>) => Promise<MessageData>
 
 export const overviewPage: Page = async (app, ctx) => {
   const last_deployed = (await app.db.settings.getOrUpdate()).data.last_updated
@@ -27,7 +26,7 @@ export const overviewPage: Page = async (app, ctx) => {
   const embed: D.APIEmbed = {
     title: '🏅 Leaderboards',
     description:
-      Messages.concise_description +
+      `This bot hosts ranked ladders for any game by tracking matches between players. It has additional features for matchmaking, analytics, moderation, and cross-server rankings.` +
       `\n\nType ${await commandMention(app, settings_cmd, ctx.interaction.guild_id)} to get started.`,
     fields: [
       {
@@ -56,7 +55,7 @@ export const overviewPage: Page = async (app, ctx) => {
 }
 
 export const adminGuidePage: Page = async (app, ctx) => {
-  const guild = ctx.interaction.guild_id ? await getOrAddGuild(app, ctx.interaction.guild_id) : undefined
+  const guild = ctx.interaction.guild_id ? await app.guilds.get(app, ctx.interaction.guild_id) : undefined
   const guild_id = guild?.data.id
 
   const embed = {
@@ -105,7 +104,7 @@ export const adminGuidePage: Page = async (app, ctx) => {
 }
 
 export const playerGuidePage: Page = async (app, ctx) => {
-  const guild = ctx.interaction.guild_id ? await getOrAddGuild(app, ctx.interaction.guild_id) : undefined
+  const guild = ctx.interaction.guild_id ? await app.guilds.get(app, ctx.interaction.guild_id) : undefined
   const guild_id = guild?.data.id
 
   const embed = {
@@ -137,7 +136,7 @@ export const playerGuidePage: Page = async (app, ctx) => {
 }
 
 export const ratingsPage: Page = async (app, ctx) => {
-  const guild = ctx.interaction.guild_id ? await getOrAddGuild(app, ctx.interaction.guild_id) : undefined
+  const guild = ctx.interaction.guild_id ? await app.guilds.get(app, ctx.interaction.guild_id) : undefined
 
   const guild_id = guild?.data.id
 

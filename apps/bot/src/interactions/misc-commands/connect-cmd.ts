@@ -2,9 +2,8 @@ import { CommandSignature, getOptions } from '@repo/discord'
 import { nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { getUserAccessToken } from '../../routers/oauth'
+import { updateUserRoleConnectionData } from '../../services/role-connections/role-connections'
 import { App } from '../../setup/app'
-import { getOrCreatePlayerByUser } from '../../api/players/manage'
-import { updateUserRoleConnectionData } from '../../api/role-connections/role-connections'
 
 export const connect_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
@@ -59,7 +58,7 @@ export const connect_cmd = connect_cmd_sig.set<App>({
         }))
       }
 
-      const player = await getOrCreatePlayerByUser(app, user_id, app.db.rankings.get(options.ranking))
+      const player = await app.players.getOrCreatePlayerByUser(app, user_id, app.db.rankings.get(options.ranking))
 
       const result = await updateUserRoleConnectionData(app, access_token, player)
 

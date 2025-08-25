@@ -2,16 +2,14 @@ import { Match, MatchStatus } from '@repo/db/models'
 import { StateContext, ViewSignature } from '@repo/discord'
 import { field, sortArraysByFirst } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
+import { Colors, emojis, escapeMd, relativeTimestamp, space } from '../../services/utils/strings'
 import { App } from '../../setup/app'
-import { matchPlayersDisplayStats, mentionOrName } from '../../api/players/properties'
-import { getMatchWinners } from '../../api/matches/management/properties'
-import { Colors, emojis, escapeMd, relativeTimestamp, space } from '../../api/utils'
 
 export const matches_view_sig = new ViewSignature({
   custom_id_prefix: 'mh',
   name: 'match history',
   state_schema: {
-    message_sent: field.Boolean(),
+    message_sent: field.Bool(),
     match_id: field.Int(),
     guild_id: field.String(),
     ranking_ids: field.Array(field.Int()),
@@ -99,10 +97,10 @@ export async function matchesPage(
 export async function matchSummaryEmbed(app: App, match: Match, {} = {}): Promise<D.APIEmbed> {
   const ranking = await match.ranking.fetch()
 
-  const team_player_stats = await matchPlayersDisplayStats(app, match)
+  const team_player_stats = await app.matches.playerDisplayStats(app, match)
 
   const embed: D.APIEmbed = {
-    title: `${escapeMd(ranking.data.name)} Match`,
+    title: `${escapeMd(ranking.data.name)} Match #${match.data.number}`,
     color: {
       [MatchStatus.Finished]: Colors.Primary,
       [MatchStatus.Ongoing]: Colors.Pending,
@@ -110,7 +108,7 @@ export async function matchSummaryEmbed(app: App, match: Match, {} = {}): Promis
     }[match.data.status],
   }
 
-  const { winning_team_indices, is_draw } = getMatchWinners(match)
+  const { winning_team_indices, is_draw } = app.matches.getProperties(match)
 
   let description: string | undefined = undefined
 
@@ -133,24 +131,13 @@ export async function matchSummaryEmbed(app: App, match: Match, {} = {}): Promis
         ? emojis.green_triangle
         : emojis.red_triangle
 
-    // const name_description = (() => {
-    //   if (winning_team_indices && !is_draw) {
-    //     return (
-    //       (single_player_teams ? `` : emoji) +
-    //       (winning_team_indices.includes(team_num) ? `Winner` : `Loser`)
-    //     )
-    //   } else {
-    //     return `${team.length > 1 ? `Team` : `Player`} ${team_num + 1}`
-    //   }
-    // })()
-
     return {
       name: space,
       value: team
         .map(p => {
           if (undefined === p.after) {
             const provisional_text = p.before.is_provisional ? `?` : ``
-            return mentionOrName(p.player) + `\n` + `**${p.before.points.toFixed(0)}${provisional_text}**`
+            return app.players.mentionOrName(p.player) + `\n` + `**${p.before.points.toFixed(0)}${provisional_text}**`
           } else {
             const provisional_text = p.after.is_provisional ? `?` : ``
 
@@ -159,7 +146,7 @@ export async function matchSummaryEmbed(app: App, match: Match, {} = {}): Promis
             const rating_diff_text = `*(${(parseInt(diff.toFixed(0)) > 0 ? '+' : '') + diff.toFixed(0)})*`
 
             return (
-              `${mentionOrName(p.player)}` +
+              `${app.players.mentionOrName(p.player)}` +
               `\n` +
               (single_player_teams ? emoji : ``) +
               `**${p.after.points.toFixed(0)}${provisional_text}** ${rating_diff_text}`
@@ -173,7 +160,7 @@ export async function matchSummaryEmbed(app: App, match: Match, {} = {}): Promis
 
   const sorted_fields = (() => {
     if (match.data.outcome) {
-      const [_, sorted] = sortArraysByFirst(match.data.outcome, fields) // Sort by outcome, so that the winning team is first
+      const [_, sorted] = sortArraysByFirst(match.data.outcome.team_scores, fields) // Sort by outcome, so that the winning team with highest score is first
       return sorted.reverse()
     } else {
       return fields

@@ -12,7 +12,7 @@ export class AppDbLogger extends DbLogger {
     super()
   }
 
-  log(options: { message?: string, data?: Record<string, unknown>; category?: string; type?: string }) {
+  log(options: { message?: string; data?: Record<string, unknown>; category?: string; type?: string }) {
     const { message, data, category, type } = options
     this.logger.log({ message, data, category, type })
   }
@@ -27,9 +27,12 @@ export class AppDbLogger extends DbLogger {
 
   logQuery(query: string, params?: unknown[], is_readonly?: boolean): void {
     if (is_readonly) {
-      this.logger.request_data['queries-readonly'] = ((this.logger.request_data['queries-readonly'] as number) || 0) + 1
+      this.logger.updateRequestData(
+        'queries-readonly',
+        ((this.logger.request_data['queries-readonly'] as number) || 0) + 1,
+      )
     } else {
-      this.logger.request_data['queries'] = ((this.logger.request_data['queries'] as number) || 0) + 1
+      this.logger.updateRequestData('queries', ((this.logger.request_data['queries'] as number) || 0) + 1)
     }
 
     this.logger.log({
@@ -97,12 +100,16 @@ export class AppDiscordLogger extends DiscordLogger {
         error: truncateString(JSON.stringify(error) ?? '', 500),
         time: `${timeMs} ms`,
       },
+      category: 'discord_request',
     })
-    this.logger.request_data['discord_requests'] = ((this.logger.request_data['discord_requests'] as number) || 0) + 1
+    this.logger.updateRequestData(
+      'discord_requests',
+      ((this.logger.request_data['discord_requests'] as number) || 0) + 1,
+    )
   }
 
   setRequestName(name: string): void {
-    this.logger.request_name = name
+    this.logger.execution_name = name
   }
 
   setUser({ id, username, guild_id }: { id: string; username: string; guild_id?: string }): void {

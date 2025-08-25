@@ -54,6 +54,17 @@ export function maxIndex(arr: number[]): number[] {
 }
 
 /**
+ * Determines whether two arrays are equal in terms of length and content.
+ */
+export function arraysEqual<T>(a: T[], b: T[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
+}
+
+/**
  * @param snowflake The Discord snowflake to convert.
  * @returns The date the snowflake was created.
  */
@@ -188,60 +199,71 @@ export function sortArraysByFirst<T, U>(arrayA: T[], arrayB: U[]): [T[], U[]] {
   return [sortedA, sortedB]
 }
 
+export async function awaitWithTimeout<T>(promise: Promise<T>, callback: () => void, timeoutMs: number): Promise<T> {
+  let timeoutId: NodeJS.Timeout | number | undefined
+  let callbackExecuted = false
 
-
-export async function awaitWithTimeout<T>(
-  promise: Promise<T>,
-  callback: () => void,
-  timeoutMs: number
-): Promise<T> {
-  let timeoutId: NodeJS.Timeout | number | undefined;
-  let callbackExecuted = false;
-  
   // Create a timeout promise that executes the callback
   const timeoutPromise = new Promise<never>((resolve, reject) => {
     timeoutId = setTimeout(() => {
       if (!callbackExecuted) {
-        callbackExecuted = true;
-        callback();
+        callbackExecuted = true
+        callback()
       }
       // Don't resolve or reject - we want to continue waiting for the original promise
-    }, timeoutMs);
-  });
-  
+    }, timeoutMs)
+  })
+
   try {
     // Race between the timeout and the original promise
-    await Promise.race([promise, timeoutPromise]);
+    await Promise.race([promise, timeoutPromise])
   } catch {
     // If promise rejects before timeout, we still want to clear timeout
     // and not execute callback
   }
-  
+
   // Clear the timeout if promise resolved/rejected before timeout
   if (timeoutId !== undefined) {
-    clearTimeout(timeoutId);
+    clearTimeout(timeoutId)
   }
-  
-  // Always return the result of the original promise
-  return promise;
-}
 
+  // Always return the result of the original promise
+  return promise
+}
 
 export const ansicolors = {
-  reset: "\x1b[0m",
-  red: "\x1b[31m",
-  green: "\x1b[32m",
-  yellow: "\x1b[33m",
-  blue: "\x1b[34m",
-  magenta: "\x1b[35m",
-  cyan: "\x1b[36m",
-  white: "\x1b[37m",
-};
-
-export function log(color: keyof typeof ansicolors, message: string) {
-  // Use colors[color] to get the ANSI code, then the message, then the reset code
-  console.log(`${ansicolors[color]}%s${ansicolors.reset}`, message);
+  reset: '\x1b[0m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  magenta: '\x1b[35m',
+  cyan: '\x1b[36m',
+  white: '\x1b[37m',
+  gray: '\x1b[90m',
 }
+
+export const ansistyles = {
+  bold: '\x1b[1m',
+  dim: '\x1b[2m',
+  italic: '\x1b[3m',
+  underline: '\x1b[4m',
+  inverse: '\x1b[7m',
+  hidden: '\x1b[8m',
+  strikethrough: '\x1b[9m',
+}
+
+export function addStyle(message: string, color: keyof typeof ansicolors, style?: keyof typeof ansistyles): string {
+  const colorCode = ansicolors[color]
+  const styleCode = style ? ansistyles[style] : ''
+  return `${styleCode}${colorCode}${message}${ansicolors.reset}`
+}
+
+export function log(message: string, color: keyof typeof ansicolors, style?: keyof typeof ansistyles) {
+  const styledMessage = addStyle(message, color, style)
+  console.log(styledMessage)
+}
+
 /**
  * Parses any hex code contained in the string and returns it as a number.
  * Returns null if no valid hex code is found.
@@ -251,10 +273,60 @@ export function parseColor(str: string): number | null {
   if (!match) return null
   if (match[1].length !== 6) return null
   return parseInt(match[1], 16)
-}export function listToString(list: string[], conjunction: 'and' | 'or' = 'and') {
+}
+export function listToString(list: string[], conjunction: 'and' | 'or' = 'and') {
   if (list.length === 0) return ''
   if (list.length === 1) return list[0]
   if (list.length === 2) return `${list[0]} ${conjunction} ${list[1]}`
   return `${list.slice(0, -1).join(', ')}, ${conjunction} ${list[list.length - 1]}`
 }
 
+export function safeStringify(value: any): string {
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return `[Obj]`
+  }
+}
+
+// export function safeStringify(value: any, visited = new WeakSet()): string {
+//   // Handle primitive types
+//   if (value === null) return 'null'
+//   if (value === undefined) return 'undefined'
+//   if (typeof value === 'bigint') return value.toString() + 'n'
+//   if (typeof value === 'function') return '[Function]'
+//   if (typeof value === 'symbol') return value.toString()
+//   if (typeof value === 'string') return JSON.stringify(value)
+//   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+
+//   // Handle special object types
+//   if (value instanceof Date) return `"${value.toISOString()}"`
+//   if (value instanceof RegExp) return `"${value.toString()}"`
+//   if (value instanceof Error) return `"[Error: ${value.message}]"`
+
+//   // Handle objects and arrays with circular reference protection
+//   if (typeof value === 'object') {
+//     // Check for circular references
+//     if (visited.has(value)) {
+//       return '"[Circular]"'
+//     }
+//     visited.add(value)
+
+//     try {
+//       if (Array.isArray(value)) {
+//         const items = value.map(item => safeStringify(item, visited))
+//         visited.delete(value)
+//         return `[${items.join(',')}]`
+//       } else {
+//         const entries = Object.entries(value).map(([key, val]) => `"${key}":${safeStringify(val, visited)}`)
+//         visited.delete(value)
+//         return `{${entries.join(',')}}`
+//       }
+//     } catch (error) {
+//       visited.delete(value)
+//       return '"[Object]"'
+//     }
+//   }
+
+//   return String(value)
+// }

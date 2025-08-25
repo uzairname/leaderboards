@@ -11,13 +11,19 @@ export default sentry.withSentry(
       release: env.CF_VERSION_METADATA?.id,
       sendDefaultPii: true,
       environment: env.ENVIRONMENT,
+      beforeBreadcrumb: breadcrumb => {
+        if (breadcrumb.category === 'console') {
+          return null // Ignore console logs in Sentry
+        }
+        return breadcrumb
+      },
     }
   },
   {
     async fetch(request: Request, env: Env, executionContext: ExecutionContext): Promise<Response> {
-      const logger = new Logger(request, executionContext, true)
+      const logger = new Logger(executionContext.waitUntil, true)
       const app = initApp(env, logger)
-      return logger.withLogging(router(app).fetch)
+      return logger.run(request, router(app).fetch)
     },
   },
 )

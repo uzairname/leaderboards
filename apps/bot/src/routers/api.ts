@@ -4,12 +4,12 @@ import * as D from 'discord-api-types/v10'
 import { IttyRouter } from 'itty-router/IttyRouter'
 import { json } from 'itty-router/json'
 import { request_num } from '../logging/logger'
+import { inviteUrl } from '../services/utils/strings'
 import { App } from '../setup/app'
 import commandsRouter from './api/commands'
 import rankingsRouter from './api/rankings'
 import { authorize } from './base'
 import { getUserAccessToken, saveUserAccessToken } from './oauth'
-import { inviteUrl } from '../api/utils'
 
 export default (app: App) =>
   IttyRouter({ base: '/api' })

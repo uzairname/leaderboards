@@ -1,12 +1,10 @@
 import { CommandSignature, getOptions } from '@repo/discord'
+import { listToString, sequential } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { removeUserPlayerPage } from './pages'
-import { player_view_sig } from './view'
-import { numRankings } from '../../../api/guilds/properties'
-import { getOrCreatePlayerByUser, setPlayerDisabled } from '../../../api/players/manage'
 import { App } from '../../../setup/app'
 import { guildRankingsOption, withOptionalSelectedRanking } from '../../utils'
-import { listToString } from '@repo/utils'
+import { removeUserPlayerPage } from './pages'
+import { player_view_sig } from './view'
 
 export const player_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
@@ -44,7 +42,6 @@ function makeSubCommandOption({
 export const player_cmd = player_cmd_sig.set<App>({
   guildSignature: async (app, guild_id) => {
     const guild = app.db.guilds.get(guild_id)
-    if ((await numRankings(app, guild)) == 0) return null
 
     const guild_rankings_option = await guildRankingsOption(
       app,
@@ -53,6 +50,8 @@ export const player_cmd = player_cmd_sig.set<App>({
       { optional: true },
       'Leave blank to choose ALL rankings',
     )
+
+    if (guild_rankings_option.length == 0) return null
 
     return new CommandSignature({
       ...player_cmd_sig.config,
@@ -91,7 +90,7 @@ export const player_cmd = player_cmd_sig.set<App>({
           const selected_players = await (async () => {
             if (ranking) {
               // A ranking was selected. We can narrow down to 1 player
-              const player = await getOrCreatePlayerByUser(app, options.user, ranking)
+              const player = await app.players.getOrCreatePlayerByUser(app, options.user, ranking)
               return [player]
             } else {
               // No ranking was selected. Act on all rankings in the guild.
@@ -99,7 +98,7 @@ export const player_cmd = player_cmd_sig.set<App>({
                 guild_id: ctx.interaction.guild_id,
               })
               return await Promise.all(
-                guild_rankings.map(item => getOrCreatePlayerByUser(app, options.user, item.ranking)),
+                guild_rankings.map(item => app.players.getOrCreatePlayerByUser(app, options.user, item.ranking)),
               )
             }
           })()
@@ -113,17 +112,25 @@ export const player_cmd = player_cmd_sig.set<App>({
 
           switch (subcommand) {
             case 'ban':
-              await Promise.all(selected_players.map(player => setPlayerDisabled(app, ctx.interaction, player, true)))
-              await ctx.edit({
+              await sequential(
+                selected_players.map(
+                  player => async () => app.players.setPlayerDisabled(app, ctx.interaction, player, true),
+                ),
+              )
+              return void (await ctx.edit({
                 content: `Banned <@${options.user.id}> from ${rankings_str}.`,
-              })
+              }))
             case 'unban':
-              await Promise.all(selected_players.map(player => setPlayerDisabled(app, ctx.interaction, player, false)))
-              await ctx.edit({
+              await sequential(
+                selected_players.map(
+                  player => async () => app.players.setPlayerDisabled(app, ctx.interaction, player, false),
+                ),
+              )
+              return void (await ctx.edit({
                 content: `Unbanned <@${options.user.id}> from ${rankings_str}.`,
-              })
+              }))
             case 'remove':
-              await ctx.edit(
+              return void (await ctx.edit(
                 (
                   await removeUserPlayerPage(app, {
                     ...ctx,
@@ -136,7 +143,7 @@ export const player_cmd = player_cmd_sig.set<App>({
                     }),
                   })
                 ).response_data,
-              )
+              ))
           }
 
           // if (!handler) throw new Error(`Unknown subcommand: ${subcommand}`)

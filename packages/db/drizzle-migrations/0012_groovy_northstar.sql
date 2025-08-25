@@ -1,0 +1,1 @@
+ALTER TABLE "Rankings" RENAME COLUMN "rating_settings" TO "rating_parameters";

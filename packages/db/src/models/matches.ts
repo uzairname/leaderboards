@@ -1,6 +1,7 @@
 import { sequential } from '@repo/utils'
 import { InferInsertModel, InferSelectModel, SQL, and, asc, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm'
 import { PgDialect } from 'drizzle-orm/pg-core'
+import z from 'zod'
 import { Player } from '.'
 import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
@@ -11,10 +12,13 @@ import { PlayerFlags, PlayerSelect } from './players'
 import { PartialRanking, Rating } from './rankings'
 
 export type MatchMetadata = {
-  best_of: number
+  best_of?: number
 }
 
-export enum Vote {
+/**
+ * Old type of vote
+ */
+export enum OldVote {
   Undecided = 0,
   Win = 1,
   Loss = 2,
@@ -22,11 +26,57 @@ export enum Vote {
   Cancel = 4,
 }
 
+export enum WLDVote {
+  Loss = 1,
+  Draw = 2,
+  Win = 3,
+}
+
 export enum MatchStatus {
   Finished = 0,
   Ongoing = 1,
   Canceled = 2,
 }
+
+/**
+ * Represents the type of the outcome of a match.
+ * - win/loss/draw: An array of 0s, 1s, and 0.5s, where 0 is a loss, 1 is a win, and 0.5 is a draw.
+ *     Assumes there is only 1 winner, and rest loser, or all are draws.
+ * - ranks: A permutation of the teams, where each rank is an integer starting from 1.
+ * - points: Points for accumulated by each team. Can be used for
+ *     points in free-for-all matches, wins in a 'best-of' series, or margin of victory,
+ */
+export enum OutcomeType {
+  WinLossDraw = 0,
+  Ranks = 1,
+  Points = 2,
+}
+
+/**
+ * Represents the outcome of the match. The index in 'team_scores' corresponds to the team number.
+ */
+export const OutcomeSchema = z.object({
+  type: z.enum(OutcomeType),
+  team_scores: z.array(z.number()), // score, ranks, points, or wins
+})
+
+export type MatchOutcome = z.infer<typeof OutcomeSchema>
+
+/**
+ * Represents each team's votes for the match outcome.
+ * - cancel: Whether the team wants to cancel the match.
+ * - own_wld: 0 = loss, 1 = win, 0.5 = draw. The team's claim for whether they
+ *     won/lost/drew the match. Can be more convenient to vote
+ * - outcome: Overall outcome of the match, as voted by the team.
+ */
+export const VoteSchema = z.object({
+  cancel: z.boolean().optional(),
+  own_wld: z.enum(WLDVote).optional(),
+  outcome: OutcomeSchema.optional(),
+})
+
+export type Vote = z.infer<typeof VoteSchema>
+export type TeamVotes = Record<number, Vote> // team_num -> vote
 
 export type MatchSelect = InferSelectModel<typeof Matches>
 export type MatchInsert = Omit<InferInsertModel<typeof Matches>, 'id' | 'number'>
@@ -79,7 +129,7 @@ export class Match extends DbObject<MatchSelect> {
     return this.db.rankings.get(this.data.ranking_id)
   }
 
-  async players(): Promise<MatchPlayer[][]> {
+  async teams(): Promise<MatchPlayer[][]> {
     if (this.db.cache.match_players.has(this.data.id)) return this.db.cache.match_players.get(this.data.id)!
 
     const result = await this.db.drizzle
@@ -390,8 +440,6 @@ export class MatchesManager extends DbObjectManager {
     const player_ids = match_players.map(mp => mp.update.player.data.id)
     const ratings = match_players.map(mp => `'${JSON.stringify(mp.update.rating)}'`)
     const flags = match_players.map(mp => mp.update.flags)
-
-    console.log(match_ids, player_ids, ratings, flags)
 
     const pg_dialect = new PgDialect()
 

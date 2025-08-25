@@ -1,41 +1,36 @@
-import { ansicolors, isInt, log } from '@repo/utils'
-// import { Breadcrumb, BreadcrumbHint, EventHint } from '@sentry/types'
-// import { Toucan } from 'toucan-js'
+import { addStyle, isInt, log } from '@repo/utils'
 import * as sentry from '@sentry/cloudflare'
 import { AppErrors } from '../errors/app-errors'
 
 export let request_num: number | undefined = undefined
 
 export class Logger {
-  public time_received = Date.now()
   private caught_exception: unknown
-  private active_offloads = new Map<string, { startTime: number; name: string }>()
-  public timeout_ms: number = 20000
+  public readonly timeout_ms: number = 30000
 
-  request_data: Record<string, unknown> = {}
   discord_user: Record<string, unknown> = {}
-  request_name: string
+  execution_name: string = 'Request'
 
   constructor(
-    private request: Request,
-    private execution_context: ExecutionContext,
-    public log_to_console: boolean = false,
+    public waitUntil: ((promise: Promise<any>) => void) | undefined,
+    public readonly log_to_console: boolean = false,
+    public readonly time_received: number = Date.now(),
+    public readonly request_data: Record<string, unknown> = {},
+    public parent?: Logger,
   ) {
     this.log({
-      message: `Logger initialized`
+      message: `Logger initialized`,
     })
-    this.request_name = 'Request'
     request_num = isInt(request_num) ? request_num + 1 : 1
-    this.request = request
   }
 
-  async withLogging(handler: (request: Request) => Promise<Response>): Promise<Response> {
+  async run(request: Request, handler: (request: Request) => Promise<Response>): Promise<Response> {
     sentry.setTag('cold-start', request_num == 1)
     sentry.setTag('request_num', request_num)
 
-    this.request_name = `${this.request.method} ${new URL(this.request.url).pathname}`
+    this.execution_name = request ? `${request.method} ${new URL(request.url).pathname}` : 'main'
 
-    return handler(this.request)
+    return handler(request)
       .then(res => {
         if (this.caught_exception) {
           if (this.log_to_console) console.error(this.caught_exception)
@@ -52,6 +47,19 @@ export class Logger {
       })
   }
 
+  public updateRequestData(key: string, value: unknown): void {
+    this.request_data[key] = value
+    if (this.parent) {
+      return this.parent.updateRequestData(key, value)
+    }
+  }
+
+  initializeChild() {
+    const new_logger = new Logger(this.waitUntil, this.log_to_console, this.time_received, this.request_data, this)
+    new_logger.execution_name = this.execution_name
+    return new_logger
+  }
+
   /**
    * Offload a task to be run asynchronously, with proper error handling and timeout.
    * @param callback The async function to run. Receives a context object with these methods:
@@ -62,38 +70,26 @@ export class Logger {
    * @param name Optional name to append to the request name for logging.
    */
   public offload(
-    callback: (ctx: { setException: (e: unknown) => void; setRequestName: (name: string) => void }) => Promise<void>,
-    onTimeout?: (e: AppErrors.RequestTimeoutError) => Promise<void>,
+    callback: (ctx: { logger: Logger; setException: (e: unknown) => void }) => Promise<void>,
     name?: string,
   ): void {
-    const request_name = `${this.request_name}${name ? `/${name}` : '/followup'}`
-    const startTime = Date.now()
-
-    // Track this offload
-    const offloadId = `${Date.now()}-${Math.random()}`
-    this.active_offloads.set(offloadId, { startTime, name: request_name })
-
     let offload_caught_exception: unknown
+    const new_logger = this.initializeChild()
+    new_logger.execution_name += `/${name ?? `offloaded`}`
+    const execution_name = new_logger.execution_name
 
     const ctx = {
+      logger: new_logger,
       setException: (e: unknown) => {
         offload_caught_exception = e
       },
-      setRequestName: (name: string) => {
-        // Update the tracked name
-        const tracked = this.active_offloads.get(offloadId)
-        if (tracked) {
-          tracked.name = name
-        }
-      },
     }
 
-    // Create a proper timeout promise that resolves after timeout
+    // A timeout promise that resolves after timeout
     const timeout_promise = new Promise<void>((_, reject) => {
       setTimeout(() => {
-        const e = new AppErrors.RequestTimeoutError(request_name, this.timeout_ms)
-        sentry.captureMessage(`${request_name} taking longer than ${this.timeout_ms / 1000}s`, 'warning')
-        onTimeout?.(e)
+        const e = new AppErrors.RequestTimeoutError(execution_name, this.timeout_ms)
+        sentry.captureMessage(`${execution_name} taking longer than ${this.timeout_ms / 1000}s`, 'warning')
         reject(e)
       }, this.timeout_ms) // Use instance timeout instead of hardcoded value
     })
@@ -104,7 +100,7 @@ export class Logger {
           this.captureException(offload_caught_exception)
           if (this.log_to_console) console.error(offload_caught_exception)
         } else {
-          this.logResult(request_name)
+          this.logResult(execution_name)
         }
       })
       .catch(e => {
@@ -113,61 +109,47 @@ export class Logger {
       })
       .finally(() => {
         // Clean up tracking
-        this.active_offloads.delete(offloadId)
+        // this.active_offloads.delete(offloadId)
       })
 
     const result = Promise.race([timeout_promise, callback_promise]).catch(e => {
       // Handle timeout errors gracefully
       if (e instanceof AppErrors.RequestTimeoutError) {
-        this.log({message: e.message, level: 'error'})
+        this.log({ message: e.message, level: 'error' })
       }
     })
 
-    this.execution_context.waitUntil(result)
-  }
-
-  // Add method to get active offloads for monitoring
-  public getActiveOffloads(): Array<{ id: string; name: string; duration: number }> {
-    const now = Date.now()
-    return Array.from(this.active_offloads.entries()).map(([id, { startTime, name }]) => ({
-      id,
-      name,
-      duration: now - startTime,
-    }))
-  }
-
-  // Add method to log stuck requests
-  public logStuckRequests(): void {
-    const stuckRequests = this.getActiveOffloads().filter(req => req.duration > this.timeout_ms * 2) // Log requests that are 2x timeout
-
-    if (stuckRequests.length > 0) {
-      sentry.captureMessage(`Found ${stuckRequests.length} potentially stuck requests`, {
-        extra: {
-          stuck_requests: stuckRequests,
-          request_name: this.request_name,
-          total_duration: Date.now() - this.time_received,
-        },
-        level: 'warning',
-      })
-    }
+    this.waitUntil?.(result)
   }
 
   log(breadcrumb: sentry.Breadcrumb, hint?: sentry.BreadcrumbHint): void {
-
     if (breadcrumb.level !== 'debug') {
       // Dont log debug breadcrumbs to Sentry
       sentry.addBreadcrumb(breadcrumb, hint)
     }
+
     if (this.log_to_console && breadcrumb.message) {
+      const time_ms = Date.now() - this.time_received
+      const time_and_requestname = addStyle(`[${time_ms}ms] ${this.execution_name} | `, 'white', 'italic')
+      const message_txt = breadcrumb.message
+
+      let message: string = message_txt
+
       if (breadcrumb.level === 'warning' || breadcrumb.level === 'error') {
-        log('red', `[${breadcrumb.level}] ${breadcrumb.message}`)
+        message = addStyle(`[${breadcrumb.level}] ${message_txt}`, 'red')
+      } else if (breadcrumb.level === 'debug') {
+        message = addStyle(`[${breadcrumb.level}] ${message_txt}`, 'gray')
       } else if (breadcrumb.category === 'dbmethod') {
-        log('blue', `[dbmethod] ${breadcrumb.message}`)
+        message = addStyle(`[db method] ${message_txt}`, 'cyan')
       } else if (breadcrumb.category === 'appmethod') {
-        log('magenta', `[appmethod] ${breadcrumb.message}`)
+        message = addStyle(`[app method] ${message_txt}`, 'magenta')
+      } else if (breadcrumb.category === 'discord_request') {
+        message = addStyle(`[discord] ${message_txt}`, 'blue')
       } else {
-        console.log(breadcrumb.message)
+        message = addStyle(`[info] ${message_txt}`, 'white')
       }
+
+      console.log(time_and_requestname + message)
     }
   }
 
@@ -194,30 +176,29 @@ export class Logger {
       message: message.map(m => `${m}`).join(' '),
       level: 'debug',
     })
-    if (this.log_to_console) {
-      console.debug('[debug]', ...message)
-    }
   }
 
-  private logResult(request_name?: string) {
+  private logResult(request_name?: string, offloaded_start_time?: number) {
     sentry.setExtras({
       'time taken': `${Date.now() - this.time_received} ms`,
       data: this.request_data,
       user: this.discord_user,
     })
     sentry.captureEvent({
-      message: request_name ?? this.request_name,
+      message: request_name ?? this.execution_name,
       level: 'info',
     })
+
     if (this.log_to_console) {
-      console.log(`Request completed: ${request_name ?? this.request_name} in ${Date.now() - this.time_received} ms`)
+      log(
+        `[Request Completed] ${request_name ?? this.execution_name} finished in ${Date.now() - (offloaded_start_time ?? this.time_received)} ms`,
+        `yellow`,
+      )
     }
   }
-}
 
-// export function debug(...message: unknown[]): void {
-//   sentry.addBreadcrumb({
-//     message: message.map(m => `${m}`).join(' '),
-//     level: 'debug',
-//   })
-// }
+  /**
+   * Returns the amount of time since the request was received
+   */
+  public getTime() {}
+}

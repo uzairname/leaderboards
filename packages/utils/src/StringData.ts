@@ -1,7 +1,9 @@
-export interface StringDataSchema {
+import { LZString } from './lzstring'
+
+export interface StateSchema {
   [k: string]: Field<any>
 }
-export type AnyStringDataSchema = any
+export type AnyStateSchema = any
 
 export namespace field {
   export function Enum<T extends { [key: string]: unknown }>(options: T) {
@@ -25,17 +27,17 @@ export namespace field {
   export function Float(precision?: number) {
     return new FloatField(precision)
   }
-  export function Boolean() {
+  export function Bool() {
     return new BooleanField()
   }
   export function Date() {
     return new DateField()
   }
-  export function Object<TSchema extends StringDataSchema>(schema: TSchema) {
+  export function Object<TSchema extends StateSchema>(schema: TSchema) {
     return new StringDataDataField<TSchema>(schema)
   }
-  export function StringData<TSchema extends StringDataSchema>(schema: TSchema) {
-    return new StringDataField<TSchema>(schema)
+  export function StateCodec<TSchema extends StateSchema>(schema: TSchema) {
+    return new StateCodecField<TSchema>(schema)
   }
 }
 
@@ -140,23 +142,23 @@ class DateField extends Field<Date | undefined> {
   // 1735707600 is the unix timestamp of 1/1/2025.
 }
 
-class StringDataDataField<TSchema extends StringDataSchema> extends Field<StringData<TSchema>['data']> {
+class StringDataDataField<TSchema extends StateSchema> extends Field<StateCodec<TSchema>['data']> {
   constructor(private schema: TSchema) {
     super()
   }
-  compress = (value: StringData<TSchema>['data']) => new StringData(this.schema).saveAll(value).encode()
-  decompress = (value: string) => new StringData(this.schema, value).data
+  compress = (value: StateCodec<TSchema>['data']) => new StateCodec(this.schema).saveAll(value).encode()
+  decompress = (value: string) => new StateCodec(this.schema, value).data
 }
 
-class StringDataField<TSchema extends StringDataSchema> extends Field<StringData<TSchema>> {
+class StateCodecField<TSchema extends StateSchema> extends Field<StateCodec<TSchema>> {
   constructor(private schema: TSchema) {
     super()
   }
-  compress = (value: StringData<TSchema>) => value.encode()
-  decompress = (value: string) => new StringData(this.schema, value)
+  compress = (value: StateCodec<TSchema>) => value.encode()
+  decompress = (value: string) => new StateCodec(this.schema, value)
 }
 
-export class StringData<TSchema extends StringDataSchema> {
+export class StateCodec<TSchema extends StateSchema> {
   readonly data = {} as { [K in keyof TSchema]?: TSchema[K]['type'] }
 
   get = {} as {
@@ -180,18 +182,18 @@ export class StringData<TSchema extends StringDataSchema> {
   }
 
   set = {} as {
-    [K in keyof TSchema]: (value: TSchema[K]['type'] | null | undefined) => StringData<TSchema>
+    [K in keyof TSchema]: (value: TSchema[K]['type'] | null | undefined) => StateCodec<TSchema>
   }
 
-  setAll(data: { [K in keyof TSchema]?: TSchema[K]['type'] | null }): StringData<TSchema> {
+  setAll(data: { [K in keyof TSchema]?: TSchema[K]['type'] | null }): StateCodec<TSchema> {
     return this.copy().saveAll(data)
   }
 
-  copy(): StringData<TSchema> {
-    return new StringData(this.fields, this.encode())
+  copy(): StateCodec<TSchema> {
+    return new StateCodec(this.fields, this.encode())
   }
 
-  encode(): string {
+  encode(to_utf_16: boolean = false): string {
     let i = 0
     let defined_fields = 0
     const data_list: string[] = []
@@ -211,11 +213,19 @@ export class StringData<TSchema extends StringDataSchema> {
       )
     ).toString(36)
     const data_str = arrayToString([encoded_defined_fields].concat(data_list))
+
+    if (to_utf_16) {
+      return LZString.compressToUTF16(data_str)
+    }
+
     return data_str
   }
 
-  parse(encoded_str: string): this {
+  parse(input: string, from_utf_16: boolean = false): this {
     try {
+      const encoded_str = from_utf_16 ? LZString.decompressFromUTF16(input) : input
+      if (encoded_str === null) throw new ParseError() // Invalid UTF-16 string
+
       const [encoded_defined_fields, ...compressed_field_values] = stringToArray(encoded_str)
       const defined_fields = parseInt(
         ((1 << Object.keys(this.fields).length) - 1 - parseInt(encoded_defined_fields, 36))
@@ -237,6 +247,10 @@ export class StringData<TSchema extends StringDataSchema> {
       }
       return this
     } catch (e) {
+      if (!from_utf_16) {
+        // Try again, but assuming the input was UTF-16 compressed
+        return this.parse(input, true)
+      }
       throw new ParseError()
     }
   }

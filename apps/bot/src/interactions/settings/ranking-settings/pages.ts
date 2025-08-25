@@ -9,14 +9,20 @@ import {
   StringSelectMenuBuilder,
   TextDisplayBuilder,
 } from '@discordjs/builders'
-import { RatingStrategy } from '@repo/db/models'
+import { OutcomeType, RatingStrategy } from '@repo/db/models'
 import { Context } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { challenge_1v1_cmd, help_cmd, join_cmd, leaderboard_cmd, send_cmd } from '../../all-interaction-handlers'
+import { syncMatchesChannel } from '../../../services/matches/logging/matches-channel'
+import { DEFAULT_LB_COLOR, liveLbMsgLink, outcome_type_name } from '../../../services/rankings/properties'
+import { rating_strategy_name } from '../../../services/rankings/ratings'
+import { commandMention, dateTimestamp, escapeMd } from '../../../services/utils/strings'
 import { App } from '../../../setup/app'
+import { challenge_1v1_cmd, help_cmd, join_cmd, leaderboard_cmd, send_cmd } from '../../all-interaction-handlers'
+import { scnames } from '../../misc-commands/send-cmd'
 import { makeSettingsPage } from './common'
 import {
   onDeleteConfirmBtn,
+  onQueuePingRoleSelect,
   onRankRoleSelect,
   onRatingMethodSelect,
   onToggleChallenge,
@@ -26,15 +32,13 @@ import {
   onUnsetRankRole,
   sendColorModal,
   sendEditRangeModal,
+  sendQueueJoinTimeoutModal,
   sendRankRolesPage,
   sendRatingParamsModal,
+  setOutcomeType,
+  unsetQueuePingRole,
 } from './handlers'
 import { ranking_settings_view_sig } from './view'
-import { scnames } from '../../misc-commands/send-cmd'
-import { syncMatchesChannel } from '../../../api/matches/logging/matches-channel'
-import { liveLbMsgLink, default_matchmaking_settings, DEFAULT_LB_COLOR } from '../../../api/rankings/properties'
-import { rating_strategy_name } from '../../../api/rankings/ratings'
-import { commandMention, dateTimestamp, escapeMd } from '../../../api/utils'
 
 /**
  * The main ranking settings page
@@ -48,16 +52,14 @@ export async function main(
     ranking_id: ctx.state.get.ranking_id(),
   })
 
-  const time_created = ranking.data.time_created
-  const teams_per_match = ranking.data.teams_per_match
-  const players_per_team = ranking.data.players_per_team
+  const props = app.rankings.getProperties(ranking)
+
+  const lb_msg_link = liveLbMsgLink(guild_ranking)
 
   // Get the match logs channel if it's enabled
   const match_logs_channel_id = guild_ranking.data.display_settings?.log_matches
     ? (await syncMatchesChannel(app, guild_ranking.guild))?.id
     : undefined
-
-  const lb_msg_link = liveLbMsgLink(guild_ranking)
 
   const description =
     `# ${escapeMd(ranking.data.name)}\n` +
@@ -72,7 +74,7 @@ export async function main(
           (lb_msg_link
             ? `- The live leaderboard is displayed in ${lb_msg_link}`
             : `- View the leaderboard with ${await commandMention(app, leaderboard_cmd, guild.data.id)}`) +
-          `\n- This ranking was created on ${dateTimestamp(time_created)}` +
+          `\n- This ranking was created on ${dateTimestamp(ranking.data.time_created)}` +
           (app.config.IsDev ? `\n- Ranking id: \`${ranking.data.id}\`` : ``),
       }),
     )
@@ -81,19 +83,17 @@ export async function main(
       new TextDisplayBuilder({
         content:
           `## Matches\n` +
-          `- Match type: **` +
-          new Array(teams_per_match).fill(players_per_team).join('v') +
-          `**` +
+          `- Match type: **${props.match_type_name}**` +
           (match_logs_channel_id
             ? `\n- Matches are logged in <#${match_logs_channel_id}>`
             : `\n- Matches are not logged anywhere`) +
           `\n- Matchmaking queue: ` +
-          (ranking.data.matchmaking_settings.queue_enabled ? `**✅ Enabled**` : `**❌ Disabled**`) +
+          (props.matchmaking_settings.queue_enabled ? `**✅ Enabled**` : `**❌ Disabled**`) +
           `\n- Direct challenges (via ${await commandMention(app, challenge_1v1_cmd, guild_ranking.data.guild_id)} \`${ranking.data.name}\`): ` +
-          (ranking.data.matchmaking_settings.direct_challenge_enabled ? `**✅ Enabled**` : `**❌ Disabled**`) +
+          (props.matchmaking_settings.direct_challenge_enabled ? `**✅ Enabled**` : `**❌ Disabled**`) +
           `\n- Draws are ` +
           (ranking.data.match_settings?.draws_allowed ? `**✅ Allowed**` : `**❌ Disabled**`) +
-          `\n- Matches are assumed to be a best of **${ranking.data.matchmaking_settings.default_best_of ?? default_matchmaking_settings.default_best_of}**`,
+          `\n- Matches are assumed to be a best of **${props.matchmaking_settings.default_best_of}**`,
       }),
     )
 
@@ -112,7 +112,7 @@ export async function main(
  * Select menu to select a rating method.
  * Redirects to the ranking settings page's rating method select handler
  */
-export async function ratingSettings(
+export async function scoringSettings(
   app: App,
   ctx: Context<typeof ranking_settings_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
@@ -121,56 +121,141 @@ export async function ratingSettings(
     ranking_id: ctx.state.get.ranking_id(),
   })
 
+  const props = app.rankings.getProperties(ranking)
+  
+  // Outcomes
+  const draws_allowed = props.match_settings.draws_allowed
+  const outcome_type = props.match_settings.outcome_type
+
+
   const container = new ContainerBuilder()
-    .addTextDisplayComponents(
+    .addTextDisplayComponents(new TextDisplayBuilder({
+      content: `## Scoring Settings for **${escapeMd(ranking.data.name)}**`
+    }))
+
+
+    container
+      .addSeparatorComponents(new SeparatorBuilder({ spacing: D.SeparatorSpacingSize.Large }))
+  
+      .addTextDisplayComponents(
+        new TextDisplayBuilder({
+          content:
+            `### 📝 Match Outcome Type: ${outcome_type_name[outcome_type]}` +
+            `\nThe match outcome type determines the information required in order to record a match in this ranking. Your options are:` +
+            `\n- **${outcome_type_name[OutcomeType.WinLossDraw]}**: The simplest outcome. There is either a single winner, or the match is a full draw (if enabled).` +
+            `\n- **${outcome_type_name[OutcomeType.Ranks]}**: The teams finish in a certain order, with ranks such as 1st place, 2nd place, 3rd place, etc.` +
+            `\n- **${outcome_type_name[OutcomeType.Points]}**: Each team accumulates a certain number of points. Allows the rating algorithm to take into account margin of victory. Useful for free-for-alls, "best-of" series results, or games like like tennis.`,
+        }),
+      )
+      .addActionRowComponents(
+        new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+          new ButtonBuilder({
+            label: outcome_type_name[OutcomeType.WinLossDraw],
+            style: D.ButtonStyle.Secondary,
+            custom_id: ctx.state.set.handler(setOutcomeType).set.selected_outcome_type(OutcomeType.WinLossDraw).cId(),
+            disabled: outcome_type === OutcomeType.WinLossDraw,
+          }),
+          new ButtonBuilder({
+            label: outcome_type_name[OutcomeType.Ranks],
+            style: D.ButtonStyle.Secondary,
+            custom_id: ctx.state.set.handler(setOutcomeType).set.selected_outcome_type(OutcomeType.Ranks).cId(),
+            disabled: outcome_type === OutcomeType.Ranks,
+          }),
+          new ButtonBuilder({
+            label: outcome_type_name[OutcomeType.Points],
+            style: D.ButtonStyle.Secondary,
+            custom_id: ctx.state.set.handler(setOutcomeType).set.selected_outcome_type(OutcomeType.Points).cId(),
+            disabled: outcome_type === OutcomeType.Points,
+          }),
+        ),
+      )
+  
+    if (outcome_type === OutcomeType.WinLossDraw) {
+      // Add the draws setting if the outcome type is WinLossDraw
+      container
+        .addSeparatorComponents(new SeparatorBuilder({ spacing: D.SeparatorSpacingSize.Large }))
+        .addSectionComponents(
+          new SectionBuilder()
+            .addTextDisplayComponents(
+              new TextDisplayBuilder({
+                content: `**🤝 Draws (${draws_allowed ? `allowed` : `disabled`})**: If enabled, matches can end in a draw. Note: unlike canceled matches, draws may have an effect on player ratings.`,
+              }),
+            )
+            .setButtonAccessory(
+              new ButtonBuilder({
+                style: draws_allowed ? D.ButtonStyle.Success : D.ButtonStyle.Danger,
+                custom_id: ctx.state.set.handler(onToggleDraws).cId(),
+                label: draws_allowed ? `Disable` : `Allow`,
+              }),
+            ),
+        )
+    }
+
+  container.addSeparatorComponents(new SeparatorBuilder({ spacing: D.SeparatorSpacingSize.Large }))
+  // Rating strategies
+
+  const compatible_rating_strategies = await app.rankings.getCompatibleRatingStrategies(ranking)
+
+  container.addTextDisplayComponents(
       new TextDisplayBuilder({
         content:
-          `## Rating Settings for **${escapeMd(ranking.data.name)}**` +
+          `### Rating Strategy` +
           `\nCustomize the algorithm that updates players' ratings as they play games. Use ${await commandMention(app, help_cmd)} for more information.` +
-          `\nWhen you make changes to the rating method, every player's rating will be retroactively recalculated according to the new algorithm. The result will be no different than if you used the new algorithm from the start. This may take a few seconds for large servers`,
+          `\nWhen you make changes to the rating method, every player's rating will be retroactively recalculated according to the new algorithm. The result will be no different than if you used the new algorithm from the start. This may take a few seconds for large servers` + 
+          `\nCurrently using the **${rating_strategy_name[ranking.data.rating_settings.rating_strategy]}** rating method\n`,
       }),
     )
-    .addSeparatorComponents(new SeparatorBuilder({ spacing: D.SeparatorSpacingSize.Large }))
 
-    .addTextDisplayComponents(
-      new TextDisplayBuilder({
-        content: `### Rating method\nCurrently using the **${rating_strategy_name[ranking.data.rating_settings.rating_strategy]}** rating method`,
-      }),
-    )
     .addActionRowComponents(
-      new ActionRowBuilder<StringSelectMenuBuilder>().setComponents(
-        new StringSelectMenuBuilder({
-          custom_id: ctx.state.set.handler(onRatingMethodSelect).cId(),
-          placeholder: 'Change rating method to...',
-          options: [
-            {
-              label: 'Bayesian',
-              value: RatingStrategy.Bayesian.toString(),
-              description: `A Bayesian rating algorithm`,
-            },
-            {
-              label: 'Glicko',
-              value: RatingStrategy.Glicko.toString(),
-              description: `A widely used Bayesian rating system`,
-            },
-            {
-              label: 'Trueskill2',
-              value: RatingStrategy.TrueSkill.toString(),
-              description: `Microsoft's TrueSkill2 rating algorithm`,
-            },
-            {
-              label: 'Elo',
-              value: RatingStrategy.Elo.toString(),
-              description: `The standard Elo rating system used in Chess`,
-            },
-            {
-              label: 'Wins Minus Losses',
-              value: RatingStrategy.WinsMinusLosses.toString(),
-              description: `Gain 1 point for winning, lose 1 point for losing`,
-            },
-          ],
-        }),
-      ),
+      new ActionRowBuilder<ButtonBuilder>().setComponents(
+        compatible_rating_strategies.map(strategy => {
+          return new ButtonBuilder({
+            label: rating_strategy_name[strategy],
+            style:
+              ranking.data.rating_settings.rating_strategy === strategy
+                ? D.ButtonStyle.Success
+                : D.ButtonStyle.Secondary,
+            custom_id: ctx.state
+              .setAll({ selected_rating_strategy: strategy, handler: onRatingMethodSelect })
+              .cId(),
+            disabled: ranking.data.rating_settings.rating_strategy === strategy,
+          })
+        })
+
+      )
+      // new ActionRowBuilder<StringSelectMenuBuilder>().setComponents(
+      //   new StringSelectMenuBuilder({
+      //     custom_id: ctx.state.set.handler(onRatingMethodSelect).cId(),
+      //     placeholder: 'Change rating method to...',
+      //     options: [
+      //       {
+      //         label: 'Bayesian',
+      //         value: RatingStrategy.Bayesian.toString(),
+      //         description: `A Bayesian rating algorithm`,
+      //       },
+      //       {
+      //         label: 'Glicko',
+      //         value: RatingStrategy.Glicko.toString(),
+      //         description: `A widely used Bayesian rating system`,
+      //       },
+      //       {
+      //         label: 'Trueskill2',
+      //         value: RatingStrategy.TrueSkill.toString(),
+      //         description: `Microsoft's TrueSkill2 rating algorithm`,
+      //       },
+      //       {
+      //         label: 'Elo',
+      //         value: RatingStrategy.Elo.toString(),
+      //         description: `The standard Elo rating system used in Chess`,
+      //       },
+      //       {
+      //         label: 'Wins Minus Losses',
+      //         value: RatingStrategy.WinsMinusLosses.toString(),
+      //         description: `Gain 1 point for winning, lose 1 point for losing`,
+      //       },
+      //     ],
+      //   }),
+      // ),
     )
     .addSeparatorComponents(new SeparatorBuilder({ spacing: D.SeparatorSpacingSize.Large }))
 
@@ -230,6 +315,7 @@ export async function rankRolesSettings(
             `\n` +
             (rank_roles.length > 0
               ? rank_roles
+                  .reverse()
                   .map(rr => `<@&${rr.role_id}>: **${rr.min_rating ?? '-∞'} to ${rr.max_rating ?? '∞'}**`)
                   .join('\n')
               : `-# No rank roles are set for this ranking.`) +
@@ -328,7 +414,8 @@ export async function appearance(
         .addTextDisplayComponents(
           new TextDisplayBuilder({
             content:
-              `**Live Leaderboard**: If enabled, the bot will maintain a public leaderboard message in real time. If disabled, you can always view the leaderboard using ${await commandMention(app, leaderboard_cmd, guild_ranking.data.guild_id)} \`${ranking.data.name}\`. Currently, ` +
+              `**Live Leaderboard**: If enabled, the bot will maintain a public leaderboard message in real time. If disabled, you can always view the leaderboard using ${await commandMention(app, leaderboard_cmd, guild_ranking.data.guild_id)} \`${ranking.data.name}\`.` + 
+              `\nCurrently, ` +
               (lb_msg_link
                 ? `the live leaderboard is displayed in ${lb_msg_link}`
                 : `the live leaderboard is **disabled**`),
@@ -358,9 +445,12 @@ export async function matchSettings(
     ranking_id: ctx.state.get.ranking_id(),
   })
 
-  const queue_enabled = ranking.data.matchmaking_settings?.queue_enabled
-  const challenges_enabled = ranking.data.matchmaking_settings?.direct_challenge_enabled
-  const draws_allowed = ranking.data.match_settings?.draws_allowed
+  const props = app.rankings.getProperties(ranking)
+
+  const queue_enabled = props.matchmaking_settings.queue_enabled
+  const challenges_enabled = props.matchmaking_settings.direct_challenge_enabled
+  const draws_allowed = props.match_settings.draws_allowed
+  const q_timeout_mins = props.matchmaking_settings.queue_join_timeout_minutes
 
   const container = new ContainerBuilder()
     .addTextDisplayComponents(
@@ -377,7 +467,8 @@ export async function matchSettings(
       new SectionBuilder()
         .addTextDisplayComponents(
           new TextDisplayBuilder({
-            content: `**🔎 Matchmaking Queue (${queue_enabled ? `enabled` : `disabled`})**: If enabled, players can join the matchmaking queue using ${await commandMention(app, join_cmd, ctx.interaction.guild_id)} \`${ranking.data.name}\`. You can send a button to join the queue using ${await commandMention(app, send_cmd, ctx.interaction.guild_id, scnames.queue_message)}`,
+            content: `### 🔎 Matchmaking Queue: ${queue_enabled ? `enabled` : `disabled`}` + 
+            `\nIf enabled, players can join the matchmaking queue using ${await commandMention(app, join_cmd, ctx.interaction.guild_id)} \`${ranking.data.name}\`. You can send a button to join the queue using ${await commandMention(app, send_cmd, ctx.interaction.guild_id, scnames.queue_message)}`,
           }),
         )
         .setButtonAccessory(
@@ -387,33 +478,71 @@ export async function matchSettings(
             label: queue_enabled ? `Disable` : `Enable`,
           }),
         ),
-      new SectionBuilder()
-        .addTextDisplayComponents(
-          new TextDisplayBuilder({
-            content: `**⚔️ Direct Challenges (${challenges_enabled ? `enabled` : `disabled`})**: If enabled, players can challenge each other using ${await commandMention(app, challenge_1v1_cmd, ctx.interaction.guild_id)} \`${ranking.data.name}\`.`,
-          }),
-        )
-        .setButtonAccessory(
-          new ButtonBuilder({
-            style: challenges_enabled ? D.ButtonStyle.Success : D.ButtonStyle.Danger,
-            custom_id: ctx.state.set.handler(onToggleChallenge).cId(),
-            label: challenges_enabled ? `Disable` : `Enable`,
-          }),
-        ),
-      new SectionBuilder()
-        .addTextDisplayComponents(
-          new TextDisplayBuilder({
-            content: `**🤝 Draws (${draws_allowed ? `allowed` : `disabled`})**: If enabled, matches can end in a draw. Note: unlike canceled matches, draws may have an effect on player ratings.`,
-          }),
-        )
-        .setButtonAccessory(
-          new ButtonBuilder({
-            style: draws_allowed ? D.ButtonStyle.Success : D.ButtonStyle.Danger,
-            custom_id: ctx.state.set.handler(onToggleDraws).cId(),
-            label: draws_allowed ? `Disable` : `Allow`,
-          }),
-        ),
     )
+
+  if (queue_enabled) {
+    container
+      .addSectionComponents(
+        new SectionBuilder()
+          .addTextDisplayComponents(
+            new TextDisplayBuilder({
+              content: `- Role to ping when someone joins the queue: ${guild_ranking.data.matchmaking_settings?.queue_join_ping_role_id ? `<@&${guild_ranking.data.matchmaking_settings?.queue_join_ping_role_id}>` : `None`}.`,
+            }),
+          )
+          .setButtonAccessory(
+            new ButtonBuilder({
+              style: D.ButtonStyle.Primary,
+              label: `Unset Role`,
+              custom_id: ctx.state.setAll({ handler: unsetQueuePingRole }).cId(),
+            }),
+          ),
+      )
+      .addActionRowComponents(
+        new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(
+          new RoleSelectMenuBuilder({
+            custom_id: ctx.state.set.handler(onQueuePingRoleSelect).cId(),
+            placeholder: `Select a Role`,
+            min_values: 1,
+            max_values: 1,
+          }),
+        ),
+      )
+
+      .addSectionComponents(
+        new SectionBuilder()
+          .addTextDisplayComponents(
+            new TextDisplayBuilder({
+              content: `- The bot automatically removes players from the queue after **${q_timeout_mins} minutes**.`,
+            }),
+          )
+          .setButtonAccessory(
+            new ButtonBuilder({
+              style: D.ButtonStyle.Primary,
+              label: `Change`,
+              custom_id: ctx.state.set.handler(sendQueueJoinTimeoutModal).cId(),
+            }),
+          ),
+      )
+      .addSeparatorComponents(new SeparatorBuilder({ spacing: D.SeparatorSpacingSize.Large }))
+  }
+
+  container.addSectionComponents(
+    new SectionBuilder()
+      .addTextDisplayComponents(
+        new TextDisplayBuilder({
+          content: `**Direct Challenges (${challenges_enabled ? `enabled` : `disabled`})**: If enabled, players can challenge each other using ${await commandMention(app, challenge_1v1_cmd, ctx.interaction.guild_id)} \`${ranking.data.name}\`.`,
+        }),
+      )
+      .setButtonAccessory(
+        new ButtonBuilder({
+          style: challenges_enabled ? D.ButtonStyle.Success : D.ButtonStyle.Danger,
+          custom_id: ctx.state.set.handler(onToggleChallenge).cId(),
+          label: challenges_enabled ? `Disable` : `Enable`,
+        }),
+      ),
+  )
+
+
 
   return makeSettingsPage(ctx, [container], ranking, guild_ranking)
 }

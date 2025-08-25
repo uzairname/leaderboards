@@ -15,11 +15,8 @@ import {
 } from '@repo/discord'
 import { field, sequential } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { start1v1SeriesThread } from '../../api/matches/ongoing-match/manage-ongoing-match'
-import { getOrCreatePlayerByUser } from '../../api/players/manage'
-import { rankingProperties } from '../../api/rankings/properties'
+import { Colors, relativeTimestamp } from '../../services/utils/strings'
 import { App } from '../../setup/app'
-import { relativeTimestamp, Colors } from '../../api/utils'
 
 export const challenge_view_sig = new ViewSignature({
   name: 'Challenge Page',
@@ -30,7 +27,7 @@ export const challenge_view_sig = new ViewSignature({
     opponent_id: field.String(),
     time_sent: field.Date(),
     best_of: field.Int(),
-    opponent_accepted: field.Boolean(),
+    opponent_accepted: field.Bool(),
     ongoing_match_channel_id: field.String(),
     callback: field.Choice({ accept }),
   },
@@ -53,8 +50,6 @@ export async function challengePage(
 
   const ranking = await app.db.rankings.fetch(state.get.ranking_id())
 
-  const best_of = state.data.best_of ?? rankingProperties(ranking).default_best_of
-
   const container = new ContainerBuilder()
     .addTextDisplayComponents(
       new TextDisplayBuilder({
@@ -68,7 +63,6 @@ export async function challengePage(
           new TextDisplayBuilder({
             content:
               `Ranking: **${ranking.data.name}**` +
-              `\nBest of **${best_of}**` +
               `\n` +
               (state.is.opponent_accepted() && state.data.ongoing_match_channel_id
                 ? `Challenge accepted. New match started in <#${state.data.ongoing_match_channel_id}>`
@@ -110,7 +104,7 @@ async function accept(app: App, ctx: ComponentContext<typeof challenge_view_sig>
     ranking_id: ctx.state.get.ranking_id(),
   })
 
-  if (!ranking.data.matchmaking_settings.direct_challenge_enabled) {
+  if (!ranking.data.matchmaking_settings?.direct_challenge_enabled) {
     await app.discord.deleteMessageIfExists(ctx.interaction.channel?.id, ctx.interaction.message?.id)
     return {
       type: D.InteractionResponseType.ChannelMessageWithSource,
@@ -134,11 +128,11 @@ async function accept(app: App, ctx: ComponentContext<typeof challenge_view_sig>
 
     // Register them as players in the ranking
     const players = await sequential(
-      user_ids.map(team => () => sequential(team.map(i => () => getOrCreatePlayerByUser(app, i, ranking)))),
+      user_ids.map(team => () => sequential(team.map(i => () => app.players.getOrCreatePlayerByUser(app, i, ranking)))),
     )
 
     // Start the match
-    const { thread } = await start1v1SeriesThread(app, guild_ranking, players, ctx.state.data.best_of)
+    const { thread } = await app.matches.ongoing.startWithThread(app, guild_ranking, players, ctx.state.data.best_of)
 
     // Update the challenge message
     ctx.state.save.ongoing_match_channel_id(thread.id)

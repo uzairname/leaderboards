@@ -1,9 +1,9 @@
 import { CommandSignature, getOptions, StateContext, ViewSignature } from '@repo/discord'
 import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
-import { test_helper_view_config } from './test-helper-view'
 import { UserErrors } from '../../../errors/user-errors'
-import { App } from '../../../setup/app'
+import { App, offload } from '../../../setup/app'
+import { test_helper_view_config } from './test-helper-view'
 
 const test_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
@@ -43,9 +43,27 @@ export const test_cmd = test_cmd_sig.set<App>({
     state.save.original_user(user_id)
     state.save.counter(0)
 
-    const time = options.time ?? 0
+    return ctx.defer(async (ctx, app) => {
+      offload(
+        app,
+        async app => {
+          await app.db.users.fetch(user_id)
+          await new Promise(r => setTimeout(r, 25000))
+          await ctx.edit({
+            content: `edited message`,
+          })
+        },
+        'after-test',
+      )
 
-    await new Promise(r => setTimeout(r, time)) // simulate some processing delay
+      await app.db.guilds.fetch(ctx.interaction.guild_id)
+
+      await new Promise(r => setTimeout(r, options.time ?? 0))
+      await ctx.edit({
+        content: `Test command executed by <@${user_id}>`,
+        flags: D.MessageFlags.Ephemeral,
+      })
+    })
 
     return {
       type: D.InteractionResponseType.ChannelMessageWithSource,

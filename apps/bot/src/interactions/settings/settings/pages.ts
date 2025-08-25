@@ -10,18 +10,18 @@ import {
 import { AnyGuildInteractionContext, MessageData } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { SettingsHandlers } from '.'
+import { liveLbMsgLink } from '../../../services/rankings/properties'
+import { Colors, commandMention, escapeMd } from '../../../services/utils/strings'
 import { App } from '../../../setup/app'
+import { record_match_cmd } from '../../all-interaction-handlers'
+import { help_view_sig } from '../../help/view'
 import * as RankingSettingsHandlers from '../ranking-settings/handlers'
 import { ranking_settings_view_sig } from '../ranking-settings/view'
 import { settings_cmd } from './cmd'
 import { settings_view_sig } from './view'
-import { getOrAddGuild } from '../../../api/guilds/manage'
-import { liveLbMsgLink } from '../../../api/rankings/properties'
-import { help_view_sig } from '../../help/view'
-import { escapeMd, Colors, commandMention } from '../../../api/utils'
 
 export async function main(app: App, ctx: AnyGuildInteractionContext): Promise<D.APIInteractionResponseCallbackData> {
-  const guild = await getOrAddGuild(app, ctx.interaction.guild_id)
+  const guild = await app.guilds.get(app, ctx.interaction.guild_id)
   const grs = await app.db.guild_rankings.fetch({ guild_id: guild.data.id })
 
   const rankings_desc = new TextDisplayBuilder({
@@ -43,10 +43,12 @@ export async function main(app: App, ctx: AnyGuildInteractionContext): Promise<D
   const sections: SectionBuilder[] = await Promise.all(
     grs_limited.map(async gr => {
       const lb_msg_link = liveLbMsgLink(gr.guild_ranking)
+      const props = app.rankings.getProperties(gr.ranking)
 
       const desc =
         `**${escapeMd(gr.ranking.data.name)}**` +
-        (lb_msg_link ? `\nLeaderboard channel: ${lb_msg_link}` : `\nNo leaderboard channel set`)
+        (lb_msg_link ? `\nLeaderboard channel: ${lb_msg_link}` : `\nNo leaderboard channel set`) +
+        `\nMatch type: **${props.match_type_name}**`
 
       return new SectionBuilder({
         components: [
@@ -130,17 +132,28 @@ export async function main(app: App, ctx: AnyGuildInteractionContext): Promise<D
           }),
         ),
     )
+    // .addSectionComponents(
+    //   new SectionBuilder()
+    //     .addTextDisplayComponents(
+    //       new TextDisplayBuilder({
+    //         content: `**Refresh Commands:** Certain commands, such as ${await commandMention(app, record_match_cmd, guild.data.id)}, have different options or formats based on the server's settings. If they ever get outdated, click the button to refresh the commands in this server.`,
+    //       }),
+    //     )
+    //     .setButtonAccessory(
+    //       new ButtonBuilder({
+    //         style: D.ButtonStyle.Secondary,
+    //         custom_id: settings_view_sig.newState({ handler: SettingsHandlers.refreshCommands }).cId(),
+    //         label: 'Refresh Commands',
+    //       }),
+    //     ),
+    // )
+
     .addActionRowComponents(
       new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents([
         new ButtonBuilder({
           style: D.ButtonStyle.Secondary,
           custom_id: help_view_sig.newState({ followup: true }).cId(),
           label: 'Help',
-        }),
-        new ButtonBuilder({
-          style: D.ButtonStyle.Secondary,
-          custom_id: settings_view_sig.newState({ handler: SettingsHandlers.refreshCommands }).cId(),
-          label: 'Refresh Commands',
         }),
       ]),
     )

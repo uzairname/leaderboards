@@ -1,6 +1,6 @@
 import { eq, InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { z } from 'zod'
-import { Player } from '.'
+import { OutcomeType, Player } from '.'
 import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'
@@ -28,7 +28,7 @@ export enum RatingStrategy {
   Bayesian = 4,
 }
 
-export type RatingSettings = {
+export type RatingParameters = {
   rating_strategy: RatingStrategy
   initial_rating: {
     mu: number
@@ -37,24 +37,31 @@ export type RatingSettings = {
   }
   k_factor: number
   tau: number
+  provisional_rd_threshold: number
 }
 
 export type MatchmakingSettings = {
   queue_enabled?: boolean
-  default_best_of?: number
+  queue_join_ping_role_id?: string | null
+  queue_join_timeout_minutes?: number
   direct_challenge_enabled?: boolean
+  default_best_of?: number
 }
 
 export const MatchSettingsSchema = z.object({
-  custom_desc: z
-    .object({
-      random_items_each_team_choices: z.record(z.array(z.string())).optional(),
-    })
-    .optional(),
-  draws_allowed: z.boolean().default(true),
+  outcome_type: z.enum(OutcomeType).optional(),
+  draws_allowed: z.boolean().optional(),
 })
 
 export type MatchSettings = z.infer<typeof MatchSettingsSchema>
+
+// Governs how the ranking can be shared across guilds
+export const SharigSettingsSchema = z.object({
+  // If true, the ranking leaderboard can be searched for and viewed by anyone
+  discoverable: z.boolean().optional(),
+})
+
+export type SharingSettings = z.infer<typeof SharigSettingsSchema>
 
 @logDbMethods
 export class PartialRanking extends DbObject<{ id: number }> {

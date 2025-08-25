@@ -3,9 +3,6 @@ import * as D from 'discord-api-types/v10'
 import { AppErrors } from '../../errors/app-errors'
 import { UserError } from '../../errors/user-errors'
 import { App } from '../../setup/app'
-import { numRankings } from '../../api/guilds/properties'
-import { getOrCreatePlayerByUser } from '../../api/players/manage'
-import { cancelMatch, setMatchDraw, setMatchWinner } from '../../api/matches/management/update-matches'
 import { manage_match_view_sig, manageMatchPage } from './view'
 
 const optionnames = {
@@ -142,8 +139,7 @@ export const match_cmd_sig = new CommandSignature({
 
 export const match_cmd = match_cmd_sig.set<App>({
   guildSignature: async (app, guild_id) => {
-    const guild = app.db.guilds.get(guild_id)
-    if ((await numRankings(app, guild)) == 0) return null
+    if ((await app.rankings.numRankings(app, guild_id)) == 0) return null
     return match_cmd_sig
   },
 
@@ -188,12 +184,12 @@ export const match_cmd = match_cmd_sig.set<App>({
       // Act on the match, based on the selected action or match
       if (subcommand) {
         if (subcommand === subcommandnames.revert) {
-          await cancelMatch(app, match, ctx.interaction)
+          await app.matches.cancel(app, match, ctx.interaction)
           await ctx.edit({
             content: `Match ${match.data.id} has been reverted`,
           })
         } else if (subcommand === subcommandnames.set_draw) {
-          await setMatchDraw(app, match, ctx.interaction)
+          await app.matches.setMatchDraw(app, match, ctx.interaction)
           return void (await ctx.edit({
             content: `Match ${match.data.id} has been set as a draw`,
           }))
@@ -201,8 +197,8 @@ export const match_cmd = match_cmd_sig.set<App>({
           if (!options.user?.id) {
             throw new UserError(`Please specify the player to set as winner`)
           }
-          const winner = await getOrCreatePlayerByUser(app, options.user.id, match.ranking)
-          await setMatchWinner(app, match, winner, ctx.interaction)
+          const winner = await app.players.getOrCreatePlayerByUser(app, options.user.id, match.ranking)
+          await app.matches.setWinner(app, match, winner, ctx.interaction)
           return void (await ctx.edit({
             content: `<@${options.user.id}> has been set as the winner of match ${match.data.id}`,
           }))

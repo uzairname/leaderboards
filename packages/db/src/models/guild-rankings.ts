@@ -36,7 +36,7 @@ export class PartialGuildRanking extends DbObject<{ guild_id: string; ranking_id
         .returning()
     )[0]
     this.data = new_data
-    
+
     // Invalidate relevant caches
     this.db.cache.guild_rankings_by_guild.delete(new_data.guild_id)
     this.db.cache.guild_rankings_by_ranking.delete(new_data.ranking_id)
@@ -101,7 +101,6 @@ export class GuildRankingsManager extends DbObjectManager {
         ? { guild: Guild; guild_ranking: GuildRanking }[]
         : never
   > {
-
     if (by.guild_id && by.ranking_id) {
       if (
         this.db.cache.guilds.has(by.guild_id) &&
@@ -148,12 +147,11 @@ export class GuildRankingsManager extends DbObjectManager {
       }))
 
       this.db.cache.guild_rankings_by_guild.setSerialized(by.guild_id, result)
-      
+
       return result.map(item => ({
         guild_ranking: new GuildRanking(item.guild_ranking, this.db),
         ranking: new Ranking(item.ranking, this.db),
       })) as any
-
     } else if (by.ranking_id) {
       const cached = this.db.cache.guild_rankings_by_ranking.get(by.ranking_id)
       if (cached) return cached as any

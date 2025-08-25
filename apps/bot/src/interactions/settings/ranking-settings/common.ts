@@ -2,12 +2,12 @@ import { ActionRowBuilder, ButtonBuilder, ContainerBuilder, StringSelectMenuBuil
 import { GuildRanking, Ranking } from '@repo/db/models'
 import { ChatInteractionResponse, ComponentContext, Context, MessageData } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
+import { DEFAULT_LB_COLOR } from '../../../services/rankings/properties'
 import { App } from '../../../setup/app'
 import { settings_view_sig } from '../settings/view'
 import * as RankingSettingsHandlers from './handlers'
 import { onSettingSelect } from './handlers'
 import { ranking_settings_view_sig } from './view'
-import { DEFAULT_LB_COLOR } from '../../../api/rankings/properties'
 
 export const settingsOptions: (gr: { guild_ranking: GuildRanking; ranking: Ranking }) => {
   [key: string]: {
@@ -22,7 +22,7 @@ export const settingsOptions: (gr: { guild_ranking: GuildRanking; ranking: Ranki
     handler: RankingSettingsHandlers.sendRenameModal,
   },
   match: {
-    label: '🏆 Match Settings',
+    label: '⚔️ Matchmaking',
     description: `Customize how matches are recorded in this ranking`,
     handler: RankingSettingsHandlers.sendMatchSettingsPage,
   },
@@ -32,7 +32,7 @@ export const settingsOptions: (gr: { guild_ranking: GuildRanking; ranking: Ranki
     handler: RankingSettingsHandlers.sendRankRolesPage,
   },
   scoring: {
-    label: '🔢 Rating Settings',
+    label: '🔢 Scoring',
     description: `Customize the algorithm by which players' ratings are calculated`,
     handler: RankingSettingsHandlers.sendRatingSettingsPage,
   },

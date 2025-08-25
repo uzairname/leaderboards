@@ -3,17 +3,15 @@ import { intOrNull, parseColor, strOrUndefined } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { RankingSettingsPages } from '.'
 import { UserErrors } from '../../../errors/user-errors'
+import { setRankRole, unsetRankRole, updateRankRolesForGuildRanking } from '../../../services/players/rank-roles'
+import { parseRatingStrategy, rating_strategy_name } from '../../../services/rankings/ratings'
+import { escapeMd } from '../../../services/utils/strings'
 import { App } from '../../../setup/app'
+import { SettingsPages } from '../settings'
 import { settingsOptions } from './common'
 import { rankingSettingsModal, ratingParametersModal } from './modals'
-import { rankRolesSettings, ratingSettings } from './pages'
+import { rankRolesSettings, scoringSettings } from './pages'
 import { ranking_settings_view_sig } from './view'
-import { disableGuildRankingLbMessage, syncGuildRankingLbMessage } from '../../../api/leaderboard/manage'
-import { unsetRankRole, setRankRole, updateRankRolesForGuildRanking } from '../../../api/players/rank-roles'
-import { updateRanking, updateGuildRanking, deleteRanking } from '../../../api/rankings/manage'
-import { rating_strategy_name, parseRatingStrategy, getDefaultRatingSettings } from '../../../api/rankings/ratings'
-import { escapeMd } from '../../../api/utils'
-import { SettingsPages } from '../settings'
 
 /**
  * Go to the ranking settings page
@@ -79,14 +77,12 @@ export async function onSettingsModalSubmit(
 
     // If any setings that apply to the ranking are specified, update them
     if (new_name || new_best_of) {
-      const new_matchmaking_settings = {
-        ...ranking.data.matchmaking_settings,
-        default_best_of: new_best_of ?? ranking.data.matchmaking_settings.default_best_of,
-      }
-
-      await updateRanking(app, ctx.interaction, ranking, {
+      await app.rankings.update(app, ctx.interaction, ranking, {
         name: new_name,
-        matchmaking_settings: new_matchmaking_settings,
+        matchmaking_settings: {
+          ...ranking.data.matchmaking_settings,
+          default_best_of: new_best_of ?? ranking.data.matchmaking_settings?.default_best_of,
+        },
       })
     }
 
@@ -95,7 +91,7 @@ export async function onSettingsModalSubmit(
       const valid_color = parseColor(color_input)
       if (!valid_color) throw new UserErrors.ValidationError('Color must contain a hex code, like ff0000')
 
-      await updateGuildRanking(app, ctx.interaction, guild_ranking, {
+      await app.rankings.updateGuildRanking(app, ctx.interaction, guild_ranking, {
         display_settings: {
           ...guild_ranking.data.display_settings,
           color: valid_color ?? guild_ranking.data.display_settings?.color,
@@ -169,7 +165,7 @@ export async function onRatingParamsModalSubmit(
       flags: D.MessageFlags.Ephemeral,
     })
 
-    await updateRanking(
+    await app.rankings.update(
       app,
       ctx.interaction,
       ranking,
@@ -186,7 +182,7 @@ export async function onRatingParamsModalSubmit(
       followup.id,
     )
 
-    await ctx.edit(await ratingSettings(app, ctx), msg_id)
+    await ctx.edit(await scoringSettings(app, ctx), msg_id)
   })
 }
 
@@ -202,9 +198,9 @@ export async function onToggleLiveLeaderboard(
 
     // send and enable the leaderboard message if it's disabled
     if (guild_ranking.data.display_settings?.leaderboard_message) {
-      await disableGuildRankingLbMessage(app, ctx.interaction, guild_ranking)
+      await app.lbs.disableGuildRankingLbMessage(app, ctx.interaction, guild_ranking)
     } else {
-      await syncGuildRankingLbMessage(app, guild_ranking, { enable_if_disabled: true })
+      await app.lbs.syncGuildRankingMessage(app, guild_ranking, { enable_if_disabled: true })
     }
 
     await ctx.edit(await RankingSettingsPages.appearance(app, ctx))
@@ -227,7 +223,7 @@ export async function onToggleChallenge(
 
     const matchmaking_settings = ranking.data.matchmaking_settings
 
-    await updateRanking(app, ctx.interaction, ranking, {
+    await app.rankings.update(app, ctx.interaction, ranking, {
       matchmaking_settings: {
         ...matchmaking_settings,
         direct_challenge_enabled: !matchmaking_settings?.direct_challenge_enabled,
@@ -245,13 +241,123 @@ export async function onToggleQueue(
   return ctx.defer(async ctx => {
     const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
     const matchmaking_settings = ranking.data.matchmaking_settings
-    
-    await updateRanking(app, ctx.interaction, ranking, {
+
+    await app.rankings.update(
+      app,
+      ctx.interaction,
+      ranking,
+      {
+        matchmaking_settings: {
+          ...matchmaking_settings,
+          queue_enabled: !matchmaking_settings?.queue_enabled,
+        },
+      },
+      ctx,
+    )
+
+    await ctx.edit(await RankingSettingsPages.matchSettings(app, ctx))
+  })
+}
+
+export async function unsetQueuePingRole(
+  app: App,
+  ctx: ComponentContext<typeof ranking_settings_view_sig>,
+): Promise<ChatInteractionResponse> {
+  return ctx.defer(async ctx => {
+    const msg_id = ctx.interaction.message?.id
+
+    const { guild_ranking } = await app.db.guild_rankings.fetch({
+      guild_id: ctx.interaction.guild_id,
+      ranking_id: ctx.state.get.ranking_id(),
+    })
+
+    // Unset the queue ping role
+    await app.rankings.updateGuildRanking(app, ctx.interaction, guild_ranking, {
+      matchmaking_settings: {
+        ...guild_ranking.data.matchmaking_settings,
+        queue_join_ping_role_id: null,
+      },
+    })
+
+    await ctx.edit(await RankingSettingsPages.matchSettings(app, ctx), msg_id)
+  })
+}
+
+export async function onQueuePingRoleSelect(
+  app: App,
+  ctx: ComponentContext<typeof ranking_settings_view_sig>,
+): Promise<ChatInteractionResponse> {
+  return ctx.defer(async ctx => {
+    const data = ctx.interaction.data as D.APIMessageRoleSelectInteractionData
+    const selected_role_id = data.values[0]
+
+    const { guild_ranking } = await app.db.guild_rankings.fetch({
+      guild_id: ctx.interaction.guild_id,
+      ranking_id: ctx.state.get.ranking_id(),
+    })
+
+    // Update the queue ping role
+    await app.rankings.updateGuildRanking(app, ctx.interaction, guild_ranking, {
+      matchmaking_settings: {
+        ...guild_ranking.data.matchmaking_settings,
+        queue_join_ping_role_id: selected_role_id,
+      },
+    })
+
+    await ctx.edit(await RankingSettingsPages.matchSettings(app, ctx))
+  })
+}
+
+export async function sendQueueJoinTimeoutModal(
+  app: App,
+  ctx: ComponentContext<typeof ranking_settings_view_sig>,
+): Promise<ChatInteractionResponse> {
+  return {
+    type: D.InteractionResponseType.Modal,
+    data: {
+      title: 'Set Queue Join Timeout',
+      custom_id: ctx.state.set.handler(onQueueJoinTimeoutModalSubmit).cId(),
+      components: [
+        {
+          type: D.ComponentType.ActionRow,
+          components: [
+            {
+              type: D.ComponentType.TextInput,
+              custom_id: 'queue_join_timeout_minutes',
+              label: 'Queue Join Timeout',
+              style: D.TextInputStyle.Short,
+              placeholder: 'Enter number of minutes',
+              required: true,
+            },
+          ],
+        },
+      ],
+    },
+  }
+}
+
+export async function onQueueJoinTimeoutModalSubmit(
+  app: App,
+  ctx: ComponentContext<typeof ranking_settings_view_sig>,
+): Promise<ChatInteractionResponse> {
+  return ctx.defer(async ctx => {
+    const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
+
+    const entries = getModalSubmitEntries(ctx.interaction as D.APIModalSubmitInteraction)
+    const queue_join_timeout_minutes = intOrNull(entries['queue_join_timeout_minutes']?.value)
+
+    if (queue_join_timeout_minutes === null || queue_join_timeout_minutes <= 0) {
+      throw new UserErrors.ValidationError('Queue join timeout must be a positive integer')
+    }
+
+    const matchmaking_settings = ranking.data.matchmaking_settings
+
+    await app.rankings.update(app, ctx.interaction, ranking, {
       matchmaking_settings: {
         ...matchmaking_settings,
-        queue_enabled: !matchmaking_settings?.queue_enabled,
+        queue_join_timeout_minutes,
       },
-    }, ctx)
+    })
 
     await ctx.edit(await RankingSettingsPages.matchSettings(app, ctx))
   })
@@ -267,7 +373,7 @@ export async function onToggleDraws(
     const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
     const match_settings = ranking.data.match_settings
 
-    await updateRanking(app, ctx.interaction, ranking, {
+    await app.rankings.update(app, ctx.interaction, ranking, {
       match_settings: {
         ...match_settings,
         draws_allowed: !match_settings?.draws_allowed,
@@ -275,6 +381,24 @@ export async function onToggleDraws(
     })
 
     await ctx.edit(await RankingSettingsPages.matchSettings(app, ctx), msg_id)
+  })
+}
+
+export async function setOutcomeType(
+  app: App,
+  ctx: ComponentContext<typeof ranking_settings_view_sig>,
+): Promise<ChatInteractionResponse> {
+  return ctx.defer(async ctx => {
+    const outcome_type = ctx.state.get.selected_outcome_type()
+    const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
+
+    await app.rankings.update(app, ctx.interaction, ranking, {
+      match_settings: {
+        ...ranking.data.match_settings,
+        outcome_type: outcome_type,
+      },
+    })
+    await ctx.edit(await RankingSettingsPages.scoringSettings(app, ctx))
   })
 }
 
@@ -289,7 +413,7 @@ export async function sendRatingSettingsPage(
   app: App,
   ctx: ComponentContext<typeof ranking_settings_view_sig>,
 ): Promise<ChatInteractionResponse> {
-  return ctx.defer(async ctx => void (await ctx.edit(await ratingSettings(app, ctx))))
+  return ctx.defer(async ctx => void (await ctx.edit(await scoringSettings(app, ctx))))
 }
 
 export async function onRatingMethodSelect(
@@ -297,26 +421,25 @@ export async function onRatingMethodSelect(
   ctx: ComponentContext<typeof ranking_settings_view_sig>,
 ): Promise<ChatInteractionResponse> {
   return ctx.defer(async ctx => {
-    const rating_strategy = parseRatingStrategy(
-      (ctx.interaction.data as D.APIMessageStringSelectInteractionData).values[0],
-    )
+    const rating_strategy = ctx.state.get.selected_rating_strategy()
 
     const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
 
-    await updateRanking(
+    // When updating the rating method, reset the parameters to keep them appropriate for the new method.
+    await app.rankings.update(
       app,
       ctx.interaction,
       ranking,
       {
         rating_settings: {
           ...ranking.data.rating_settings,
-          ...getDefaultRatingSettings(rating_strategy),
+          ...app.rankings.getDefaultRatingParameters(rating_strategy),
         },
       },
       ctx,
     )
 
-    await ctx.edit(await ratingSettings(app, ctx))
+    await ctx.edit(await scoringSettings(app, ctx))
   })
 }
 
@@ -371,7 +494,7 @@ export async function onDeleteConfirmBtn(
 ): Promise<ChatInteractionResponse> {
   return ctx.defer(async ctx => {
     const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
-    await deleteRanking(app, ctx.interaction, ranking)
+    await app.rankings.delete(app, ctx.interaction, ranking)
 
     await ctx.edit(await SettingsPages.main(app, ctx))
 

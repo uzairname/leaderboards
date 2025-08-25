@@ -1,5 +1,5 @@
 import * as D from 'discord-api-types/v10'
-import { AnyStringDataSchema } from '../../../utils/src/StringData'
+import { AnyStateSchema } from '../../../utils/src/StringData'
 import { MessageData } from '../rest/objects'
 import { CommandHandler, ViewHandler } from './views'
 import { CommandSignature, ViewSignature } from './views/signature'
@@ -44,15 +44,11 @@ export type AnyAppCommandType =
   | D.ApplicationCommandType.User
   | D.ApplicationCommandType.Message
 
-export type AnyViewSignature = ViewSignature<AnyStringDataSchema, any>
+export type AnyViewSignature = ViewSignature<AnyStateSchema, any>
 
-export type AnyChatInputCommandSignature = CommandSignature<
-  AnyStringDataSchema,
-  D.ApplicationCommandType.ChatInput,
-  any
->
+export type AnyChatInputCommandSignature = CommandSignature<AnyStateSchema, D.ApplicationCommandType.ChatInput, any>
 
-export type AnyCommandSignature = CommandSignature<AnyStringDataSchema, AnyAppCommandType, any>
+export type AnyCommandSignature = CommandSignature<AnyStateSchema, AnyAppCommandType, any>
 
 export type AnySignature = AnyViewSignature | AnyCommandSignature
 
@@ -107,19 +103,19 @@ export interface DeferredComponentContext<S extends AnyViewSignature>
     StateContext<S> {}
 
 // Initial contexts
-export interface CommandContext<S extends AnyCommandSignature>
+export interface CommandContext<S extends AnyCommandSignature, Arg extends unknown>
   extends InteractionContext<S, CommandTypeToInteraction<S['config']['type']>> {
   defer: (
-    callback: (ctx: DeferredCommandContext<S>) => Promise<void>,
+    callback: (ctx: DeferredCommandContext<S>, arg: Arg) => Promise<void>,
     initial_response?: CommandInteractionResponse,
   ) => CommandInteractionResponse
 }
 
-export interface ComponentContext<S extends AnyViewSignature>
+export interface ComponentContext<S extends AnyViewSignature, Arg extends unknown = unknown>
   extends InteractionContext<S, ComponentInteraction>,
     StateContext<S> {
   defer: (
-    callback: (ctx: DeferredComponentContext<S>) => Promise<void>,
+    callback: (ctx: DeferredComponentContext<S>, arg: Arg) => Promise<void>,
     initial_response?: ChatInteractionResponse,
   ) => ChatInteractionResponse
 }
@@ -142,7 +138,10 @@ export interface DeferredContext<S extends AnyViewSignature>
 /**
  * An initial interaction from a command or component interaction, or deferred context from a component interaction.
  */
-export type Context<S extends AnyViewSignature> = InitialContext<S> | DeferredComponentContext<S> | ComponentContext<S>
+export type Context<S extends AnyViewSignature, Arg extends unknown = unknown> =
+  | InitialContext<S>
+  | DeferredComponentContext<S>
+  | ComponentContext<S, Arg>
 
 // Any context
 
@@ -168,19 +167,19 @@ export type ViewAutocompleteCallback<Type extends AnyAppCommandType, Arg extends
 
 // Command
 export type CommandCallback<View extends CommandSignature<any, AnyAppCommandType, any>, Arg extends unknown> = (
-  ctx: CommandContext<View>, // , View['config']['type']
+  ctx: CommandContext<View, Arg>, // , View['config']['type']
   args: Arg,
 ) => Promise<CommandInteractionResponse>
 
 // Component
 export type ComponentCallback<S extends AnyViewSignature, Arg extends unknown> = (
-  ctx: ComponentContext<S>,
+  ctx: ComponentContext<S, Arg>,
   arg: Arg,
 ) => Promise<ChatInteractionResponse>
 
-export type OffloadCallback = (
-  callback: (ctx: { setException: (e: unknown) => void; setRequestName: (name: string) => void }) => Promise<void>,
-  onTimeout?: (e: Error) => Promise<void>,
+export type Offloader<Arg> = (
+  callback: (ctx: { setException: (e: unknown) => void }, arg: Arg) => Promise<void>,
+  // onTimeout?: (e: Error) => Promise<void>,
   name?: string,
 ) => void
 

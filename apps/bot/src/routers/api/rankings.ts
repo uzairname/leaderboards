@@ -2,10 +2,8 @@ import { MatchSettingsSchema, Ranking, RankRolesSchema } from '@repo/db/models'
 import { strOrUndefined } from '@repo/utils'
 import { IttyRouter } from 'itty-router/IttyRouter'
 import { json } from 'itty-router/json'
-import { syncRankingLbMessages } from '../../api/leaderboard/manage'
-import { rescoreAllMatches } from '../../api/matches/scoring/score-matches'
-import { App } from '../../setup/app'
 import { leaderboardText } from '../../interactions/leaderboard/pages'
+import { App } from '../../setup/app'
 
 export default (app: App, ranking: Ranking) =>
   IttyRouter({ base: `/api/rankings/${ranking.data.id}` })
@@ -15,12 +13,12 @@ export default (app: App, ranking: Ranking) =>
     })
 
     .post('/refresh-lb', async request => {
-      await syncRankingLbMessages(app, ranking)
+      await app.lbs.syncMessages(app, ranking)
       return new Response(`Updated ${ranking.data.name} leaderboards`)
     })
 
     .post('/rescore', async request => {
-      const result = await rescoreAllMatches(app, ranking)
+      const result = await app.scoring.rescoreAllMatches(app, ranking)
       return json(result.map(m => ({ player: m.player.data.id, rating: m.rating })))
     })
 

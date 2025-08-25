@@ -1,8 +1,8 @@
-import { LZString, StringData, StringDataSchema } from '@repo/utils'
+import { LZString, StateCodec, StateSchema } from '@repo/utils'
 import { InteractionErrors } from '../errors'
 import { ViewSignature } from './signature'
 
-export class ViewState<T extends StringDataSchema> extends StringData<T> {
+export class ViewState<T extends StateSchema> extends StateCodec<T> {
   set = {} as {
     [K in keyof T]: (value: T[K]['type'] | null | undefined) => ViewState<T>
   }
@@ -32,8 +32,8 @@ export class ViewState<T extends StringDataSchema> extends StringData<T> {
   }
 }
 
-export abstract class ViewStateFactory<T extends StringDataSchema> extends ViewState<T> {
-  static fromSignature<T extends StringDataSchema>(signature: ViewSignature<T, any>): ViewState<T> {
+export abstract class ViewStateFactory<T extends StateSchema> extends ViewState<T> {
+  static fromSignature<T extends StateSchema>(signature: ViewSignature<T, any>): ViewState<T> {
     return new ViewState(signature.state_schema, signature.config.custom_id_prefix)
   }
 

@@ -1,5 +1,3 @@
-
-
 export class GenericCacheMap<SerializedT, DeserializedT, K, K2 extends string | number | undefined = never> {
   constructor(
     public name: string,
@@ -80,8 +78,6 @@ export class GenericCacheMap<SerializedT, DeserializedT, K, K2 extends string | 
     }
   }
 }
-
-
 
 export class CacheMap<K, V, K2 extends string | number | undefined = undefined> extends Map<K, V> {
   constructor(

@@ -2,7 +2,6 @@ import { CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../setup/app'
 import { guildRankingsOption, withOptionalSelectedRanking } from '../utils/ranking-option'
-import { numRankings } from '../../api/guilds/properties'
 import { matchesPage, matches_view_sig } from './view'
 
 export const matches_command_sig = new CommandSignature({
@@ -19,7 +18,15 @@ const optionnames = {
 export const matches_cmd = matches_command_sig.set<App>({
   guildSignature: async (app, guild_id) => {
     const guild = app.db.guilds.get(guild_id)
-    if ((await numRankings(app, guild)) == 0) return null
+
+    const guild_rankings_option = await guildRankingsOption(
+      app,
+      guild,
+      optionnames.ranking,
+      { optional: true },
+      'filter matches by ranking',
+    )
+    if (guild_rankings_option.length == 0) return null
 
     const options: D.APIApplicationCommandOption[] = [
       {
@@ -31,9 +38,7 @@ export const matches_cmd = matches_command_sig.set<App>({
 
     return new CommandSignature({
       ...matches_command_sig.config,
-      options: options.concat(
-        await guildRankingsOption(app, guild, optionnames.ranking, { optional: true }, 'filter matches by ranking'),
-      ),
+      options: options.concat(guild_rankings_option),
     })
   },
   onCommand: async (ctx, app) =>

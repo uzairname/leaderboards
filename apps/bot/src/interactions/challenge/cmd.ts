@@ -1,12 +1,9 @@
 import { CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { challengePage } from './view'
-import { getOrAddGuild } from '../../api/guilds/manage'
-import { ensurePlayersEnabled } from '../../api/matches/management/create-matches'
-import { getOrCreatePlayerByUser } from '../../api/players/manage'
-import { getChallengeEnabledRankings } from '../../api/rankings/properties'
+import { get1v1ChallengeEnabledRankings } from '../../services/rankings/properties'
 import { App } from '../../setup/app'
 import { guildRankingsOption, withSelectedRanking } from '../utils'
+import { challengePage } from './view'
 
 const optionnames = {
   opponent: 'opponent',
@@ -23,7 +20,7 @@ export const challenge_1v1_cmd_sig = new CommandSignature({
 export const challenge_1v1_cmd = challenge_1v1_cmd_sig.set<App>({
   guildSignature: async (app, guild_id) => {
     const guild = app.db.guilds.get(guild_id)
-    const result = (await getChallengeEnabledRankings(app, guild)).map(i => i.ranking)
+    const result = (await get1v1ChallengeEnabledRankings(app, guild)).map(i => i.ranking)
 
     if (result.length == 0) return null
 
@@ -61,9 +58,9 @@ export const challenge_1v1_cmd = challenge_1v1_cmd_sig.set<App>({
       ranking: { type: D.ApplicationCommandOptionType.Integer },
     })
 
-    const challenge_enabled_rankings = await getChallengeEnabledRankings(
+    const challenge_enabled_rankings = await get1v1ChallengeEnabledRankings(
       app,
-      await getOrAddGuild(app, ctx.interaction.guild_id),
+      await app.guilds.get(app, ctx.interaction.guild_id),
     )
 
     return withSelectedRanking(
@@ -76,13 +73,13 @@ export const challenge_1v1_cmd = challenge_1v1_cmd_sig.set<App>({
       async ranking =>
         ctx.defer(async ctx => {
           const interaction = ctx.interaction
-          const initiator = await getOrCreatePlayerByUser(app, interaction.member.user.id, ranking)
+          const initiator = await app.players.getOrCreatePlayerByUser(app, interaction.member.user.id, ranking)
 
           const opponent_id = options.opponent.id
 
-          const opponent = await getOrCreatePlayerByUser(app, opponent_id, ranking)
+          const opponent = await app.players.getOrCreatePlayerByUser(app, opponent_id, ranking)
 
-          await ensurePlayersEnabled(app, [initiator, opponent])
+          await app.matches.ensurePlayersCanStartMatch(app, [initiator, opponent])
 
           await ctx.send(
             await challengePage(app, {

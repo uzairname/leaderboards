@@ -3,8 +3,8 @@ import { Player } from '@repo/db/models'
 import { DiscordErrors } from '@repo/discord'
 import { listToString, truncateString } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
+import { inviteUrl, permsToString } from '../services/utils/strings'
 import { App } from '../setup/app'
-import { inviteUrl, permsToString } from '../api/utils'
 
 export class UserError extends Error {
   /**

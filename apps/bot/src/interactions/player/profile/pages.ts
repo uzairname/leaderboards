@@ -1,17 +1,15 @@
-import { Ranking } from '@repo/db/models'
+import { PlayerFlags, Ranking } from '@repo/db/models'
 import { Context } from '@repo/discord'
 import { intToOrdinal, nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { ProfileHandlers } from '.'
-import { ratingTable, wlrTable } from './pieces'
-import { profile_view_sig } from './view'
-import { getOrAddGuild } from '../../../api/guilds/manage'
-import { getPlayerStats } from '../../../api/players/properties'
-import { calculateRankRolesForPlayer } from '../../../api/players/rank-roles'
-import { rating_strategy_name } from '../../../api/rankings/ratings'
+import { calculateRankRolesForPlayer } from '../../../services/players/rank-roles'
+import { rating_strategy_name } from '../../../services/rankings/ratings'
+import { Colors, breadcrumbsTitle, escapeMd, userAvatarUrl } from '../../../services/utils/strings'
 import { App } from '../../../setup/app'
 import { matches_view_sig } from '../../view-matches/view'
-import { userAvatarUrl, Colors, breadcrumbsTitle, escapeMd } from '../../../api/utils'
+import { ratingTable, wlrTable } from './pieces'
+import { profile_view_sig } from './view'
 
 function rankingSelectMenu(
   grs: { ranking: Ranking }[],
@@ -56,7 +54,7 @@ export async function main(
   const is_requesting_user = ctx.interaction.member.user.id === target_user_id
 
   const guild_id = ctx.interaction.guild_id
-  const guild = await getOrAddGuild(app, guild_id)
+  const guild = await app.guilds.get(app, guild_id)
   const rankings_in_guild = await app.db.guild_rankings.fetch({ guild_id })
 
   // find every ranking this user is in, in the guild
@@ -97,7 +95,7 @@ export async function main(
 
   const rank_role_text = applicable_rank_roles.map(id => `<@&${id}>`).join(', ')
 
-  const stats = await getPlayerStats(app, player)
+  const stats = await app.players.getPlayerStats(app, player)
 
   const wlr_table = wlrTable({ stats })
   const rating_table = ratingTable({ stats })
@@ -107,7 +105,10 @@ export async function main(
       name: `Rank`,
       value:
         (stats.lb_place ? `**${intToOrdinal(stats.lb_place)}** place out of ${stats.max_lb_place}` : `Unranked`) +
-        (rank_role_text.length > 0 ? `\n${rank_role_text}` : ``),
+        (rank_role_text.length > 0 ? `\n${rank_role_text}` : ``) +
+        (player.data.flags & PlayerFlags.Disabled
+          ? `\n❌ This player is currently banned from participating in this ranking`
+          : ``),
     },
     {
       name: `Stats`,

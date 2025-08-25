@@ -1,7 +1,7 @@
 import { ViewSignature } from '@repo/discord'
 import { field } from '@repo/utils'
-import * as handlers from './pages'
 import { App } from '../../../setup/app'
+import * as handlers from './pages'
 
 export const player_view_sig = new ViewSignature({
   name: 'Manage Player',
@@ -15,7 +15,7 @@ export const player_view_sig = new ViewSignature({
       }),
     ),
     page: field.Choice(handlers),
-    confirm_remove: field.Boolean(),
+    confirm_remove: field.Bool(),
   },
   guild_only: true,
 })

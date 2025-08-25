@@ -2,14 +2,12 @@ import { EmbedBuilder } from '@discordjs/builders'
 import { Ranking } from '@repo/db/models'
 import { Context, MessageData } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
+import { calculateRankRolesForRating } from '../../services/players/rank-roles'
+import { DEFAULT_LB_COLOR } from '../../services/rankings/properties'
+import { commandMention, escapeMd, relativeTimestamp, space } from '../../services/utils/strings'
+import { App } from '../../setup/app'
 import { leaderboard_cmd } from './cmd'
 import { leaderboard_view_sig } from './view'
-import { numRankings } from '../../api/guilds/properties'
-import { orderedLeaderboardPlayers, mentionOrName } from '../../api/players/properties'
-import { calculateRankRolesForRating } from '../../api/players/rank-roles'
-import { rankingProperties, DEFAULT_LB_COLOR } from '../../api/rankings/properties'
-import { App } from '../../setup/app'
-import { commandMention, escapeMd, relativeTimestamp, space } from '../../api/utils'
 
 export async function leaderboardText(
   app: App,
@@ -24,10 +22,10 @@ export async function leaderboardText(
   text: string
   max_page: number
 }> {
-  const lines_per_page = 20
+  const lines_per_page = 25
   const page = options?.page ?? 1
 
-  const players = await orderedLeaderboardPlayers(app, ranking)
+  const players = await app.lbs.getOrderedPlayers(app, ranking)
 
   const { guild, guild_ranking } = options?.guild_id
     ? await app.db.guild_rankings.fetch({ guild_id: options.guild_id, ranking_id: ranking.data.id })
@@ -46,7 +44,7 @@ export async function leaderboardText(
             `\`` +
             `${p.points.toFixed(0)}`.padStart(max_rating_len) +
             `\`` +
-            `${space}${mentionOrName(p.player)} ` +
+            `${space}${app.players.mentionOrName(p.player)} ` +
             `*Unranked*`
           )
         }
@@ -67,7 +65,7 @@ export async function leaderboardText(
           `\`` +
           `${place}.`.padEnd(3, ' ') +
           `\`  **\`${p.points.toFixed(0).padStart(max_rating_len)}\`**` +
-          `${space}${mentionOrName(p.player)}` +
+          `${space}${app.players.mentionOrName(p.player)}` +
           // `` +
           (rank_role_id ? ` (<@&${rank_role_id}>)` : ``) // Add the rank role mention if it exists
         )
@@ -90,13 +88,13 @@ export async function leaderboardText(
   const fits_on_one_page = max_page <= 1
 
   const bottom_text =
-    `-# Last updated ${relativeTimestamp(new Date(Date.now()))}. ` +
-    (rankingProperties(ranking).uses_provisional_ratings
+    `-# Last updated ${relativeTimestamp(new Date())}. ` +
+    (app.rankings.getProperties(ranking).uses_provisional_ratings
       ? `\n-# Unranked players are given a provisional rating and are hidden from the main leaderboard until they play more games.`
       : ``) +
     (fits_on_one_page ? `` : `\n-# Page ${page} of ${Math.ceil(all_lines.length / lines_per_page)}.`) +
-    (options?.show_lb_cmd_tip && !fits_on_one_page
-      ? `\nUse ${await commandMention(app, leaderboard_cmd, options?.guild_id)}${guild && (await numRankings(app, guild)) > 1 ? ` \`${ranking.data.name}\`` : ``} to see the full leaderboard.`
+    (options?.show_lb_cmd_tip && guild
+      ? `\nUse ${await commandMention(app, leaderboard_cmd, options?.guild_id)} \`${ranking.data.name}\` to see the full leaderboard.`
       : ``)
 
   return {

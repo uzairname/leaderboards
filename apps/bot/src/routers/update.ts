@@ -1,7 +1,6 @@
 import * as sentry from '@sentry/cloudflare'
 import { IttyRouter } from 'itty-router/IttyRouter'
-import { getOrAddGuild } from '../api/guilds/manage'
-import { getAppRoleConnectionsMetadata } from '../api/role-connections/role-connections'
+import { getAppRoleConnectionsMetadata } from '../services/role-connections/role-connections'
 import { App, syncDiscordCommands } from '../setup/app'
 
 export default (app: App) =>
@@ -39,7 +38,7 @@ export default (app: App) =>
       if (!request.params.guild_id) {
         throw new Error('Guild ID not provided')
       }
-      const guild = await getOrAddGuild(app, request.params.guild_id)
+      const guild = await app.guilds.get(app, request.params.guild_id)
       await syncDiscordCommands(app, guild)
       return new Response(`Updated leaderborads app in guild ${guild?.data.name}`, { status: 200 })
     })

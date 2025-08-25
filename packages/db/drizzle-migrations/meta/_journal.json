@@ -78,6 +78,20 @@
       "when": 1755116935935,
       "tag": "0010_careless_valkyrie",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1755997543143,
+      "tag": "0011_parallel_jimmy_woo",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1756059751976,
+      "tag": "0012_groovy_northstar",
+      "breakpoints": true
     }
   ]
 }

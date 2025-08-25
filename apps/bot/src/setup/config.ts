@@ -1,7 +1,5 @@
-import { RatingStrategy } from '@repo/db/models'
 import * as D from 'discord-api-types/v10'
 import { Env } from '../Env'
-import { getScorerFn } from '../api/matches/scoring/scorers'
 
 export class Config {
   readonly OauthRoutes = {
@@ -52,15 +50,10 @@ export class Config {
       GiveBotInvite: !IsDev,
       ExperimentalCommands: IsDev,
       AllowNonUserPlayers: false,
-      AllowNon1v1Rankings: false,
+      AllowNon1v1Rankings: IsDev,
       RoleConnections: false,
       WebDashboardEnabled: false,
     },
-    // General rating configuration
-    readonly TrueSkillProvisionalRdThreshold = IsDev ? 0.85 : 0.85,
-    readonly GlickoProvisionalRdThreshold = IsDev ? 0.9 : 0.9,
-    readonly defaultScorer = getScorerFn(RatingStrategy.TrueSkill),
-
     // TrueSkill parameters
     readonly TrueSkillDisplayMeanRating = IsDev ? 1000 : 1000,
     readonly DisplaySdOffset = 0,
@@ -68,6 +61,5 @@ export class Config {
     // Match management timeouts
     readonly RematchTimeoutMinutes = 30,
     readonly ChallengeTimeoutMinutes = 10,
-    readonly QueueJoinTimeoutMinutes = IsDev ? 20 : 20,
   ) {}
 }

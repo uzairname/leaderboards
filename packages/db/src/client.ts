@@ -1,7 +1,7 @@
 import { hash } from '@repo/utils'
 import { NeonHttpDatabase } from 'drizzle-orm/neon-http'
 import { NeonDatabase } from 'drizzle-orm/neon-serverless'
-import { DbCache} from './cache'
+import { DbCache } from './cache'
 import { logDbMethods } from './logging'
 import { DbLogger } from './logging/db-logger'
 import {
@@ -50,7 +50,8 @@ export class DbClient {
 
   async measureLatency(): Promise<number> {
     const start = performance.now()
-    await this.drizzle.execute('SELECT 1')
+    // await this.drizzle.execute('SELECT 1')
+    await this.drizzle.execute('update "Settings" set id=1 where id=1')
     const latency = performance.now() - start
     return latency
   }

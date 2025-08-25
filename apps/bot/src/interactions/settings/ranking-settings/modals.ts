@@ -1,7 +1,12 @@
 import { ActionRowBuilder, ModalBuilder, TextInputBuilder } from '@discordjs/builders'
 import { RatingStrategy } from '@repo/db/models'
 import * as D from 'discord-api-types/v10'
-import { max_ranking_name_length, DEFAULT_TEAMS_PER_MATCH, DEFAULT_PLAYERS_PER_TEAM, default_best_of, DEFAULT_LB_COLOR } from '../../../api/rankings/properties'
+import {
+  DEFAULT_LB_COLOR,
+  DEFAULT_PLAYERS_PER_TEAM,
+  DEFAULT_TEAMS_PER_MATCH,
+  max_ranking_name_length,
+} from '../../../services/rankings/properties'
 
 /**
  * If name is specified and current name is not provided, it will be required
@@ -10,7 +15,6 @@ import { max_ranking_name_length, DEFAULT_TEAMS_PER_MATCH, DEFAULT_PLAYERS_PER_T
  */
 export function rankingSettingsModal(include: {
   name?: { ph?: string }
-  best_of?: { ph?: number }
   team_size?: {
     players_per_team?: { ph?: number }
     teams_per_match?: { ph?: number }
@@ -69,19 +73,6 @@ export function rankingSettingsModal(include: {
         }),
       )
     }
-  }
-
-  if (include?.best_of) {
-    text_inputs.push(
-      new TextInputBuilder({
-        type: D.ComponentType.TextInput,
-        style: D.TextInputStyle.Short,
-        custom_id: 'best_of',
-        label: 'Best of',
-        placeholder: `${include.best_of.ph ?? default_best_of}`,
-        required: false,
-      }),
-    )
   }
 
   if (include?.color) {

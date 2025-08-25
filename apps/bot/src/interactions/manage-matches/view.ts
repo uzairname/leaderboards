@@ -1,19 +1,18 @@
-import { Match } from '@repo/db/models'
+import { Match, OutcomeType } from '@repo/db/models'
 import { ChatInteractionResponse, ComponentContext, Context, getModalSubmitEntries, ViewSignature } from '@repo/discord'
 import { field, intOrNull, nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../errors/user-errors'
+import { ensureGuildAdminPerms } from '../../services/perms'
+import { Colors } from '../../services/utils/strings'
 import { App } from '../../setup/app'
-import { ensureGuildAdminPerms } from '../../api/perms'
-import { cancelMatch, updateMatchOutcome } from '../../api/matches/management/update-matches'
 import { matchSummaryEmbed } from '../view-matches/view'
-import { Colors } from '../../api/utils'
 
 export const manage_match_view_sig = new ViewSignature({
   custom_id_prefix: 'm',
   name: 'Manage Match View',
   state_schema: {
-    on_page: field.Boolean(),
+    on_page: field.Bool(),
     match_id: field.Int(),
     callback: field.Choice({
       onSettingSelect,
@@ -125,7 +124,7 @@ async function matchOutcomeModal(
   ctx: ComponentContext<typeof manage_match_view_sig>,
 ): Promise<D.APIModalInteractionResponse> {
   const match = await app.db.matches.fetch(ctx.state.get.match_id())
-  const teams = await match.players()
+  const teams = await match.teams()
   return {
     type: D.InteractionResponseType.Modal,
     data: {
@@ -137,7 +136,7 @@ async function matchOutcomeModal(
           {
             type: D.ComponentType.TextInput,
             style: D.TextInputStyle.Short,
-            placeholder: `Their score (1=win, 0=loss). Current: ${nonNullable(match.data.outcome, 'match outcome')[i]}`,
+            placeholder: `Their score (1=win, 0=loss). Current: ${nonNullable(match.data.outcome, 'match outcome').team_scores[i]}`,
             custom_id: `${i}`,
             label: team.length > 1 ? `${team[0].player.data.name}'s team` : `${team[0].player.data.name}`,
           },
@@ -157,7 +156,7 @@ async function onMatchOutcomeModalSubmit(
     // validate and save the selected outcome from the modal submission
     const match = await app.db.matches.fetch(ctx.state.get.match_id())
     const ranking = await match.ranking.fetch()
-    const new_outcome = match.data.outcome ?? new Array<number>(ranking.data.teams_per_match).fill(0)
+    const new_team_scores = match.data.outcome?.team_scores ?? new Array<number>(ranking.data.teams_per_match).fill(0)
 
     for (const [k, v] of Object.entries(modal_inputs)) {
       const team_num = parseInt(k)
@@ -165,11 +164,14 @@ async function onMatchOutcomeModalSubmit(
       if (null === score) {
         throw new UserError(`Enter a number for each team's relative score`)
       }
-      new_outcome[team_num] = score
+      new_team_scores[team_num] = score
     }
 
     // update the match
-    await updateMatchOutcome(app, match, ctx.interaction, new_outcome)
+    await app.matches.setOutcome(app, match, ctx.interaction, {
+      type: match.data.outcome?.type ?? OutcomeType.Points, // TODO: make this configurable
+      team_scores: new_team_scores,
+    })
 
     return void (await ctx.edit(await manageMatchPage(app, ctx)))
   })
@@ -218,7 +220,7 @@ async function onRevertConfirm(
 ): Promise<ChatInteractionResponse> {
   const match = await app.db.matches.fetch(ctx.state.get.match_id())
   return ctx.defer(async ctx => {
-    await cancelMatch(app, match, ctx.interaction)
+    await app.matches.cancel(app, match, ctx.interaction)
     return void (await ctx.edit(await manageMatchPage(app, ctx)))
   })
 }

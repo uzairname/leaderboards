@@ -1,9 +1,9 @@
 import { CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { ProfilePages } from '.'
-import { profile_view_sig } from './view'
 import { App } from '../../../setup/app'
 import { guildRankingsOption, withOptionalSelectedRanking } from '../../utils'
+import { profile_view_sig } from './view'
 
 const optionnames = {
   user: 'player',

@@ -1,4 +1,4 @@
-import { truncateString } from '@repo/utils'
+import { safeStringify } from '@repo/utils'
 import { DbLogger } from './db-logger'
 
 export function logDbMethods(target: Function) {
@@ -28,9 +28,9 @@ export function logDbMethods(target: Function) {
                 if (!startLogged) {
                   startLogged = true
                   logger.log({
-                    message :`Starting execution: ${className}.${propertyName}`,
+                    message: `Starting execution: ${className}.${propertyName}(${args.map(arg => safeStringify(arg)).join(', ')})`,
                     category: 'dbmethod',
-                    data: {args: JSON.stringify(args)},
+                    data: { args: JSON.stringify(args) },
                   })
                 }
                 resolve('timeout')
@@ -54,7 +54,7 @@ export function logDbMethods(target: Function) {
                   return raceResult
                 }
               })
-              .then((completionResult) => {
+              .then(completionResult => {
                 const duration = performance.now() - start
 
                 // Only log completion if duration >= 1ms
@@ -62,7 +62,7 @@ export function logDbMethods(target: Function) {
                   if (completionResult.type === 'success') {
                     logger.log({
                       message: `Completed in ${duration.toFixed(0)}ms: ${className}.${propertyName}`,
-                      category: 'dbmethod'
+                      category: 'dbmethod',
                     })
                     return completionResult.value
                   } else {

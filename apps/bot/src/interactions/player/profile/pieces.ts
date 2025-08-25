@@ -1,6 +1,6 @@
 import { maxIndex } from '@repo/utils'
 import { PlayerStats } from 'packages/db/src/models/players'
-import { TableRow, AnsiColor, AnsiFormat, formatTable } from '../../../api/utils'
+import { AnsiColor, AnsiFormat, formatTable, TableRow } from '../../../services/utils/strings'
 
 /**
  * Returns a code block containing a table that displays

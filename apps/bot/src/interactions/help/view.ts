@@ -7,7 +7,7 @@ export const help_view_sig = new ViewSignature({
   custom_id_prefix: 'h',
   state_schema: {
     page: field.Choice(HelpPages),
-    followup: field.Boolean(),
+    followup: field.Bool(),
   },
 })
 

@@ -17,7 +17,6 @@ export async function updateApp() {
     },
   })
   console.log(await response.text())
-
 }
 
 updateApp().then(() => {

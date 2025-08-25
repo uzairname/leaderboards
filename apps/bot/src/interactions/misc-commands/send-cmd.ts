@@ -1,7 +1,6 @@
 import { CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { App } from '../../setup/app'
-import { syncGuildRankingLbMessage } from '../../api/leaderboard/manage'
 import { queueMessage, queue_view_sig } from '../queue/view'
 
 export const send_cmd_sig = new CommandSignature({
@@ -26,7 +25,7 @@ export const send_cmd = send_cmd_sig.set<App>({
     const ranking_choices: D.APIApplicationCommandOptionChoice<number>[] = []
 
     for (const r of guild_rankings) {
-      if (r.ranking.data.matchmaking_settings.queue_enabled) {
+      if (r.ranking.data.matchmaking_settings?.queue_enabled) {
         ranking_choices.push({
           name: r.ranking.data.name,
           value: r.ranking.data.id,
@@ -34,32 +33,34 @@ export const send_cmd = send_cmd_sig.set<App>({
       }
     }
 
-    function makeSubcommand(
-      name: string,
-      description: string,
-    ): D.APIApplicationCommandOption {
+    function makeSubcommand(name: string, description: string): D.APIApplicationCommandOption {
       return {
-        type: D.ApplicationCommandOptionType.Integer,
+        type: D.ApplicationCommandOptionType.Subcommand,
         name,
         description,
-        choices: ranking_choices,
+        options: [
+          {
+            type: D.ApplicationCommandOptionType.Integer,
+            name: 'ranking',
+            description: 'Select the ranking for which to send the message for',
+            choices: ranking_choices,
+            required: true,
+          },
+        ],
       }
     }
 
     return new CommandSignature({
       ...send_cmd_sig.config,
-      options: [
-        makeSubcommand(scnames.queue_message, 'Send a button that players can click to join the queue'),  
-      ],
+      options: [makeSubcommand(scnames.queue_message, 'Send a button that players can click to join the queue')],
     })
   },
   onCommand: async (ctx, app) => {
     return ctx.defer(async ctx => {
-
       const { options, subcommand } = getOptions(ctx.interaction, {
         ranking_id: { type: D.ApplicationCommandOptionType.Integer, required: true, name: 'ranking' },
       })
-      
+
       if (subcommand === scnames.queue_message) {
         const queue_msg = await queueMessage(
           app,
