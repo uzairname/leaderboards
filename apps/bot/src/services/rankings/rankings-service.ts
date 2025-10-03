@@ -36,6 +36,7 @@ import {
   max_teams_per_match,
 } from './properties'
 import { DEFAULT_RATING_STRATEGY, ELO_DEFAULT, GLICKO_DEFAULT, TRUESKILL_DEFAULT } from './ratings'
+import { Rating } from 'ts-trueskill'
 
 @LogMethods
 export class RankingsService extends AppService {
@@ -57,7 +58,6 @@ export class RankingsService extends AppService {
       name: string
       teams_per_match?: number
       players_per_team?: number
-      rating_strategy?: RatingStrategy
       matchmaking_settings?: MatchmakingSettings
       rating_settings?: RatingParameters
       match_settings?: MatchSettings
@@ -89,15 +89,19 @@ export class RankingsService extends AppService {
       throw new UserError(`This server already has a ranking called \`${options.name}\``)
     }
 
+    const match_settings = options.match_settings ?? default_match_settings
+    const rating_settings = options.rating_settings ?? this.getDefaultRatingSettings(
+      this.getDefaultRatingStrategy(match_settings, options.players_per_team, options.teams_per_match),
+    )
+
     // Create the ranking
     const new_ranking = await app.db.rankings.create({
       name: options.name,
       players_per_team: options.players_per_team || DEFAULT_PLAYERS_PER_TEAM,
       teams_per_match: options.teams_per_match || DEFAULT_TEAMS_PER_MATCH,
-      rating_settings:
-        options.rating_settings ?? this.getDefaultRatingParameters(options.rating_strategy ?? DEFAULT_RATING_STRATEGY),
       matchmaking_settings: options.matchmaking_settings,
-      match_settings: options.match_settings,
+      rating_settings,
+      match_settings,
     })
 
     const new_guild_ranking = await app.db.guild_rankings.create(guild, new_ranking, {
@@ -121,13 +125,13 @@ export class RankingsService extends AppService {
    */
   getProperties(ranking: Ranking) {
     const default_matchmaking_settings: Omit<Required<MatchmakingSettings>, 'queue_join_ping_role_id'> = {
-      queue_enabled: false,
+      queue_enabled: true,
       queue_join_timeout_minutes: DEFAULT_Q_JOIN_TIMEOUT_MINUTES,
       direct_challenge_enabled: true,
       default_best_of: 1,
     }
 
-    const default_rating_settings = this.getDefaultRatingParameters(
+    const default_rating_settings = this.getDefaultRatingSettings(
       ranking.data.rating_settings.rating_strategy ?? DEFAULT_RATING_STRATEGY,
     )
 
@@ -159,11 +163,52 @@ export class RankingsService extends AppService {
     }
   }
 
+
+  /**
+   * Gets a compatible rating strategy for the given match settings, favoring 
+   * some over others
+   */
+  getDefaultRatingStrategy(
+    match_settings: MatchSettings,
+    players_per_team: number = DEFAULT_PLAYERS_PER_TEAM,
+    teams_per_match: number = DEFAULT_TEAMS_PER_MATCH,
+  ): RatingStrategy {
+
+    const rating_strategies_ordered = [
+      RatingStrategy.Bayesian,
+      RatingStrategy.Glicko,
+      RatingStrategy.TrueSkill,
+      RatingStrategy.Elo,
+      RatingStrategy.WinsMinusLosses
+    ]
+
+    // If the default strategy is not supported, try to find another one
+    for (const strategy of rating_strategies_ordered) {
+      const scorer = ratingStrategyToScorer(strategy)
+      const { is_supported } = scorer.isSupported(
+        match_settings.outcome_type ?? OutcomeType.WinLossDraw,
+        players_per_team,
+        teams_per_match,
+      )
+
+      if (is_supported) {
+        return strategy
+      }
+    }
+
+    // If no strategy is supported, throw an error
+    throw new UserError(
+      `No compatible rating strategy found for the given match settings. Please check your match settings.`,
+      `Incompatible Match Settings`,
+    )
+  }
+
+
   /**
    * Maps rating strategies to their default parameters. When a ranking is created or updated with
    * a rating method, the settings are filled in with the defaults from this map.
    */
-  getDefaultRatingParameters(strategy: RatingStrategy): RatingParameters {
+  getDefaultRatingSettings(strategy: RatingStrategy): RatingParameters {
     const defaults = {
       [RatingStrategy.TrueSkill]: {
         initial_rating: {

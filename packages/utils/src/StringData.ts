@@ -1,9 +1,9 @@
 import { LZString } from './lzstring'
 
-export interface StateSchema {
+export interface CodecSchema {
   [k: string]: Field<any>
 }
-export type AnyStateSchema = any
+export type AnyCodecSchema = any
 
 export namespace field {
   export function Enum<T extends { [key: string]: unknown }>(options: T) {
@@ -33,11 +33,11 @@ export namespace field {
   export function Date() {
     return new DateField()
   }
-  export function Object<TSchema extends StateSchema>(schema: TSchema) {
-    return new StringDataDataField<TSchema>(schema)
+  export function Object<TSchema extends CodecSchema>(schema: TSchema) {
+    return new StringCodecDataField<TSchema>(schema)
   }
-  export function StateCodec<TSchema extends StateSchema>(schema: TSchema) {
-    return new StateCodecField<TSchema>(schema)
+  export function StateCodec<TSchema extends CodecSchema>(schema: TSchema) {
+    return new StringCodecField<TSchema>(schema)
   }
 }
 
@@ -142,23 +142,23 @@ class DateField extends Field<Date | undefined> {
   // 1735707600 is the unix timestamp of 1/1/2025.
 }
 
-class StringDataDataField<TSchema extends StateSchema> extends Field<StateCodec<TSchema>['data']> {
+class StringCodecDataField<TSchema extends CodecSchema> extends Field<StringCodec<TSchema>['data']> {
   constructor(private schema: TSchema) {
     super()
   }
-  compress = (value: StateCodec<TSchema>['data']) => new StateCodec(this.schema).saveAll(value).encode()
-  decompress = (value: string) => new StateCodec(this.schema, value).data
+  compress = (value: StringCodec<TSchema>['data']) => new StringCodec(this.schema).saveAll(value).encode()
+  decompress = (value: string) => new StringCodec(this.schema, value).data
 }
 
-class StateCodecField<TSchema extends StateSchema> extends Field<StateCodec<TSchema>> {
+class StringCodecField<TSchema extends CodecSchema> extends Field<StringCodec<TSchema>> {
   constructor(private schema: TSchema) {
     super()
   }
-  compress = (value: StateCodec<TSchema>) => value.encode()
-  decompress = (value: string) => new StateCodec(this.schema, value)
+  compress = (value: StringCodec<TSchema>) => value.encode()
+  decompress = (value: string) => new StringCodec(this.schema, value)
 }
 
-export class StateCodec<TSchema extends StateSchema> {
+export class StringCodec<TSchema extends CodecSchema> {
   readonly data = {} as { [K in keyof TSchema]?: TSchema[K]['type'] }
 
   get = {} as {
@@ -182,15 +182,15 @@ export class StateCodec<TSchema extends StateSchema> {
   }
 
   set = {} as {
-    [K in keyof TSchema]: (value: TSchema[K]['type'] | null | undefined) => StateCodec<TSchema>
+    [K in keyof TSchema]: (value: TSchema[K]['type'] | null | undefined) => StringCodec<TSchema>
   }
 
-  setAll(data: { [K in keyof TSchema]?: TSchema[K]['type'] | null }): StateCodec<TSchema> {
+  setAll(data: { [K in keyof TSchema]?: TSchema[K]['type'] | null }): StringCodec<TSchema> {
     return this.copy().saveAll(data)
   }
 
-  copy(): StateCodec<TSchema> {
-    return new StateCodec(this.fields, this.encode())
+  copy(): StringCodec<TSchema> {
+    return new StringCodec(this.fields, this.encode())
   }
 
   encode(to_utf_16: boolean = false): string {

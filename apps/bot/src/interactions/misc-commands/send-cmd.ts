@@ -25,7 +25,7 @@ export const send_cmd = send_cmd_sig.set<App>({
     const ranking_choices: D.APIApplicationCommandOptionChoice<number>[] = []
 
     for (const r of guild_rankings) {
-      if (r.ranking.data.matchmaking_settings?.queue_enabled) {
+      if (app.rankings.getProperties(r.ranking).matchmaking_settings.queue_enabled) {
         ranking_choices.push({
           name: r.ranking.data.name,
           value: r.ranking.data.id,

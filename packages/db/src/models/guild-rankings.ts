@@ -102,15 +102,14 @@ export class GuildRankingsManager extends DbObjectManager {
         : never
   > {
     if (by.guild_id && by.ranking_id) {
-      if (
-        this.db.cache.guilds.has(by.guild_id) &&
-        this.db.cache.guild_rankings.has(by.guild_id, by.ranking_id) &&
-        this.db.cache.rankings.has(by.ranking_id)
-      ) {
+      const [guild, guild_ranking, ranking] = [
+        this.db.cache.guilds.get(by.guild_id),
+        this.db.cache.guild_rankings.get(by.guild_id, by.ranking_id),
+        this.db.cache.rankings.get(by.ranking_id),
+      ]
+      if (guild && guild_ranking && ranking) {
         return {
-          guild: this.db.cache.guilds.get(by.guild_id)!,
-          guild_ranking: this.db.cache.guild_rankings.get(by.guild_id, by.ranking_id)!,
-          ranking: this.db.cache.rankings.get(by.ranking_id)!,
+          guild, guild_ranking, ranking
         } as any
       }
 

@@ -107,6 +107,11 @@ ${
 \`\`\``
     }
 
+    app.logger.log({
+      message: `${e.stack}`,
+      level: 'error',
+    })
+
     embed = {
       title,
       description,

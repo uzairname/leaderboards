@@ -64,6 +64,49 @@ export function arraysEqual<T>(a: T[], b: T[]): boolean {
   return true
 }
 
+
+/**
+ * Groups items from a record that are considered equal by a callback function.
+ *
+ * @param record - The input object with numeric keys, e.g., { 1: 'a', 2: 'b', 3: 'a' }.
+ * @param isEqual - A callback function that returns true if two values are equal.
+ * @returns A Map where each key is an array of original keys and each value
+ * is the shared value for those keys.
+ */
+export function groupEqualValues<T>(
+  record: Record<number, T>,
+  isEqual: (a: T, b: T) => boolean
+): Map<number[], T> {
+  const groupedMap = new Map<number[], T>();
+
+  // Iterate over each key-value pair in the input record.
+  for (const keyStr in record) {
+    // Ensure we only process the object's own properties.
+    if (Object.prototype.hasOwnProperty.call(record, keyStr)) {
+      const key = parseInt(keyStr, 10);
+      const value = record[key];
+      let foundGroup = false;
+
+      // Check if a group for an equal value already exists in our map.
+      for (const [keys, existingValue] of groupedMap.entries()) {
+        if (isEqual(value, existingValue)) {
+          // If found, add the current key to that group's key array.
+          keys.push(key);
+          foundGroup = true;
+          break; // Exit the inner loop once a group is found.
+        }
+      }
+
+      // If no matching group was found, create a new one.
+      if (!foundGroup) {
+        groupedMap.set([key], value);
+      }
+    }
+  }
+
+  return groupedMap;
+}
+
 /**
  * @param snowflake The Discord snowflake to convert.
  * @returns The date the snowflake was created.
@@ -102,7 +145,7 @@ export function intOrUndefined(value?: string): number | undefined {
 }
 
 export function truncateString(str: string, max_length: number): string {
-  return str.length > max_length ? str.slice(0, max_length - 2) + '..' : str
+  return str.length > max_length ? str.slice(0, max_length - 1) + '…' : str
 }
 
 export async function hash(input: object): Promise<string> {

@@ -1,5 +1,5 @@
 import { APIInteractionResponseCallbackData, ButtonStyle, ComponentType } from 'discord-api-types/v9'
-import { field, StateCodec } from '.'
+import { field, StringCodec } from '.'
 
 const schema = {
   button: field.Enum({
@@ -17,7 +17,7 @@ const schema = {
 }
 
 function onCommand(): any {
-  const data = new StateCodec(schema).saveAll({
+  const data = new StringCodec(schema).saveAll({
     fruits: [
       {
         type: 'Apple',
@@ -54,7 +54,7 @@ function onCommand(): any {
 }
 
 function onComponent(customId: string) {
-  const state = new StateCodec(schema, customId)
+  const state = new StringCodec(schema, customId)
 
   const counter = state.data.counter ?? 0
 

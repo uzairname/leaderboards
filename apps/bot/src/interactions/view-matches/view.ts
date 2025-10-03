@@ -132,7 +132,7 @@ export async function matchSummaryEmbed(app: App, match: Match, {} = {}): Promis
         : emojis.red_triangle
 
     return {
-      name: space,
+      name: single_player_teams ? space : `${emoji} Team ${team_num + 1}`,
       value: team
         .map(p => {
           if (undefined === p.after) {

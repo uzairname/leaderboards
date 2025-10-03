@@ -1,8 +1,8 @@
-import { LZString, StateCodec, StateSchema } from '@repo/utils'
+import { LZString, StringCodec, CodecSchema } from '@repo/utils'
 import { InteractionErrors } from '../errors'
 import { ViewSignature } from './signature'
 
-export class ViewState<T extends StateSchema> extends StateCodec<T> {
+export class ViewState<T extends CodecSchema> extends StringCodec<T> {
   set = {} as {
     [K in keyof T]: (value: T[K]['type'] | null | undefined) => ViewState<T>
   }
@@ -32,8 +32,8 @@ export class ViewState<T extends StateSchema> extends StateCodec<T> {
   }
 }
 
-export abstract class ViewStateFactory<T extends StateSchema> extends ViewState<T> {
-  static fromSignature<T extends StateSchema>(signature: ViewSignature<T, any>): ViewState<T> {
+export abstract class ViewStateFactory<T extends CodecSchema> extends ViewState<T> {
+  static fromSignature<T extends CodecSchema>(signature: ViewSignature<T, any>): ViewState<T> {
     return new ViewState(signature.state_schema, signature.config.custom_id_prefix)
   }
 

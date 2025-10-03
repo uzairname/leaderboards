@@ -5,6 +5,13 @@ import { App, offload } from '../../../setup/app'
 
 // for team size 1 rankings
 
+
+export function ensureQueueEnabled(app: App, ranking: Ranking) {
+  if (!app.rankings.getProperties(ranking).matchmaking_settings.queue_enabled) {
+    throw new UserError(`The queue is not enabled for ${ranking.data.name}`)
+  }
+}
+
 /**
  * A user joins the queue through a command or component.
  * Adds the player to the queue and resets the timer. Checks to start a new match in a thread.
@@ -20,9 +27,7 @@ export async function userJoinQueue(
     ranking_id: p_ranking.data.id,
     guild_id,
   })
-  if (!ranking.data.matchmaking_settings?.queue_enabled) {
-    throw new UserError(`The queue is not enabled for ${ranking.data.name}`)
-  }
+  ensureQueueEnabled(app, ranking)
 
   const player = await app.players.getOrCreatePlayerByUser(app, user_id, ranking)
 
@@ -43,11 +48,10 @@ export async function userJoinQueue(
   return { already_in }
 }
 
+
 export async function findMatchFromQueue(app: App, gr: PartialGuildRanking): Promise<Match | undefined> {
   const { ranking, guild_ranking } = await gr.fetch()
-  if (!ranking.data.matchmaking_settings?.queue_enabled) {
-    throw new UserError(`The queue is not enabled for ${ranking.data.name}`)
-  }
+  ensureQueueEnabled(app, ranking)
 
   const players_in_q = await getPlayersInQueue(app, ranking)
 

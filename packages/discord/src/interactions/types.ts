@@ -1,5 +1,5 @@
 import * as D from 'discord-api-types/v10'
-import { AnyStateSchema } from '../../../utils/src/StringData'
+import { AnyCodecSchema } from '../../../utils/src/StringData'
 import { MessageData } from '../rest/objects'
 import { CommandHandler, ViewHandler } from './views'
 import { CommandSignature, ViewSignature } from './views/signature'
@@ -44,11 +44,11 @@ export type AnyAppCommandType =
   | D.ApplicationCommandType.User
   | D.ApplicationCommandType.Message
 
-export type AnyViewSignature = ViewSignature<AnyStateSchema, any>
+export type AnyViewSignature = ViewSignature<AnyCodecSchema, any>
 
-export type AnyChatInputCommandSignature = CommandSignature<AnyStateSchema, D.ApplicationCommandType.ChatInput, any>
+export type AnyChatInputCommandSignature = CommandSignature<AnyCodecSchema, D.ApplicationCommandType.ChatInput, any>
 
-export type AnyCommandSignature = CommandSignature<AnyStateSchema, AnyAppCommandType, any>
+export type AnyCommandSignature = CommandSignature<AnyCodecSchema, AnyAppCommandType, any>
 
 export type AnySignature = AnyViewSignature | AnyCommandSignature
 

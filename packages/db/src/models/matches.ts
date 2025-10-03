@@ -130,7 +130,8 @@ export class Match extends DbObject<MatchSelect> {
   }
 
   async teams(): Promise<MatchPlayer[][]> {
-    if (this.db.cache.match_players.has(this.data.id)) return this.db.cache.match_players.get(this.data.id)!
+    const cached_data = this.db.cache.match_players.get(this.data.id)
+    if (cached_data) return cached_data
 
     const result = await this.db.drizzle
       .select({ player: Players, match_player: MatchPlayers })

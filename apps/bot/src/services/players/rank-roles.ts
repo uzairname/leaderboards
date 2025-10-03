@@ -10,13 +10,12 @@ export async function setRankRole(
   role_id: string,
   min_rating: number | null,
   max_rating: number | null,
-  p_guild_ranking: PartialGuildRanking,
+  guild_ranking: GuildRanking,
 ) {
   if (min_rating !== null && max_rating !== null && min_rating >= max_rating) {
     throw new UserErrors.ValidationError('Minimum rating must be less than maximum rating')
   }
 
-  const { guild_ranking } = await p_guild_ranking.fetch()
   const current_rank_roles = guild_ranking.data.rank_roles ?? []
 
   if (current_rank_roles.some(role => role.role_id === role_id)) {

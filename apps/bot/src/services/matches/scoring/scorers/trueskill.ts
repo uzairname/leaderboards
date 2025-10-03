@@ -31,6 +31,8 @@ export const TrueSkillScorer: Scorer = {
       }
     })()
 
+    param.app.logger.debug(`team scores ${outcome.team_scores}, ranks ${team_ranks}`)
+
     // The internally used ratio between mu and sigma should match that of rating settings.mu and rd
     const sigma = (TRUESKILL_INTERNAL.MU * rs.initial_rating.rd) / rs.initial_rating.mu
     const env = new TrueSkill(rs.initial_rating.mu, sigma)

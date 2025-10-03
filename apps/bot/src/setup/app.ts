@@ -121,11 +121,11 @@ export function handleInteractionRequest(app: App, request: Request): Promise<Re
     return app.logger.offload(async ({ logger }) => {
       const new_app: App = initApp(app.config.env, logger)
       await callback({ setException }, new_app)
-    }, setException)
+    })
   }
 
   return app.interactionHandler.respond({
-    bot: app.discord,
+    discord: app.discord,
     request,
     onError: onViewError(app),
     offload,

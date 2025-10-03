@@ -1,7 +1,7 @@
 import { snowflakeToDate } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { json } from 'itty-router/json'
-import { StateSchema } from '../../../../utils/src/StringData'
+import { CodecSchema } from '../../../../utils/src/StringData'
 import { DiscordLogger } from '../../logging'
 import { DiscordAPIClient, MessageData } from '../../rest'
 import { checkGuildMessageComponentInteraction, isCommandInteraction } from '../checks'
@@ -74,21 +74,21 @@ export class InteractionHandler<Arg extends unknown = undefined> {
    * @returns
    */
   async respond({
-    bot,
+    discord,
     request,
     onError,
     offload,
     direct_response = true,
     arg,
   }: {
-    bot: DiscordAPIClient
+    discord: DiscordAPIClient
     request: Request
     onError: InteractionErrorCallback
     offload: Offloader<Arg>
     direct_response: boolean
     arg: Arg
   }): Promise<Response> {
-    if (!(await verify(request, bot.publicKey))) {
+    if (!(await verify(request, discord.publicKey))) {
       this.logger?.log({ message: 'Invalid signature' })
       return new Response('Invalid signature', { status: 401 })
     }
@@ -99,7 +99,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     const start = performance.now()
     this.logger?.log({ message: `Received interaction after ${start - time_created}ms` })
 
-    const response = await this.getResponse({ interaction, bot, onError, offload, arg })
+    const response = await this.getResponse({ interaction, discord: discord, onError, offload, arg })
       .then(res => {
         const time_taken = performance.now() - start
         const limit = 2900
@@ -117,19 +117,19 @@ export class InteractionHandler<Arg extends unknown = undefined> {
       return json(response)
     }
 
-    await bot.createInteractionResponse(interaction.id, interaction.token, response as any)
+    await discord.createInteractionResponse(interaction.id, interaction.token, response as any)
     return new Response('OK', { status: 200 })
   }
 
   private async getResponse({
     interaction,
-    bot: discord,
+    discord,
     onError,
     offload,
     arg,
   }: {
     interaction: D.APIInteraction
-    bot: DiscordAPIClient
+    discord: DiscordAPIClient
     onError: InteractionErrorCallback
     offload: Offloader<Arg>
     arg: Arg
@@ -178,7 +178,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     })
   }
 
-  fromCustomId(custom_id: string): { handler: AnyViewHandler; state: ViewState<StateSchema> } {
+  fromCustomId(custom_id: string): { handler: AnyViewHandler; state: ViewState<CodecSchema> } {
     try {
       const { prefix, encoded_data } = ViewStateFactory.splitCustomId(custom_id)
       const handler = this.findViewHandler(prefix)
@@ -299,7 +299,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
     arg: Arg
     handler: ViewHandler<AnyViewSignature, Arg>
     interaction: ComponentInteraction
-    state: ViewState<StateSchema>
+    state: ViewState<CodecSchema>
     discord: DiscordAPIClient
     onError: (e: unknown) => D.APIInteractionResponseChannelMessageWithSource
     offload: Offloader<Arg>
@@ -382,7 +382,7 @@ export class InteractionHandler<Arg extends unknown = undefined> {
   deferComponentResponse(
     callback: (ctx: DeferredComponentContext<AnyViewSignature>, arg: Arg) => Promise<void>,
     interaction: ComponentInteraction,
-    state: ViewState<StateSchema>,
+    state: ViewState<CodecSchema>,
     discord: DiscordAPIClient,
     onError: InteractionErrorCallback,
     offload: Offloader<Arg>,

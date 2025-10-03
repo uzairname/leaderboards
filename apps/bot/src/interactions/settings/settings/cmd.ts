@@ -35,7 +35,7 @@ export const settings_cmd = settings_cmd_sig.set<App>({
             value: 'rename',
           },
           {
-            name: `Match Settings`,
+            name: `Matchmaking`,
             value: `match`,
           },
           {
@@ -43,7 +43,7 @@ export const settings_cmd = settings_cmd_sig.set<App>({
             value: `rank-roles`,
           },
           {
-            name: `Rating Algorithm`,
+            name: `Scoring`,
             value: `rating`,
           },
           {

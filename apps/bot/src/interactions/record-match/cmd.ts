@@ -8,7 +8,7 @@ import { guildRankingsOption, withSelectedRanking } from '../utils'
 
 export const record_match_cmd_sig = new CommandSignature({
   type: D.ApplicationCommandType.ChatInput,
-  name: 'record-match',
+  name: 'gg',
   description: 'record a match',
 })
 
@@ -25,37 +25,70 @@ export const record_match_cmd = record_match_cmd_sig.set<App>({
     const rankings = await app.db.guild_rankings.fetch({ guild_id: guild.data.id })
     if (rankings.length == 0) return null
 
-    let options = await guildRankingsOption(
-      app,
-      guild,
-      optionnames.ranking,
-      {},
-      'Which ranking should this match belong to',
-    )
 
-    // If all rankings are a 1v1, add options for winner and loser
-    if (rankings.every(r => r.ranking.data.players_per_team == 1 && r.ranking.data.teams_per_match == 2)) {
+    const options: D.APIApplicationCommandSubcommandOption[] = rankings.map(r => {
+
+      const props = app.rankings.getProperties(r.ranking)
+
+      let options: D.APIApplicationCommandBasicOption[] = [
+
+      ]
+
+      if (props.match_settings.outcome_type === OutcomeType.WinLossDraw) {
+
+        options.push(
+          {
+            name: optionnames.winner,
+            description: `The winner of the match`,
+            type: D.ApplicationCommandOptionType.String,
+            required: true
+          }
+        )
+
+        for (let i = 1; i < props.teams_per_match; i++) {
+          options.push(
+            {
+              name: `${optionnames.loser}` + (props.teams_per_match > 2 ? `_${i}` : ``),
+              description: `The loser of the match`,
+              type: D.ApplicationCommandOptionType.Mentionable,
+              required: true
+            }
+          )
+
+          
+        }
+
+        if (props.match_settings.draws_allowed) {
+          options.push({
+            name: `draw`,
+            description: `Sets the match as a draw (regardless of the winner/loser you selected)`,
+            type: D.ApplicationCommandOptionType.String,
+            choices: [
+              { name: 'yes', value: 'yes' },
+            ],
+            required: false,
+          })
+        }
+
+      }
+      
       options = options.concat([
         {
-          name: optionnames.winner,
-          description: 'Who won (if applicable)',
-          type: D.ApplicationCommandOptionType.Mentionable,
-        },
-        {
-          name: optionnames.loser,
-          description: 'Who lost (if applicable)',
-          type: D.ApplicationCommandOptionType.Mentionable,
+          name: optionnames.time_finished,
+          description: 'Snowflake or Unix timestamp of when the match was finished (default now)',
+          type: D.ApplicationCommandOptionType.String,
         },
       ])
-    }
+      
+      return {
+        type: D.ApplicationCommandOptionType.Subcommand,
+        name: `${r.ranking.data.id}`,
+        description: `Record a match in ${r.ranking.data.name}`,
+        options
+      }
 
-    options = options.concat([
-      {
-        name: optionnames.time_finished,
-        description: 'Snowflake or Unix timestamp of when the match was finished (default now)',
-        type: D.ApplicationCommandOptionType.String,
-      },
-    ])
+    })
+
 
     return new CommandSignature({
       ...record_match_cmd_sig.config,

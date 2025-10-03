@@ -456,7 +456,7 @@ export async function matchSettings(
     .addTextDisplayComponents(
       new TextDisplayBuilder({
         content:
-          `## Match Settings for **${escapeMd(ranking.data.name)}**` +
+          `## Matchmaking settings for **${escapeMd(ranking.data.name)}**` +
           `\nManage how matches are played in this ranking. Use the buttons below to toggle the settings.`,
       }),
     )

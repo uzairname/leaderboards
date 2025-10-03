@@ -37,7 +37,6 @@ export const leaderboard_cmd = leaderboard_cmd_sig.set<App>({
       async ranking => {
         const state = leaderboard_view_sig.newState({
           ranking_id: ranking.data.id,
-          page: 1,
         })
         return ctx.defer(async ctx => {
           const message_data = await leaderboardPage(app, { ...ctx, state })

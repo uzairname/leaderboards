@@ -30,8 +30,8 @@ export const queue_view = queue_view_sig.set<App>({
 
     return ctx.defer(async ctx => {
       await ctx.state.get.clicked_btn()(app, ctx)
-      const { channel, message } = checkMessageComponentInteraction(ctx.interaction)
-      await app.discord.editMessage(channel.id, message.id, (await queueMessage(app, ctx.state)).patch_data)
+      // const { channel, message } = checkMessageComponentInteraction(ctx.interaction)
+      // await app.discord.editMessage(channel.id, message.id, (await queueMessage(app, ctx.state)).patch_data)
     })
   },
 })

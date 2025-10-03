@@ -63,7 +63,7 @@ export class MatchesService extends AppService {
               return {
                 player: p,
                 rating: p.data.rating,
-                time_since_last_match: (await app.players.getInfoAtTime(app, p, new Date())).seconds,
+                // time_since_last_match: (await app.players.getInfoAtTime(app, p, new Date())).seconds,
                 flags: p.data.flags ?? PlayerFlags.None,
               }
             }),

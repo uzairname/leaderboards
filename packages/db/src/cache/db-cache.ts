@@ -16,12 +16,14 @@ import {
   UserPlayer,
 } from '../models'
 import { MatchPlayer } from '../models/matches'
-import { CacheMap, GenericCacheMap } from './cache-map'
+import { GenericCacheMap } from './cache-map'
 
 let cache: DbCache | undefined = undefined
 
+const DEFAULT_TTL_MS = 1000 * 30 // 30 second
+
 /**
- * Main database cache class
+ * 
  */
 export class DbCache {
   private cache_maps: GenericCacheMap<any, any, any>[] = []
@@ -105,9 +107,9 @@ export class DbCache {
   }): GenericCacheMap<SerializedT, DeserializedT, K, K2> {
     const { name, serialize, deserialize } = options
 
-    const map = this.newMap<K, SerializedT, K2>(name)
-
-    const cache = new GenericCacheMap<SerializedT, DeserializedT, K, K2>(name, map, serialize, deserialize)
+    const cache = new GenericCacheMap<SerializedT, DeserializedT, K, K2>(name, serialize, deserialize, msg => {
+      this.logger?.debug(msg)
+    }, DEFAULT_TTL_MS)
     this.cache_maps.push(cache)
     return cache
   }
@@ -149,22 +151,6 @@ export class DbCache {
     return this.cache_maps.map(cache => cache.getStats())
   }
 
-  /**
-   * Create a new CacheMap (legacy support)
-   */
-  private newMap<K, V, K2 extends string | number | undefined = undefined>(name?: string): CacheMap<K, V, K2> {
-    const map = new CacheMap<K, V, K2>(
-      name,
-      msg => {
-        this.logger?.debug(msg)
-      },
-      {
-        log_hits: false,
-        log_misses: false,
-      },
-    )
-    return map
-  }
 
   toString() {
     return this.cache_maps.map(cache => cache.getStats()).join('\n')

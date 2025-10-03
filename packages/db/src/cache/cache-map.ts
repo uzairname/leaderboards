@@ -1,10 +1,25 @@
+
+
+interface CacheEntry<T> {
+  data: T
+  timestamp: number
+}
+
+
 export class GenericCacheMap<SerializedT, DeserializedT, K, K2 extends string | number | undefined = never> {
+
+  private map: CacheMap<K, CacheEntry<SerializedT>, K2>
+
   constructor(
     public name: string,
-    private map: CacheMap<K, SerializedT, K2>,
     public serialize: (data: DeserializedT) => SerializedT,
     public deserialize: (data: SerializedT) => DeserializedT,
-  ) {}
+    public log?: (msg: string) => void, // Optional logging function
+    public ttl?: number, // Time to live in milliseconds
+  ) {
+    this.map = new CacheMap<K, CacheEntry<SerializedT>, K2>(name, log, { log_hits: true, log_misses: true })
+
+  }
 
   /**
    * Serialize and store a value in the cache.
@@ -20,10 +35,16 @@ export class GenericCacheMap<SerializedT, DeserializedT, K, K2 extends string | 
    * Doesn't perform any serialization.
    */
   setSerialized(key: K, value: SerializedT, key2?: K2): this {
+
+    const entry: CacheEntry<SerializedT> = {
+      data: value,
+      timestamp: Date.now(),
+    }
+
     if (key2 !== undefined) {
-      this.map.set(key, value, key2)
+      this.map.set(key, entry, key2)
     } else {
-      this.map.set(key, value)
+      this.map.set(key, entry)
     }
     return this
   }
@@ -33,8 +54,20 @@ export class GenericCacheMap<SerializedT, DeserializedT, K, K2 extends string | 
    */
   get(key: K, key2?: K2): DeserializedT | undefined {
     const data = key2 !== undefined ? this.map.get(key, key2) : this.map.get(key)
+
+    // Determine if the entry is still valid based on TTL
+    if (data && this.ttl !== undefined) {
+      const now = Date.now()
+      if (now - data.timestamp > this.ttl) {
+        // Entry has expired
+        this.map.delete(key, key2)
+        return undefined
+      }
+    }
+
+    // If data exists, deserialize it
     if (data) {
-      return this.deserialize(data)
+      return this.deserialize(data.data)
     }
     return undefined
   }
@@ -43,7 +76,19 @@ export class GenericCacheMap<SerializedT, DeserializedT, K, K2 extends string | 
    * Check if a key exists in the cache
    */
   has(key: K, key2?: K2): boolean {
-    return key2 !== undefined ? this.map.has(key, key2) : this.map.has(key)
+    const entry = key2 !== undefined ? this.map.get(key, key2) : this.map.get(key)
+    if (entry) {
+      // Check if the entry is still valid based on TTL
+      if (this.ttl !== undefined) {
+        const now = Date.now()
+        if (now - entry.timestamp > this.ttl) {
+          this.map.delete(key, key2)
+          return false
+        }
+      }
+      return true
+    }
+    return false
   }
 
   delete(key: K, key2?: K2): boolean {
@@ -57,7 +102,7 @@ export class GenericCacheMap<SerializedT, DeserializedT, K, K2 extends string | 
   /**
    * Get the underlying CacheMap for advanced operations
    */
-  getMap(): CacheMap<K, SerializedT, K2> {
+  getMap(): CacheMap<K, CacheEntry<SerializedT>, K2> {
     return this.map
   }
 
@@ -78,6 +123,9 @@ export class GenericCacheMap<SerializedT, DeserializedT, K, K2 extends string | 
     }
   }
 }
+
+
+
 
 export class CacheMap<K, V, K2 extends string | number | undefined = undefined> extends Map<K, V> {
   constructor(

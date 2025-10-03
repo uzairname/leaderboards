@@ -433,7 +433,7 @@ export async function onRatingMethodSelect(
       {
         rating_settings: {
           ...ranking.data.rating_settings,
-          ...app.rankings.getDefaultRatingParameters(rating_strategy),
+          ...app.rankings.getDefaultRatingSettings(rating_strategy),
         },
       },
       ctx,
@@ -495,8 +495,6 @@ export async function onDeleteConfirmBtn(
   return ctx.defer(async ctx => {
     const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
     await app.rankings.delete(app, ctx.interaction, ranking)
-
-    await ctx.edit(await SettingsPages.main(app, ctx))
 
     await ctx.followup({
       flags: D.MessageFlags.Ephemeral,

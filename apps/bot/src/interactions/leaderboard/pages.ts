@@ -8,7 +8,14 @@ import { commandMention, escapeMd, relativeTimestamp, space } from '../../servic
 import { App } from '../../setup/app'
 import { leaderboard_cmd } from './cmd'
 import { leaderboard_view_sig } from './view'
+import { playerGuidePage } from '../help/pages'
 
+
+/**
+ * @returns 
+ * - text: The leaderboard text
+ * - max_page: The total number of pages
+ */
 export async function leaderboardText(
   app: App,
   ranking: Ranking,
@@ -16,14 +23,14 @@ export async function leaderboardText(
     guild_id?: string
     show_lb_cmd_tip?: boolean
     show_provisional?: boolean
-    page?: number
+    page_idx?: number
   },
 ): Promise<{
   text: string
   max_page: number
 }> {
   const lines_per_page = 25
-  const page = options?.page ?? 1
+  const page_idx = options?.page_idx ?? 0
 
   const players = await app.lbs.getOrderedPlayers(app, ranking)
 
@@ -76,23 +83,24 @@ export async function leaderboardText(
   // Combine to get all lines
   // let all_lines = players_lines.concat(provisional_players_lines)
   const all_lines = players_lines
-  const max_page = Math.ceil(all_lines.length / lines_per_page)
+  const max_page = Math.ceil(all_lines.length / lines_per_page) - 1
 
   // Determine the lines to show on the current page
-  const current_page_lines = all_lines.slice((page - 1) * lines_per_page, page * lines_per_page)
+  const current_page_lines = all_lines.slice((page_idx) * lines_per_page, (page_idx+1) * lines_per_page)
+
   if (current_page_lines.length == 0) {
     current_page_lines.push(`No players to show.`)
   }
 
   // Add bottom text
-  const fits_on_one_page = max_page <= 1
+  const fits_on_one_page = max_page <= 0
 
   const bottom_text =
     `-# Last updated ${relativeTimestamp(new Date())}. ` +
     (app.rankings.getProperties(ranking).uses_provisional_ratings
       ? `\n-# Unranked players are given a provisional rating and are hidden from the main leaderboard until they play more games.`
       : ``) +
-    (fits_on_one_page ? `` : `\n-# Page ${page} of ${Math.ceil(all_lines.length / lines_per_page)}.`) +
+    (fits_on_one_page ? `` : `\n-# Page ${page_idx + 1} of ${max_page + 1}.`) +
     (options?.show_lb_cmd_tip && guild
       ? `\nUse ${await commandMention(app, leaderboard_cmd, options?.guild_id)} \`${ranking.data.name}\` to see the full leaderboard.`
       : ``)
@@ -113,7 +121,7 @@ export async function leaderboardMessage(
     guild_id?: string
     show_lb_cmd_tip?: boolean
     show_provisional?: boolean
-    page?: number
+    page_idx?: number
   },
 ): Promise<{ message: MessageData; max_page: number }> {
   const { guild_ranking } = options?.guild_id
@@ -147,15 +155,13 @@ export async function leaderboardPage(
   ctx: Context<typeof leaderboard_view_sig>,
 ): Promise<D.APIInteractionResponseCallbackData> {
   const ranking = await app.db.rankings.fetch(ctx.state.get.ranking_id())
-  const page = ctx.state.get.page()
+  const page_idx = ctx.state.data.page_idx ?? 0
 
   const { message, max_page } = await leaderboardMessage(app, ranking, {
     guild_id: ctx.interaction.guild_id,
     show_provisional: true,
-    page,
+    page_idx,
   })
-
-  ctx.state.save.max_page(max_page)
 
   const components: D.APIActionRowComponent<D.APIComponentInMessageActionRow>[] = [
     {
@@ -165,29 +171,29 @@ export async function leaderboardPage(
           type: D.ComponentType.Button,
           style: D.ButtonStyle.Primary,
           emoji: { name: '⏮️' },
-          custom_id: ctx.state.set.clicked_nav_btn('start').cId(),
-          disabled: page == 1,
+          custom_id: ctx.state.set.page_idx(0).set.id(1).cId(),
+          disabled: page_idx == 0,
         },
         {
           type: D.ComponentType.Button,
           style: D.ButtonStyle.Primary,
           emoji: { name: '◀️' },
-          custom_id: ctx.state.set.clicked_nav_btn('prev').cId(),
-          disabled: page == 1,
+          custom_id: ctx.state.set.page_idx(page_idx - 1).set.id(0).cId(),
+          disabled: page_idx == 0,
         },
         {
           type: D.ComponentType.Button,
           style: D.ButtonStyle.Primary,
           emoji: { name: '▶️' },
-          custom_id: ctx.state.set.clicked_nav_btn('next').cId(),
-          disabled: page == max_page,
+          custom_id: ctx.state.set.page_idx(page_idx + 1).set.id(0).cId(),
+          disabled: page_idx == max_page,
         },
         {
           type: D.ComponentType.Button,
           style: D.ButtonStyle.Primary,
           emoji: { name: '⏭️' },
-          custom_id: ctx.state.set.clicked_nav_btn('end').cId(),
-          disabled: page == max_page,
+          custom_id: ctx.state.set.page_idx(max_page).set.id(1).cId(),
+          disabled: page_idx == max_page,
         },
       ],
     },

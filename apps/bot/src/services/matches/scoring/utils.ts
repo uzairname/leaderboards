@@ -6,7 +6,7 @@ import { MatchOutcome, OutcomeType } from "../../../../../../packages/db/src/mod
  * that are greater than or equal to the corresponding element in 'nums'
  */
 export function scoresToRanks(scores: number[]): number[] {
-  const sortedUniqueNums = [...new Set(scores)].sort((a, b) => a - b)
+  const sortedUniqueNums = [...new Set(scores)].sort((a, b) => b - a)
 
   const rankMap = new Map<number, number>()
   sortedUniqueNums.forEach((num, index) => {

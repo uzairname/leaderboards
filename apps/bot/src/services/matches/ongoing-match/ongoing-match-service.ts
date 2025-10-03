@@ -1,15 +1,16 @@
 import { Match, MatchOutcome, OutcomeType, PartialGuildRanking, Player, Vote, WLDVote } from '@repo/db/models'
-import { arraysEqual, nonNullable } from '@repo/utils'
+import { arraysEqual, listToString, nonNullable, truncateString } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { UserError } from '../../../errors/user-errors'
 import { ongoingMatchPage, ongoing_match_view_sig } from '../../../interactions/ongoing-match/view'
 import { App } from '../../../setup/app'
-import { AppService } from '../../service'
+import { AppService, LogMethods } from '../../service'
 import { Colors } from '../../utils/strings'
 
 /**
  * Manages ongoing matches in a guild, and their voting process
  */
+@LogMethods
 export class OngoingMatchService extends AppService {
   /**
    * Starts a new 1v1 match in a guild. Syncs the match's summary message
@@ -27,9 +28,13 @@ export class OngoingMatchService extends AppService {
 
     const match_message = await app.matches.syncMatchSummaryMessage(app, match, guild)
 
+    const thread_name = players.slice(0, 10)
+      .map(team => truncateString(listToString(team.map(p => p.data.name)), Math.floor(95 / players.length)))
+      .join(' vs ')
+
     const thread = await app.discord.createPublicThread(
       {
-        name: `${players[0][0].data.name} vs ${players[1][0].data.name}`,
+        name: thread_name,
         auto_archive_duration: D.ThreadAutoArchiveDuration.OneHour,
         invitable: true,
       },
@@ -99,75 +104,39 @@ export class OngoingMatchService extends AppService {
    * Lets a player agree to the current votes on a match, update the player's vote.
    * If that is not possible, returns undefined
    */
-  async playerAgreeToVotes(app: App, match: Match, voting_user_id: string): Promise<Vote | undefined> {
+  async playerAgreeToVotes(app: App, match: Match, voting_user_id: string, agree_to_team_idx: number): Promise<Vote | undefined> {
     const team_players = await match.teams()
     const num_teams = team_players.length
 
     // Check if user is in the match
     const team_index = team_players.findIndex(team => team.some(p => p.player.data.user_id === voting_user_id))
-    if (!team_index) throw new UserError(`You aren't participating in this match`)
+    if (team_index === -1) throw new UserError(`You aren't participating in this match`)
 
     // Check if votes are currently unanimous (not necessarily all voted), and each player has voted with almost decisive votes
     const votes = match.data.team_votes
-    if (!votes) {
+    if (votes === null) {
       return undefined
     }
 
     const player_new_vote = (() => {
-      // If the player's team has cast a vote themself, return that
-      const player_vote = votes[team_index]
-      if (player_vote) {
-        return player_vote
+      const vote_to_agree_to = votes[agree_to_team_idx]
+
+      // If they voted for whether they won/lost/drew, agree to that
+      if (vote_to_agree_to.own_wld) {
+        const new_vote = { [WLDVote.Win]: WLDVote.Loss,
+          [WLDVote.Loss]: WLDVote.Win,
+          [WLDVote.Draw]: WLDVote.Draw,
+         }[vote_to_agree_to.own_wld]
+         if (new_vote !== undefined) return {
+          own_wld: new_vote,
+         }
       }
 
-      // If everyone else voted cancel, return cancel
-      if (Object.values(votes).every(v => v.cancel)) {
-        return { cancel: true }
-      }
-
-      if (Object.values(votes).every(v => v.outcome?.type === OutcomeType.WinLossDraw)) {
-        // If everyone else voted for a loss, return win
-        const own_wld_votes = Object.values(votes).map(v => v.own_wld)
-        if (own_wld_votes.filter(v => v === WLDVote.Loss).length === num_teams - 1) {
-          return { own_wld: WLDVote.Win }
-        }
-
-        // If only one other team voted for a win, and rest loss, return loss
-        if (
-          own_wld_votes.filter(v => v === WLDVote.Win).length === 1 &&
-          own_wld_votes.every(v => v === WLDVote.Win || v === WLDVote.Loss)
-        ) {
-          return { own_wld: WLDVote.Loss }
-        }
-
-        // If everyone else voted for a draw, return draw
-        if (own_wld_votes.every(v => v === WLDVote.Draw)) {
-          return { own_wld: WLDVote.Draw }
-        }
-      }
-
-      // If everyone who voted so far voted for the same type and same outcome
-      const first_team_vote = Object.values(votes)[0]
-      if (
-        first_team_vote &&
-        Object.values(votes).every(
-          v =>
-            v.outcome?.type &&
-            v.outcome.type === first_team_vote.outcome?.type &&
-            v.outcome.team_scores &&
-            first_team_vote.outcome.team_scores &&
-            arraysEqual(v.outcome.team_scores, first_team_vote.outcome.team_scores),
-        )
-      ) {
-        return first_team_vote
-      }
-
-      return undefined
+      // Otherwise, match the vote
+      return vote_to_agree_to
     })()
 
-    if (player_new_vote) {
-      await this.castPlayerVote(app, match, voting_user_id, player_new_vote)
-    }
+    await this.castPlayerVote(app, match, voting_user_id, player_new_vote)
   }
 
   async playerRemoveVote(match: Match, user_id: string) {
@@ -209,7 +178,7 @@ export class OngoingMatchService extends AppService {
     const outcome: MatchOutcome | undefined = (() => {
       // 1. Determine whether we can score the match based on everyone's "own_wld" submission
       const own_wld_outcome: MatchOutcome | undefined = (() => {
-        const all_teams_voted_wld = Object.values(votes).every(v => v.outcome?.type === OutcomeType.WinLossDraw)
+        const all_teams_voted_wld = Object.values(votes).every(v => v.own_wld)
         if (!all_teams_voted_wld) return undefined
 
         // Everyone agrees on one winner. All votes are win/loss, and only one team votes for a win.

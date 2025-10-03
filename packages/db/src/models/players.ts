@@ -77,37 +77,6 @@ export class PartialPlayer extends DbObject<{ id: number }> {
     return data.map(data => new Team(data.team, this.db))
   }
 
-  /**
-   * Returns the last match the player played before the provided time.
-   * If no match is found, returns null.
-   * @param time The time before which to find the last match
-   */
-
-  async getInfoAtTime(time: Date) {
-    const result = await this.db.matches.getMany({
-      player_ids: [this.data.id],
-      finished_before: time,
-      status: MatchStatus.Finished,
-      limit: 1,
-      earliest_first: false,
-    })
-
-    let seconds: number | null = null
-    let rating: Rating | undefined | null = null
-
-    if (result.length !== 0) {
-      const { match, team_players } = result[0]
-      const last_time = match.data.time_finished
-      seconds = last_time ? Math.floor((time.getTime() - last_time.getTime()) / 1000) : null
-      rating = team_players.flat().find(p => p.player.data.id === this.data.id)?.rating
-    }
-
-    return {
-      seconds,
-      rating: rating ?? (await this.ranking()).data.rating_settings.initial_rating,
-    }
-  }
-
   async update(data: Partial<Omit<PlayerInsert, 'user_id' | 'ranking_id'>>): Promise<Player> {
     const new_data = (
       await this.db.drizzle

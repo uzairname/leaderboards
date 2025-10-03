@@ -84,7 +84,7 @@ export async function main(app: App, ctx: AnyGuildInteractionContext): Promise<D
     if (grs.length > 5) {
       rankings_container.addTextDisplayComponents(
         new TextDisplayBuilder({
-          content: `-# You have an additional **${grs.length - 5}** more ranking${grs.length - 5 === 1 ? `` : `s`}. Use ${await commandMention(app, settings_cmd, guild.data.id)} \`[ranking-name]\` to access a specific ranking's settings.`,
+          content: `-# You have **${grs.length - 5}** more ranking${grs.length - 5 === 1 ? `` : `s`} not shown here. Use ${await commandMention(app, settings_cmd, guild.data.id)} \`[ranking-name]\` to access a specific ranking's settings.`,
         }),
       )
     }
