@@ -332,6 +332,20 @@ export function safeStringify(value: any): string {
   }
 }
 
+
+/**
+ * Removes any non-alphanumeric characters, converts to lowercase, and replaces spaces with underscores.
+ * @param str The input string to clean.
+ * @returns The cleaned string.
+ */
+export function cleanString(str: string): string {
+  return str
+    .trim()
+    .replace(/[^a-z0-9_ ]/gi, '') // allow underscores
+    .toLowerCase()
+    .replace(/ +/g, '_')
+}
+
 // export function safeStringify(value: any, visited = new WeakSet()): string {
 //   // Handle primitive types
 //   if (value === null) return 'null'

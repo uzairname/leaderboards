@@ -64,6 +64,7 @@ function getSubCommand(
 ): { subcommand?: string; subcommand_group?: string } | undefined {
   if (!options || options.length === 0) return
   const first = options[0]
+  console.log('getSubCommand', JSON.stringify(first, null, 2))
   if (first.type === D.ApplicationCommandOptionType.Subcommand) {
     return { subcommand: first.name }
   } else if (first.type === D.ApplicationCommandOptionType.SubcommandGroup) {

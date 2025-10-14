@@ -14,7 +14,7 @@ import {
   RatingStrategy,
 } from '@repo/db/models'
 import { AnyDeferredContext } from '@repo/discord'
-import { fillDefaults } from '@repo/utils'
+import { cleanString, fillDefaults } from '@repo/utils'
 import z from 'zod/v4'
 import { UserError, UserErrors } from '../../errors/user-errors'
 import { App, offload, syncDiscordCommands } from '../../setup/app'
@@ -84,9 +84,9 @@ export class RankingsService extends AppService {
     }
 
     // Make the name is unique in this guild
-    const same_name_ranking = guild_rankings.find(r => r.ranking.data.name === options.name)
+    const same_name_ranking = guild_rankings.find(r => cleanString(r.ranking.data.name) === cleanString(options.name))
     if (same_name_ranking) {
-      throw new UserError(`This server already has a ranking called \`${options.name}\``)
+      throw new UserError(`The name "${options.name}" conflicts with the existing ranking "${same_name_ranking.ranking.data.name}"`)
     }
 
     const match_settings = options.match_settings ?? default_match_settings

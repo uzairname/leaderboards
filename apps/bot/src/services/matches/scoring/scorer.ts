@@ -14,7 +14,7 @@ export type ScorerFn = (params: {
 export interface Scorer {
   /**
    * Function that calculates the new ratings of players after a match
-   * @param outcome an array of 0s and 1s, where 0 means the team lost and 1 means the team won
+   * @param outcome MatchOutcome
    * @param match_players_before contains the ratings of the players before the match
    * @returns 2d array of team player ratings, contains the ratings of the players after the match
    */

@@ -3,6 +3,7 @@ import { LZString } from './lzstring'
 export interface CodecSchema {
   [k: string]: Field<any>
 }
+
 export type AnyCodecSchema = any
 
 export namespace field {

@@ -90,7 +90,15 @@ export class MatchesService extends AppService {
    * @param time_started The time when the match started. If not provided, uses the current time.
    * @param time_finished The time when the match finished. If not provided, uses the current time.
    */
-  async createFinished(
+  async createFinished({
+    app,
+    ranking,
+    players,
+    outcome,
+    time_started,
+    time_finished,
+    metadata,
+  }: {
     app: App,
     ranking: PartialRanking,
     players: Player[][],
@@ -98,7 +106,7 @@ export class MatchesService extends AppService {
     time_started?: Date,
     time_finished?: Date,
     metadata?: MatchMetadata,
-  ): Promise<Match> {
+  }): Promise<Match> {
     this.validateMatchData({
       players,
       outcome,

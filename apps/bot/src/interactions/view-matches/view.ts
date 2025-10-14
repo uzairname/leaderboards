@@ -94,7 +94,7 @@ export async function matchesPage(
   }
 }
 
-export async function matchSummaryEmbed(app: App, match: Match, {} = {}): Promise<D.APIEmbed> {
+export async function matchSummaryEmbed(app: App, match: Match): Promise<D.APIEmbed> {
   const ranking = await match.ranking.fetch()
 
   const team_player_stats = await app.matches.playerDisplayStats(app, match)
