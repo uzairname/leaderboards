@@ -7,7 +7,7 @@ import { calculateRankRolesForPlayer } from '../../../services/players/rank-role
 import { rating_strategy_name } from '../../../services/rankings/ratings'
 import { Colors, breadcrumbsTitle, escapeMd, userAvatarUrl } from '../../../services/utils/strings'
 import { App } from '../../../setup/app'
-import { matches_view_sig } from '../../view-matches/view'
+import { matches_view_sig } from '../../matches/view'
 import { ratingTable, wlrTable } from './pieces'
 import { profile_view_sig } from './view'
 

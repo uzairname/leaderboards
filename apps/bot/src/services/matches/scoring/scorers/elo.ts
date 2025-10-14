@@ -19,12 +19,18 @@ export const EloScorer: Scorer = {
   }): Rating[][] {
     const { outcome, players, rating_settings } = params
 
+    console.log(`outcome: ${JSON.stringify(outcome)}`)
+    console.log(`players: ${JSON.stringify(players)}`)
+    console.log(`rating_settings: ${JSON.stringify(rating_settings)}`)
+
     if (players.length !== 2 || players[0].length !== 1 || players[1].length !== 1) {
       throw new Error('Elo scorer only supports 1v1 matches')
     }
 
-    // Normalize team scores to either 0, 0.5, or 1.
+    // Normalize team scores to either 0, 0.5, or 1 based on win, loss, or draw
     const normalized_team_scores = scoresToZeroHalfOne(outcome)
+
+    console.log(`normalized_team_scores: ${JSON.stringify(normalized_team_scores)}`)
 
     const player1 = players[0][0]
     const player2 = players[1][0]

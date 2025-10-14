@@ -16,7 +16,7 @@ import { MessageData } from '@repo/discord'
 import { maxIndex, nonNullable } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { UserError, UserErrors } from '../../errors/user-errors'
-import { matchSummaryEmbed } from '../../interactions/view-matches/view'
+import { matchSummaryEmbed } from '../../interactions/matches/view'
 import { App, offload } from '../../setup/app'
 import { ensureGuildAdminPerms, GuildAuth } from '../perms'
 import { displayRatingFn } from '../rankings/ratings'
@@ -126,8 +126,6 @@ export class MatchesService extends AppService {
           team.map(async p => {
             // If the match just finished, use current player ratings to save queries
             const res = finished_in_past ? await app.players.getInfoAtTime(app, p, match_time_started) : undefined
-
-            app.logger.debug(`.. finished_in_past: ${finished_in_past}, time_started: ${time_started}, res: ${res}`)
 
             return {
               player: p,

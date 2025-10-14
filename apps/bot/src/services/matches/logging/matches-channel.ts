@@ -1,7 +1,7 @@
 import { Guild, PartialGuild } from '@repo/db/models'
 import { GuildChannelData, MessageData } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
-import { matches_cmd } from '../../../interactions/view-matches/cmd'
+import { matches_cmd } from '../../../interactions/matches/cmd'
 import { App } from '../../../setup/app'
 import { Colors, commandMention } from '../../utils/strings'
 

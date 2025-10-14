@@ -21,7 +21,7 @@ export function scoresToRanks(scores: number[]): number[] {
 /**
  * Converts team scores to a normalized scale of 0 (loss), 0.5 (draw), or 1 (win).
  */
-export function scoresToZeroHalfOne(outcome: MatchOutcome) {
+export function scoresToZeroHalfOne(outcome: MatchOutcome): (0 | 0.5 | 1)[] {
   // Transform team_scores so that greater score is better
   const scores = (() => {
     if (outcome.type === OutcomeType.Ranks) {
@@ -31,13 +31,17 @@ export function scoresToZeroHalfOne(outcome: MatchOutcome) {
   })()
 
   const ranks = scoresToRanks(scores)
-  const max_rank = Math.max(...ranks)
+  const best_rank = Math.min(...ranks)
+  const worst_rank = Math.max(...ranks)
+
+  // If all teams have the same score, it's a draw
+  if (best_rank === worst_rank) {
+    return ranks.map(() => 0.5)
+  }
+
+  // Otherwise, assign 1 to winning teams and 0 to losing teams
   return ranks.map(rank => {
-    if (max_rank === 1) return 0.5 // All teams have the same score. Draw.
-    if (rank === max_rank)
-      return 1 // Winning team
-    else if (rank < max_rank) return 0 // Losing team
-    // Team rank should never be greater than max team rank
-    throw new Error('Team rank is greater than max team rank')
+    if (rank === best_rank) return 1
+    return 0
   })
 }

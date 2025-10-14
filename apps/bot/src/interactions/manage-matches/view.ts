@@ -6,7 +6,7 @@ import { UserError } from '../../errors/user-errors'
 import { ensureGuildAdminPerms } from '../../services/perms'
 import { Colors } from '../../services/utils/strings'
 import { App } from '../../setup/app'
-import { matchSummaryEmbed } from '../view-matches/view'
+import { matchSummaryEmbed } from '../matches/view'
 
 export const manage_match_view_sig = new ViewSignature({
   custom_id_prefix: 'm',

@@ -142,7 +142,8 @@ export async function scoringSettings(
           `\nThe match outcome type determines the information required in order to record a match in this ranking. Your options are:` +
           `\n- **${outcome_type_name[OutcomeType.WinLossDraw]}**: The simplest outcome. There is either a single winner, or the match is a full draw (if enabled).` +
           `\n- **${outcome_type_name[OutcomeType.Ranks]}**: The teams finish in a certain order, with ranks such as 1st place, 2nd place, 3rd place, etc.` +
-          `\n- **${outcome_type_name[OutcomeType.Points]}**: Each team accumulates a certain number of points. Allows the rating algorithm to take into account margin of victory. Useful for free-for-alls, "best-of" series results, or games like like tennis.`,
+          `\n- **${outcome_type_name[OutcomeType.Points]}**: Each team accumulates a certain number of points. ` + 
+            `Useful for free-for-alls, "best-of" series results, or games like tennis and Rocket League. Allows the rating algorithm to take into account margin of victory.`,
       }),
     )
     .addActionRowComponents(
@@ -150,19 +151,28 @@ export async function scoringSettings(
         new ButtonBuilder({
           label: outcome_type_name[OutcomeType.WinLossDraw],
           style: D.ButtonStyle.Secondary,
-          custom_id: ctx.state.set.handler(setOutcomeType).set.selected_outcome_type(OutcomeType.WinLossDraw).cId(),
+          custom_id: ctx.state.setAll({
+            handler: setOutcomeType,
+            selected_outcome_type: OutcomeType.WinLossDraw,
+          }).cId(),
           disabled: outcome_type === OutcomeType.WinLossDraw,
         }),
         new ButtonBuilder({
           label: outcome_type_name[OutcomeType.Ranks],
           style: D.ButtonStyle.Secondary,
-          custom_id: ctx.state.set.handler(setOutcomeType).set.selected_outcome_type(OutcomeType.Ranks).cId(),
+          custom_id: ctx.state.setAll({
+            handler: setOutcomeType,
+            selected_outcome_type: OutcomeType.Ranks,
+          }).cId(),
           disabled: outcome_type === OutcomeType.Ranks,
         }),
         new ButtonBuilder({
           label: outcome_type_name[OutcomeType.Points],
           style: D.ButtonStyle.Secondary,
-          custom_id: ctx.state.set.handler(setOutcomeType).set.selected_outcome_type(OutcomeType.Points).cId(),
+          custom_id: ctx.state.setAll({
+            handler: setOutcomeType,
+            selected_outcome_type: OutcomeType.Points,
+          }).cId(),
           disabled: outcome_type === OutcomeType.Points,
         }),
       ),
