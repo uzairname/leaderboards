@@ -8,11 +8,9 @@ import { commandMention, escapeMd, relativeTimestamp, space } from '../../servic
 import { App } from '../../setup/app'
 import { leaderboard_cmd } from './cmd'
 import { leaderboard_view_sig } from './view'
-import { playerGuidePage } from '../help/pages'
-
 
 /**
- * @returns 
+ * @returns
  * - text: The leaderboard text
  * - max_page: The total number of pages
  */
@@ -86,7 +84,7 @@ export async function leaderboardText(
   const max_page = Math.ceil(all_lines.length / lines_per_page) - 1
 
   // Determine the lines to show on the current page
-  const current_page_lines = all_lines.slice((page_idx) * lines_per_page, (page_idx+1) * lines_per_page)
+  const current_page_lines = all_lines.slice(page_idx * lines_per_page, (page_idx + 1) * lines_per_page)
 
   if (current_page_lines.length == 0) {
     current_page_lines.push(`No players to show.`)
@@ -178,14 +176,20 @@ export async function leaderboardPage(
           type: D.ComponentType.Button,
           style: D.ButtonStyle.Primary,
           emoji: { name: '◀️' },
-          custom_id: ctx.state.set.page_idx(page_idx - 1).set.id(0).cId(),
+          custom_id: ctx.state.set
+            .page_idx(page_idx - 1)
+            .set.id(0)
+            .cId(),
           disabled: page_idx == 0,
         },
         {
           type: D.ComponentType.Button,
           style: D.ButtonStyle.Primary,
           emoji: { name: '▶️' },
-          custom_id: ctx.state.set.page_idx(page_idx + 1).set.id(0).cId(),
+          custom_id: ctx.state.set
+            .page_idx(page_idx + 1)
+            .set.id(0)
+            .cId(),
           disabled: page_idx == max_page,
         },
         {

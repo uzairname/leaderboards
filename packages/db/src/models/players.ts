@@ -1,7 +1,7 @@
 import { and, eq, inArray, InferInsertModel, InferSelectModel, SQL, sql } from 'drizzle-orm'
 import { PgDialect } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
-import { MatchStatus, Ranking, Team } from '.'
+import { Ranking, Team } from '.'
 import { DbObject, DbObjectManager } from '../classes'
 import { DbClient } from '../client'
 import { DbErrors } from '../errors'

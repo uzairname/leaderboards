@@ -36,7 +36,6 @@ import {
   max_teams_per_match,
 } from './properties'
 import { DEFAULT_RATING_STRATEGY, ELO_DEFAULT, GLICKO_DEFAULT, TRUESKILL_DEFAULT } from './ratings'
-import { Rating } from 'ts-trueskill'
 
 @LogMethods
 export class RankingsService extends AppService {
@@ -86,13 +85,17 @@ export class RankingsService extends AppService {
     // Make the name is unique in this guild
     const same_name_ranking = guild_rankings.find(r => cleanString(r.ranking.data.name) === cleanString(options.name))
     if (same_name_ranking) {
-      throw new UserError(`The name "${options.name}" conflicts with the existing ranking "${same_name_ranking.ranking.data.name}"`)
+      throw new UserError(
+        `The name "${options.name}" conflicts with the existing ranking "${same_name_ranking.ranking.data.name}"`,
+      )
     }
 
     const match_settings = options.match_settings ?? default_match_settings
-    const rating_settings = options.rating_settings ?? this.getDefaultRatingSettings(
-      this.getDefaultRatingStrategy(match_settings, options.players_per_team, options.teams_per_match),
-    )
+    const rating_settings =
+      options.rating_settings ??
+      this.getDefaultRatingSettings(
+        this.getDefaultRatingStrategy(match_settings, options.players_per_team, options.teams_per_match),
+      )
 
     // Create the ranking
     const new_ranking = await app.db.rankings.create({
@@ -163,9 +166,8 @@ export class RankingsService extends AppService {
     }
   }
 
-
   /**
-   * Gets a compatible rating strategy for the given match settings, favoring 
+   * Gets a compatible rating strategy for the given match settings, favoring
    * some over others
    */
   getDefaultRatingStrategy(
@@ -173,13 +175,12 @@ export class RankingsService extends AppService {
     players_per_team: number = DEFAULT_PLAYERS_PER_TEAM,
     teams_per_match: number = DEFAULT_TEAMS_PER_MATCH,
   ): RatingStrategy {
-
     const rating_strategies_ordered = [
       RatingStrategy.Bayesian,
       RatingStrategy.Glicko,
       RatingStrategy.TrueSkill,
       RatingStrategy.Elo,
-      RatingStrategy.WinsMinusLosses
+      RatingStrategy.WinsMinusLosses,
     ]
 
     // If the default strategy is not supported, try to find another one
@@ -202,7 +203,6 @@ export class RankingsService extends AppService {
       `Incompatible Match Settings`,
     )
   }
-
 
   /**
    * Maps rating strategies to their default parameters. When a ranking is created or updated with
@@ -378,7 +378,8 @@ export class RankingsService extends AppService {
             .gte(1)
             .refine(n => n % 2 === 1, {
               message: 'Best of must be a positive odd number',
-            }).optional(),
+            })
+            .optional(),
           direct_challenge_enabled: z.boolean().optional(),
         })
         .optional(),
@@ -409,9 +410,7 @@ export class RankingsService extends AppService {
     }
   }
 
-
   async getCompatibleRatingStrategies(ranking: Ranking) {
-
     const strategies = rating_strategies.filter(strategy => {
       const scorer = ratingStrategyToScorer(strategy)
       const outcome_type = ranking.data.match_settings?.outcome_type ?? OutcomeType.WinLossDraw
@@ -422,9 +421,6 @@ export class RankingsService extends AppService {
     })
     return strategies
   }
-
-
-
 
   /**
    * Determines whether the user has admin access to a ranking.

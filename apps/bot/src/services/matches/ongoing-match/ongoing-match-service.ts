@@ -28,7 +28,8 @@ export class OngoingMatchService extends AppService {
 
     const match_message = await app.matches.syncMatchSummaryMessage(app, match, guild)
 
-    const thread_name = players.slice(0, 10)
+    const thread_name = players
+      .slice(0, 10)
       .map(team => truncateString(listToString(team.map(p => p.data.name)), Math.floor(95 / players.length)))
       .join(' vs ')
 
@@ -104,7 +105,12 @@ export class OngoingMatchService extends AppService {
    * Lets a player agree to the current votes on a match, update the player's vote.
    * If that is not possible, returns undefined
    */
-  async playerAgreeToVotes(app: App, match: Match, voting_user_id: string, agree_to_team_idx: number): Promise<Vote | undefined> {
+  async playerAgreeToVotes(
+    app: App,
+    match: Match,
+    voting_user_id: string,
+    agree_to_team_idx: number,
+  ): Promise<Vote | undefined> {
     const team_players = await match.teams()
     const num_teams = team_players.length
 
@@ -123,13 +129,13 @@ export class OngoingMatchService extends AppService {
 
       // If they voted for whether they won/lost/drew, agree to that
       if (vote_to_agree_to.own_wld) {
-        const new_vote = { [WLDVote.Win]: WLDVote.Loss,
-          [WLDVote.Loss]: WLDVote.Win,
-          [WLDVote.Draw]: WLDVote.Draw,
-         }[vote_to_agree_to.own_wld]
-         if (new_vote !== undefined) return {
-          own_wld: new_vote,
-         }
+        const new_vote = { [WLDVote.Win]: WLDVote.Loss, [WLDVote.Loss]: WLDVote.Win, [WLDVote.Draw]: WLDVote.Draw }[
+          vote_to_agree_to.own_wld
+        ]
+        if (new_vote !== undefined)
+          return {
+            own_wld: new_vote,
+          }
       }
 
       // Otherwise, match the vote

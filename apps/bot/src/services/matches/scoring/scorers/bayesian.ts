@@ -27,7 +27,6 @@ export const BayesianScorer: Scorer = {
     // Convert team scores into 1s (win), -1s (loss), or 0 (draw)
     const normalized_team_scores = outcomeToZeroHalfOne(outcome).map(score => score * 2 - 1)
 
-
     // Standardize display values to internal values for computation
     // Internal values have a std of 1/200th of the display std, and a mean of 0.
     const convert_mu_to_internal = (mu: number) =>

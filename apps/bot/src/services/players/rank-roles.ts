@@ -1,5 +1,5 @@
 import { DiscordAPIError } from '@discordjs/rest'
-import { Guild, GuildRanking, PartialGuildRanking, Player } from '@repo/db/models'
+import { Guild, GuildRanking, Player } from '@repo/db/models'
 import { DiscordErrors } from '@repo/discord'
 import { RESTJSONErrorCodes } from 'discord-api-types/v10'
 import { UserErrors } from '../../errors/user-errors'

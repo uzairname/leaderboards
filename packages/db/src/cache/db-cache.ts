@@ -23,7 +23,7 @@ let cache: DbCache | undefined = undefined
 const DEFAULT_TTL_MS = 1000 * 30 // 30 second
 
 /**
- * 
+ *
  */
 export class DbCache {
   private cache_maps: GenericCacheMap<any, any, any>[] = []
@@ -107,9 +107,15 @@ export class DbCache {
   }): GenericCacheMap<SerializedT, DeserializedT, K, K2> {
     const { name, serialize, deserialize } = options
 
-    const cache = new GenericCacheMap<SerializedT, DeserializedT, K, K2>(name, serialize, deserialize, msg => {
-      this.logger?.debug(msg)
-    }, DEFAULT_TTL_MS)
+    const cache = new GenericCacheMap<SerializedT, DeserializedT, K, K2>(
+      name,
+      serialize,
+      deserialize,
+      msg => {
+        this.logger?.debug(msg)
+      },
+      DEFAULT_TTL_MS,
+    )
     this.cache_maps.push(cache)
     return cache
   }
@@ -150,7 +156,6 @@ export class DbCache {
   getStats() {
     return this.cache_maps.map(cache => cache.getStats())
   }
-
 
   toString() {
     return this.cache_maps.map(cache => cache.getStats()).join('\n')

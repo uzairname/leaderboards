@@ -1,4 +1,4 @@
-import { LZString, StringCodec, CodecSchema } from '@repo/utils'
+import { CodecSchema, LZString, StringCodec } from '@repo/utils'
 import { InteractionErrors } from '../errors'
 import { ViewSignature } from './signature'
 

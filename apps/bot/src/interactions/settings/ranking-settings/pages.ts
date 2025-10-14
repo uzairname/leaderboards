@@ -6,10 +6,9 @@ import {
   RoleSelectMenuBuilder,
   SectionBuilder,
   SeparatorBuilder,
-  StringSelectMenuBuilder,
   TextDisplayBuilder,
 } from '@discordjs/builders'
-import { OutcomeType, RatingStrategy } from '@repo/db/models'
+import { OutcomeType } from '@repo/db/models'
 import { Context } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
 import { syncMatchesChannel } from '../../../services/matches/logging/matches-channel'
@@ -122,86 +121,86 @@ export async function scoringSettings(
   })
 
   const props = app.rankings.getProperties(ranking)
-  
+
   // Outcomes
   const draws_allowed = props.match_settings.draws_allowed
   const outcome_type = props.match_settings.outcome_type
 
+  const container = new ContainerBuilder().addTextDisplayComponents(
+    new TextDisplayBuilder({
+      content: `## Scoring Settings for **${escapeMd(ranking.data.name)}**`,
+    }),
+  )
 
-  const container = new ContainerBuilder()
-    .addTextDisplayComponents(new TextDisplayBuilder({
-      content: `## Scoring Settings for **${escapeMd(ranking.data.name)}**`
-    }))
+  container
+    .addSeparatorComponents(new SeparatorBuilder({ spacing: D.SeparatorSpacingSize.Large }))
 
+    .addTextDisplayComponents(
+      new TextDisplayBuilder({
+        content:
+          `### 📝 Match Outcome Type: ${outcome_type_name[outcome_type]}` +
+          `\nThe match outcome type determines the information required in order to record a match in this ranking. Your options are:` +
+          `\n- **${outcome_type_name[OutcomeType.WinLossDraw]}**: The simplest outcome. There is either a single winner, or the match is a full draw (if enabled).` +
+          `\n- **${outcome_type_name[OutcomeType.Ranks]}**: The teams finish in a certain order, with ranks such as 1st place, 2nd place, 3rd place, etc.` +
+          `\n- **${outcome_type_name[OutcomeType.Points]}**: Each team accumulates a certain number of points. Allows the rating algorithm to take into account margin of victory. Useful for free-for-alls, "best-of" series results, or games like like tennis.`,
+      }),
+    )
+    .addActionRowComponents(
+      new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+        new ButtonBuilder({
+          label: outcome_type_name[OutcomeType.WinLossDraw],
+          style: D.ButtonStyle.Secondary,
+          custom_id: ctx.state.set.handler(setOutcomeType).set.selected_outcome_type(OutcomeType.WinLossDraw).cId(),
+          disabled: outcome_type === OutcomeType.WinLossDraw,
+        }),
+        new ButtonBuilder({
+          label: outcome_type_name[OutcomeType.Ranks],
+          style: D.ButtonStyle.Secondary,
+          custom_id: ctx.state.set.handler(setOutcomeType).set.selected_outcome_type(OutcomeType.Ranks).cId(),
+          disabled: outcome_type === OutcomeType.Ranks,
+        }),
+        new ButtonBuilder({
+          label: outcome_type_name[OutcomeType.Points],
+          style: D.ButtonStyle.Secondary,
+          custom_id: ctx.state.set.handler(setOutcomeType).set.selected_outcome_type(OutcomeType.Points).cId(),
+          disabled: outcome_type === OutcomeType.Points,
+        }),
+      ),
+    )
 
+  if (outcome_type === OutcomeType.WinLossDraw) {
+    // Add the draws setting if the outcome type is WinLossDraw
     container
       .addSeparatorComponents(new SeparatorBuilder({ spacing: D.SeparatorSpacingSize.Large }))
-  
-      .addTextDisplayComponents(
-        new TextDisplayBuilder({
-          content:
-            `### 📝 Match Outcome Type: ${outcome_type_name[outcome_type]}` +
-            `\nThe match outcome type determines the information required in order to record a match in this ranking. Your options are:` +
-            `\n- **${outcome_type_name[OutcomeType.WinLossDraw]}**: The simplest outcome. There is either a single winner, or the match is a full draw (if enabled).` +
-            `\n- **${outcome_type_name[OutcomeType.Ranks]}**: The teams finish in a certain order, with ranks such as 1st place, 2nd place, 3rd place, etc.` +
-            `\n- **${outcome_type_name[OutcomeType.Points]}**: Each team accumulates a certain number of points. Allows the rating algorithm to take into account margin of victory. Useful for free-for-alls, "best-of" series results, or games like like tennis.`,
-        }),
+      .addSectionComponents(
+        new SectionBuilder()
+          .addTextDisplayComponents(
+            new TextDisplayBuilder({
+              content: `**🤝 Draws (${draws_allowed ? `allowed` : `disabled`})**: If enabled, matches can end in a draw. Note: unlike canceled matches, draws may have an effect on player ratings.`,
+            }),
+          )
+          .setButtonAccessory(
+            new ButtonBuilder({
+              style: draws_allowed ? D.ButtonStyle.Success : D.ButtonStyle.Danger,
+              custom_id: ctx.state.set.handler(onToggleDraws).cId(),
+              label: draws_allowed ? `Disable` : `Allow`,
+            }),
+          ),
       )
-      .addActionRowComponents(
-        new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-          new ButtonBuilder({
-            label: outcome_type_name[OutcomeType.WinLossDraw],
-            style: D.ButtonStyle.Secondary,
-            custom_id: ctx.state.set.handler(setOutcomeType).set.selected_outcome_type(OutcomeType.WinLossDraw).cId(),
-            disabled: outcome_type === OutcomeType.WinLossDraw,
-          }),
-          new ButtonBuilder({
-            label: outcome_type_name[OutcomeType.Ranks],
-            style: D.ButtonStyle.Secondary,
-            custom_id: ctx.state.set.handler(setOutcomeType).set.selected_outcome_type(OutcomeType.Ranks).cId(),
-            disabled: outcome_type === OutcomeType.Ranks,
-          }),
-          new ButtonBuilder({
-            label: outcome_type_name[OutcomeType.Points],
-            style: D.ButtonStyle.Secondary,
-            custom_id: ctx.state.set.handler(setOutcomeType).set.selected_outcome_type(OutcomeType.Points).cId(),
-            disabled: outcome_type === OutcomeType.Points,
-          }),
-        ),
-      )
-  
-    if (outcome_type === OutcomeType.WinLossDraw) {
-      // Add the draws setting if the outcome type is WinLossDraw
-      container
-        .addSeparatorComponents(new SeparatorBuilder({ spacing: D.SeparatorSpacingSize.Large }))
-        .addSectionComponents(
-          new SectionBuilder()
-            .addTextDisplayComponents(
-              new TextDisplayBuilder({
-                content: `**🤝 Draws (${draws_allowed ? `allowed` : `disabled`})**: If enabled, matches can end in a draw. Note: unlike canceled matches, draws may have an effect on player ratings.`,
-              }),
-            )
-            .setButtonAccessory(
-              new ButtonBuilder({
-                style: draws_allowed ? D.ButtonStyle.Success : D.ButtonStyle.Danger,
-                custom_id: ctx.state.set.handler(onToggleDraws).cId(),
-                label: draws_allowed ? `Disable` : `Allow`,
-              }),
-            ),
-        )
-    }
+  }
 
   container.addSeparatorComponents(new SeparatorBuilder({ spacing: D.SeparatorSpacingSize.Large }))
   // Rating strategies
 
   const compatible_rating_strategies = await app.rankings.getCompatibleRatingStrategies(ranking)
 
-  container.addTextDisplayComponents(
+  container
+    .addTextDisplayComponents(
       new TextDisplayBuilder({
         content:
           `### Rating Strategy` +
           `\nCustomize the algorithm that updates players' ratings as they play games. Use ${await commandMention(app, help_cmd)} for more information.` +
-          `\nWhen you make changes to the rating method, every player's rating will be retroactively recalculated according to the new algorithm. The result will be no different than if you used the new algorithm from the start. This may take a few seconds for large servers` + 
+          `\nWhen you make changes to the rating method, every player's rating will be retroactively recalculated according to the new algorithm. The result will be no different than if you used the new algorithm from the start. This may take a few seconds for large servers` +
           `\nCurrently using the **${rating_strategy_name[ranking.data.rating_settings.rating_strategy]}** rating method\n`,
       }),
     )
@@ -215,14 +214,11 @@ export async function scoringSettings(
               ranking.data.rating_settings.rating_strategy === strategy
                 ? D.ButtonStyle.Success
                 : D.ButtonStyle.Secondary,
-            custom_id: ctx.state
-              .setAll({ selected_rating_strategy: strategy, handler: onRatingMethodSelect })
-              .cId(),
+            custom_id: ctx.state.setAll({ selected_rating_strategy: strategy, handler: onRatingMethodSelect }).cId(),
             disabled: ranking.data.rating_settings.rating_strategy === strategy,
           })
-        })
-
-      )
+        }),
+      ),
       // new ActionRowBuilder<StringSelectMenuBuilder>().setComponents(
       //   new StringSelectMenuBuilder({
       //     custom_id: ctx.state.set.handler(onRatingMethodSelect).cId(),
@@ -414,7 +410,7 @@ export async function appearance(
         .addTextDisplayComponents(
           new TextDisplayBuilder({
             content:
-              `**Live Leaderboard**: If enabled, the bot will maintain a public leaderboard message in real time. If disabled, you can always view the leaderboard using ${await commandMention(app, leaderboard_cmd, guild_ranking.data.guild_id)} \`${ranking.data.name}\`.` + 
+              `**Live Leaderboard**: If enabled, the bot will maintain a public leaderboard message in real time. If disabled, you can always view the leaderboard using ${await commandMention(app, leaderboard_cmd, guild_ranking.data.guild_id)} \`${ranking.data.name}\`.` +
               `\nCurrently, ` +
               (lb_msg_link
                 ? `the live leaderboard is displayed in ${lb_msg_link}`
@@ -467,8 +463,9 @@ export async function matchSettings(
       new SectionBuilder()
         .addTextDisplayComponents(
           new TextDisplayBuilder({
-            content: `### 🔎 Matchmaking Queue: ${queue_enabled ? `enabled` : `disabled`}` + 
-            `\nIf enabled, players can join the matchmaking queue using ${await commandMention(app, join_cmd, ctx.interaction.guild_id)} \`${ranking.data.name}\`. You can send a button to join the queue using ${await commandMention(app, send_cmd, ctx.interaction.guild_id, scnames.queue_message)}`,
+            content:
+              `### 🔎 Matchmaking Queue: ${queue_enabled ? `enabled` : `disabled`}` +
+              `\nIf enabled, players can join the matchmaking queue using ${await commandMention(app, join_cmd, ctx.interaction.guild_id)} \`${ranking.data.name}\`. You can send a button to join the queue using ${await commandMention(app, send_cmd, ctx.interaction.guild_id, scnames.queue_message)}`,
           }),
         )
         .setButtonAccessory(
@@ -541,8 +538,6 @@ export async function matchSettings(
         }),
       ),
   )
-
-
 
   return makeSettingsPage(ctx, [container], ranking, guild_ranking)
 }

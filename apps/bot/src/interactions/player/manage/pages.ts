@@ -54,7 +54,6 @@ export async function removeUserPlayerPage(app: App, ctx: Context<typeof player_
       ],
     }).addFlags(D.MessageFlags.Ephemeral | D.MessageFlags.IsComponentsV2)
   } else {
-
     await sequential(
       ctx.state.get.players().map(p => async () => {
         const player = await app.db.players.fetch(nonNullable(p.id))

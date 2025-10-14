@@ -31,7 +31,6 @@ function sigmoid(z: number): number {
   }
 }
 
-
 /**
  * Log-likelihood function
  */

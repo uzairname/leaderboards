@@ -6,8 +6,8 @@ import { AppErrors } from '../../errors/app-errors'
 import { UserError } from '../../errors/user-errors'
 import { App } from '../../setup/app'
 import { matchTeamPointsModal } from './components'
+import { enterRanks } from './pages'
 import { ongoing_match_view_sig, ongoingMatchPage } from './view'
-import { enterRanks} from './pages'
 
 /**
  * Called when a player votes on the outcome of an ongoing match.
@@ -64,9 +64,7 @@ export async function vote(
 
     await ctx.edit((await ongoingMatchPage(app, ctx.state)).response_data)
   })
-
 }
-
 
 /**
  * Called when a player wants to enter the result to vote for an ongoing match
@@ -75,7 +73,6 @@ export async function enterResult(
   app: App,
   ctx: ComponentContext<typeof ongoing_match_view_sig>,
 ): Promise<ChatInteractionResponse> {
-
   // Save the match thread message which will contain the main votes and buttons.
   ctx.state.save.original_message_id(ctx.interaction.message?.id)
   // Reset the selected team ranks and points
@@ -85,50 +82,46 @@ export async function enterResult(
   })
 
   const match = await app.db.matches.fetch(ctx.state.get.match_id())
-  
+
   const teams = await match.teams()
-  
+
   // send a dialog to enter the result according to the ranking's outcome type
   const ranking = await match.ranking.fetch()
   const props = app.rankings.getProperties(ranking)
   const outcome_type = props.match_settings.outcome_type
-  
+
   if (outcome_type === OutcomeType.Ranks) {
-      return ctx.defer(async ctx => {
+    return ctx.defer(async ctx => {
       // Send a select menu
-      return void await ctx.followup(await enterRanks(app, ctx))
-  
+      return void (await ctx.followup(await enterRanks(app, ctx)))
     })
   } else if (outcome_type === OutcomeType.Points) {
-      if (teams.length <= 5) {
-        // send a modal to enter points for each team
-        return {
-          type: D.InteractionResponseType.Modal,
-          data: await matchTeamPointsModal(app, ctx),
-        }
-      }
-
-      // Send a select menu to enter points for each team
+    if (teams.length <= 5) {
+      // send a modal to enter points for each team
       return {
-        type: D.InteractionResponseType.ChannelMessageWithSource,
-        data: {
-          content: `5+ teams`,
-          flags: D.MessageFlags.Ephemeral,
-        },
+        type: D.InteractionResponseType.Modal,
+        data: await matchTeamPointsModal(app, ctx),
       }
-    } else {
-      throw new AppErrors.UnhandledState(`Unexpected outcome type ${outcome_type}`)
     }
+
+    // Send a select menu to enter points for each team
+    return {
+      type: D.InteractionResponseType.ChannelMessageWithSource,
+      data: {
+        content: `5+ teams`,
+        flags: D.MessageFlags.Ephemeral,
+      },
+    }
+  } else {
+    throw new AppErrors.UnhandledState(`Unexpected outcome type ${outcome_type}`)
+  }
 }
-
-
 
 export async function onEnterRanksSubmit(
   app: App,
   ctx: ComponentContext<typeof ongoing_match_view_sig>,
 ): Promise<ChatInteractionResponse> {
   return ctx.defer(async ctx => {
-
     // Array of team indices in the order they were selected
     const ordered_team_indices = (ctx.interaction.data as D.APIMessageStringSelectInteractionData).values
 
@@ -141,10 +134,9 @@ export async function onEnterRanksSubmit(
     }
 
     ctx.state.save.selected_team_ranks(team_ranks)
-    return void await ctx.edit(await enterRanks(app, ctx))
+    return void (await ctx.edit(await enterRanks(app, ctx)))
   })
 }
-
 
 export async function onEnterRanksConfirm(
   app: App,
@@ -155,29 +147,27 @@ export async function onEnterRanksConfirm(
     const vote: Vote = {
       outcome: {
         type: OutcomeType.Ranks,
-        team_scores: ctx.state.get.selected_team_ranks()
-      }
+        team_scores: ctx.state.get.selected_team_ranks(),
+      },
     }
-  
-    await app.matches.ongoing.castPlayerVote(app, match, ctx.interaction.member.user.id, vote )
-    await app.discord.editMessage(nonNullable(ctx.interaction.channel?.id), ctx.state.get.original_message_id(), (await ongoingMatchPage(app, ctx.state)).body)
+
+    await app.matches.ongoing.castPlayerVote(app, match, ctx.interaction.member.user.id, vote)
+    await app.discord.editMessage(
+      nonNullable(ctx.interaction.channel?.id),
+      ctx.state.get.original_message_id(),
+      (await ongoingMatchPage(app, ctx.state)).body,
+    )
 
     await ctx.delete()
   })
-
 }
-
 
 export async function onEnterPointsModalSubmit(
   app: App,
   ctx: ComponentContext<typeof ongoing_match_view_sig>,
 ): Promise<ChatInteractionResponse> {
-
   throw new Error('Not implemented')
-
 }
-
-
 
 /**
  * Called when a player clicks "agree" to votes during an ongoing match

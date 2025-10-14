@@ -1,4 +1,4 @@
-import { MatchOutcome, OutcomeType } from "../../../../../../packages/db/src/models/matches"
+import { MatchOutcome, OutcomeType } from '../../../../../../packages/db/src/models/matches'
 
 /**
  * Converts an array of numbers to their ranks. Assumes greater number is better
@@ -22,7 +22,6 @@ export function scoresToRanks(scores: number[]): number[] {
  * Converts team scores to a normalized scale of 0 (loss), 0.5 (draw), or 1 (win).
  */
 export function scoresToZeroHalfOne(outcome: MatchOutcome) {
-
   // Transform team_scores so that greater score is better
   const scores = (() => {
     if (outcome.type === OutcomeType.Ranks) {

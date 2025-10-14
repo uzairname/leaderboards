@@ -30,7 +30,6 @@ export interface Scorer {
   ): { is_supported: boolean; message?: string }
 }
 
-
 export const rating_strategies: RatingStrategy[] = [
   RatingStrategy.TrueSkill,
   RatingStrategy.WinsMinusLosses,
@@ -38,7 +37,6 @@ export const rating_strategies: RatingStrategy[] = [
   RatingStrategy.Glicko,
   RatingStrategy.Bayesian,
 ]
-
 
 export function ratingStrategyToScorer(type: RatingStrategy): Scorer {
   const scorer = {
@@ -51,6 +49,3 @@ export function ratingStrategyToScorer(type: RatingStrategy): Scorer {
   if (!scorer) throw new Error(`Unknown rating strategy ${type}`)
   return scorer
 }
-
-
-

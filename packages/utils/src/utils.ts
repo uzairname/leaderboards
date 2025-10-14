@@ -64,7 +64,6 @@ export function arraysEqual<T>(a: T[], b: T[]): boolean {
   return true
 }
 
-
 /**
  * Groups items from a record that are considered equal by a callback function.
  *
@@ -73,38 +72,35 @@ export function arraysEqual<T>(a: T[], b: T[]): boolean {
  * @returns A Map where each key is an array of original keys and each value
  * is the shared value for those keys.
  */
-export function groupEqualValues<T>(
-  record: Record<number, T>,
-  isEqual: (a: T, b: T) => boolean
-): Map<number[], T> {
-  const groupedMap = new Map<number[], T>();
+export function groupEqualValues<T>(record: Record<number, T>, isEqual: (a: T, b: T) => boolean): Map<number[], T> {
+  const groupedMap = new Map<number[], T>()
 
   // Iterate over each key-value pair in the input record.
   for (const keyStr in record) {
     // Ensure we only process the object's own properties.
     if (Object.prototype.hasOwnProperty.call(record, keyStr)) {
-      const key = parseInt(keyStr, 10);
-      const value = record[key];
-      let foundGroup = false;
+      const key = parseInt(keyStr, 10)
+      const value = record[key]
+      let foundGroup = false
 
       // Check if a group for an equal value already exists in our map.
       for (const [keys, existingValue] of groupedMap.entries()) {
         if (isEqual(value, existingValue)) {
           // If found, add the current key to that group's key array.
-          keys.push(key);
-          foundGroup = true;
-          break; // Exit the inner loop once a group is found.
+          keys.push(key)
+          foundGroup = true
+          break // Exit the inner loop once a group is found.
         }
       }
 
       // If no matching group was found, create a new one.
       if (!foundGroup) {
-        groupedMap.set([key], value);
+        groupedMap.set([key], value)
       }
     }
   }
 
-  return groupedMap;
+  return groupedMap
 }
 
 /**
@@ -331,7 +327,6 @@ export function safeStringify(value: any): string {
     return `[Obj]`
   }
 }
-
 
 /**
  * Removes any non-alphanumeric characters, converts to lowercase, and replaces spaces with underscores.

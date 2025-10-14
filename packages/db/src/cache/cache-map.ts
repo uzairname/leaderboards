@@ -1,13 +1,9 @@
-
-
 interface CacheEntry<T> {
   data: T
   timestamp: number
 }
 
-
 export class GenericCacheMap<SerializedT, DeserializedT, K, K2 extends string | number | undefined = never> {
-
   private map: CacheMap<K, CacheEntry<SerializedT>, K2>
 
   constructor(
@@ -18,7 +14,6 @@ export class GenericCacheMap<SerializedT, DeserializedT, K, K2 extends string | 
     public ttl?: number, // Time to live in milliseconds
   ) {
     this.map = new CacheMap<K, CacheEntry<SerializedT>, K2>(name, log, { log_hits: true, log_misses: true })
-
   }
 
   /**
@@ -35,7 +30,6 @@ export class GenericCacheMap<SerializedT, DeserializedT, K, K2 extends string | 
    * Doesn't perform any serialization.
    */
   setSerialized(key: K, value: SerializedT, key2?: K2): this {
-
     const entry: CacheEntry<SerializedT> = {
       data: value,
       timestamp: Date.now(),
@@ -123,9 +117,6 @@ export class GenericCacheMap<SerializedT, DeserializedT, K, K2 extends string | 
     }
   }
 }
-
-
-
 
 export class CacheMap<K, V, K2 extends string | number | undefined = undefined> extends Map<K, V> {
   constructor(

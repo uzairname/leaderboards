@@ -5,7 +5,6 @@ import { App, offload } from '../../../setup/app'
 
 // for team size 1 rankings
 
-
 export function ensureQueueEnabled(app: App, ranking: Ranking) {
   if (!app.rankings.getProperties(ranking).matchmaking_settings.queue_enabled) {
     throw new UserError(`The queue is not enabled for ${ranking.data.name}`)
@@ -47,7 +46,6 @@ export async function userJoinQueue(
 
   return { already_in }
 }
-
 
 export async function findMatchFromQueue(app: App, gr: PartialGuildRanking): Promise<Match | undefined> {
   const { ranking, guild_ranking } = await gr.fetch()

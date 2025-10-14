@@ -1,10 +1,4 @@
-import {
-  checkMessageComponentInteraction,
-  DeferredComponentContext,
-  MessageData,
-  ViewSignature,
-  ViewState,
-} from '@repo/discord'
+import { DeferredComponentContext, MessageData, ViewSignature, ViewState } from '@repo/discord'
 import { field } from '@repo/utils'
 import * as D from 'discord-api-types/v10'
 import { userJoinQueue } from '../../services/matchmaking/queue/solo-queue'

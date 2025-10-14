@@ -10,8 +10,6 @@ export default (app: App) =>
         last_updated: new Date(),
       })
 
-
-      
       const [_, guildNames] = await Promise.all([
         syncDiscordCommands(app),
         app.db.guilds.getAll().then(guilds =>

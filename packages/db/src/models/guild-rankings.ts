@@ -109,7 +109,9 @@ export class GuildRankingsManager extends DbObjectManager {
       ]
       if (guild && guild_ranking && ranking) {
         return {
-          guild, guild_ranking, ranking
+          guild,
+          guild_ranking,
+          ranking,
         } as any
       }
 

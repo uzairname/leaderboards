@@ -99,13 +99,13 @@ export class MatchesService extends AppService {
     time_finished,
     metadata,
   }: {
-    app: App,
-    ranking: PartialRanking,
-    players: Player[][],
-    outcome: MatchOutcome,
-    time_started?: Date,
-    time_finished?: Date,
-    metadata?: MatchMetadata,
+    app: App
+    ranking: PartialRanking
+    players: Player[][]
+    outcome: MatchOutcome
+    time_started?: Date
+    time_finished?: Date
+    metadata?: MatchMetadata
   }): Promise<Match> {
     this.validateMatchData({
       players,
