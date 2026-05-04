@@ -178,7 +178,7 @@ export async function leaderboardPage(
           emoji: { name: '◀️' },
           custom_id: ctx.state.set
             .page_idx(page_idx - 1)
-            .set.id(0)
+            .set.id(2)
             .cId(),
           disabled: page_idx == 0,
         },
@@ -188,7 +188,7 @@ export async function leaderboardPage(
           emoji: { name: '▶️' },
           custom_id: ctx.state.set
             .page_idx(page_idx + 1)
-            .set.id(0)
+            .set.id(3)
             .cId(),
           disabled: page_idx == max_page,
         },
@@ -196,7 +196,7 @@ export async function leaderboardPage(
           type: D.ComponentType.Button,
           style: D.ButtonStyle.Primary,
           emoji: { name: '⏭️' },
-          custom_id: ctx.state.set.page_idx(max_page).set.id(1).cId(),
+          custom_id: ctx.state.set.page_idx(max_page).set.id(4).cId(),
           disabled: page_idx == max_page,
         },
       ],

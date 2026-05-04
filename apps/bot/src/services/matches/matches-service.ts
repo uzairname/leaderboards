@@ -10,6 +10,7 @@ import {
   PartialRanking,
   Player,
   PlayerFlags,
+  Ranking,
   Rating,
 } from '@repo/db/models'
 import { MessageData } from '@repo/discord'
@@ -44,15 +45,13 @@ export class MatchesService extends AppService {
   /**
    * Starts a new match, using the players' current ratings
    */
-  async start(app: App, p_ranking: PartialRanking, players: Player[][], best_of?: number) {
+  async start(app: App, ranking: Ranking, players: Player[][], best_of?: number) {
     // Checks
     this.validateMatchData({ players })
     await this.ensurePlayersCanStartMatch(app, players.flat())
 
     // shuffle teams
     const shuffled_team_players = players.sort(() => Math.random() - 0.5)
-
-    const ranking = await p_ranking.fetch()
 
     // This is a new match, so set their ratings to their current ratings
     const match_players = await Promise.all(
@@ -63,7 +62,6 @@ export class MatchesService extends AppService {
               return {
                 player: p,
                 rating: p.data.rating,
-                // time_since_last_match: (await app.players.getInfoAtTime(app, p, new Date())).seconds,
                 flags: p.data.flags ?? PlayerFlags.None,
               }
             }),

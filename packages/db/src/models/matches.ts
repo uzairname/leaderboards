@@ -202,6 +202,7 @@ export class Match extends DbObject<MatchSelect> {
   async playersQueryResultToTeamPlayers(
     query_result: { player: PlayerSelect; match_player: MatchPlayerSelect }[],
   ): Promise<MatchPlayer[][] | null> {
+    if (query_result.length === 0) return null
     const ranking = await this.db.rankings.fetch(query_result[0].player.ranking_id)
 
     const team_players = Array.from({ length: ranking.data.teams_per_match }, () => [] as MatchPlayer[])

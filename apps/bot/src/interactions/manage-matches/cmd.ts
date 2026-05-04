@@ -1,5 +1,6 @@
 import { CommandSignature, getOptions } from '@repo/discord'
 import * as D from 'discord-api-types/v10'
+import { MatchStatus } from '@repo/db/models'
 import { AppErrors } from '../../errors/app-errors'
 import { UserError } from '../../errors/user-errors'
 import { App } from '../../setup/app'
@@ -141,6 +142,70 @@ export const match_cmd = match_cmd_sig.set<App>({
   guildSignature: async (app, guild_id) => {
     if ((await app.rankings.numRankings(app, guild_id)) == 0) return null
     return match_cmd_sig
+  },
+
+  onAutocomplete: async (ctx, app) => {
+    const interaction = ctx.interaction
+    if (!interaction.guild_id) return { choices: [] }
+
+    // Walk options to find the focused option and the sibling `player` option (within the same subcommand)
+    const subcommand_option = interaction.data.options?.[0] as
+      | D.APIApplicationCommandInteractionDataSubcommandOption
+      | undefined
+    const sub_options = subcommand_option?.options ?? []
+
+    const focused = sub_options.find(o => 'focused' in o && o.focused) as
+      | D.APIApplicationCommandInteractionDataIntegerOption
+      | D.APIApplicationCommandInteractionDataStringOption
+      | undefined
+    if (!focused || focused.name !== optionnames.match_id) return { choices: [] }
+
+    const partial = String(focused.value ?? '').trim().toLowerCase()
+
+    const player_option = sub_options.find(o => o.name === optionnames.user) as
+      | D.APIApplicationCommandInteractionDataUserOption
+      | undefined
+
+    const matches = await app.db.matches.getMany({
+      guild_id: interaction.guild_id,
+      user_ids: player_option?.value ? [player_option.value] : undefined,
+      limit: 25,
+    })
+
+    const status_label: Record<MatchStatus, string> = {
+      [MatchStatus.Finished]: '',
+      [MatchStatus.Ongoing]: ' [ongoing]',
+      [MatchStatus.Canceled]: ' [canceled]',
+    }
+
+    const formatted = await Promise.all(
+      matches.map(async ({ match, team_players }) => {
+        const ranking = await match.ranking.fetch()
+        const teams_text = team_players
+          .map(team => team.map(mp => mp.player.data.name).join('+'))
+          .join(' vs ')
+        const when = (match.data.time_finished ?? match.data.time_started)?.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        }) ?? ''
+        const label = `#${match.data.number} · ${ranking.data.name} · ${teams_text}${when ? ` · ${when}` : ''}${status_label[match.data.status]}`
+        return {
+          id: match.data.id,
+          number: match.data.number,
+          name: label.length > 100 ? label.slice(0, 97) + '...' : label,
+        }
+      }),
+    )
+
+    const filtered = partial
+      ? formatted.filter(
+          c => String(c.id) === partial || String(c.number).startsWith(partial) || c.name.toLowerCase().includes(partial),
+        )
+      : formatted
+
+    return {
+      choices: filtered.slice(0, 25).map(c => ({ name: c.name, value: c.id })),
+    }
   },
 
   onCommand: async (ctx, app) => {
